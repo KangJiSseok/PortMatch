@@ -1,0 +1,44 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.9'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.portmatch'
+version = '0.0.1-SNAPSHOT'
+description = 'Backend'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testRuntimeOnly 'com.h2database:h2'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // QueryDSL
+    implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
+    compileOnly 'jakarta.persistence:jakarta.persistence-api'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+    annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
+
+}
+
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

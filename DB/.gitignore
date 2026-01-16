@@ -1,0 +1,26 @@
+### Docker runtime data ###
+postgres-data/
+pgdata/
+data/
+volume/
+
+### Logs ###
+*.log
+
+### Environment ###
+.env
+.env.*
+
+### OS ###
+.DS_Store
+
+### Backup ###
+*.dump
+*.sql.backup
+
+### Allow essential files ###
+!Dockerfile
+!docker-compose.yml
+!init.sql
+!README.md
+!.gitignore
