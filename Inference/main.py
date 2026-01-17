@@ -1,16 +1,26 @@
-# 샘플 Python 스크립트입니다.
+import argparse
+import json
+from typing import Any, Dict, List
 
-# ⌃R을(를) 눌러 실행하거나 내 코드로 바꿉니다.
-# 클래스, 파일, 도구 창, 액션 및 설정을 어디서나 검색하려면 ⇧ 두 번을(를) 누릅니다.
-
-
-def print_hi(name):
-    # 스크립트를 디버그하려면 하단 코드 줄의 중단점을 사용합니다.
-    print(f'Hi, {name}')  # 중단점을 전환하려면 ⌘F8을(를) 누릅니다.
+from graph.company_graph import build_graph
+from graph.state import CompanyGraphState
 
 
-# 스크립트를 실행하려면 여백의 녹색 버튼을 누릅니다.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+def run(company_name: str) -> List[Dict[str, Any]]:
+    graph = build_graph()
+    initial_state: CompanyGraphState = {"company_name": company_name}
+    result = graph.invoke(initial_state)
+    return result.get("structured_projects", [])
 
-# https://www.jetbrains.com/help/pycharm/에서 PyCharm 도움말 참조
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("company_name")
+    args = parser.parse_args()
+
+    structured = run(args.company_name)
+    print(json.dumps(structured, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
