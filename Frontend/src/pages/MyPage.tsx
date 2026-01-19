@@ -104,7 +104,7 @@ export default function MyPage() {
 
   const portfolio: PortfolioReport = {
     id: 55,
-    filename: 'portfolio_yeaji.pdf',
+    filename: 'portfolio.pdf',
     analyzedAt: '2026-01-18T22:05:00',
     highlights: ['React/TS 경험 강조', '프로젝트 성과 수치화 추천', 'CS 질문 대비 필요'],
   };
@@ -172,10 +172,8 @@ export default function MyPage() {
     <div className="bg-pure-white min-h-screen p-10">
       {/* header는 디자인 페이지처럼 가되 배경은 흰색 */}
       <header className="border-soft-pebble border-b pb-6">
-        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">
-          My Page
-        </h1>
-        <p className="text-slate-gray mt-2">개인 대시보드 (Dummy Data)</p>
+        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">My Page</h1>
+        <p className="text-slate-gray mt-2">개인 대시보드</p>
       </header>
 
       <div className="mt-10 space-y-10">
