@@ -18,7 +18,7 @@ def _build_prompt() -> "ChatPromptTemplate":
         "- If unsure, use generic terms like \"core product\" or \"internal system\".\n"
         "- Sources must be limited to [\"homepage\", \"press\", \"job_posting\"].\n"
         "Return JSON only. No prose.\n"
-        "Output schema: [{\"name\": str, \"sources\": [str]}]"
+        "Output schema: [{{\"name\": str, \"sources\": [str]}}]"
     )
     return ChatPromptTemplate.from_messages(
         [

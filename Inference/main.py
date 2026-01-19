@@ -20,9 +20,16 @@ def main() -> None:
     load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("company_name")
+    parser.add_argument("--company-text", default="")
     args = parser.parse_args()
 
-    structured = run(args.company_name)
+    graph = build_graph()
+    initial_state: CompanyGraphState = {
+        "company_name": args.company_name,
+        "company_text": args.company_text,
+    }
+    result = graph.invoke(initial_state)
+    structured = result.get("structured_projects", [])
     if isinstance(structured, str):
         print(structured)
     else:
