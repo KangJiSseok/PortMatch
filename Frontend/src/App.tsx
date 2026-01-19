@@ -6,6 +6,10 @@ import IntroPage from './pages/IntroPage';
 import Button from './components/Button/Button';
 import Input from './components/Input/Input';
 
+import MyPage from './pages/MyPage';
+import InterviewPage from './pages/InterviewPage';
+
+
 function App() {
   useEffect(() => {
     AOS.init({
@@ -21,6 +25,8 @@ function App() {
         <Route path="/intro" element={<IntroPage />} />
         <Route path="/login" element={<div>Login Page</div>} />
         <Route path="/main" element={<div>Main Page</div>} />
+        <Route path="/mypage" element={<MyPage/>} />
+        <Route path="/interview/:id" element={<InterviewPage/>} />
         <Route
           path="/design"
           element={
@@ -112,6 +118,7 @@ function App() {
             </div>
           }
         />
+        
       </Routes>
     </BrowserRouter>
   );
