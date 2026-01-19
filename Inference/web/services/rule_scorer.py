@@ -35,7 +35,23 @@ class RuleScorer:
         summary = opinion.get("evidence_summary", "")
         if isinstance(summary, str):
             # Conservative guess markers (ASCII only).
-            guess_terms = ["guess", "assume", "likely", "probably", "maybe", "inferred"]
+            guess_terms = [
+                "guess",
+                "assume",
+                "likely",
+                "probably",
+                "maybe",
+                "inferred",
+                "추정",
+                "보임",
+                "가능성",
+                "추측",
+                "개연",
+                "유추",
+                "정황",
+                "보인다",
+                "보입니다",
+            ]
             hit_count = sum(1 for term in guess_terms if term in summary.lower())
             if hit_count >= 2:
                 score -= 2
@@ -44,22 +60,33 @@ class RuleScorer:
             src == "job_posting" for src in unique_sources
         )
 
+        is_valid = bool(opinion.get("is_valid", False))
+
         if score >= 4:
-            final_is_supported = True
             evidence_strength = "high"
         elif score >= 2:
-            final_is_supported = True
             evidence_strength = "medium"
         else:
-            final_is_supported = False
             evidence_strength = "low"
 
-        if job_posting_only and evidence_strength == "high":
-            evidence_strength = "medium"
+        if job_posting_only:
+            evidence_strength = "low"
+
+        if not is_valid:
+            final_is_supported = False
+        else:
+            if support_type == "implicit" and len(evidence) < 2:
+                final_is_supported = False
+            elif evidence_strength == "high":
+                final_is_supported = True
+            elif evidence_strength == "medium" and len(evidence) >= 2:
+                final_is_supported = True
+            else:
+                final_is_supported = False
 
         decision_reason = (
             f"score={score}; support_type={support_type}; "
-            f"sources={sorted(unique_sources)}"
+            f"sources={sorted(unique_sources)}; is_valid={is_valid}"
         )
 
         result = dict(opinion)
