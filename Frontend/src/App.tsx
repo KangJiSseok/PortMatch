@@ -48,18 +48,13 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-<<<<<<< HEAD
-      <div className="flex min-h-screen flex-col">
-        <AppContent />
-      </div>
-=======
       <Routes>
         <Route path="/" element={<IntroPage />} />
         <Route path="/intro" element={<IntroPage />} />
         <Route path="/login" element={<div>Login Page</div>} />
         <Route path="/main" element={<div>Main Page</div>} />
-        <Route path="/mypage" element={<MyPage/>} />
-        <Route path="/interview/:id" element={<InterviewPage/>} />
+        <Route path="/mypage" element={<MyPage />} />
+        <Route path="/interview/:id" element={<InterviewPage />} />
         <Route
           path="/design"
           element={
@@ -151,9 +146,7 @@ function App() {
             </div>
           }
         />
-        
       </Routes>
->>>>>>> dev
     </BrowserRouter>
   );
 }
