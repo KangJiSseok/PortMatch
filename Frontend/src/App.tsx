@@ -8,6 +8,8 @@ import Footer from './components/Footer/Footer';
 import IntroPage from './pages/IntroPage';
 import MainPage from './pages/MainPage';
 import DesignSystemPage from './pages/DesignSystemPage';
+import MyPage from './pages/MyPage';
+import InterviewPage from './pages/InterviewPage';
 
 function AppContent() {
   const location = useLocation();
@@ -38,6 +40,8 @@ function AppContent() {
           <Route path="/intro" element={<IntroPage />} />
           <Route path="/main" element={<MainPage />} />
           <Route path="/design" element={<DesignSystemPage />} />
+          <Route path="/mypage" element={<MyPage />} />
+          <Route path="/interview" element={<InterviewPage />} />
         </Routes>
       </div>
       {!isIntroPage && <Footer />}
