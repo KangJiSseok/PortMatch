@@ -41,7 +41,14 @@ function IntroPage() {
   };
 
   const handleLoginRedirect = (type: 'applicant' | 'company') => {
-    console.log(`${type} 로그인 페이지로 이동`);
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userType', type);
+
+    if (type === 'applicant') {
+      window.location.href = '/main';
+    } else {
+      window.location.href = '/design';
+    }
   };
 
   return (
@@ -70,7 +77,7 @@ function IntroPage() {
         </svg>
       </motion.button>
 
-      <div className="fixed top-1/2 right-8 z-[100] flex -translate-y-1/2 flex-col gap-8 rounded-full border border-white/10 bg-white/5 px-5 py-8 mix-blend-difference shadow-2xl backdrop-blur-3xl">
+      <div className="fixed top-1/2 right-8 z-[100] flex -translate-y-1/2 flex-col gap-8 rounded-full border border-white/10 bg-white/5 px-5 py-8 mix-blend-difference shadow-2xl backdrop-blur-xl">
         {[0, 1, 2].map((idx) => (
           <button
             key={idx}
