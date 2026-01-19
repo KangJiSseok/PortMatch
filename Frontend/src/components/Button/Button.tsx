@@ -1,42 +1,41 @@
-import type { ReactNode } from 'react';
-
-interface ButtonProps {
-  children: ReactNode;
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'light' | 'dark' | 'outline';
+  colorTheme?: 'light' | 'dark';
   size?: 'sm' | 'md' | 'lg';
-  onClick?: () => void;
-  className?: string;
 }
 
-const Button = ({ 
-  children, 
+function Button({ 
   variant = 'light', 
-  size = 'md',
-  onClick, 
-  className = '' 
-}: ButtonProps) => {
-  const baseStyles = "font-medium rounded-xl border transition-all duration-300 active:scale-95 flex items-center justify-center";
+  colorTheme = 'light', 
+  size = 'md', 
+  className = '', 
+  children, 
+  ...props 
+}: ButtonProps) {
+  const baseStyles = "inline-flex items-center justify-center font-bold transition-all duration-300 rounded-md border outline-none";
   
   const sizes = {
-    sm: "px-3 py-1.5 text-sm",
-    md: "px-6 py-3 text-base",
-    lg: "px-8 py-4 text-lg"
+    sm: "px-4 py-1.5 text-xs",
+    md: "px-6 py-2.5 text-sm",
+    lg: "px-8 py-3.5 text-base"
   };
 
   const variants = {
-    light: "bg-cloud-dancer text-midnight-ink border-cloud-dancer hover:bg-midnight-ink hover:text-pure-white hover:border-midnight-ink",
-    dark: "bg-midnight-ink text-pure-white border-midnight-ink hover:bg-cloud-dancer hover:text-midnight-ink hover:border-cloud-dancer",
-    outline: "bg-transparent text-midnight-ink border-soft-pebble hover:bg-pure-white hover:border-midnight-ink"
+    light: "bg-cloud-dancer text-midnight-ink border-cloud-dancer hover:bg-slate-gray hover:text-pure-white hover:border-midnight-ink",
+    dark: "bg-slate-gray text-pure-white border-midnight-ink hover:bg-cloud-dancer hover:text-midnight-ink hover:border-cloud-dancer",
+    outline: colorTheme === 'light' 
+      ? "bg-transparent text-midnight-ink border-soft-pebble hover:bg-pure-white hover:border-midnight-ink"
+      : "bg-transparent text-pure-white border-white/30 hover:border-pure-white" // 배경 변화(bg) 없음
   };
 
   return (
     <button 
-      onClick={onClick} 
       className={`${baseStyles} ${sizes[size]} ${variants[variant]} ${className}`}
+      {...props}
     >
       {children}
     </button>
   );
-};
+}
 
 export default Button;
