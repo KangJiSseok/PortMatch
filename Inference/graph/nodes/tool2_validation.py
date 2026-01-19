@@ -47,8 +47,14 @@ def _build_prompt() -> "ChatPromptTemplate":
 
 
 def _invoke_llm(company_text: str, candidates: List[Dict[str, Any]]) -> str:
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    model_name = os.getenv("PPLX_MODEL") or os.getenv("OPENAI_MODEL", "sonar-pro")
+    api_key = os.getenv("PPLX_API_KEY", "")
+    base_url = os.getenv("PPLX_BASE_URL", "https://api.perplexity.ai")
+    if not api_key:
+        return ""
     try:
+        os.environ["OPENAI_API_KEY"] = api_key
+        os.environ["OPENAI_BASE_URL"] = base_url
         from langchain_openai import ChatOpenAI
 
         llm = ChatOpenAI(model=model_name, temperature=0.2)
