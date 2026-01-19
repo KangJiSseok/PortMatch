@@ -25,5 +25,8 @@ __pycache__/
 !/temp_files/.gitkeep
 !/docs_cache/.gitkeep
 
+# Env
+.env
+
 # Logs
 *.log
