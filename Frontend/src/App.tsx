@@ -15,6 +15,10 @@ function AppContent() {
     return localStorage.getItem('isLoggedIn') === 'true';
   });
 
+<<<<<<< HEAD
+=======
+function App() {
+>>>>>>> dev
   useEffect(() => {
     AOS.init({
       duration: 1000,
@@ -51,10 +55,6 @@ function App() {
       <Routes>
         <Route path="/" element={<IntroPage />} />
         <Route path="/intro" element={<IntroPage />} />
-        <Route path="/login" element={<div>Login Page</div>} />
-        <Route path="/main" element={<div>Main Page</div>} />
-        <Route path="/mypage" element={<MyPage />} />
-        <Route path="/interview/:id" element={<InterviewPage />} />
         <Route
           path="/design"
           element={
