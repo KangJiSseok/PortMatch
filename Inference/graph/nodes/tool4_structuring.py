@@ -12,7 +12,8 @@ def _format_tech(value: Any) -> str:
 
 
 def _format_project(project: Dict[str, Any]) -> str:
-    name = project.get("name", "")
+    # Use the real project statement; do not expose the discovery anchor.
+    name = project.get("project_statement", "")
     problem = project.get("problem", "")
     solution = project.get("solution", "")
     role = project.get("role", "")

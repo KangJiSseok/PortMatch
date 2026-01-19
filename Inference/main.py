@@ -2,6 +2,8 @@ import argparse
 import json
 from typing import Any, Dict, List
 
+from dotenv import load_dotenv
+
 from graph.company_graph import build_graph
 from graph.state import CompanyGraphState
 
@@ -10,10 +12,12 @@ def run(company_name: str) -> Any:
     graph = build_graph()
     initial_state: CompanyGraphState = {"company_name": company_name}
     result = graph.invoke(initial_state)
+    print(result)
     return result.get("structured_projects", [])
 
 
 def main() -> None:
+    load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("company_name")
     args = parser.parse_args()

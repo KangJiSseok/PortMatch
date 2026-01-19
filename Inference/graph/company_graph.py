@@ -23,17 +23,17 @@ def build_graph() -> Any:
     graph.add_node("discovery", discovery_node)
     graph.add_node("validate", validation_node)
     graph.add_node("score", _score_node)
-    graph.add_node("coverage", coverage_node)
+    graph.add_node("coverage_check", coverage_node)
     graph.add_node("structure", structuring_node)
 
     graph.set_entry_point("discovery")
 
     graph.add_edge("discovery", "validate")
     graph.add_edge("validate", "score")
-    graph.add_edge("score", "coverage")
+    graph.add_edge("score", "coverage_check")
 
     graph.add_conditional_edges(
-        "coverage",
+        "coverage_check",
         is_coverage_enough,
         {
             True: "structure",

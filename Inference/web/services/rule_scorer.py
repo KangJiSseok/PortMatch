@@ -11,6 +11,7 @@ class RuleScorer:
         return results
 
     def _score_opinion(self, opinion: Dict[str, Any]) -> Dict[str, Any]:
+        # Scoring uses evidence/support metadata only, not candidate anchors.
         score = 0
         evidence = opinion.get("evidence", [])
         sources = []
@@ -33,16 +34,11 @@ class RuleScorer:
 
         summary = opinion.get("evidence_summary", "")
         if isinstance(summary, str):
-            guess_terms = ["추정", "추측", "가능", "일 수", "보인다", "암시"]
-            hit_count = sum(1 for term in guess_terms if term in summary)
+            # Conservative guess markers (ASCII only).
+            guess_terms = ["guess", "assume", "likely", "probably", "maybe", "inferred"]
+            hit_count = sum(1 for term in guess_terms if term in summary.lower())
             if hit_count >= 2:
                 score -= 2
-
-        project_name = opinion.get("project_name", "")
-        if isinstance(project_name, str) and not any(
-            token in project_name for token in ["플랫폼", "서비스", "시스템"]
-        ):
-            score -= 1
 
         job_posting_only = len(unique_sources) > 0 and all(
             src == "job_posting" for src in unique_sources
