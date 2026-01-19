@@ -8,6 +8,8 @@ import Input from './components/Input/Input';
 import Checkbox from './components/Checkbox/Checkbox';
 import Select from './components/Select/Select';
 import FileUploader from './components/FileUploader/FileUploader';
+import Navbar from './components/Navbar/Navbar';
+import Footer from './components/Footer/Footer';
 
 function App() {
   useEffect(() => {
@@ -19,24 +21,26 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Navbar />
       <Routes>
         <Route path="/" element={<IntroPage />} />
         <Route path="/intro" element={<IntroPage />} />
         <Route
           path="/design"
           element={
-            <div className="bg-cloud-dancer min-h-screen space-y-16 p-10">
-              <header className="border-soft-pebble border-b pb-6">
-                <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">
-                  Design System
-                </h1>
-              </header>
+            <div className="bg-cloud-dancer flex min-h-screen flex-col pt-20">
+              <main className="flex-1 space-y-16 p-10">
+                <header className="border-soft-pebble border-b pb-6">
+                  <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">
+                    Port Match Design System
+                  </h1>
+                  <p className="text-slate-gray mt-2">공통 컴포넌트 및 레이아웃 시스템</p>
+                </header>
 
-              <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-                <div className="space-y-12">
+                <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
                   <section className="bg-pure-white space-y-6 rounded-2xl p-8 shadow-sm">
-                    <h2 className="border-midnight-ink border-l-4 pl-3 text-xl font-black">
-                      LIGHT THEME
+                    <h2 className="border-midnight-ink border-l-4 pl-3 text-xl font-black uppercase">
+                      Light Theme
                     </h2>
                     <Input label="이메일" placeholder="example@portmatch.com" variant="light" />
                     <Select
@@ -56,12 +60,10 @@ function App() {
                       </Button>
                     </div>
                   </section>
-                </div>
 
-                <div className="space-y-12">
-                  <section className="bg-midnight-ink space-y-6 rounded-2xl p-8 shadow-sm">
-                    <h2 className="border-pure-white text-pure-white border-l-4 pl-3 text-xl font-black">
-                      DARK THEME
+                  <section className="bg-midnight-ink text-pure-white space-y-6 rounded-2xl p-8 shadow-sm">
+                    <h2 className="border-pure-white border-l-4 pl-3 text-xl font-black uppercase">
+                      Dark Theme
                     </h2>
                     <Input label="ID" placeholder="Enter email" variant="dark" />
                     <Select
@@ -82,7 +84,8 @@ function App() {
                     </div>
                   </section>
                 </div>
-              </div>
+              </main>
+              <Footer />
             </div>
           }
         />
