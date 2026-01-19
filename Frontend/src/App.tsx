@@ -12,6 +12,7 @@ import MyPage from './pages/MyPage';
 import InterviewPage from './pages/InterviewPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import RecommendCompanyPage from './pages/RecommendCompanyPage';
 import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 
 function AppContent() {
@@ -85,9 +86,16 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/recommend/companies"
+            element={
+              <ProtectedRoute>
+                <RecommendCompanyPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route path="/design" element={<DesignSystemPage />} />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -101,7 +109,7 @@ function App() {
     <BrowserRouter>
       <div className="flex min-h-screen flex-col">
         <AppContent />
-      </div>
+      </div> 
     </BrowserRouter>
   );
 }
