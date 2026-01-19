@@ -11,6 +11,9 @@ import FileUploader from './components/FileUploader/FileUploader';
 import Navbar from './components/Navbar/Navbar';
 import Footer from './components/Footer/Footer';
 
+import MyPage from './pages/MyPage';
+import InterviewPage from './pages/InterviewPage';
+
 function App() {
   useEffect(() => {
     AOS.init({
