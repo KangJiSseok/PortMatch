@@ -12,11 +12,12 @@ def _format_tech(value: Any) -> str:
 
 
 def _format_project(project: Dict[str, Any]) -> str:
-    name = project.get("name", "")
-    problem = project.get("problem", "")
-    solution = project.get("solution", "")
-    role = project.get("role", "")
-    tech = _format_tech(project.get("tech"))
+    # Use the real project statement; do not expose the discovery anchor.
+    name = project.get("project_statement", "") or "정보 없음"
+    problem = project.get("problem", "") or "정보 없음"
+    solution = project.get("solution", "") or "정보 없음"
+    role = project.get("role", "") or "정보 없음"
+    tech = _format_tech(project.get("tech")) or "정보 없음"
     lines = [
         f"[프로젝트명] {name}",
         f"[문제] {problem}",
@@ -28,12 +29,20 @@ def _format_project(project: Dict[str, Any]) -> str:
 
 
 def structuring_node(state: CompanyGraphState) -> Dict[str, Any]:
-    scored_projects: List[Dict[str, Any]] = state.get("scored_projects", []) or []
+    validation_opinions: List[Dict[str, Any]] = (
+        state.get("validation_opinions", []) or []
+    )
     supported_projects = [
-        project
-        for project in scored_projects
-        if project.get("final_is_supported") is True
+        project for project in validation_opinions if project.get("is_valid") is True
     ]
-    formatted_blocks = [_format_project(project) for project in supported_projects]
-    structured_output = "\n\n".join(formatted_blocks)
+    structured_output = [
+        {
+            "project_name": project.get("project_statement", "") or "정보 없음",
+            "problem": project.get("problem", "") or "정보 없음",
+            "solution": project.get("solution", "") or "정보 없음",
+            "role": project.get("role", "") or "정보 없음",
+            "tech": project.get("tech", []) or [],
+        }
+        for project in supported_projects
+    ]
     return {"structured_projects": structured_output}
