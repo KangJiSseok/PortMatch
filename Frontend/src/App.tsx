@@ -5,6 +5,9 @@ import 'aos/dist/aos.css';
 import IntroPage from './pages/IntroPage';
 import Button from './components/Button/Button';
 import Input from './components/Input/Input';
+import Checkbox from './components/Checkbox/Checkbox';
+import Select from './components/Select/Select';
+import FileUploader from './components/FileUploader/FileUploader';
 
 function App() {
   useEffect(() => {
@@ -19,96 +22,67 @@ function App() {
       <Routes>
         <Route path="/" element={<IntroPage />} />
         <Route path="/intro" element={<IntroPage />} />
-        <Route path="/login" element={<div>Login Page</div>} />
-        <Route path="/main" element={<div>Main Page</div>} />
         <Route
           path="/design"
           element={
             <div className="bg-cloud-dancer min-h-screen space-y-16 p-10">
               <header className="border-soft-pebble border-b pb-6">
                 <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">
-                  Port Match Design System
+                  Design System
                 </h1>
-                <p className="text-slate-gray mt-2">
-                  공통 컴포넌트 라이브러리 (Branch: fe-feat/common-components)
-                </p>
               </header>
 
-              <section className="space-y-8">
-                <h2 className="text-midnight-ink border-midnight-ink border-l-4 pl-4 text-2xl font-bold">
-                  01. Buttons
-                </h2>
-
-                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                  <div className="bg-pure-white space-y-6 rounded-2xl p-8 shadow-sm">
-                    <h3 className="text-slate-gray text-sm font-bold tracking-widest uppercase">
-                      Light Theme (Company)
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-4">
-                      <Button variant="dark" size="lg">
-                        Primary Dark
-                      </Button>
-                      <Button variant="outline" size="md">
-                        Outline
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="bg-midnight-ink space-y-6 rounded-2xl p-8 shadow-sm">
-                    <h3 className="text-cloud-dancer text-sm font-bold tracking-widest uppercase opacity-60">
-                      Dark Theme (Applicant)
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-4">
-                      <Button variant="light" size="lg">
-                        Primary Light
-                      </Button>
-                      <Button variant="outline" size="md" colorTheme="dark">
-                        Outline
+              <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
+                <div className="space-y-12">
+                  <section className="bg-pure-white space-y-6 rounded-2xl p-8 shadow-sm">
+                    <h2 className="border-midnight-ink border-l-4 pl-3 text-xl font-black">
+                      LIGHT THEME
+                    </h2>
+                    <Input label="이메일" placeholder="example@portmatch.com" variant="light" />
+                    <Select
+                      label="직군 선택"
+                      options={[
+                        { value: 'fe', label: '프론트엔드' },
+                        { value: 'be', label: '백엔드' },
+                      ]}
+                      variant="light"
+                    />
+                    <Checkbox label="아이디 저장" variant="light" />
+                    <FileUploader label="포트폴리오 업로드" variant="light" />
+                    <div className="flex gap-2">
+                      <Button variant="dark">로그인</Button>
+                      <Button variant="outline" colorTheme="light">
+                        취소
                       </Button>
                     </div>
-                  </div>
+                  </section>
                 </div>
-              </section>
 
-              <section className="space-y-8">
-                <h2 className="text-midnight-ink border-midnight-ink border-l-4 pl-4 text-2xl font-bold">
-                  02. Inputs
-                </h2>
-
-                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                  <div className="bg-pure-white space-y-6 rounded-2xl p-8 shadow-sm">
-                    <h3 className="text-slate-gray text-sm font-bold tracking-widest uppercase">
-                      Light Variant
-                    </h3>
-                    <div className="space-y-4">
-                      <Input label="아이디" placeholder="아이디를 입력하세요" variant="light" />
-                      <Input
-                        label="비밀번호"
-                        type="password"
-                        placeholder="비밀번호를 입력하세요"
-                        variant="light"
-                        error="필수 입력 항목입니다."
-                      />
+                <div className="space-y-12">
+                  <section className="bg-midnight-ink space-y-6 rounded-2xl p-8 shadow-sm">
+                    <h2 className="border-pure-white text-pure-white border-l-4 pl-3 text-xl font-black">
+                      DARK THEME
+                    </h2>
+                    <Input label="ID" placeholder="Enter email" variant="dark" />
+                    <Select
+                      label="Position"
+                      options={[
+                        { value: 'fe', label: 'Frontend' },
+                        { value: 'be', label: 'Backend' },
+                      ]}
+                      variant="dark"
+                    />
+                    <Checkbox label="Remember me" variant="dark" />
+                    <FileUploader label="Upload Resume" variant="dark" />
+                    <div className="flex gap-2">
+                      <Button variant="light">Login</Button>
+                      <Button variant="outline" colorTheme="dark">
+                        Cancel
+                      </Button>
                     </div>
-                  </div>
-
-                  <div className="bg-midnight-ink space-y-6 rounded-2xl p-8 shadow-sm">
-                    <h3 className="text-cloud-dancer text-sm font-bold tracking-widest uppercase opacity-60">
-                      Dark Variant
-                    </h3>
-                    <div className="space-y-4">
-                      <Input label="ID" placeholder="Enter your ID" variant="dark" />
-                      <Input
-                        label="Password"
-                        type="password"
-                        placeholder="Enter your password"
-                        variant="dark"
-                        error="Invalid credentials."
-                      />
-                    </div>
-                  </div>
+                  </section>
                 </div>
-              </section>
+              </div>
             </div>
           }
         />
