@@ -30,10 +30,7 @@ def main() -> None:
     }
     result = graph.invoke(initial_state)
     structured = result.get("structured_projects", [])
-    if isinstance(structured, str):
-        print(structured)
-    else:
-        print(json.dumps(structured, ensure_ascii=False, indent=2))
+    print(json.dumps(structured, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

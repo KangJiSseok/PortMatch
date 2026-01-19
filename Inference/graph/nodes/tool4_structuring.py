@@ -35,6 +35,14 @@ def structuring_node(state: CompanyGraphState) -> Dict[str, Any]:
     supported_projects = [
         project for project in validation_opinions if project.get("is_valid") is True
     ]
-    formatted_blocks = [_format_project(project) for project in supported_projects]
-    structured_output = "\n\n".join(formatted_blocks)
+    structured_output = [
+        {
+            "project_name": project.get("project_statement", "") or "정보 없음",
+            "problem": project.get("problem", "") or "정보 없음",
+            "solution": project.get("solution", "") or "정보 없음",
+            "role": project.get("role", "") or "정보 없음",
+            "tech": project.get("tech", []) or [],
+        }
+        for project in supported_projects
+    ]
     return {"structured_projects": structured_output}
