@@ -22,7 +22,7 @@ function AppContent() {
     });
   }, []);
 
-  const isIntroPage = location.pathname === '/intro';
+  const isIntroPage = location.pathname === '/intro' || location.pathname === '/';
 
   return (
     <>
