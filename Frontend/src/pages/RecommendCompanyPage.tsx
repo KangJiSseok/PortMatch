@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import LoadingState from '@/components/states/LoadingState';
-import EmptyState from '@/components/states/EmptyState';
-import ErrorState from '@/components/states/ErrorState';
+import LoadingState from '@/components/States/LoadingState';
+import EmptyState from '@/components/States/EmptyState';
+import ErrorState from '@/components/States/ErrorState';
 
 type RecommendedCompany = {
   id: number;
