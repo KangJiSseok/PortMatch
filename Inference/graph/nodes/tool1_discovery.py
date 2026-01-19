@@ -23,7 +23,7 @@ def _build_prompt() -> "ChatPromptTemplate":
     return ChatPromptTemplate.from_messages(
         [
             ("system", system_rules),
-            ("human", "Company name: {company_name}\nReturn 2 to 5 candidates."),
+            ("human", "Company name: {company_name}"),
         ]
     )
 

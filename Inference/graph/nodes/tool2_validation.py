@@ -24,12 +24,18 @@ def _build_prompt() -> "ChatPromptTemplate":
         "- support_type must be one of: explicit, implicit, none.\n"
         "- evidence.source must be one of: homepage, press, report, job_posting.\n"
         "- project_statement must be a single Korean sentence.\n"
+        "- problem/solution/role must be short Korean phrases.\n"
+        "- tech must be a list of short strings.\n"
         "- If evidence is weak, use cautious wording like "
         "\"...수행한 것으로 보입니다.\".\n"
         "Return JSON only. No prose.\n"
         "Output schema:\n"
         "[{{"
         "\"project_statement\": str,"
+        "\"problem\": str,"
+        "\"solution\": str,"
+        "\"role\": str,"
+        "\"tech\": [str],"
         "\"evidence\": [{{\"snippet\": str, \"source\": str}}],"
         "\"support_type\": str,"
         "\"evidence_summary\": str,"
@@ -111,6 +117,16 @@ def _normalize_support_type(value: Any) -> str:
         return value
     return "none"
 
+def _normalize_tech(value: Any) -> List[str]:
+    if not isinstance(value, list):
+        return []
+    tech_list = []
+    for item in value:
+        text = str(item).strip()
+        if text:
+            tech_list.append(text)
+    return tech_list
+
 
 def _normalize_evidence(evidence: Any) -> List[Dict[str, str]]:
     allowed_sources = {"homepage", "press", "report", "job_posting"}
@@ -146,6 +162,10 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
         support_type = _normalize_support_type(llm_item.get("support_type"))
         evidence = _normalize_evidence(llm_item.get("evidence"))
         project_statement = str(llm_item.get("project_statement", "")).strip()
+        problem = str(llm_item.get("problem", "")).strip()
+        solution = str(llm_item.get("solution", "")).strip()
+        role = str(llm_item.get("role", "")).strip()
+        tech = _normalize_tech(llm_item.get("tech"))
         evidence_summary = str(llm_item.get("evidence_summary", "")).strip()
         is_valid = bool(llm_item.get("is_valid", False))
 
@@ -175,6 +195,10 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
                 "validation_reason": validation_reason,
                 # Tool2 provides the real, human-readable statement.
                 "project_statement": project_statement,
+                "problem": problem,
+                "solution": solution,
+                "role": role,
+                "tech": tech,
                 "evidence": evidence,
                 "support_type": support_type,
                 "evidence_summary": evidence_summary,
