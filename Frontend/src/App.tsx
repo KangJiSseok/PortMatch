@@ -14,6 +14,7 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import PortfoliosPage from './pages/PortfoliosPage';
 import RecommendCompanyPage from './pages/RecommendCompanyPage';
+import CompanyDetailsPage from './pages/CompanyDetailsPage';
 import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 import InterviewListPage from './pages/InterviewListPage';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
@@ -74,6 +75,8 @@ function AppContent() {
           <Route path="/main" element={<MainPage />} />
           <Route path="/mypage" element={<MyPage />} />
 
+          <Route path="/companies/:companyId" element={<CompanyDetailsPage />} />
+
           <Route
             path="/interviews"
             element={
@@ -83,12 +86,14 @@ function AppContent() {
             }
           />
 
-          <Route path="/interviews/:id/lobby"
-          element={
-            <ProtectedRoute>
-              <InterviewLobbyPage />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/interviews/:id/lobby"
+            element={
+              <ProtectedRoute>
+                <InterviewLobbyPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/interview/:id/room"
