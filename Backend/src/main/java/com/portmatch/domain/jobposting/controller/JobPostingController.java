@@ -1,0 +1,70 @@
+package com.portmatch.domain.jobposting.controller;
+
+import com.portmatch.domain.jobposting.dto.JobPostingDto;
+import com.portmatch.domain.jobposting.service.JobPostingService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/job-postings")
+@RequiredArgsConstructor
+@CrossOrigin(origins = "*")
+public class JobPostingController {
+
+    private final JobPostingService jobPostingService;
+
+    // 1. 전체 공고 목록 조회
+    @GetMapping
+    public ResponseEntity<List<JobPostingDto>> getAllJobs() {
+        log.info("모든 채용 공고 조회 요청");
+        List<JobPostingDto> jobs = jobPostingService.getAllJobPostings();
+        return ResponseEntity.ok(jobs);
+    }
+
+    // 2. 공고 상세 조회 (+ 조회수 증가)
+    @GetMapping("/{id}")
+    public ResponseEntity<JobPostingDto> getJobDetail(@PathVariable("id") String id) {
+        log.info("공고 상세 조회 요청 - ID: {}", id);
+        try {
+            // 상세 정보를 가져오기 전에 조회수를 1 올림
+            jobPostingService.updateViewCount(id);
+
+            JobPostingDto jobDetail = jobPostingService.getJobDetail(id);
+            return ResponseEntity.ok(jobDetail);
+        } catch (Exception e) {
+            log.error("공고 상세 조회 중 오류 발생 (ID: {}): ", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    // 3. 새로운 공고 수동 등록 (필요시)
+    @PostMapping
+    public ResponseEntity<String> createJob(@RequestBody JobPostingDto dto) {
+        log.info("새로운 공고 등록 요청: {}", dto.getTitle());
+        jobPostingService.saveJobPosting(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body("공고가 성공적으로 등록되었습니다.");
+    }
+
+    // 4. 공고 수정
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateJob(@PathVariable String id, @RequestBody JobPostingDto dto) {
+        log.info("공고 수정 요청 - ID: {}", id);
+        dto.setId(id); // 경로의 ID를 DTO에 설정
+        jobPostingService.saveJobPosting(dto);
+        return ResponseEntity.ok("공고 정보가 수정되었습니다.");
+    }
+
+    // 5. 공고 삭제
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteJob(@PathVariable String id) {
+        log.info("공고 삭제 요청 - ID: {}", id);
+        jobPostingService.deleteJobPosting(id);
+        return ResponseEntity.ok("공고가 삭제되었습니다.");
+    }
+}
