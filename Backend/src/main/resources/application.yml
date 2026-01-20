@@ -27,3 +27,6 @@ aws:
 
 portfolio-analysis:
   base-url: ${PORTFOLIO_ANALYSIS_URL:http://localhost:8000}
+
+company-project-analysis:
+  base-url: ${COMPANY_PROJECT_ANALYSIS_URL:http://localhost:8001}
