@@ -2,45 +2,8 @@ import React, { useState } from 'react';
 import LoadingState from '@/components/States/LoadingState';
 import EmptyState from '@/components/States/EmptyState';
 import ErrorState from '@/components/States/ErrorState';
-
-type RecommendedCompany = {
-  id: number;
-  name: string;
-  reason: string;
-  hiringCount: number;
-  stacks: string[];
-  matchScore: number; // 정렬을 위한 가상의 추천 점수
-};
-
-const mockCompanies: RecommendedCompany[] = [
-  {
-    id: 1,
-    name: '네오랩스',
-    reason:
-      'React/TypeScript 기반 프론트 경험이 있고, 협업 커뮤니케이션 키워드가 강하게 잡혀서 추천했어요.',
-    hiringCount: 12,
-    stacks: ['React', 'TypeScript', 'Tailwind'],
-    matchScore: 98,
-  },
-  {
-    id: 2,
-    name: '포트웨이브',
-    reason:
-      '프로젝트에서 API 연동과 상태 관리 경험이 강조되어 있고, 사용자 중심 UI 개선 경험이 보여요.',
-    hiringCount: 7,
-    stacks: ['Next.js', 'Redux', 'Framer Motion'],
-    matchScore: 85,
-  },
-  {
-    id: 3,
-    name: '클라우드코어',
-    reason:
-      '데이터 파이프라인/크롤링 관련 관심사가 있고, 문제 해결 방식(트러블슈팅)이 잘 드러나서 매칭됐어요.',
-    hiringCount: 19,
-    stacks: ['Python', 'Node.js', 'AWS'],
-    matchScore: 92,
-  },
-];
+import { useRecommendedCompanies } from '@/hooks/useRecommendedCompanies';
+import type { RecommendedCompany, SortBy } from '@/types/recommend';
 
 function CompanyCard({ company }: { company: RecommendedCompany }) {
   return (
@@ -81,12 +44,14 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
 }
 
 function RecommendCompanyPage() {
-    const [sortBy, setSortBy] = useState<'score' | 'hiring'>('score');
-    const [view, setView] = useState<'ok' | 'loading' | 'empty' | 'error'>('ok');
+  const [sortBy, setSortBy] = useState<SortBy>('score');
+  const { data: companies, isLoading, isError, refetch } = useRecommendedCompanies();
 
-  const sortedCompanies = [...mockCompanies].sort((a, b) => {
-    return sortBy === 'score' ? b.matchScore - a.matchScore : b.hiringCount - a.hiringCount;
-  });
+  const sortedCompanies = companies
+    ? [...companies].sort((a, b) => {
+        return sortBy === 'score' ? b.matchScore - a.matchScore : b.hiringCount - a.hiringCount;
+      })
+    : [];
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] font-sans text-[#1a1a1a] antialiased">
@@ -138,43 +103,24 @@ function RecommendCompanyPage() {
             </div>
           </div>
 
-          {/* <ul className="grid gap-5">
-            {sortedCompanies.map((company) => (
-              <CompanyCard key={company.id} company={company} />
-            ))}
-          </ul> */}
+          {/* 로딩 상태 */}
+          {isLoading && <LoadingState />}
 
-          {/* (임시) 상태 확인용 토글 - 나중에 지울 거 */}
-          <div className="mb-6 flex gap-2">
-            {(['ok', 'loading', 'empty', 'error'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors ${
-                  view === v
-                    ? 'bg-[#f0eee9] text-[#1a1a1a]'
-                    : 'bg-transparent text-[#a3a3a3] hover:text-[#4a4a4a]'
-                }`}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
-
-          {view === 'loading' && <LoadingState />}
-
-          {view === 'empty' && (
-            <EmptyState actionLabel="다시 분석하기" onAction={() => setView('loading')} />
-          )}
-
-          {view === 'error' && (
+          {/* 에러 상태 */}
+          {isError && (
             <ErrorState
               description="네트워크 상태를 확인한 뒤 다시 시도해 주세요."
-              onAction={() => setView('loading')}
+              onAction={refetch}
             />
           )}
 
-          {view === 'ok' && (
+          {/* 빈 상태 */}
+          {!isLoading && !isError && sortedCompanies.length === 0 && (
+            <EmptyState actionLabel="다시 분석하기" onAction={refetch} />
+          )}
+
+          {/* 정상 상태: 추천 기업 리스트 */}
+          {!isLoading && !isError && sortedCompanies.length > 0 && (
             <ul className="grid gap-5">
               {sortedCompanies.map((company) => (
                 <CompanyCard key={company.id} company={company} />
