@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import LoadingState from '@/components/States/LoadingState';
 import EmptyState from '@/components/States/EmptyState';
 import ErrorState from '@/components/States/ErrorState';
@@ -6,6 +7,13 @@ import { useRecommendedCompanies } from '@/hooks/useRecommendedCompanies';
 import type { RecommendedCompany, SortBy } from '@/types/recommend';
 
 function CompanyCard({ company }: { company: RecommendedCompany }) {
+  const navigate = useNavigate();
+
+  const handleSearchByCompany = () => {
+    // 기업명으로 검색 결과 페이지 이동
+    navigate(`/job-postings?keyword=${encodeURIComponent(company.name)}&type=company`);
+  };
+
   return (
     <li className="group flex flex-col gap-5 rounded-[28px] border border-[#f0eee9] bg-white p-7 transition-all duration-300 hover:border-[#d6d2c4] hover:shadow-[0_10px_40px_rgba(0,0,0,0.03)] md:flex-row md:items-center">
       <div className="flex-1">
@@ -27,7 +35,7 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
         </p>
       </div>
 
-      {/* 우측 공고 개수 */}
+      {/* 우측 공고 개수
       <div className="flex min-w-[110px] flex-col items-start justify-center self-end border-t border-[#f0eee9] pt-4 md:items-end md:self-center md:border-t-0 md:border-l md:pt-0 md:pl-8">
         <span className="mb-1 text-[10px] font-bold tracking-[0.1em] text-[#a3a3a3] uppercase">
           Openings
@@ -38,7 +46,25 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
           </span>
           <span className="text-sm font-bold text-[#1a1a1a]">건</span>
         </div>
-      </div>
+      </div> */}
+      {/* 우측 공고 개수 (버튼으로 변경) */}
+      <button 
+        onClick={handleSearchByCompany}
+        className="flex min-w-[110px] flex-col items-start justify-center self-end border-t border-[#f0eee9] pt-4 transition-all hover:opacity-70 md:items-end md:self-center md:border-t-0 md:border-l md:pt-0 md:pl-8"
+      >
+        <span className="mb-1 text-[10px] font-black tracking-[0.1em] text-[#a3a3a3] uppercase group-hover:text-point-blue">
+          Openings
+        </span>
+        <div className="flex items-baseline gap-0.5">
+          <span className="text-2xl font-black text-[#1a1a1a] tabular-nums group-hover:text-point-blue">
+            {company.hiringCount}
+          </span>
+          <span className="text-sm font-bold text-[#1a1a1a]">건</span>
+          <svg className="ml-1 h-3 w-3 text-point-blue opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </button>
     </li>
   );
 }
@@ -116,7 +142,12 @@ function RecommendCompanyPage() {
 
           {/* 빈 상태 */}
           {!isLoading && !isError && sortedCompanies.length === 0 && (
-            <EmptyState actionLabel="다시 분석하기" onAction={refetch} />
+            <EmptyState 
+                title="추천할 기업이 없습니다"
+                description="포트폴리오를 업데이트하면 AI가 더 정확한 기업을 추천해 드립니다."
+                actionLabel="분석 다시 시작하기" 
+                onAction={refetch} 
+              />
           )}
 
           {/* 정상 상태: 추천 기업 리스트 */}

@@ -1,40 +1,60 @@
-import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
-type EmptyStateProps = {
+interface EmptyStateProps {
   title?: string;
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
-};
+  showIcon?: boolean;
+}
 
-export default function EmptyState({
-  title = '추천 기업이 아직 없어요',
-  description = '포트폴리오를 분석한 뒤, 조건에 맞는 기업이 생기면 여기에 표시돼요.',
+const EmptyState = ({ 
+  title = "결과를 찾을 수 없습니다", 
+  description = "조건을 변경하여 다시 시도해 주세요.",
   actionLabel,
   onAction,
-}: EmptyStateProps) {
+  showIcon = true
+}: EmptyStateProps) => {
+  const navigate = useNavigate();
+
   return (
-    <div className="rounded-[28px] border border-[#f0eee9] bg-white p-7">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="h-1 w-6 rounded-full bg-[#d6d2c4]" />
-        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[#a3a3a3]">
-          Empty
-        </span>
-      </div>
-
-      <p className="text-base font-bold text-[#1a1a1a]">{title}</p>
-      <p className="mt-2 text-[14.5px] leading-relaxed text-[#4a4a4a]">{description}</p>
-
-      {actionLabel && onAction && (
-        <div className="mt-6">
-          <button
-            onClick={onAction}
-            className="rounded-xl border border-[#f0eee9] bg-[#fcfcfc] px-4 py-2 text-[12px] font-bold text-[#1a1a1a] transition-colors hover:bg-[#f0eee9]"
+    <div className="flex w-full flex-col items-center justify-center py-24 text-center">
+      {showIcon && (
+        <div className="bg-cloud-dancer mb-6 flex h-16 w-16 items-center justify-center rounded-full">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            className="text-silver-mist"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {actionLabel}
-          </button>
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
         </div>
+      )}
+
+      <h3 className="text-midnight-ink text-xl font-black tracking-tighter">
+        {title}
+      </h3>
+      <p className="text-silver-mist mt-2 text-[15px] font-bold">
+        {description}
+      </p>
+
+      {actionLabel && (
+        <button
+          onClick={onAction || (() => navigate(-1))}
+          className="bg-midnight-ink text-pure-white hover:bg-point-blue mt-8 rounded-xl px-8 py-3 text-xs font-black transition-all active:scale-95"
+        >
+          {actionLabel}
+        </button>
       )}
     </div>
   );
-}
+};
+
+export default EmptyState;
