@@ -8,8 +8,9 @@
  * 개별 추천 기업 정보
  */
 export interface RecommendedCompany {
+  id: number;        // (프론트 키)
   /** 기업 고유 ID */
-  id: number;
+  companyId: number; 
   /** 기업명 */
   name: string;
   /** 추천 사유 (AI 분석 결과) */

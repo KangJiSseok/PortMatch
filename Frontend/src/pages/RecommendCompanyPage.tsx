@@ -6,12 +6,43 @@ import ErrorState from '@/components/States/ErrorState';
 import { useRecommendedCompanies } from '@/hooks/useRecommendedCompanies';
 import type { RecommendedCompany, SortBy } from '@/types/recommend';
 
+// 기업 정보를 별도 상수로 분리 (실제로는 API에서 오겠지만, 테스트를 위해 정리)
+const MOCK_COMPANIES: RecommendedCompany[] = [
+  {
+    id: 101,
+    companyId: 101,
+    name: '삼성전자 (DX부문)',
+    reason: '글로벌 서비스의 복잡한 UI를 체계적으로 관리하기 위해 React/TypeScript 숙련도가 필수적인데, 유저님의 컴포넌트 설계 능력이 삼성닷컴 및 내부 시스템 고도화 프로젝트에 최적화되어 있습니다.',
+    hiringCount: 2,
+    stacks: ['React', 'TypeScript', 'Tailwind'],
+    matchScore: 98,
+  },
+  {
+    id: 102,
+    companyId: 102,
+    name: 'SK하이닉스',
+    reason: '반도체 공정 모니터링 시스템의 실시간 데이터 시각화가 중요한 과제입니다. 유저님이 프로젝트에서 보여준 대규모 상태 관리(Redux)와 대시보드 UI 최적화 경험이 현업에 즉시 투입 가능한 수준입니다.',
+    hiringCount: 1,
+    stacks: ['Next.js', 'Redux', 'Framer Motion'],
+    matchScore: 92,
+  },
+  {
+    id: 103,
+    companyId: 103,
+    name: 'LG전자 (ThinQ)',
+    reason: 'LG ThinQ 앱의 대규모 트래픽 처리와 IoT 기기 연동 데이터 파이프라인 구축을 위해 Node.js 및 AWS 역량이 강조됩니다. 유저님의 백엔드 트러블슈팅 경험이 서비스 안정성에 큰 기여를 할 것으로 보입니다.',
+    hiringCount: 0,
+    stacks: ['Python', 'Node.js', 'AWS'],
+    matchScore: 89,
+  },
+];
+
 function CompanyCard({ company }: { company: RecommendedCompany }) {
   const navigate = useNavigate();
 
   const handleSearchByCompany = () => {
-    // 기업명으로 검색 결과 페이지 이동
-    navigate(`/job-postings?keyword=${encodeURIComponent(company.name)}&type=company`);
+    // 💡 중요: 기업명(keyword)과 고유 ID인 companyId를 쿼리스트링으로 넘깁니다.
+    navigate(`/job-postings?companyId=${company.companyId}&companyName=${encodeURIComponent(company.name)}`);
   };
 
   return (
@@ -35,54 +66,44 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
         </p>
       </div>
 
-      {/* 우측 공고 개수
-      <div className="flex min-w-[110px] flex-col items-start justify-center self-end border-t border-[#f0eee9] pt-4 md:items-end md:self-center md:border-t-0 md:border-l md:pt-0 md:pl-8">
-        <span className="mb-1 text-[10px] font-bold tracking-[0.1em] text-[#a3a3a3] uppercase">
-          Openings
-        </span>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-2xl font-black text-[#1a1a1a] tabular-nums">
-            {company.hiringCount}
-          </span>
-          <span className="text-sm font-bold text-[#1a1a1a]">건</span>
-        </div>
-      </div> */}
-      {/* 우측 공고 개수 (버튼으로 변경) */}
-      <button 
-        onClick={handleSearchByCompany}
-        className="flex min-w-[110px] flex-col items-start justify-center self-end border-t border-[#f0eee9] pt-4 transition-all hover:opacity-70 md:items-end md:self-center md:border-t-0 md:border-l md:pt-0 md:pl-8"
-      >
-        <span className="mb-1 text-[10px] font-black tracking-[0.1em] text-[#a3a3a3] uppercase group-hover:text-point-blue">
-          Openings
-        </span>
-        <div className="flex items-baseline gap-0.5">
-          <span className="text-2xl font-black text-[#1a1a1a] tabular-nums group-hover:text-point-blue">
-            {company.hiringCount}
-          </span>
-          <span className="text-sm font-bold text-[#1a1a1a]">건</span>
-          <svg className="ml-1 h-3 w-3 text-point-blue opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </button>
+      {/* 우측 공고 개수 버튼: 클릭 시 해당 기업 공고로 이동 */}
+<button 
+  onClick={handleSearchByCompany}
+  className="flex min-w-[110px] cursor-pointer flex-col items-center justify-center self-end border-t border-[#f0eee9] pt-4 transition-all hover:opacity-70 md:self-center md:border-t-0 md:border-l md:pt-0 md:pl-8"
+>
+  <span className="mb-1 text-[10px] font-black tracking-[0.1em] text-[#a3a3a3] uppercase group-hover:text-point-blue">
+    공고 수
+  </span>
+  <div className="flex items-baseline gap-0.5">
+    <span className="text-2xl font-black text-[#1a1a1a] tabular-nums group-hover:text-point-blue">
+      {company.hiringCount}
+    </span>
+    <span className="text-sm font-bold text-[#1a1a1a]">건</span>
+    <svg className="ml-1 h-3 w-3 text-point-blue opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+  </div>
+</button>
     </li>
   );
 }
 
 function RecommendCompanyPage() {
   const [sortBy, setSortBy] = useState<SortBy>('score');
-  const { data: companies, isLoading, isError, refetch } = useRecommendedCompanies();
+  
+  // 원래는 useRecommendedCompanies()를 쓰지만, 지금은 데이터 정리를 위해 Mock을 바로 사용합니다.
+  const { data: apiData, isLoading, isError, refetch } = useRecommendedCompanies();
+  
+  // API 데이터가 오기 전까지는 우리가 정리한 MOCK_COMPANIES를 사용하도록 설정
+  const companies = apiData || MOCK_COMPANIES;
 
-  const sortedCompanies = companies
-    ? [...companies].sort((a, b) => {
-        return sortBy === 'score' ? b.matchScore - a.matchScore : b.hiringCount - a.hiringCount;
-      })
-    : [];
+  const sortedCompanies = [...companies].sort((a, b) => {
+    return sortBy === 'score' ? b.matchScore - a.matchScore : b.hiringCount - a.hiringCount;
+  });
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] font-sans text-[#1a1a1a] antialiased">
       <div className="mx-auto max-w-4xl px-6 py-20">
-        {/* 헤더 섹션: 요청하신 문구 적용 */}
         <header className="mb-16">
           <div className="mb-5 flex items-center gap-2">
             <div className="h-1 w-6 rounded-full bg-[#d6d2c4]"></div>
@@ -99,20 +120,16 @@ function RecommendCompanyPage() {
             </p>
             <p className="text-lg font-medium text-[#a3a3a3]">
               귀하의 역량이 가장 빛날 수 있는{' '}
-              <span className="border-b-2 border-[#d6d2c4] text-[#1a1a1a]">3개의 팀</span>을
-              찾았습니다.
+              <span className="border-b-2 border-[#d6d2c4] text-[#1a1a1a]">3개의 팀</span>을 찾았습니다.
             </p>
           </div>
         </header>
 
-        {/* 필터 및 리스트 섹션 */}
         <section className="space-y-6">
           <div className="flex items-center justify-between border-b border-[#f0eee9] px-1 pb-5">
             <h2 className="text-xs font-black tracking-widest text-[#1a1a1a] uppercase">
               Matched Companies
             </h2>
-
-            {/* 구글 스타일 탭 필터 */}
             <div className="flex gap-1 rounded-xl bg-[#f0eee9]/50 p-1">
               <button
                 onClick={() => setSortBy('score')}
@@ -129,28 +146,9 @@ function RecommendCompanyPage() {
             </div>
           </div>
 
-          {/* 로딩 상태 */}
           {isLoading && <LoadingState />}
+          {isError && <ErrorState description="데이터를 불러오지 못했습니다." onAction={refetch} />}
 
-          {/* 에러 상태 */}
-          {isError && (
-            <ErrorState
-              description="네트워크 상태를 확인한 뒤 다시 시도해 주세요."
-              onAction={refetch}
-            />
-          )}
-
-          {/* 빈 상태 */}
-          {!isLoading && !isError && sortedCompanies.length === 0 && (
-            <EmptyState 
-                title="추천할 기업이 없습니다"
-                description="포트폴리오를 업데이트하면 AI가 더 정확한 기업을 추천해 드립니다."
-                actionLabel="분석 다시 시작하기" 
-                onAction={refetch} 
-              />
-          )}
-
-          {/* 정상 상태: 추천 기업 리스트 */}
           {!isLoading && !isError && sortedCompanies.length > 0 && (
             <ul className="grid gap-5">
               {sortedCompanies.map((company) => (
@@ -159,15 +157,6 @@ function RecommendCompanyPage() {
             </ul>
           )}
         </section>
-
-        {/* 푸터 */}
-        <footer className="mt-24 flex items-center justify-between border-t border-[#f0eee9] pt-12 text-[12px] font-bold text-[#a3a3a3]">
-          <p>© 2026 PORT MATCH. ALL RIGHTS RESERVED.</p>
-          <div className="flex gap-6">
-            <span className="cursor-pointer hover:text-[#1a1a1a]">Privacy</span>
-            <span className="cursor-pointer hover:text-[#1a1a1a]">Terms</span>
-          </div>
-        </footer>
       </div>
     </div>
   );

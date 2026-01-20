@@ -16,7 +16,7 @@ import PortfoliosPage from './pages/PortfoliosPage';
 import RecommendCompanyPage from './pages/RecommendCompanyPage';
 import CompanyDetailsPage from './pages/CompanyDetailsPage';
 import ResumeDetailPage from './pages/ResumeDetailPage';
-import JobPostingsPage from '@/pages/JobSearhResultPage';
+import JobPostingsPage from '@/pages/JobPostingsPage';
 import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 import InterviewListPage from './pages/InterviewListPage';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
