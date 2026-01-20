@@ -1,0 +1,10 @@
+# --- Config / env ---
+python-dotenv==1.2.1
+pydantic-settings==2.12.0
+
+# --- HTTP ---
+requests==2.32.5
+httpx==0.28.1
+
+# --- MinerU ---
+mineru[all]
