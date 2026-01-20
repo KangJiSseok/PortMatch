@@ -96,7 +96,7 @@ function MainPage() {
         highlight: '가장 적합한 인재',
         line2Suffix: '를 제안합니다.',
         button: '인재 탐색 시작하러 가기',
-        link: '/manage',
+        link: '/recommend/companies',
       };
     return {
       line1: '나만의 경쟁력,',
@@ -109,10 +109,11 @@ function MainPage() {
 
   const heroContent = getHeroContent();
 
+  const newLocal = 'absolute bottom-1 left-0 -z-10 h-2 w-full bg-midnight-ink/10';
   return (
-    <div className="min-h-screen bg-white pt-24 pb-20 text-[#1a1a1a]">
+    <div className="text-midnight-ink min-h-screen bg-white pt-24 pb-20">
       <section className="mx-auto mb-12 max-w-6xl px-6">
-        <div className="flex min-h-[380px] overflow-hidden rounded-[32px] border border-zinc-100 bg-zinc-50 shadow-sm">
+        <div className="flex min-h-95 overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
           <div className="relative flex flex-1 flex-col justify-center overflow-hidden p-10 lg:p-14">
             <div className="absolute inset-0 z-0 overflow-hidden">
               <img
@@ -121,23 +122,24 @@ function MainPage() {
                 className="h-full w-full object-cover opacity-25 transition-transform duration-1000 hover:scale-105"
                 onError={handleImageError}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
             </div>
 
             <div className="relative z-10">
-              <h1 className="mb-8 text-3xl leading-tight font-black tracking-tighter text-[#1a1a1a] lg:text-4xl">
+              <h1 className="text-midnight-ink mb-8 text-3xl leading-tight font-black tracking-tighter lg:text-4xl">
                 {heroContent.line1}
                 <br />
-                <span className="relative inline-block">
+                {/* 아래 span에 text-point-blue 추가 */}
+                <span className="text-point-blue relative inline-block">
                   {heroContent.highlight}
-                  <span className="absolute bottom-1 left-0 -z-10 h-2 w-full bg-[#1a1a1a]/10" />
+                  <span className={newLocal} />
                 </span>
                 {heroContent.line2Suffix}
               </h1>
               <div className="flex">
                 <Button
-                  variant="dark"
-                  className="hover:bg-cloud-dancer text-pure-white hover:text-midnight-ink: rounded-2xl border-2 border-[#1a1a1a] bg-[#1a1a1a] px-14 py-6 text-xl font-black shadow-2xl transition-all duration-300 active:scale-95"
+                  variant="blue"
+                  className="rounded-2xl border-2 px-14 py-6 text-xl font-black shadow-2xl transition-all duration-300 active:scale-95"
                   onClick={() => navigate(heroContent.link)}
                 >
                   {heroContent.button}
@@ -146,7 +148,7 @@ function MainPage() {
             </div>
           </div>
 
-          <div className="hidden w-[360px] flex-col justify-center border-l border-zinc-200 bg-white p-8 lg:flex">
+          <div className="hidden w-90 flex-col justify-center border-l border-zinc-200 bg-white p-8 lg:flex">
             <div className="mb-6 flex items-center justify-between">
               <h3 className="text-sm font-black tracking-[0.2em] text-zinc-400 uppercase">
                 Trend Pick
@@ -156,12 +158,12 @@ function MainPage() {
                   <button
                     key={i}
                     onClick={() => setTrendIndex(i)}
-                    className={`h-3.5 w-3.5 rounded-full transition-all ${i === trendIndex ? 'scale-110 bg-[#1a1a1a] shadow-sm' : 'bg-zinc-200 hover:bg-zinc-300'}`}
+                    className={`h-3.5 w-3.5 rounded-full transition-all ${i === trendIndex ? 'bg-midnight-ink scale-110 shadow-sm' : 'bg-zinc-200 hover:bg-zinc-300'}`}
                   />
                 ))}
               </div>
             </div>
-            <div className="min-h-[240px]">
+            <div className="min-h-60">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={trendIndex}
@@ -177,11 +179,13 @@ function MainPage() {
                       className="group flex cursor-pointer items-center justify-between rounded-xl border border-zinc-100 bg-white p-5 transition-all hover:border-zinc-300 hover:shadow-md"
                     >
                       <div className="mr-3 min-w-0 flex-1 space-y-1">
-                        <p className="truncate text-base font-bold text-[#1a1a1a]">{item.title}</p>
+                        <p className="text-midnight-ink truncate text-base font-bold">
+                          {item.title}
+                        </p>
                         <p className="text-sm font-medium text-zinc-500">{item.company}</p>
                       </div>
                       <svg
-                        className="shrink-0 text-zinc-300 transition-colors group-hover:text-[#1a1a1a]"
+                        className="group-hover:text-midnight-ink shrink-0 text-zinc-300 transition-colors"
                         width="18"
                         height="18"
                         viewBox="0 0 24 24"
@@ -203,9 +207,11 @@ function MainPage() {
       <section className="mx-auto max-w-6xl px-6">
         <div className="mb-8 flex items-end justify-between border-b border-zinc-100 pb-5">
           <div className="space-y-1">
-            <h2 className="text-2xl font-black tracking-tighter text-[#1a1a1a]">최근 채용 공고</h2>
+            <h2 className="text-midnight-ink text-2xl font-black tracking-tighter">
+              최근 채용 공고
+            </h2>
           </div>
-          <button className="group text-md flex items-center gap-1 font-bold text-zinc-400 transition-colors hover:text-[#1a1a1a]">
+          <button className="group text-md hover:text-midnight-ink flex items-center gap-1 font-bold text-zinc-400 transition-colors">
             전체 보기
             <svg
               width="16"
@@ -241,7 +247,7 @@ function MainPage() {
               <div className="flex flex-1 flex-col p-4">
                 <div className="mb-3 min-w-0 flex-1 space-y-1.5">
                   <p className="text-[11px] font-bold text-zinc-400">{job.company}</p>
-                  <h3 className="line-clamp-2 text-base leading-snug font-black text-[#1a1a1a]">
+                  <h3 className="text-midnight-ink line-clamp-2 text-base leading-snug font-black">
                     {job.title}
                   </h3>
                 </div>
