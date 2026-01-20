@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -137,7 +137,7 @@ function PortfoliosPage() {
         </header>
 
         <main className="border-silver-mist relative overflow-hidden rounded-[40px] border bg-white shadow-xl">
-          <div className="flex min-h-[500px] flex-col justify-center bg-white p-12">
+          <div className="flex min-h-125 flex-col justify-center bg-white p-12">
             <AnimatePresence mode="wait">
               {step === 'upload' && (
                 <motion.div
@@ -149,7 +149,7 @@ function PortfoliosPage() {
                 >
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="group border-soft-pebble hover:border-point-blue/40 hover:bg-cloud-dancer/20 relative cursor-pointer rounded-[32px] border-2 border-dashed p-16 transition-all duration-300"
+                    className="group border-soft-pebble hover:border-point-blue/40 hover:bg-cloud-dancer/20 relative cursor-pointer rounded-4xl border-2 border-dashed p-16 transition-all duration-300"
                   >
                     <input
                       type="file"
@@ -191,7 +191,7 @@ function PortfoliosPage() {
                       variant="blue"
                       size="xl"
                       disabled={!file}
-                      className="rounded-2xl !py-6 !text-2xl font-black transition-all"
+                      className="rounded-2xl py-6! text-2xl! font-black transition-all"
                       onClick={handleAnalysis}
                     >
                       분석 시작하기
@@ -257,12 +257,12 @@ function PortfoliosPage() {
                   </div>
 
                   <div className="space-y-8">
-                    <div className="min-h-[80px] space-y-2">
+                    <div className="min-h-20 space-y-2">
                       <motion.h3
                         key={activeStage}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-2xl font-black tracking-tight text-[#1a1a1a]"
+                        className="text-midnight-ink text-2xl font-black tracking-tight"
                       >
                         {stages[activeStage].label}
                       </motion.h3>
@@ -332,7 +332,7 @@ function PortfoliosPage() {
                   </div>
 
                   <div className="flex flex-col gap-8">
-                    <div className="bg-cloud-dancer border-silver-mist space-y-8 rounded-[32px] border p-10 text-left shadow-sm">
+                    <div className="bg-cloud-dancer border-silver-mist space-y-8 rounded-4xl border p-10 text-left shadow-sm">
                       <h4 className="border-point-blue text-midnight-ink border-l-6 pl-6 text-3xl font-black tracking-tighter">
                         핵심 역량 키워드
                       </h4>
@@ -348,7 +348,7 @@ function PortfoliosPage() {
                       </div>
                     </div>
 
-                    <div className="bg-cloud-dancer border-silver-mist space-y-8 rounded-[32px] border p-10 text-left shadow-sm">
+                    <div className="bg-cloud-dancer border-silver-mist space-y-8 rounded-4xl border p-10 text-left shadow-sm">
                       <h4 className="border-point-blue text-midnight-ink border-l-6 pl-6 text-3xl font-black tracking-tighter">
                         추천 기술 스택
                       </h4>
@@ -369,7 +369,7 @@ function PortfoliosPage() {
                     <Button
                       variant="blue"
                       size="xl"
-                      className="flex-1 rounded-2xl !py-6 !text-2xl font-black shadow-xl transition-all"
+                      className="flex-1 rounded-2xl py-6! text-2xl! font-black shadow-xl transition-all"
                       onClick={() => navigate('/main')}
                     >
                       맞춤 공고 확인하기
@@ -377,7 +377,7 @@ function PortfoliosPage() {
                     <Button
                       variant="dark"
                       size="xl"
-                      className="flex-1 rounded-2xl border !py-6 !text-2xl font-black transition-all"
+                      className="flex-1 rounded-2xl border py-6! text-2xl! font-black transition-all"
                       onClick={() => {
                         setFile(null);
                         setStep('upload');
