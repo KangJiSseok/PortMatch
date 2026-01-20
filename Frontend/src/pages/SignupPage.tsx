@@ -254,16 +254,6 @@ function SignupPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-10">
-          {errors.submit && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border border-red-100 bg-red-50 p-4 text-center text-sm font-bold text-red-500"
-            >
-              {errors.submit}
-            </motion.div>
-          )}
-
           <section className="space-y-8">
             <div className="border-soft-pebble border-b pb-2">
               <h2 className="text-midnight-ink text-xl font-black">기본 정보</h2>
@@ -446,7 +436,16 @@ function SignupPage() {
             </div>
           </section>
 
-          <div className="mt-10">
+          <div className="mt-10 space-y-4">
+            {errors.submit && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-xl border border-red-100 bg-red-50 p-4 text-center text-sm font-bold text-red-500"
+              >
+                {errors.submit}
+              </motion.div>
+            )}
             <Button
               variant="dark"
               type="submit"
