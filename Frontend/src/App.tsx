@@ -18,7 +18,6 @@ import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 import InterviewListPage from './pages/InterviewListPage';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
 
-
 function AppContent() {
   const location = useLocation();
   const isAuthenticated = !!(
@@ -42,7 +41,9 @@ function AppContent() {
         <Routes>
           <Route
             path="/"
-            element={isAuthenticated ? <Navigate to="/main" replace /> : <Navigate to="/intro" replace />}
+            element={
+              isAuthenticated ? <Navigate to="/main" replace /> : <Navigate to="/intro" replace />
+            }
           />
 
           <Route
@@ -72,15 +73,7 @@ function AppContent() {
 
           <Route path="/main" element={<MainPage />} />
 
-          {/* 보호 필요한 페이지들 */}
-          <Route
-            path="/mypage"
-            element={
-              <ProtectedRoute>
-                <MyPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/mypage" element={<MyPage />} />
 
           <Route
             path="/interviews"
@@ -91,17 +84,10 @@ function AppContent() {
             }
           />
 
-          <Route
-            path="/interviews/:id/lobby"
-            element={
-              <ProtectedRoute>
-                <InterviewLobbyPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/interviews/:id/lobby" element={<InterviewLobbyPage />} />
 
           <Route
-            path="/interview/:id"
+            path="/interview/:id/room"
             element={
               <ProtectedRoute>
                 <InterviewPage />
@@ -128,7 +114,6 @@ function AppContent() {
           <Route path="/design" element={<DesignSystemPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-
       </div>
       {!shouldHideLayout && <Footer />}
     </>
