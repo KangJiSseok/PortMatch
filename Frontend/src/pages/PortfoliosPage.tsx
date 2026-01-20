@@ -157,24 +157,26 @@ function PortfoliosPage() {
     setStep('analyzing');
     setProgress(0);
     setActiveStage(0);
+
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 95) {
-          clearInterval(progressInterval);
-          return 95;
-        }
+        if (prev >= 95) return 95;
         const nextProgress = prev + 1;
         const currentStage = [...stages].reverse().find((s) => nextProgress >= s.threshold);
         if (currentStage) setActiveStage(currentStage.id);
         return nextProgress;
       });
     }, 100);
+
     try {
       if (file) {
         const formData = new FormData();
         formData.append('file', file);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
+
       setAnalysisData({
         strengths: [
           '고성능 엔터프라이즈 시스템 아키텍처 설계 및 최적화',
@@ -183,9 +185,11 @@ function PortfoliosPage() {
         ],
         techStacks: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Recoil', 'GraphQL', 'AWS'],
       });
+
       clearInterval(progressInterval);
       setProgress(100);
       setActiveStage(2);
+
       setTimeout(() => setStep('result'), 800);
     } catch (error) {
       console.error(error);
@@ -361,7 +365,6 @@ function PortfoliosPage() {
                           <polyline points="6 9 12 15 18 9" />
                         </motion.svg>
                       </button>
-
                       <AnimatePresence>
                         {isListOpen && (
                           <motion.div
@@ -376,9 +379,7 @@ function PortfoliosPage() {
                                   key={p.id}
                                   onClick={() => {
                                     setSelectedPortfolioId(p.id);
-                                    setFile(p.fileObject || null);
                                     setIsListOpen(false);
-                                    setShowTooltip(false);
                                   }}
                                   className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-6 py-4 text-left transition-colors ${selectedPortfolioId === p.id ? 'bg-point-blue/5 text-point-blue' : 'hover:bg-cloud-dancer text-midnight-ink/70'}`}
                                 >
@@ -386,7 +387,6 @@ function PortfoliosPage() {
                                     <button
                                       onClick={(e) => handleOpenFile(e, p)}
                                       className="hover:text-point-blue p-1 transition-colors"
-                                      title="문서 보기"
                                     >
                                       <svg
                                         width="18"
@@ -412,7 +412,7 @@ function PortfoliosPage() {
                                     )}
                                     <button
                                       onClick={(e) => handleDeletePortfolio(e, p.id)}
-                                      className="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                                      className="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600"
                                     >
                                       <svg
                                         width="18"
@@ -440,7 +440,6 @@ function PortfoliosPage() {
                         )}
                       </AnimatePresence>
                     </div>
-
                     <div
                       onClick={() => fileInputRef.current?.click()}
                       onDragOver={handleDragOver}
@@ -487,7 +486,6 @@ function PortfoliosPage() {
                       </div>
                     </div>
                   </div>
-
                   <div className="flex flex-col items-center gap-6 pt-4">
                     <div
                       className="relative flex w-full justify-center"
@@ -521,7 +519,179 @@ function PortfoliosPage() {
                 </motion.div>
               )}
 
-              {/* 분석 중, 결과 화면 생략 (기존과 동일) */}
+              {step === 'analyzing' && (
+                <motion.div
+                  key="analyzing"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-12 py-10 text-center"
+                >
+                  <div className="relative mx-auto h-52 w-52">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+                      className="border-point-blue/20 absolute inset-0 rounded-full border-t-2 border-b-2"
+                    />
+                    <svg
+                      className="absolute inset-0 h-full w-full -rotate-90"
+                      viewBox="0 0 100 100"
+                    >
+                      <circle
+                        className="text-soft-pebble stroke-current"
+                        strokeWidth="4"
+                        cx="50"
+                        cy="50"
+                        r="46"
+                        fill="transparent"
+                      />
+                      <motion.circle
+                        className="text-point-blue stroke-current"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        cx="50"
+                        cy="50"
+                        r="46"
+                        fill="transparent"
+                        strokeDasharray="289"
+                        animate={{ strokeDashoffset: 289 - (289 * progress) / 100 }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-point-blue text-5xl font-black tracking-tighter tabular-nums">
+                        {progress}%
+                      </span>
+                      <span className="text-slate-gray mt-1 text-[10px] font-black tracking-widest uppercase opacity-50">
+                        Analyzing
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-8">
+                    <div className="min-h-20 space-y-2">
+                      <motion.h3
+                        key={activeStage}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-midnight-ink text-2xl font-black tracking-tight"
+                      >
+                        {stages[activeStage].label}
+                      </motion.h3>
+                      <motion.p
+                        key={`desc-${activeStage}`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.6 }}
+                        className="text-slate-gray font-medium"
+                      >
+                        {stages[activeStage].description}
+                      </motion.p>
+                    </div>
+                    <div className="flex items-center justify-center gap-12">
+                      {stages.map((stage) => {
+                        const isActive =
+                          activeStage === stage.id &&
+                          progress < (stages[stage.id + 1]?.threshold ?? 100);
+                        return (
+                          <div key={stage.id} className="relative flex flex-col items-center gap-3">
+                            <div className="relative">
+                              {isActive && (
+                                <motion.div
+                                  layoutId="active-ping"
+                                  className="bg-point-blue absolute inset-0 rounded-full"
+                                  animate={{ scale: [1, 2.5], opacity: [0.5, 0] }}
+                                  transition={{ duration: 1.5, repeat: Infinity }}
+                                />
+                              )}
+                              <div
+                                className={`relative h-4 w-4 rounded-full transition-all duration-500 ${progress >= stage.threshold ? 'bg-point-blue scale-125 shadow-[0_0_10px_rgba(81,81,231,0.6)]' : 'bg-soft-pebble'}`}
+                              />
+                            </div>
+                            <span
+                              className={`text-xs font-black transition-colors duration-500 ${progress >= stage.threshold ? 'text-point-blue' : 'text-soft-pebble'}`}
+                            >
+                              {stage.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 'result' && analysisData && (
+                <motion.div
+                  key="result"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-12"
+                >
+                  <div className="border-point-blue border-b-4 pb-6 text-left">
+                    <p className="text-slate-gray mb-1 text-sm font-black tracking-widest uppercase opacity-40">
+                      Match Complete
+                    </p>
+                    <h2 className="text-4xl leading-none font-black tracking-tighter uppercase">
+                      분석 결과 리포트
+                    </h2>
+                  </div>
+                  <div className="flex flex-col gap-8">
+                    <div className="bg-cloud-dancer border-silver-mist space-y-8 rounded-4xl border p-10 text-left shadow-sm">
+                      <h4 className="border-point-blue text-midnight-ink border-l-6 pl-6 text-3xl font-black tracking-tighter">
+                        핵심 역량 키워드
+                      </h4>
+                      <div className="space-y-5">
+                        {analysisData.strengths.map((text) => (
+                          <div key={text} className="flex items-start gap-4">
+                            <div className="bg-point-blue mt-2 h-2 w-2 shrink-0 rounded-full" />
+                            <span className="text-midnight-ink text-xl leading-snug font-bold opacity-80">
+                              {text}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="bg-cloud-dancer border-silver-mist space-y-8 rounded-4xl border p-10 text-left shadow-sm">
+                      <h4 className="border-point-blue text-midnight-ink border-l-6 pl-6 text-3xl font-black tracking-tighter">
+                        추천 기술 스택
+                      </h4>
+                      <div className="flex flex-wrap gap-3">
+                        {analysisData.techStacks.map((tech) => (
+                          <span
+                            key={tech}
+                            className="bg-pure-white text-midnight-ink border-silver-mist rounded-xl border px-6 py-2.5 text-lg font-black tracking-tighter opacity-80"
+                          >
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 pt-4">
+                    <Button
+                      variant="blue"
+                      size="xl"
+                      className="flex-1 rounded-2xl py-6! text-2xl! font-black shadow-xl"
+                      onClick={() => navigate('/recommend/companies')}
+                    >
+                      맞춤 공고 확인하기
+                    </Button>
+                    <Button
+                      variant="dark"
+                      size="xl"
+                      className="flex-1 rounded-2xl border py-6! text-2xl! font-black"
+                      onClick={() => {
+                        setFile(null);
+                        setSelectedPortfolioId(null);
+                        setStep('upload');
+                        setAnalysisData(null);
+                        setProgress(0);
+                      }}
+                    >
+                      다시 분석
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </main>
