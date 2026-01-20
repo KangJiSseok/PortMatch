@@ -1,4 +1,4 @@
-import type { RecommendedCompany, RecommendedCompaniesResponse } from '@/types/recommend';
+import type { RecommendedCompany } from '@/types/recommend';
 
 /**
  * Mock 데이터 (개발용)
