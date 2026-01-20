@@ -72,7 +72,6 @@ function AppContent() {
           />
 
           <Route path="/main" element={<MainPage />} />
-
           <Route path="/mypage" element={<MyPage />} />
 
           <Route
@@ -84,7 +83,12 @@ function AppContent() {
             }
           />
 
-          <Route path="/interviews/:id/lobby" element={<InterviewLobbyPage />} />
+          <Route path="/interviews/:id/lobby"
+          element={
+            <ProtectedRoute>
+              <InterviewLobbyPage />
+            </ProtectedRoute>
+          } />
 
           <Route
             path="/interview/:id/room"

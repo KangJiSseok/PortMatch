@@ -10,7 +10,7 @@ export type UserRole = 'APPLICANT' | 'COMPANY';
 export type UserRow = {
   id: number;
   username: string;
-  name: string; 
+  name: string;
   email: string;
   role: UserRole;
   created_at: string; // ISO
@@ -208,8 +208,14 @@ export const APPLICATIONS: ApplicationRow[] = [
 ];
 
 // interviews: applications(0..1) → interviews
-// 즉, 면접이 "예약된 지원"만 인터뷰 레코드를 가짐
 export const INTERVIEWS: InterviewRow[] = [
+  {
+    id: 9000,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9000',
+    scheduled_at: '2026-01-20T17:00:00',
+    status: 'SCHEDULED',
+  },
   {
     id: 9001,
     application_id: 7001,
@@ -280,10 +286,7 @@ function interviewStatusToListStatus(s: InterviewStatus): InterviewListStatus {
 
 // ===== 조인 유틸 (ERD 관계대로 묶어줌) =====
 
-export function buildMyInterviewViews(
-  applicantId: number = CURRENT_APPLICANT_ID,
-): InterviewSessionView[] {
-  // 내 applications
+export function buildMyInterviewViews(applicantId: number = CURRENT_APPLICANT_ID): InterviewSessionView[] {
   const myApps = APPLICATIONS.filter((a) => a.applicant_id === applicantId);
 
   const views: InterviewSessionView[] = [];
@@ -312,13 +315,15 @@ export function buildMyInterviewViews(
     });
   }
 
-  // 시간순 정렬
   return views.sort((a, b) => (a.scheduledAt > b.scheduledAt ? 1 : -1));
 }
 
 export function getMyUpcomingInterviewViews(limit = 2): InterviewSessionView[] {
+  // ✅ "상태(UPCOMING)"뿐 아니라 "시간 기준(미래)"도 같이 반영해두면 더 자연스러움
+  const nowMs = Date.now();
   return buildMyInterviewViews()
     .filter((v) => v.status === 'UPCOMING')
+    .filter((v) => new Date(v.scheduledAt).getTime() >= nowMs)
     .slice(0, limit);
 }
 
@@ -350,4 +355,92 @@ export function buildMyScrapViews(applicantId: number = CURRENT_APPLICANT_ID): S
       } satisfies ScrapView;
     })
     .filter(Boolean) as ScrapView[];
+}
+
+/* =======================================================================
+   ✅ MyPage에서 "파일 안에 더미를 넣지 않기" 위한 추가 mock API 레이어
+   - 나중에 실제 API/React Query 붙일 때 여기 함수들만 교체하면 됨
+   ======================================================================= */
+
+export type PortfolioReport = {
+  id: number;
+  filename: string;
+  analyzedAt: string; // ISO
+  highlights: string[];
+};
+
+export type NotificationItem = {
+  id: number;
+  message: string;
+  createdAt: string; // ISO
+  read: boolean;
+};
+
+// ✅ MyPage용 더미 데이터는 mockData.ts 안에만 둠
+export const PORTFOLIO_REPORT: PortfolioReport = {
+  id: 55,
+  filename: 'portfolio.pdf',
+  analyzedAt: '2026-01-18T22:05:00',
+  highlights: ['React/TS 경험 강조', '프로젝트 성과 수치화 추천', 'CS 질문 대비 필요'],
+};
+
+export const NOTIFICATIONS: NotificationItem[] = [
+  { id: 1, message: '내일 면접 일정이 있어요.', createdAt: '2026-01-20T09:00:00', read: false },
+  { id: 2, message: '이력서 완성도가 높아졌어요.', createdAt: '2026-01-19T12:10:00', read: true },
+  { id: 3, message: '포트폴리오 분석 리포트가 생성됐어요.', createdAt: '2026-01-18T22:06:00', read: true },
+];
+
+type FetchOptions = {
+  delayMs?: number;
+  shouldFail?: boolean; // 상태 UI 테스트용
+};
+
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
+}
+
+async function mockFetch<T>(value: T, options?: FetchOptions): Promise<T> {
+  const delay = options?.delayMs ?? 500;
+  await sleep(delay);
+
+  if (options?.shouldFail) {
+    throw new Error('네트워크 오류가 발생했어요. 다시 시도해 주세요.');
+  }
+
+  return value;
+}
+
+// ✅ “API처럼” 쓰는 함수들 (MyPage는 이걸로만 가져감)
+export function fetchMyInterviewViews(options?: FetchOptions): Promise<InterviewSessionView[]> {
+  return mockFetch(buildMyInterviewViews(), options);
+}
+
+export function fetchMyUpcomingInterviewViews(limit = 2, options?: FetchOptions): Promise<InterviewSessionView[]> {
+  return mockFetch(getMyUpcomingInterviewViews(limit), options);
+}
+
+export function fetchMyScrapViews(options?: FetchOptions): Promise<ScrapView[]> {
+  return mockFetch(buildMyScrapViews(), options);
+}
+
+export function fetchMyPortfolioReport(options?: FetchOptions): Promise<PortfolioReport> {
+  return mockFetch(PORTFOLIO_REPORT, options);
+}
+
+export function fetchMyNotifications(options?: FetchOptions): Promise<NotificationItem[]> {
+  return mockFetch(NOTIFICATIONS, options);
+}
+
+export function fetchMyInterviewViewsByStatus(
+  status: InterviewListStatus,
+  options?: FetchOptions,
+): Promise<InterviewSessionView[]> {
+  return mockFetch(getMyInterviewViewsByStatus(status), options);
+}
+
+export function fetchMyInterviewViewById(
+  interviewId: number,
+  options?: FetchOptions,
+): Promise<InterviewSessionView | undefined> {
+  return mockFetch(getMyInterviewViewById(interviewId), options);
 }
