@@ -188,7 +188,9 @@ export default function MyPage() {
   return (
     <div className="bg-pure-white min-h-screen p-10">
       <header className="border-soft-pebble border-b pb-6">
-        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">My Page</h1>
+        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">
+          My Page
+        </h1>
         <p className="text-slate-gray mt-2">개인 대시보드</p>
       </header>
 
@@ -287,7 +289,7 @@ export default function MyPage() {
               subtitle="최근 수정: 2026.01.18 09:15"
               lines={['• Resume v1', '• 추천: 프로젝트 성과를 숫자로 써줘요']}
               actionLabel="편집하기"
-              onClick={() => navigate('/resume')}
+              onClick={() => navigate('/resumes/me')}
             />
           </div>
         </section>
@@ -329,7 +331,9 @@ export default function MyPage() {
                   <div key={n.id} className="bg-pure-white rounded-2xl p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
-                      {!n.read && <span className="bg-midnight-ink mt-1 h-2 w-2 shrink-0 rounded-full" />}
+                      {!n.read && (
+                        <span className="bg-midnight-ink mt-1 h-2 w-2 shrink-0 rounded-full" />
+                      )}
                     </div>
                     <p className="text-slate-gray mt-2 text-xs">{formatDateTime(n.createdAt)}</p>
                   </div>
@@ -405,11 +409,14 @@ export default function MyPage() {
                         type="button"
                         onClick={() => {
                           setSelectedDate(ymd);
-                          if (!inThisMonth) setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                          if (!inThisMonth)
+                            setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
                         }}
                         className={[
                           'min-h-[78px] rounded-2xl border p-3 text-left transition',
-                          inThisMonth ? 'bg-pure-white border-soft-pebble' : 'bg-cloud-dancer border-soft-pebble/50',
+                          inThisMonth
+                            ? 'bg-pure-white border-soft-pebble'
+                            : 'bg-cloud-dancer border-soft-pebble/50',
                           'hover:bg-soft-pebble/30',
                           isSelected ? 'ring-midnight-ink ring-2' : '',
                         ].join(' ')}
@@ -417,7 +424,9 @@ export default function MyPage() {
                         <div className="flex items-start justify-between">
                           <span
                             className={
-                              inThisMonth ? 'text-midnight-ink font-extrabold' : 'text-silver-mist font-extrabold'
+                              inThisMonth
+                                ? 'text-midnight-ink font-extrabold'
+                                : 'text-silver-mist font-extrabold'
                             }
                           >
                             {d.getDate()}
@@ -433,12 +442,17 @@ export default function MyPage() {
                         {/* 면접 일정 미리보기 */}
                         <div className="mt-2 space-y-1">
                           {ev.slice(0, 2).map((e) => (
-                            <p key={e.interview_id} className="text-slate-gray truncate text-xs font-semibold">
+                            <p
+                              key={e.interview_id}
+                              className="text-slate-gray truncate text-xs font-semibold"
+                            >
                               • {e.companyName} {e.postingTitle}
                             </p>
                           ))}
                           {ev.length > 2 && (
-                            <p className="text-slate-gray text-xs font-bold">+{ev.length - 2} more</p>
+                            <p className="text-slate-gray text-xs font-bold">
+                              +{ev.length - 2} more
+                            </p>
                           )}
                         </div>
                       </button>
@@ -451,13 +465,17 @@ export default function MyPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-midnight-ink text-lg font-extrabold">선택한 날짜 일정</p>
-                      <p className="text-slate-gray mt-1 text-sm font-bold">{formatYmdToKorean(selectedDate)}</p>
+                      <p className="text-slate-gray mt-1 text-sm font-bold">
+                        {formatYmdToKorean(selectedDate)}
+                      </p>
                     </div>
                   </div>
 
                   <div className="mt-4 space-y-2">
                     {selectedInterviews.length === 0 ? (
-                      <p className="text-slate-gray text-sm font-semibold">이 날짜에는 면접 일정이 없어요.</p>
+                      <p className="text-slate-gray text-sm font-semibold">
+                        이 날짜에는 면접 일정이 없어요.
+                      </p>
                     ) : (
                       selectedInterviews.map((e) => {
                         const startMs = new Date(e.scheduledAt).getTime();
@@ -507,9 +525,15 @@ export default function MyPage() {
                             <p className="text-midnight-ink text-sm font-extrabold">
                               {e.companyName} - {e.postingTitle}
                             </p>
-                            <p className="text-slate-gray mt-1 text-xs">{formatDateTime(e.scheduledAt)}</p>
+                            <p className="text-slate-gray mt-1 text-xs">
+                              {formatDateTime(e.scheduledAt)}
+                            </p>
 
-                            {helperText && <p className="text-slate-gray mt-2 text-xs font-semibold">{helperText}</p>}
+                            {helperText && (
+                              <p className="text-slate-gray mt-2 text-xs font-semibold">
+                                {helperText}
+                              </p>
+                            )}
 
                             <div className="mt-3 flex justify-end">
                               <Button
