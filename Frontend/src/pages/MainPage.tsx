@@ -1,20 +1,278 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import Button from '../components/Button/Button';
+import heroBg from '../assets/images/main/HERO_BG.avif';
+
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop';
+
+const RECOMMENDATION_SETS = [
+  [
+    { id: 1, company: '신세계푸드', title: '베이커리 제품 개발 경력', deadline: '오늘마감' },
+    { id: 2, company: '삼성전자', title: '클라우드 아키텍트 채용', deadline: 'D-5' },
+    { id: 3, company: '네이버', title: 'UI/UX 프로덕트 디자이너', deadline: '상시' },
+  ],
+  [
+    { id: 4, company: '현대자동차', title: '자율주행 소프트웨어 개발', deadline: 'D-10' },
+    { id: 5, company: '당근마켓', title: '백엔드 엔지니어 (Kotlin)', deadline: '상시' },
+    { id: 6, company: '토스', title: '데이터 분석가 (Product)', deadline: 'D-2' },
+  ],
+  [
+    { id: 7, company: '쿠팡', title: '물류 시스템 기획자', deadline: 'D-14' },
+    { id: 8, company: '라인플러스', title: '글로벌 서비스 기획', deadline: '상시' },
+    { id: 9, company: '배달의민족', title: '프론트엔드 개발자', deadline: 'D-4' },
+  ],
+];
+
+const MOCK_JOBS = [
+  {
+    id: 1,
+    title: '(주)신세계푸드 베이커리 제과 제품 개발 경력사원 모집',
+    company: '신세계푸드',
+    image:
+      'https://images.unsplash.com/photo-1555507036-ab1f4038808a?q=80&w=1926&auto=format&fit=crop',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Shinsegae_Logo.svg/1024px-Shinsegae_Logo.svg.png',
+    tags: ['연봉 상위 1%', '유연근무'],
+    deadline: '오늘마감',
+    location: '서울 강남구',
+  },
+  {
+    id: 2,
+    title: '[취업캠프] UXUI 디자인 / 프론트엔드 실무 프로젝트 과정',
+    company: '이젠아카데미 DX교육센터',
+    image:
+      'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=2070&auto=format&fit=crop',
+    logo: 'https://via.placeholder.com/100/10B981/FFFFFF?text=EZEN',
+    tags: ['정부지원', '취업률 90%'],
+    deadline: '상시채용',
+    location: '서울 서초구',
+  },
+  {
+    id: 3,
+    title: '[AI 특화] 파이썬 기반 데이터 분석 및 AI 모델링 과정 모집',
+    company: 'MBC아카데미 컴퓨터교육센터',
+    image: '',
+    logo: 'https://via.placeholder.com/100/EF4444/FFFFFF?text=MBC',
+    tags: ['전액무료', '우수기관'],
+    deadline: 'D-12',
+    location: '서울 마포구',
+  },
+  {
+    id: 4,
+    title: '카카오 클라우드 플랫폼 엔지니어 대규모 채용',
+    company: '카카오',
+    image:
+      'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070&auto=format&fit=crop',
+    logo: 'https://via.placeholder.com/100/FEE500/000000?text=KAKAO',
+    tags: ['재택근무', '스톡옵션'],
+    deadline: 'D-7',
+    location: '경기 성남시',
+  },
+];
+
 function MainPage() {
+  const navigate = useNavigate();
+  const isLoggedIn = !!localStorage.getItem('accessToken');
+  const userRole = localStorage.getItem('userRole');
+  const [trendIndex, setTrendIndex] = useState(0);
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = FALLBACK_IMAGE;
+  };
+
+  const getHeroContent = () => {
+    if (!isLoggedIn)
+      return {
+        line1: '당신의 포트폴리오,',
+        highlight: 'AI 정밀 분석',
+        line2Suffix: '으로 길을 찾다.',
+        button: '로그인하고 분석 시작하기',
+        link: '/login',
+      };
+    if (userRole === 'corporate')
+      return {
+        line1: '기업을 위한 AI 추천,',
+        highlight: '가장 적합한 인재',
+        line2Suffix: '를 제안합니다.',
+        button: '인재 탐색 시작하러 가기',
+        link: '/manage',
+      };
+    return {
+      line1: '나만의 경쟁력,',
+      highlight: 'AI 정밀 분석',
+      line2Suffix: ' 리포트를 확인하세요.',
+      button: '포트폴리오 분석 결과 보기',
+      link: '/interview',
+    };
+  };
+
+  const heroContent = getHeroContent();
+
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12 pt-20">
-      <h2 className="text-midnight-ink mb-6 text-3xl font-bold">추천 공고</h2>
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* 공고 카드들이 들어갈 자리 */}
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div
-            key={i}
-            className="bg-pure-white border-soft-pebble rounded-2xl border p-6 shadow-sm transition-shadow hover:shadow-md"
-          >
-            <div className="bg-cloud-dancer mb-4 h-40 rounded-xl" />
-            <div className="mb-2 text-lg font-bold">프론트엔드 개발자 채용</div>
-            <div className="text-slate-gray text-sm">Portmatch Corp. | 서울</div>
+    <div className="min-h-screen bg-white pt-24 pb-20 text-[#1a1a1a]">
+      <section className="mx-auto mb-12 max-w-6xl px-6">
+        <div className="flex min-h-[380px] overflow-hidden rounded-[32px] border border-zinc-100 bg-zinc-50 shadow-sm">
+          <div className="relative flex flex-1 flex-col justify-center overflow-hidden p-10 lg:p-14">
+            <div className="absolute inset-0 z-0 overflow-hidden">
+              <img
+                src={heroBg}
+                alt="Hero"
+                className="h-full w-full object-cover opacity-25 transition-transform duration-1000 hover:scale-105"
+                onError={handleImageError}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
+            </div>
+
+            <div className="relative z-10">
+              <h1 className="mb-8 text-3xl leading-tight font-black tracking-tighter text-[#1a1a1a] lg:text-4xl">
+                {heroContent.line1}
+                <br />
+                <span className="relative inline-block">
+                  {heroContent.highlight}
+                  <span className="absolute bottom-1 left-0 -z-10 h-2 w-full bg-[#1a1a1a]/10" />
+                </span>
+                {heroContent.line2Suffix}
+              </h1>
+              <div className="flex">
+                <Button
+                  variant="dark"
+                  className="hover:bg-cloud-dancer text-pure-white hover:text-midnight-ink: rounded-2xl border-2 border-[#1a1a1a] bg-[#1a1a1a] px-14 py-6 text-xl font-black shadow-2xl transition-all duration-300 active:scale-95"
+                  onClick={() => navigate(heroContent.link)}
+                >
+                  {heroContent.button}
+                </Button>
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
+
+          <div className="hidden w-[360px] flex-col justify-center border-l border-zinc-200 bg-white p-8 lg:flex">
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="text-sm font-black tracking-[0.2em] text-zinc-400 uppercase">
+                Trend Pick
+              </h3>
+              <div className="flex gap-2.5">
+                {[0, 1, 2].map((i) => (
+                  <button
+                    key={i}
+                    onClick={() => setTrendIndex(i)}
+                    className={`h-3.5 w-3.5 rounded-full transition-all ${i === trendIndex ? 'scale-110 bg-[#1a1a1a] shadow-sm' : 'bg-zinc-200 hover:bg-zinc-300'}`}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="min-h-[240px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={trendIndex}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-3.5"
+                >
+                  {RECOMMENDATION_SETS[trendIndex].map((item) => (
+                    <div
+                      key={item.id}
+                      className="group flex cursor-pointer items-center justify-between rounded-xl border border-zinc-100 bg-white p-5 transition-all hover:border-zinc-300 hover:shadow-md"
+                    >
+                      <div className="mr-3 min-w-0 flex-1 space-y-1">
+                        <p className="truncate text-base font-bold text-[#1a1a1a]">{item.title}</p>
+                        <p className="text-sm font-medium text-zinc-500">{item.company}</p>
+                      </div>
+                      <svg
+                        className="shrink-0 text-zinc-300 transition-colors group-hover:text-[#1a1a1a]"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                      >
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  ))}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6">
+        <div className="mb-8 flex items-end justify-between border-b border-zinc-100 pb-5">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-black tracking-tighter text-[#1a1a1a]">최근 채용 공고</h2>
+          </div>
+          <button className="group text-md flex items-center gap-1 font-bold text-zinc-400 transition-colors hover:text-[#1a1a1a]">
+            전체 보기
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="transition-transform group-hover:translate-x-1"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {MOCK_JOBS.map((job) => (
+            <motion.div
+              key={job.id}
+              whileHover={{ y: -5 }}
+              className="group flex flex-col overflow-hidden rounded-[20px] border border-zinc-100 bg-white shadow-sm transition-all hover:shadow-lg"
+            >
+              <div className="relative h-28 w-full overflow-hidden">
+                <img
+                  src={job.image || FALLBACK_IMAGE}
+                  alt="job"
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  onError={handleImageError}
+                />
+                <div className="absolute inset-0 bg-black/5" />
+              </div>
+
+              <div className="flex flex-1 flex-col p-4">
+                <div className="mb-3 min-w-0 flex-1 space-y-1.5">
+                  <p className="text-[11px] font-bold text-zinc-400">{job.company}</p>
+                  <h3 className="line-clamp-2 text-base leading-snug font-black text-[#1a1a1a]">
+                    {job.title}
+                  </h3>
+                </div>
+
+                <div className="mt-auto flex items-center justify-between border-t border-zinc-50 pt-3">
+                  <span className="text-[11px] font-bold text-zinc-400">{job.location}</span>
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`text-xs font-black ${job.deadline === '오늘마감' ? 'text-red-500' : 'text-zinc-800'}`}
+                    >
+                      {job.deadline}
+                    </span>
+                    <button className="text-zinc-300 transition-colors hover:text-zinc-800">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
+                        <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
