@@ -109,9 +109,24 @@ export default function MyPage() {
   };
 
   const notifications: NotificationItem[] = [
-    { id: 1, message: '내일 13:00 PortMatch 면접이 있어요.', createdAt: '2026-01-20T09:00:00', read: false },
-    { id: 2, message: '이력서 완성도가 80%에 가까워요. 마무리만 하면 됨!', createdAt: '2026-01-19T12:10:00', read: true },
-    { id: 3, message: '포트폴리오 분석 리포트가 생성됐어요.', createdAt: '2026-01-18T22:06:00', read: true },
+    {
+      id: 1,
+      message: '내일 13:00 PortMatch 면접이 있어요.',
+      createdAt: '2026-01-20T09:00:00',
+      read: false,
+    },
+    {
+      id: 2,
+      message: '이력서 완성도가 80%에 가까워요. 마무리만 하면 됨!',
+      createdAt: '2026-01-19T12:10:00',
+      read: true,
+    },
+    {
+      id: 3,
+      message: '포트폴리오 분석 리포트가 생성됐어요.',
+      createdAt: '2026-01-18T22:06:00',
+      read: true,
+    },
   ];
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -152,10 +167,12 @@ export default function MyPage() {
   }, [interviews]);
 
   return (
-    <div className="min-h-screen bg-pure-white p-10">
+    <div className="bg-pure-white min-h-screen p-10">
       {/* header는 디자인 페이지처럼 가되 배경은 흰색 */}
-      <header className="border-b border-soft-pebble pb-6">
-        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">My Page</h1>
+      <header className="border-soft-pebble border-b pb-6">
+        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">
+          My Page
+        </h1>
         <p className="text-slate-gray mt-2">개인 대시보드 (Dummy Data)</p>
       </header>
 
@@ -177,10 +194,16 @@ export default function MyPage() {
 
             <PreviewCard
               title="면접 관련"
-              subtitle={upcomingInterviews.length > 0 ? `다가오는 면접 ${upcomingInterviews.length}개` : '다가오는 면접 없음'}
+              subtitle={
+                upcomingInterviews.length > 0
+                  ? `다가오는 면접 ${upcomingInterviews.length}개`
+                  : '다가오는 면접 없음'
+              }
               lines={
                 upcomingInterviews.length > 0
-                  ? upcomingInterviews.map((i) => `• ${i.company} - ${i.title} (${formatDateTime(i.scheduledAt)})`)
+                  ? upcomingInterviews.map(
+                      (i) => `• ${i.company} - ${i.title} (${formatDateTime(i.scheduledAt)})`,
+                    )
                   : ['• 일정이 생기면 여기 표시돼요']
               }
               actionLabel="면접 관리"
@@ -190,7 +213,10 @@ export default function MyPage() {
             <PreviewCard
               title="포트폴리오 분석"
               subtitle={`최근 분석: ${formatDateTime(portfolio.analyzedAt)}`}
-              lines={[`• 파일: ${portfolio.filename}`, ...portfolio.highlights.slice(0, 2).map((h) => `• ${h}`)]}
+              lines={[
+                `• 파일: ${portfolio.filename}`,
+                ...portfolio.highlights.slice(0, 2).map((h) => `• ${h}`),
+              ]}
               actionLabel="리포트 보기"
               onClick={() => navigate('/portfolio')}
             />
@@ -212,7 +238,7 @@ export default function MyPage() {
           </h2>
 
           {/* ✅ 박스는 cloud-dancer */}
-          <div className="rounded-2xl bg-cloud-dancer p-8 shadow-sm">
+          <div className="bg-cloud-dancer rounded-2xl p-8 shadow-sm">
             <div className="flex items-center justify-between gap-6">
               <div>
                 <p className="text-midnight-ink text-xl font-extrabold">알림</p>
@@ -227,10 +253,12 @@ export default function MyPage() {
             {showNoti && (
               <div className="mt-6 space-y-3">
                 {notifications.map((n) => (
-                  <div key={n.id} className="rounded-2xl bg-pure-white p-5 shadow-sm">
+                  <div key={n.id} className="bg-pure-white rounded-2xl p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
-                      {!n.read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-midnight-ink" />}
+                      {!n.read && (
+                        <span className="bg-midnight-ink mt-1 h-2 w-2 shrink-0 rounded-full" />
+                      )}
                     </div>
                     <p className="text-slate-gray mt-2 text-xs">{formatDateTime(n.createdAt)}</p>
                   </div>
@@ -247,13 +275,13 @@ export default function MyPage() {
           </h2>
 
           {/* ✅ 캘린더 전체 박스 cloud-dancer */}
-          <div className="rounded-2xl bg-cloud-dancer p-8 shadow-sm">
+          <div className="bg-cloud-dancer rounded-2xl p-8 shadow-sm">
             <div className="mb-6 flex items-center justify-between">
               <p className="text-midnight-ink text-xl font-extrabold">캘린더</p>
               <p className="text-slate-gray text-lg font-bold">{thisMonthLabel}</p>
             </div>
 
-            <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-slate-gray">
+            <div className="text-slate-gray grid grid-cols-7 gap-3 text-center text-sm font-bold">
               {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
                 <div key={d}>{d}</div>
               ))}
@@ -274,17 +302,25 @@ export default function MyPage() {
                     onClick={() => setSelectedDate(ymd)}
                     className={[
                       'min-h-[78px] rounded-2xl border p-3 text-left transition',
-                      inThisMonth ? 'bg-pure-white border-soft-pebble' : 'bg-cloud-dancer border-soft-pebble/50',
+                      inThisMonth
+                        ? 'bg-pure-white border-soft-pebble'
+                        : 'bg-cloud-dancer border-soft-pebble/50',
                       'hover:bg-soft-pebble/30',
-                      isSelected ? 'ring-2 ring-midnight-ink' : '',
+                      isSelected ? 'ring-midnight-ink ring-2' : '',
                     ].join(' ')}
                   >
                     <div className="flex items-start justify-between">
-                      <span className={inThisMonth ? 'text-midnight-ink font-extrabold' : 'text-silver-mist font-extrabold'}>
+                      <span
+                        className={
+                          inThisMonth
+                            ? 'text-midnight-ink font-extrabold'
+                            : 'text-silver-mist font-extrabold'
+                        }
+                      >
                         {d.getDate()}
                       </span>
                       {isToday && (
-                        <span className="rounded-full bg-midnight-ink px-2 py-0.5 text-[10px] font-bold text-cloud-dancer">
+                        <span className="bg-midnight-ink text-cloud-dancer rounded-full px-2 py-0.5 text-[10px] font-bold">
                           TODAY
                         </span>
                       )}
@@ -293,11 +329,13 @@ export default function MyPage() {
                     {/* ✅ 면접 일정만 표시 */}
                     <div className="mt-2 space-y-1">
                       {ev.slice(0, 2).map((e) => (
-                        <p key={e.id} className="truncate text-xs font-semibold text-slate-gray">
+                        <p key={e.id} className="text-slate-gray truncate text-xs font-semibold">
                           • {e.label}
                         </p>
                       ))}
-                      {ev.length > 2 && <p className="text-xs font-bold text-slate-gray">+{ev.length - 2} more</p>}
+                      {ev.length > 2 && (
+                        <p className="text-slate-gray text-xs font-bold">+{ev.length - 2} more</p>
+                      )}
                     </div>
                   </button>
                 );
@@ -305,20 +343,24 @@ export default function MyPage() {
             </div>
 
             {/* ✅ 선택한 날짜 일정 박스 (cloud-dancer 내부에서, 내용 카드는 white) */}
-            <div className="mt-8 rounded-2xl bg-pure-white p-6 shadow-sm">
+            <div className="bg-pure-white mt-8 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-midnight-ink text-lg font-extrabold">선택한 날짜 일정</p>
-                  <p className="text-slate-gray mt-1 text-sm font-bold">{formatYmdToKorean(selectedDate)}</p>
+                  <p className="text-slate-gray mt-1 text-sm font-bold">
+                    {formatYmdToKorean(selectedDate)}
+                  </p>
                 </div>
               </div>
 
               <div className="mt-4 space-y-2">
                 {selectedEvents.length === 0 ? (
-                  <p className="text-slate-gray text-sm font-semibold">이 날짜에는 일정이 없어요.</p>
+                  <p className="text-slate-gray text-sm font-semibold">
+                    이 날짜에는 일정이 없어요.
+                  </p>
                 ) : (
                   selectedEvents.map((e) => (
-                    <div key={e.id} className="rounded-xl bg-cloud-dancer p-4">
+                    <div key={e.id} className="bg-cloud-dancer rounded-xl p-4">
                       <p className="text-midnight-ink text-sm font-extrabold">{e.label}</p>
                       <p className="text-slate-gray mt-1 text-xs">{e.kind}</p>
                     </div>
@@ -355,7 +397,7 @@ function PreviewCard({
   actionLabel: string;
 }) {
   return (
-    <div className="space-y-6 rounded-2xl bg-cloud-dancer p-8 shadow-sm">
+    <div className="bg-cloud-dancer space-y-6 rounded-2xl p-8 shadow-sm">
       <div>
         <p className="text-slate-gray text-sm font-bold tracking-widest uppercase">{title}</p>
         <p className="text-midnight-ink mt-2 text-xl font-black">{subtitle}</p>
@@ -363,7 +405,7 @@ function PreviewCard({
 
       <div className="space-y-1">
         {lines.map((t, i) => (
-          <p key={i} className="truncate text-sm font-semibold text-slate-gray">
+          <p key={i} className="text-slate-gray truncate text-sm font-semibold">
             {t}
           </p>
         ))}

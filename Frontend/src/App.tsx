@@ -12,6 +12,7 @@ import MyPage from './pages/MyPage';
 import InterviewPage from './pages/InterviewPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import PortfoliosPage from './pages/PortfoliosPage';
 import RecommendCompanyPage from './pages/RecommendCompanyPage';
 import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 
@@ -87,6 +88,14 @@ function AppContent() {
             }
           />
           <Route
+            path="/portfolios"
+            element={
+              <ProtectedRoute>
+                <PortfoliosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/recommend/companies"
             element={
               <ProtectedRoute>
@@ -109,7 +118,7 @@ function App() {
     <BrowserRouter>
       <div className="flex min-h-screen flex-col">
         <AppContent />
-      </div> 
+      </div>
     </BrowserRouter>
   );
 }
