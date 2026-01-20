@@ -9,25 +9,44 @@ const FALLBACK_IMAGE =
 
 const RECOMMENDATION_SETS = [
   [
-    { id: 1, company: '신세계푸드', title: '베이커리 제품 개발 경력', deadline: '오늘마감' },
-    { id: 2, company: '삼성전자', title: '클라우드 아키텍트 채용', deadline: 'D-5' },
-    { id: 3, company: '네이버', title: 'UI/UX 프로덕트 디자이너', deadline: '상시' },
+    {
+      id: 1,
+      companyId: 1,
+      company: '신세계푸드',
+      title: '베이커리 제품 개발 경력',
+      deadline: '오늘마감',
+    },
+    { id: 2, companyId: 2, company: '삼성전자', title: '클라우드 아키텍트 채용', deadline: 'D-5' },
+    { id: 3, companyId: 3, company: '네이버', title: 'UI/UX 프로덕트 디자이너', deadline: '상시' },
   ],
   [
-    { id: 4, company: '현대자동차', title: '자율주행 소프트웨어 개발', deadline: 'D-10' },
-    { id: 5, company: '당근마켓', title: '백엔드 엔지니어 (Kotlin)', deadline: '상시' },
-    { id: 6, company: '토스', title: '데이터 분석가 (Product)', deadline: 'D-2' },
+    {
+      id: 4,
+      companyId: 4,
+      company: '현대자동차',
+      title: '자율주행 소프트웨어 개발',
+      deadline: 'D-10',
+    },
+    {
+      id: 5,
+      companyId: 5,
+      company: '당근마켓',
+      title: '백엔드 엔지니어 (Kotlin)',
+      deadline: '상시',
+    },
+    { id: 6, companyId: 6, company: '토스', title: '데이터 분석가 (Product)', deadline: 'D-2' },
   ],
   [
-    { id: 7, company: '쿠팡', title: '물류 시스템 기획자', deadline: 'D-14' },
-    { id: 8, company: '라인플러스', title: '글로벌 서비스 기획', deadline: '상시' },
-    { id: 9, company: '배달의민족', title: '프론트엔드 개발자', deadline: 'D-4' },
+    { id: 7, companyId: 7, company: '쿠팡', title: '물류 시스템 기획자', deadline: 'D-14' },
+    { id: 8, companyId: 8, company: '라인플러스', title: '글로벌 서비스 기획', deadline: '상시' },
+    { id: 9, companyId: 9, company: '배달의민족', title: '프론트엔드 개발자', deadline: 'D-4' },
   ],
 ];
 
 const MOCK_JOBS = [
   {
     id: 1,
+    companyId: 1,
     title: '(주)신세계푸드 베이커리 제과 제품 개발 경력사원 모집',
     company: '신세계푸드',
     image:
@@ -39,6 +58,7 @@ const MOCK_JOBS = [
   },
   {
     id: 2,
+    companyId: 20,
     title: '[취업캠프] UXUI 디자인 / 프론트엔드 실무 프로젝트 과정',
     company: '이젠아카데미 DX교육센터',
     image:
@@ -50,6 +70,7 @@ const MOCK_JOBS = [
   },
   {
     id: 3,
+    companyId: 21,
     title: '[AI 특화] 파이썬 기반 데이터 분석 및 AI 모델링 과정 모집',
     company: 'MBC아카데미 컴퓨터교육센터',
     image: '',
@@ -60,6 +81,7 @@ const MOCK_JOBS = [
   },
   {
     id: 4,
+    companyId: 22,
     title: '카카오 클라우드 플랫폼 엔지니어 대규모 채용',
     company: '카카오',
     image:
@@ -79,6 +101,11 @@ function MainPage() {
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     e.currentTarget.src = FALLBACK_IMAGE;
+  };
+
+  const goToCompanyDetail = (e: React.MouseEvent, companyId: number) => {
+    e.stopPropagation();
+    navigate(`/companies/${companyId}`);
   };
 
   const getHeroContent = () => {
@@ -110,6 +137,10 @@ function MainPage() {
   const heroContent = getHeroContent();
 
   const newLocal = 'absolute bottom-1 left-0 -z-10 h-2 w-full bg-midnight-ink/10';
+
+  const underlineEffect =
+    "relative after:content-[''] after:absolute after:left-0 after:bottom-[-2px] after:w-0 after:h-[2px] after:bg-point-blue after:transition-all after:duration-300 hover:after:w-full";
+
   return (
     <div className="text-midnight-ink min-h-screen bg-white pt-24 pb-20">
       <section className="mx-auto mb-12 max-w-6xl px-6">
@@ -129,7 +160,6 @@ function MainPage() {
               <h1 className="text-midnight-ink mb-8 text-3xl leading-tight font-black tracking-tighter lg:text-4xl">
                 {heroContent.line1}
                 <br />
-                {/* 아래 span에 text-point-blue 추가 */}
                 <span className="text-point-blue relative inline-block">
                   {heroContent.highlight}
                   <span className={newLocal} />
@@ -182,7 +212,12 @@ function MainPage() {
                         <p className="text-midnight-ink truncate text-base font-bold">
                           {item.title}
                         </p>
-                        <p className="text-sm font-medium text-zinc-500">{item.company}</p>
+                        <p
+                          onClick={(e) => goToCompanyDetail(e, item.companyId)}
+                          className={`hover:text-point-blue inline-block cursor-pointer text-sm font-medium text-zinc-500 transition-colors duration-300 ${underlineEffect}`}
+                        >
+                          {item.company}
+                        </p>
                       </div>
                       <svg
                         className="group-hover:text-midnight-ink shrink-0 text-zinc-300 transition-colors"
@@ -246,7 +281,12 @@ function MainPage() {
 
               <div className="flex flex-1 flex-col p-4">
                 <div className="mb-3 min-w-0 flex-1 space-y-1.5">
-                  <p className="text-[11px] font-bold text-zinc-400">{job.company}</p>
+                  <p
+                    onClick={(e) => goToCompanyDetail(e, job.companyId)}
+                    className={`hover:text-point-blue inline-block cursor-pointer text-[11px] font-bold text-zinc-400 transition-colors duration-300 ${underlineEffect}`}
+                  >
+                    {job.company}
+                  </p>
                   <h3 className="text-midnight-ink line-clamp-2 text-base leading-snug font-black">
                     {job.title}
                   </h3>

@@ -14,9 +14,9 @@ interface NavActionProps {
 const NavAction = ({ to, onClick, children, isError, mobile }: NavActionProps) => {
   const baseClassName = `group relative py-2 text-lg font-bold whitespace-nowrap transition-colors duration-300 cursor-pointer ${
     mobile ? 'w-full text-left px-4' : ''
-  } ${isError ? 'hover:text-red-600 text-midnight-ink' : 'text-midnight-ink'}`;
+  } ${isError ? 'hover:text-point-blue text-midnight-ink' : 'text-midnight-ink'}`;
 
-  const underlineColor = isError ? 'bg-red-600' : 'bg-midnight-ink';
+  const underlineColor = isError ? 'bg-point-blue' : 'bg-midnight-ink';
 
   const content = (
     <>
