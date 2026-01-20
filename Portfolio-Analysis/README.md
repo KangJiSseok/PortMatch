@@ -37,3 +37,9 @@ docker compose -f compose.yaml --profile api down
 - API: `18000 -> 8000`
 - OpenAI 서버: `30000 -> 30000`
 - Gradio: `7860 -> 7860`
+
+
+## fastapi 빌드
+```bash
+uvicorn web.api.app:app --host 0.0.0.0 --port 8000
+```
