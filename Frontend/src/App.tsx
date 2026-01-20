@@ -15,6 +15,7 @@ import SignupPage from './pages/SignupPage';
 import PortfoliosPage from './pages/PortfoliosPage';
 import RecommendCompanyPage from './pages/RecommendCompanyPage';
 import CompanyDetailsPage from './pages/CompanyDetailsPage';
+import ResumeDetailPage from './pages/ResumeDetailPage';
 import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 import InterviewListPage from './pages/InterviewListPage';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
@@ -76,6 +77,15 @@ function AppContent() {
           <Route path="/mypage" element={<MyPage />} />
 
           <Route path="/companies/:companyId" element={<CompanyDetailsPage />} />
+
+          <Route
+            path="/resumes/:resumeId"
+            element={
+              <ProtectedRoute>
+                <ResumeDetailPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/interviews"
