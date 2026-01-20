@@ -20,6 +20,13 @@ export type JobPostRow = {
   deadline?: string | null; // YYYY-MM-DD
   status?: string | null; // OPEN/CLOSED 같은 값 가정
   created_at?: string | null; // ISO
+  // ✅ UI 요약용(추후 ERD 확장 전까지 mock으로 사용)
+  career?: '신입' | '경력' | '무관' | '신입·경력';
+  education?: string;          // 예: '학력무관', '대졸(4년) 이상'
+  employment_type?: string;    // 예: '정규직', '계약직', '인턴'
+  work_location?: string;      // 예: '서울 강남구'
+  work_schedule?: string;      // 예: '주 5일(월~금) 09:00~18:00'
+  salary?: string;             // 예: '회사 내규에 따름', '면접 후 결정'
 };
 
 // resumes 테이블 (지원서 선택용)
