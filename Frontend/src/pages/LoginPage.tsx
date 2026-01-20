@@ -148,7 +148,7 @@ function LoginPage() {
         </Link>
       </div>
 
-      <div className="bg-pure-white w-full max-w-md rounded-3xl p-10 shadow-xl">
+      <div className="bg-pure-white w-full max-w-lg rounded-3xl p-10 shadow-xl">
         <div className="text-midnight-ink decoration-soft-pebble mb-10 text-center text-3xl font-black tracking-tighter uppercase underline underline-offset-8">
           PORTMATCH
         </div>
@@ -167,49 +167,45 @@ function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-12">
-          {errors.auth && (
-            <div className="rounded-lg bg-red-50 p-3 text-center text-sm font-bold text-red-500">
-              {errors.auth}
-            </div>
-          )}
+          <div className="space-y-12">
+            <motion.div
+              ref={(el) => {
+                fieldRefs.current.email = el;
+              }}
+              animate={shakeField === 'email' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+              transition={{ duration: 0.4 }}
+              className="relative"
+            >
+              <Input
+                label="이메일 *"
+                type="email"
+                placeholder="example@portmatch.com"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                disabled={isLoading}
+              />
+              <WarningBubble message={errors.email} isVisible={!!errors.email} />
+            </motion.div>
 
-          <motion.div
-            ref={(el) => {
-              fieldRefs.current.email = el;
-            }}
-            animate={shakeField === 'email' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-            transition={{ duration: 0.4 }}
-            className="relative"
-          >
-            <Input
-              label="이메일 *"
-              type="email"
-              placeholder="example@portmatch.com"
-              value={formData.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              disabled={isLoading}
-            />
-            <WarningBubble message={errors.email} isVisible={!!errors.email} />
-          </motion.div>
-
-          <motion.div
-            ref={(el) => {
-              fieldRefs.current.password = el;
-            }}
-            animate={shakeField === 'password' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-            transition={{ duration: 0.4 }}
-            className="relative"
-          >
-            <Input
-              label="비밀번호 *"
-              type="password"
-              placeholder="비밀번호를 입력하세요"
-              value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
-              disabled={isLoading}
-            />
-            <WarningBubble message={errors.password} isVisible={!!errors.password} />
-          </motion.div>
+            <motion.div
+              ref={(el) => {
+                fieldRefs.current.password = el;
+              }}
+              animate={shakeField === 'password' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+              transition={{ duration: 0.4 }}
+              className="relative"
+            >
+              <Input
+                label="비밀번호 *"
+                type="password"
+                placeholder="비밀번호를 입력하세요"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                disabled={isLoading}
+              />
+              <WarningBubble message={errors.password} isVisible={!!errors.password} />
+            </motion.div>
+          </div>
 
           <div className="flex items-center justify-between">
             <Checkbox
@@ -222,14 +218,29 @@ function LoginPage() {
             </button>
           </div>
 
-          <Button
-            variant="dark"
-            type="submit"
-            disabled={isLoading}
-            className={`shadow-midnight-ink/20 w-full py-5 text-xl font-black shadow-lg ${isLoading ? 'opacity-50' : ''}`}
-          >
-            {isLoading ? '로그인 중...' : userType === 'individual' ? '개인 로그인' : '기업 로그인'}
-          </Button>
+          <div className="space-y-4">
+            {errors.auth && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-lg bg-red-50 px-2 py-3 text-center text-[13px] font-bold whitespace-nowrap text-red-500 sm:text-sm"
+              >
+                {errors.auth}
+              </motion.div>
+            )}
+            <Button
+              variant="dark"
+              type="submit"
+              disabled={isLoading}
+              className={`shadow-midnight-ink/20 w-full py-5 text-xl font-black shadow-lg ${isLoading ? 'opacity-50' : ''}`}
+            >
+              {isLoading
+                ? '로그인 중...'
+                : userType === 'individual'
+                  ? '개인 로그인'
+                  : '기업 로그인'}
+            </Button>
+          </div>
         </form>
       </div>
     </div>
