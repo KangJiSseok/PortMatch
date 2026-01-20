@@ -11,7 +11,6 @@ class ProjectResult(BaseModel):
     project_name: str
     problem: str
     solution: str
-    role: str
     tech: List[str]
 
 

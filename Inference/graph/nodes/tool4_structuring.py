@@ -16,13 +16,11 @@ def _format_project(project: Dict[str, Any]) -> str:
     name = project.get("project_statement", "") or "정보 없음"
     problem = project.get("problem", "") or "정보 없음"
     solution = project.get("solution", "") or "정보 없음"
-    role = project.get("role", "") or "정보 없음"
     tech = _format_tech(project.get("tech")) or "정보 없음"
     lines = [
         f"[프로젝트명] {name}",
         f"[문제] {problem}",
         f"[해결] {solution}",
-        f"[역할] {role}",
         f"[기술] {tech}",
     ]
     return "\n".join(lines)
@@ -40,7 +38,6 @@ def structuring_node(state: CompanyGraphState) -> Dict[str, Any]:
             "project_name": project.get("project_statement", "") or "정보 없음",
             "problem": project.get("problem", "") or "정보 없음",
             "solution": project.get("solution", "") or "정보 없음",
-            "role": project.get("role", "") or "정보 없음",
             "tech": project.get("tech", []) or [],
         }
         for project in supported_projects

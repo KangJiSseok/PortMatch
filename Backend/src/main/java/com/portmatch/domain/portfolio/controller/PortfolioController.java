@@ -2,6 +2,7 @@ package com.portmatch.domain.portfolio.controller;
 
 import com.portmatch.domain.portfolio.dto.PortfolioResponse;
 import com.portmatch.domain.portfolio.dto.PresignedUrlResponse;
+import com.portmatch.domain.portfolio.service.PortfolioAnalysisService;
 import com.portmatch.domain.portfolio.service.PortfolioService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -16,9 +17,14 @@ import java.util.List;
 public class PortfolioController {
 
     private final PortfolioService portfolioService;
+    private final PortfolioAnalysisService portfolioAnalysisService;
 
-    public PortfolioController(PortfolioService portfolioService) {
+    public PortfolioController(
+            PortfolioService portfolioService,
+            PortfolioAnalysisService portfolioAnalysisService
+    ) {
         this.portfolioService = portfolioService;
+        this.portfolioAnalysisService = portfolioAnalysisService;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -37,5 +43,10 @@ public class PortfolioController {
     @GetMapping("/{portfolioId}/presigned-url")
     public PresignedUrlResponse getPresignedUrl(@PathVariable Long portfolioId) {
         return portfolioService.getPresignedUrl(portfolioId, 10);
+    }
+
+    @PostMapping("/{portfolioId}/analysis")
+    public Object analyzePortfolio(@PathVariable Long portfolioId) {
+        return portfolioAnalysisService.analyze(portfolioId);
     }
 }

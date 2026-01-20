@@ -12,7 +12,7 @@ def _build_prompt() -> "ChatPromptTemplate":
     system_rules = (
         "You are generating POSSIBLE project names only.\n"
         "Rules:\n"
-        "- Do NOT describe problem, solution, role, or impact.\n"
+        "- Do NOT describe problem, solution, or impact.\n"
         "- Do NOT invent detailed functionality.\n"
         "- Project names must be high-level and conservative.\n"
         "- If unsure, use generic terms like \"core product\" or \"internal system\".\n"
@@ -92,7 +92,6 @@ def _parse_projects(text: str) -> List[Dict[str, Any]]:
                 "name": str(item.get("name", "")).strip(),
                 "problem": None,
                 "solution": None,
-                "role": None,
                 "tech": [],
                 "sources": sources,
             }
@@ -107,7 +106,6 @@ def _fallback_projects(company_name: str) -> List[Dict[str, Any]]:
             "name": f"{company_name} core product",
             "problem": None,
             "solution": None,
-            "role": None,
             "tech": [],
             "sources": ["homepage"],
         },
@@ -116,7 +114,6 @@ def _fallback_projects(company_name: str) -> List[Dict[str, Any]]:
             "name": f"{company_name} platform upgrade",
             "problem": None,
             "solution": None,
-            "role": None,
             "tech": [],
             "sources": ["press"],
         },
