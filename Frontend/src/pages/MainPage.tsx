@@ -103,7 +103,7 @@ function MainPage() {
       highlight: 'AI 정밀 분석',
       line2Suffix: ' 리포트를 확인하세요.',
       button: '포트폴리오 분석 결과 보기',
-      link: '/interview',
+      link: '/portfolios',
     };
   };
 

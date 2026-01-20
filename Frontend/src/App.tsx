@@ -12,6 +12,7 @@ import MyPage from './pages/MyPage';
 import InterviewPage from './pages/InterviewPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import PortfoliosPage from './pages/PortfoliosPage';
 import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 
 function AppContent() {
@@ -82,6 +83,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <InterviewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/portfolios"
+            element={
+              <ProtectedRoute>
+                <PortfoliosPage />
               </ProtectedRoute>
             }
           />
