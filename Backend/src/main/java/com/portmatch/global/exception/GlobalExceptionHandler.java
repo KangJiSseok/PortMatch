@@ -25,11 +25,30 @@ public class GlobalExceptionHandler {
 
         // wrapper를 씌워두면 나중에 프론트 합의에 따라 형태 변경이 쉬움
         return ResponseEntity.badRequest().body(
-                ApiResponse.error(body.getCode(), body.getMessage())
+                new ApiResponse<>("VALIDATION_ERROR", "입력값이 올바르지 않습니다.", body)
         );
     }
 
     private ErrorResponse.FieldError toFieldError(FieldError e) {
         return new ErrorResponse.FieldError(e.getField(), e.getDefaultMessage());
     }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleBusiness(BusinessException ex) {
+
+        // field가 있으면 validation 형태로 내려서 프론트가 처리하기 쉽게
+        ErrorResponse body;
+        if (ex.getField() != null) {
+            body = ErrorResponse.validation(
+                    List.of(new ErrorResponse.FieldError(ex.getField(), ex.getMessage()))
+            );
+        } else {
+            body = new ErrorResponse(ex.getCode(), ex.getMessage(), null);
+        }
+
+        return ResponseEntity.badRequest().body(
+                ApiResponse.error(body.getCode(), body.getMessage())
+        );
+    }
+
 }

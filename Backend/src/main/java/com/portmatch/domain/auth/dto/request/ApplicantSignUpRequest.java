@@ -37,11 +37,12 @@ public class ApplicantSignUpRequest {
     @Past(message = "생년월일은 과거 날짜여야 합니다.")
     private LocalDate birthDate;
 
-    // 연락처(선택)
+    // 연락처
     @Pattern(
             regexp = "^(\\+82)?0?1[0-9]-?\\d{3,4}-?\\d{4}$|^$",
             message = "연락처 형식이 올바르지 않습니다."
     )
+    @NotBlank(message = "전화번호는 필수입니다.")
     private String phone;
 
     // 주소(선택)
