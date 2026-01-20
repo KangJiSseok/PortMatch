@@ -3,6 +3,7 @@ import json
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from ..chains.text_extraction import TEXT_EXTRACTION_CHAIN
+from ..chains.project_summary import build_project_summary_chain
 from ..services.mineru_client import fetch_mineru_content
 
 router = APIRouter()
@@ -34,6 +35,14 @@ async def parse_pdf(request: Request):
             texts = TEXT_EXTRACTION_CHAIN.invoke(mineru_data)
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"failed to parse mineru response: {exc}") from exc
-        return {"texts": texts}
+
+        content = "\n".join(texts)
+        try:
+            summary_chain = build_project_summary_chain()
+            projects = summary_chain.invoke({"content": content})
+        except Exception as exc:
+            print(f"llm request failed: {exc}")
+            raise HTTPException(status_code=502, detail=f"llm request failed: {exc}") from exc
+        return {"projects": projects}
 
     return Response(content=content, media_type=content_type)

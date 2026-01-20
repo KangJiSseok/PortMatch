@@ -24,7 +24,7 @@ def _build_prompt() -> "ChatPromptTemplate":
         "- support_type must be one of: explicit, implicit, none.\n"
         "- evidence.source must be one of: homepage, press, report, job_posting.\n"
         "- project_statement must be a single Korean sentence.\n"
-        "- problem/solution/role must be short Korean phrases.\n"
+        "- problem/solution must be short Korean phrases.\n"
         "- tech must be a list of short strings.\n"
         "- If evidence is weak, use cautious wording like "
         "\"...수행한 것으로 보입니다.\".\n"
@@ -34,7 +34,6 @@ def _build_prompt() -> "ChatPromptTemplate":
         "\"project_statement\": str,"
         "\"problem\": str,"
         "\"solution\": str,"
-        "\"role\": str,"
         "\"tech\": [str],"
         "\"evidence\": [{{\"snippet\": str, \"source\": str}}],"
         "\"support_type\": str,"
@@ -164,7 +163,6 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
         project_statement = str(llm_item.get("project_statement", "")).strip()
         problem = str(llm_item.get("problem", "")).strip()
         solution = str(llm_item.get("solution", "")).strip()
-        role = str(llm_item.get("role", "")).strip()
         tech = _normalize_tech(llm_item.get("tech"))
         evidence_summary = str(llm_item.get("evidence_summary", "")).strip()
         is_valid = bool(llm_item.get("is_valid", False))
@@ -197,7 +195,6 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
                 "project_statement": project_statement,
                 "problem": problem,
                 "solution": solution,
-                "role": role,
                 "tech": tech,
                 "evidence": evidence,
                 "support_type": support_type,
