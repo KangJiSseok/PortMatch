@@ -84,7 +84,7 @@ function Navbar() {
   const groupPause = 0.4;
 
   return (
-    <nav className="bg-pure-white/70 border-soft-pebble fixed top-0 z-100 w-full border-b backdrop-blur-xl transition-all duration-300">
+    <nav id="app-navbar" className="bg-pure-white/70 border-soft-pebble fixed top-0 z-100 w-full border-b backdrop-blur-xl transition-all duration-300">
       <style>{`
         @keyframes logo-appear {
           from { opacity: 0; transform: translateY(10px); filter: blur(4px); }
