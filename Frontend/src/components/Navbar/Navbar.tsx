@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 type UserState = 'guest' | 'individual' | 'corporate';
 
@@ -45,12 +45,37 @@ const NavAction = ({ to, onClick, children, isError, mobile }: NavActionProps) =
 };
 
 function Navbar() {
-  const [userState, setUserState] = useState<UserState>('guest');
+  const navigate = useNavigate();
+
+  const [userState, setUserState] = useState<UserState>(() => {
+    const role = localStorage.getItem('userRole') as UserState;
+    const token = localStorage.getItem('accessToken');
+
+    if (token && (role === 'individual' || role === 'corporate')) {
+      return role;
+    }
+    return 'guest';
+  });
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleStateChange = (state: UserState) => {
+    if (state === 'guest') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userRole');
+      setUserState('guest');
+      navigate('/main');
+    } else {
+      localStorage.setItem('accessToken', `mock-token-${state}`);
+      localStorage.setItem('userRole', state);
+      setUserState(state);
+    }
+    window.location.reload();
+  };
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    window.location.href = '/main';
+    navigate('/main');
   };
 
   const logoPart1 = 'PORT'.split('');
@@ -145,7 +170,7 @@ function Navbar() {
               </>
             ) : (
               <>
-                <NavAction onClick={() => setUserState('guest')} isError>
+                <NavAction onClick={() => handleStateChange('guest')} isError>
                   로그아웃
                 </NavAction>
                 <NavAction to="/mypage">마이페이지</NavAction>
@@ -214,7 +239,7 @@ function Navbar() {
               <>
                 <NavAction
                   onClick={() => {
-                    setUserState('guest');
+                    handleStateChange('guest');
                     setIsMenuOpen(false);
                   }}
                   isError
@@ -233,19 +258,19 @@ function Navbar() {
 
       <div className="bg-midnight-ink/90 absolute top-20 left-6 flex gap-1 rounded-b-md border border-white/10 p-1 shadow-lg backdrop-blur-md">
         <button
-          onClick={() => setUserState('guest')}
+          onClick={() => handleStateChange('guest')}
           className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${userState === 'guest' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
         >
           GUEST
         </button>
         <button
-          onClick={() => setUserState('individual')}
+          onClick={() => handleStateChange('individual')}
           className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${userState === 'individual' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
         >
           INDIVIDUAL
         </button>
         <button
-          onClick={() => setUserState('corporate')}
+          onClick={() => handleStateChange('corporate')}
           className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${userState === 'corporate' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
         >
           CORPORATE
