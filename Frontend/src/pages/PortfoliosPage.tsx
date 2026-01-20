@@ -370,7 +370,7 @@ function PortfoliosPage() {
                       variant="blue"
                       size="xl"
                       className="flex-1 rounded-2xl py-6! text-2xl! font-black shadow-xl transition-all"
-                      onClick={() => navigate('/main')}
+                      onClick={() => navigate('/recommend/companies')}
                     >
                       맞춤 공고 확인하기
                     </Button>

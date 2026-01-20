@@ -57,7 +57,7 @@ function IntroPage() {
         onClick={() => handleScrollToSection(2)}
         animate={{ y: [0, 10, 0] }}
         transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-        className="group fixed bottom-10 left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2 text-white mix-blend-difference outline-none"
+        className="group fixed bottom-10 left-1/2 z-100 flex -translate-x-1/2 flex-col items-center gap-2 text-white mix-blend-difference outline-none"
       >
         <span className="text-[15px] font-bold tracking-[0.3em] uppercase opacity-60 group-hover:opacity-100">
           Scroll Down
@@ -77,7 +77,7 @@ function IntroPage() {
         </svg>
       </motion.button>
 
-      <div className="fixed top-1/2 right-8 z-[100] flex -translate-y-1/2 flex-col gap-8 rounded-full border border-white/10 bg-white/5 px-5 py-8 mix-blend-difference shadow-2xl backdrop-blur-xl">
+      <div className="fixed top-1/2 right-8 z-100 flex -translate-y-1/2 flex-col gap-8 rounded-full border border-white/10 bg-white/5 px-5 py-8 mix-blend-difference shadow-2xl backdrop-blur-xl">
         {[0, 1, 2].map((idx) => (
           <button
             key={idx}

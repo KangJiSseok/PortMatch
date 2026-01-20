@@ -9,7 +9,7 @@ import Checkbox from '../components/Checkbox/Checkbox';
 const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boolean }) => {
   if (!isVisible || !message) return null;
   return (
-    <div className="animate-in fade-in slide-in-from-top-1 absolute top-[calc(100%+4px)] left-0 z-[60] duration-200">
+    <div className="animate-in fade-in slide-in-from-top-1 absolute top-[calc(100%+4px)] left-0 z-60 duration-200">
       <div className="flex flex-col items-start">
         <svg width="10" height="5" viewBox="0 0 10 5" className="ml-4 fill-current text-red-500/50">
           <path d="M5 0L10 5H0L5 0Z" />
@@ -124,7 +124,7 @@ function LoginPage() {
           </svg>
           메인으로 이동
         </Link>
-        <div className="bg-soft-pebble h-3 w-[1px]" />
+        <div className="bg-soft-pebble h-3 w-px" />
         <Link
           to="/signup"
           className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold transition-colors"

@@ -23,7 +23,7 @@ const NavAction = ({ to, onClick, children, isError, mobile }: NavActionProps) =
       {children}
       {!mobile && (
         <span
-          className={`${underlineColor} absolute bottom-0 left-0 h-[2px] w-0 transition-all duration-300 group-hover:w-full`}
+          className={`${underlineColor} absolute bottom-0 left-0 h-0.5 w-0 transition-all duration-300 group-hover:w-full`}
         />
       )}
     </>
@@ -84,7 +84,7 @@ function Navbar() {
   const groupPause = 0.4;
 
   return (
-    <nav className="bg-pure-white/70 border-soft-pebble fixed top-0 z-[100] w-full border-b backdrop-blur-xl transition-all duration-300">
+    <nav className="bg-pure-white/70 border-soft-pebble fixed top-0 z-100 w-full border-b backdrop-blur-xl transition-all duration-300">
       <style>{`
         @keyframes logo-appear {
           from { opacity: 0; transform: translateY(10px); filter: blur(4px); }
@@ -136,7 +136,7 @@ function Navbar() {
           </div>
         </div>
 
-        <div className="group absolute left-1/2 hidden w-full max-w-[200px] shrink-0 -translate-x-1/2 lg:block xl:max-w-sm">
+        <div className="group absolute left-1/2 hidden w-full max-w-50 shrink-0 -translate-x-1/2 lg:block xl:max-w-sm">
           <input
             type="text"
             placeholder={userState === 'corporate' ? '인재 검색' : '공고 검색'}

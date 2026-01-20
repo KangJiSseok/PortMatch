@@ -89,6 +89,7 @@ export default function MyPage() {
     { id: 3, name: 'Acme Corp', role: 'Full-stack', location: 'Remote' },
   ];
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const interviews: Interview[] = [
     { id: 101, company: 'PortMatch', title: '1차 기술면접', scheduledAt: '2026-01-21T13:00:00' },
     { id: 102, company: 'Acme Corp', title: '문화/인성', scheduledAt: '2026-01-23T10:30:00' },
@@ -132,6 +133,7 @@ export default function MyPage() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   // ✅ 캘린더에는 면접 일정만
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const calendarEvents: CalendarEvent[] = [
     { id: 1, date: '2026-01-21', label: 'PortMatch 1차 기술면접', kind: 'INTERVIEW' },
     { id: 2, date: '2026-01-23', label: 'Acme Corp 문화/인성', kind: 'INTERVIEW' },
@@ -301,7 +303,7 @@ export default function MyPage() {
                     type="button"
                     onClick={() => setSelectedDate(ymd)}
                     className={[
-                      'min-h-[78px] rounded-2xl border p-3 text-left transition',
+                      'min-h-19.5 rounded-2xl border p-3 text-left transition',
                       inThisMonth
                         ? 'bg-pure-white border-soft-pebble'
                         : 'bg-cloud-dancer border-soft-pebble/50',
