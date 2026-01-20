@@ -15,6 +15,8 @@ import SignupPage from './pages/SignupPage';
 import PortfoliosPage from './pages/PortfoliosPage';
 import RecommendCompanyPage from './pages/RecommendCompanyPage';
 import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
+import InterviewListPage from './pages/InterviewListPage';
+import InterviewLobbyPage from './pages/InterviewLobbyPage';
 
 function AppContent() {
   const location = useLocation();
@@ -70,17 +72,26 @@ function AppContent() {
           />
 
           <Route path="/main" element={<MainPage />} />
+          <Route path="/mypage" element={<MyPage />} />
 
           <Route
-            path="/mypage"
+            path="/interviews"
             element={
               <ProtectedRoute>
-                <MyPage />
+                <InterviewListPage />
               </ProtectedRoute>
             }
           />
+
+          <Route path="/interviews/:id/lobby"
+          element={
+            <ProtectedRoute>
+              <InterviewLobbyPage />
+            </ProtectedRoute>
+          } />
+
           <Route
-            path="/interview"
+            path="/interview/:id/room"
             element={
               <ProtectedRoute>
                 <InterviewPage />

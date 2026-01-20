@@ -1,48 +1,31 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Button from '../components/Button/Button';
 
-type ScrapCompany = {
-  id: number;
-  name: string;
-  role: string;
-  location?: string;
+import {
+  type InterviewSessionView,
+  type ScrapView,
+  type PortfolioReport,
+  type NotificationItem,
+  fetchMyInterviewViews,
+  fetchMyUpcomingInterviewViews,
+  fetchMyScrapViews,
+  fetchMyPortfolioReport,
+  fetchMyNotifications,
+} from '../api/mockData';
+
+type QueryState<T> = {
+  data: T | null;
+  isLoading: boolean;
+  isError: boolean;
+  errorMessage?: string;
+  refetch: () => void;
 };
 
-type Interview = {
-  id: number;
-  company: string;
-  title: string;
-  scheduledAt: string; // ISO
-};
-
-type Resume = {
-  id: number;
-  title: string;
-  updatedAt: string; // ISO
-};
-
-type PortfolioReport = {
-  id: number;
-  filename: string;
-  analyzedAt: string; // ISO
-  highlights: string[];
-};
-
-type NotificationItem = {
-  id: number;
-  message: string;
-  createdAt: string; // ISO
-  read: boolean;
-};
-
-type CalendarEvent = {
-  id: number;
-  date: string; // YYYY-MM-DD
-  label: string;
-  kind: 'INTERVIEW';
-};
+function toYmdFromIso(iso: string) {
+  return iso.slice(0, 10);
+}
 
 function toYmd(d: Date) {
   const y = d.getFullYear();
@@ -67,6 +50,7 @@ function formatYmdToKorean(ymd: string) {
 }
 
 function buildMonthCells(year: number, monthIndex0: number) {
+  // 6주(42칸) 달력
   const first = new Date(year, monthIndex0, 1);
   const startDay = first.getDay(); // 0=일
   const start = new Date(year, monthIndex0, 1 - startDay);
@@ -78,104 +62,134 @@ function buildMonthCells(year: number, monthIndex0: number) {
   return cells;
 }
 
+/**
+ * ✅ React Query 느낌 “상태 UI” 미니 훅
+ * - fetcher만 갈아끼우면 API 연동 시에도 그대로 사용 가능
+ */
+function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
+
+  const run = async () => {
+    setIsLoading(true);
+    setIsError(false);
+    setErrorMessage(undefined);
+
+    try {
+      const res = await fetcher();
+      setData(res);
+    } catch (err) {
+      setData(null);
+      setIsError(true);
+      setErrorMessage(err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  return { data, isLoading, isError, errorMessage, refetch: run };
+}
+
 export default function MyPage() {
   const navigate = useNavigate();
   const [showNoti, setShowNoti] = useState(false);
 
-  // ✅ 더미데이터
-  const scraps: ScrapCompany[] = [
-    { id: 1, name: 'PortMatch', role: 'Frontend (React)', location: 'Seoul' },
-    { id: 2, name: 'DreamTech', role: 'Backend (Spring)', location: 'Seoul' },
-    { id: 3, name: 'Acme Corp', role: 'Full-stack', location: 'Remote' },
-  ];
+  // ✅ 상태 UI: 각 데이터는 fetch* 로 받아옴 (MyPage에 더미 직접 안 둠)
+  const interviewQuery = useQueryLike<InterviewSessionView[]>(() => fetchMyInterviewViews(), []);
+  const upcomingQuery = useQueryLike<InterviewSessionView[]>(
+    () => fetchMyUpcomingInterviewViews(2),
+    [],
+  );
+  const scrapQuery = useQueryLike<ScrapView[]>(() => fetchMyScrapViews(), []);
+  const portfolioQuery = useQueryLike<PortfolioReport>(() => fetchMyPortfolioReport(), []);
+  const notiQuery = useQueryLike<NotificationItem[]>(() => fetchMyNotifications(), []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const interviews: Interview[] = [
-    { id: 101, company: 'PortMatch', title: '1차 기술면접', scheduledAt: '2026-01-21T13:00:00' },
-    { id: 102, company: 'Acme Corp', title: '문화/인성', scheduledAt: '2026-01-23T10:30:00' },
-    { id: 88, company: 'DreamTech', title: '최종면접', scheduledAt: '2026-01-10T16:00:00' },
-  ];
+  const unreadCount = (notiQuery.data ?? []).filter((n) => !n.read).length;
 
-  const resume: Resume = {
-    id: 7,
-    title: '신입 프론트엔드 이력서 v2',
-    updatedAt: '2026-01-18T09:15:00',
-  };
+  // ==========================
+  // ✅ 캘린더: "진짜 오늘" + "월 이동 가능"
+  // ==========================
+  const todayYmd = toYmd(new Date());
 
-  const portfolio: PortfolioReport = {
-    id: 55,
-    filename: 'portfolio_yeaji.pdf',
-    analyzedAt: '2026-01-18T22:05:00',
-    highlights: ['React/TS 경험 강조', '프로젝트 성과 수치화 추천', 'CS 질문 대비 필요'],
-  };
+  // 현재 보고 있는 달 (해당 월 1일로 고정)
+  const [viewMonth, setViewMonth] = useState<Date>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
-  const notifications: NotificationItem[] = [
-    {
-      id: 1,
-      message: '내일 13:00 PortMatch 면접이 있어요.',
-      createdAt: '2026-01-20T09:00:00',
-      read: false,
-    },
-    {
-      id: 2,
-      message: '이력서 완성도가 80%에 가까워요. 마무리만 하면 됨!',
-      createdAt: '2026-01-19T12:10:00',
-      read: true,
-    },
-    {
-      id: 3,
-      message: '포트폴리오 분석 리포트가 생성됐어요.',
-      createdAt: '2026-01-18T22:06:00',
-      read: true,
-    },
-  ];
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  // ✅ 캘린더에는 면접 일정만
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const calendarEvents: CalendarEvent[] = [
-    { id: 1, date: '2026-01-21', label: 'PortMatch 1차 기술면접', kind: 'INTERVIEW' },
-    { id: 2, date: '2026-01-23', label: 'Acme Corp 문화/인성', kind: 'INTERVIEW' },
-    { id: 3, date: '2026-01-10', label: 'DreamTech 최종면접', kind: 'INTERVIEW' },
-  ];
-
-  // ✅ 데모로 2026.01 고정 (원하면 new Date()로 바꿔도 됨)
-  const demoBase = new Date('2026-01-01T00:00:00');
-  const year = demoBase.getFullYear();
-  const month0 = demoBase.getMonth();
+  const year = viewMonth.getFullYear();
+  const month0 = viewMonth.getMonth();
   const thisMonthLabel = `${year}.${String(month0 + 1).padStart(2, '0')}`;
-
   const cells = useMemo(() => buildMonthCells(year, month0), [year, month0]);
 
-  const eventMap = useMemo(() => {
-    const m = new Map<string, CalendarEvent[]>();
-    for (const e of calendarEvents) {
-      const list = m.get(e.date) ?? [];
-      list.push(e);
-      m.set(e.date, list);
+  // 선택 날짜는 기본 "오늘"
+  const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
+
+  // 월 이동
+  const goPrevMonth = () => {
+    const next = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+    setViewMonth(next);
+    setSelectedDate(toYmd(next)); // 그 달 1일 선택
+  };
+
+  const goNextMonth = () => {
+    const next = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+    setViewMonth(next);
+    setSelectedDate(toYmd(next)); // 그 달 1일 선택
+  };
+
+  const goToday = () => {
+    const now = new Date();
+    setViewMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+    setSelectedDate(toYmd(now));
+  };
+
+  // ✅ 월이 바뀌었는데 selectedDate가 다른 달이면 -> 해당 달 1일로 정리
+  useEffect(() => {
+    const sd = new Date(`${selectedDate}T00:00:00`);
+    if (sd.getFullYear() !== year || sd.getMonth() !== month0) {
+      setSelectedDate(toYmd(new Date(year, month0, 1)));
+    }
+  }, [year, month0, selectedDate]);
+
+  // ==========================
+  // ✅ 인터뷰 이벤트 맵 (캘린더 찍기용)
+  // ==========================
+  const interviewViews = interviewQuery.data ?? [];
+
+  const interviewEventMap = useMemo(() => {
+    const m = new Map<string, InterviewSessionView[]>();
+    for (const iv of interviewViews) {
+      const ymd = toYmdFromIso(iv.scheduledAt);
+      const list = m.get(ymd) ?? [];
+      list.push(iv);
+      m.set(ymd, list);
+    }
+    // 같은 날짜 내 정렬
+    for (const [k, list] of m.entries()) {
+      list.sort((a, b) => (a.scheduledAt > b.scheduledAt ? 1 : -1));
+      m.set(k, list);
     }
     return m;
-  }, [calendarEvents]);
+  }, [interviewViews]);
 
-  const todayYmd = '2026-01-19';
-  const [selectedDate, setSelectedDate] = useState<string>(todayYmd);
-
-  const selectedEvents = useMemo(() => eventMap.get(selectedDate) ?? [], [eventMap, selectedDate]);
-
-  const upcomingInterviews = useMemo(() => {
-    const sorted = [...interviews].sort((a, b) => (a.scheduledAt > b.scheduledAt ? 1 : -1));
-    return sorted.slice(0, 2);
-  }, [interviews]);
+  const selectedInterviews = useMemo(
+    () => interviewEventMap.get(selectedDate) ?? [],
+    [interviewEventMap, selectedDate],
+  );
 
   return (
     <div className="bg-pure-white min-h-screen p-10">
-      {/* header는 디자인 페이지처럼 가되 배경은 흰색 */}
       <header className="border-soft-pebble border-b pb-6">
-        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">
-          My Page
-        </h1>
-        <p className="text-slate-gray mt-2">개인 대시보드 (Dummy Data)</p>
+        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">My Page</h1>
+        <p className="text-slate-gray mt-2">개인 대시보드</p>
       </header>
 
       <div className="mt-10 space-y-10">
@@ -186,47 +200,92 @@ export default function MyPage() {
           </h2>
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+            {/* 스크랩 */}
             <PreviewCard
               title="기업 스크랩 목록"
-              subtitle={`총 ${scraps.length}개`}
-              lines={scraps.slice(0, 2).map((s) => `• ${s.name} / ${s.role}`)}
-              actionLabel="목록 보기"
-              onClick={() => navigate('/scraps')}
+              subtitle={
+                scrapQuery.isLoading
+                  ? '불러오는 중...'
+                  : scrapQuery.isError
+                    ? '불러오기 실패'
+                    : `총 ${(scrapQuery.data ?? []).length}개`
+              }
+              lines={
+                scrapQuery.isLoading
+                  ? ['• 스크랩 목록을 불러오고 있어요...']
+                  : scrapQuery.isError
+                    ? ['• 스크랩 목록을 불러오지 못했어요.']
+                    : (scrapQuery.data ?? []).length > 0
+                      ? (scrapQuery.data ?? [])
+                          .slice(0, 2)
+                          .map((s) => `• ${s.companyName} / ${s.postingTitle}`)
+                      : ['• 스크랩한 공고가 없어요']
+              }
+              actionLabel={scrapQuery.isError ? '다시 시도' : '목록 보기'}
+              onClick={() => (scrapQuery.isError ? scrapQuery.refetch() : navigate('/scraps'))}
             />
 
+            {/* 면접 */}
             <PreviewCard
               title="면접 관련"
               subtitle={
-                upcomingInterviews.length > 0
-                  ? `다가오는 면접 ${upcomingInterviews.length}개`
-                  : '다가오는 면접 없음'
+                upcomingQuery.isLoading
+                  ? '불러오는 중...'
+                  : upcomingQuery.isError
+                    ? '불러오기 실패'
+                    : (upcomingQuery.data ?? []).length > 0
+                      ? `다가오는 면접 ${(upcomingQuery.data ?? []).length}개`
+                      : '다가오는 면접 없음'
               }
               lines={
-                upcomingInterviews.length > 0
-                  ? upcomingInterviews.map(
-                      (i) => `• ${i.company} - ${i.title} (${formatDateTime(i.scheduledAt)})`,
-                    )
-                  : ['• 일정이 생기면 여기 표시돼요']
+                upcomingQuery.isLoading
+                  ? ['• 면접 일정을 불러오고 있어요...']
+                  : upcomingQuery.isError
+                    ? ['• 면접 일정을 불러오지 못했어요.']
+                    : (upcomingQuery.data ?? []).length > 0
+                      ? (upcomingQuery.data ?? []).map(
+                          (i) =>
+                            `• ${i.companyName} - ${i.postingTitle} (${formatDateTime(i.scheduledAt)})`,
+                        )
+                      : ['• 면접 일정이 생기면 여기 표시돼요']
               }
-              actionLabel="면접 관리"
-              onClick={() => navigate('/interviews')}
+              actionLabel={upcomingQuery.isError ? '다시 시도' : '면접 관리'}
+              onClick={() =>
+                upcomingQuery.isError ? upcomingQuery.refetch() : navigate('/interviews')
+              }
             />
 
+            {/* 포트폴리오 */}
             <PreviewCard
               title="포트폴리오 분석"
-              subtitle={`최근 분석: ${formatDateTime(portfolio.analyzedAt)}`}
-              lines={[
-                `• 파일: ${portfolio.filename}`,
-                ...portfolio.highlights.slice(0, 2).map((h) => `• ${h}`),
-              ]}
-              actionLabel="리포트 보기"
-              onClick={() => navigate('/portfolio')}
+              subtitle={
+                portfolioQuery.isLoading
+                  ? '불러오는 중...'
+                  : portfolioQuery.isError
+                    ? '불러오기 실패'
+                    : `최근 분석: ${formatDateTime(portfolioQuery.data!.analyzedAt)}`
+              }
+              lines={
+                portfolioQuery.isLoading
+                  ? ['• 리포트를 불러오고 있어요...']
+                  : portfolioQuery.isError
+                    ? ['• 리포트를 불러오지 못했어요.']
+                    : [
+                        `• 파일: ${portfolioQuery.data!.filename}`,
+                        ...portfolioQuery.data!.highlights.slice(0, 2).map((h) => `• ${h}`),
+                      ]
+              }
+              actionLabel={portfolioQuery.isError ? '다시 시도' : '리포트 보기'}
+              onClick={() =>
+                portfolioQuery.isError ? portfolioQuery.refetch() : navigate('/portfolio')
+              }
             />
 
+            {/* 이력서 */}
             <PreviewCard
               title="이력서 관리"
-              subtitle={`최근 수정: ${formatDateTime(resume.updatedAt)}`}
-              lines={[`• ${resume.title}`, '• 추천: 프로젝트 성과를 숫자로 써줘요']}
+              subtitle="최근 수정: 2026.01.18 09:15"
+              lines={['• Resume v1', '• 추천: 프로젝트 성과를 숫자로 써줘요']}
               actionLabel="편집하기"
               onClick={() => navigate('/resume')}
             />
@@ -239,151 +298,256 @@ export default function MyPage() {
             02. Notifications
           </h2>
 
-          {/* ✅ 박스는 cloud-dancer */}
           <div className="bg-cloud-dancer rounded-2xl p-8 shadow-sm">
             <div className="flex items-center justify-between gap-6">
               <div>
                 <p className="text-midnight-ink text-xl font-extrabold">알림</p>
-                <p className="text-slate-gray mt-1 text-sm">읽지 않은 알림: {unreadCount}개</p>
+                <p className="text-slate-gray mt-1 text-sm">
+                  {notiQuery.isLoading
+                    ? '불러오는 중...'
+                    : notiQuery.isError
+                      ? '불러오기 실패'
+                      : `읽지 않은 알림: ${unreadCount}개`}
+                </p>
               </div>
 
-              <Button variant="outline" size="md" onClick={() => setShowNoti((v) => !v)}>
-                {showNoti ? '닫기' : '알림 보기'}
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => {
+                  if (notiQuery.isError) notiQuery.refetch();
+                  else setShowNoti((v) => !v);
+                }}
+              >
+                {notiQuery.isError ? '다시 시도' : showNoti ? '닫기' : '알림 보기'}
               </Button>
             </div>
 
-            {showNoti && (
+            {showNoti && !notiQuery.isError && !notiQuery.isLoading && (
               <div className="mt-6 space-y-3">
-                {notifications.map((n) => (
+                {(notiQuery.data ?? []).map((n) => (
                   <div key={n.id} className="bg-pure-white rounded-2xl p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
-                      {!n.read && (
-                        <span className="bg-midnight-ink mt-1 h-2 w-2 shrink-0 rounded-full" />
-                      )}
+                      {!n.read && <span className="bg-midnight-ink mt-1 h-2 w-2 shrink-0 rounded-full" />}
                     </div>
                     <p className="text-slate-gray mt-2 text-xs">{formatDateTime(n.createdAt)}</p>
                   </div>
                 ))}
               </div>
             )}
+
+            {showNoti && notiQuery.isLoading && (
+              <div className="mt-6 space-y-3">
+                <div className="bg-pure-white/60 h-16 animate-pulse rounded-2xl" />
+                <div className="bg-pure-white/60 h-16 animate-pulse rounded-2xl" />
+              </div>
+            )}
           </div>
         </section>
 
-        {/* 03. Calendar */}
+        {/* 03. Calendar (면접만) */}
         <section className="space-y-6">
           <h2 className="text-midnight-ink border-midnight-ink border-l-4 pl-4 text-2xl font-bold">
             03. Calendar
           </h2>
 
-          {/* ✅ 캘린더 전체 박스 cloud-dancer */}
           <div className="bg-cloud-dancer rounded-2xl p-8 shadow-sm">
             <div className="mb-6 flex items-center justify-between">
               <p className="text-midnight-ink text-xl font-extrabold">캘린더</p>
-              <p className="text-slate-gray text-lg font-bold">{thisMonthLabel}</p>
+
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={goPrevMonth}>
+                  ◀
+                </Button>
+
+                <p className="text-slate-gray min-w-[88px] text-center text-lg font-bold">
+                  {thisMonthLabel}
+                </p>
+
+                <Button type="button" variant="outline" size="sm" onClick={goNextMonth}>
+                  ▶
+                </Button>
+
+                <Button type="button" variant="outline" size="sm" onClick={goToday}>
+                  오늘
+                </Button>
+              </div>
             </div>
 
-            <div className="text-slate-gray grid grid-cols-7 gap-3 text-center text-sm font-bold">
-              {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-                <div key={d}>{d}</div>
-              ))}
-            </div>
-
-            <div className="mt-3 grid grid-cols-7 gap-3">
-              {cells.map((d, idx) => {
-                const ymd = toYmd(d);
-                const inThisMonth = d.getMonth() === month0;
-                const isToday = ymd === todayYmd;
-                const isSelected = ymd === selectedDate;
-                const ev = eventMap.get(ymd) ?? [];
-
-                return (
-                  <button
-                    key={`${ymd}-${idx}`}
-                    type="button"
-                    onClick={() => setSelectedDate(ymd)}
-                    className={[
-                      'min-h-19.5 rounded-2xl border p-3 text-left transition',
-                      inThisMonth
-                        ? 'bg-pure-white border-soft-pebble'
-                        : 'bg-cloud-dancer border-soft-pebble/50',
-                      'hover:bg-soft-pebble/30',
-                      isSelected ? 'ring-midnight-ink ring-2' : '',
-                    ].join(' ')}
-                  >
-                    <div className="flex items-start justify-between">
-                      <span
-                        className={
-                          inThisMonth
-                            ? 'text-midnight-ink font-extrabold'
-                            : 'text-silver-mist font-extrabold'
-                        }
-                      >
-                        {d.getDate()}
-                      </span>
-                      {isToday && (
-                        <span className="bg-midnight-ink text-cloud-dancer rounded-full px-2 py-0.5 text-[10px] font-bold">
-                          TODAY
-                        </span>
-                      )}
-                    </div>
-
-                    {/* ✅ 면접 일정만 표시 */}
-                    <div className="mt-2 space-y-1">
-                      {ev.slice(0, 2).map((e) => (
-                        <p key={e.id} className="text-slate-gray truncate text-xs font-semibold">
-                          • {e.label}
-                        </p>
-                      ))}
-                      {ev.length > 2 && (
-                        <p className="text-slate-gray text-xs font-bold">+{ev.length - 2} more</p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* ✅ 선택한 날짜 일정 박스 (cloud-dancer 내부에서, 내용 카드는 white) */}
-            <div className="bg-pure-white mt-8 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-midnight-ink text-lg font-extrabold">선택한 날짜 일정</p>
-                  <p className="text-slate-gray mt-1 text-sm font-bold">
-                    {formatYmdToKorean(selectedDate)}
-                  </p>
+            {/* ✅ 상태 UI: 로딩/에러/정상 */}
+            {interviewQuery.isLoading ? (
+              <CalendarSkeleton />
+            ) : interviewQuery.isError ? (
+              <ErrorBox
+                message={interviewQuery.errorMessage ?? '면접 일정을 불러오지 못했어요.'}
+                onRetry={interviewQuery.refetch}
+              />
+            ) : (
+              <>
+                <div className="text-slate-gray grid grid-cols-7 gap-3 text-center text-sm font-bold">
+                  {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+                    <div key={d}>{d}</div>
+                  ))}
                 </div>
-              </div>
 
-              <div className="mt-4 space-y-2">
-                {selectedEvents.length === 0 ? (
-                  <p className="text-slate-gray text-sm font-semibold">
-                    이 날짜에는 일정이 없어요.
-                  </p>
-                ) : (
-                  selectedEvents.map((e) => (
-                    <div key={e.id} className="bg-cloud-dancer rounded-xl p-4">
-                      <p className="text-midnight-ink text-sm font-extrabold">{e.label}</p>
-                      <p className="text-slate-gray mt-1 text-xs">{e.kind}</p>
+                <div className="mt-3 grid grid-cols-7 gap-3">
+                  {cells.map((d, idx) => {
+                    const ymd = toYmd(d);
+                    const inThisMonth = d.getMonth() === month0;
+                    const isToday = ymd === todayYmd;
+                    const isSelected = ymd === selectedDate;
+                    const ev = interviewEventMap.get(ymd) ?? [];
+
+                    return (
+                      <button
+                        key={`${ymd}-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDate(ymd);
+                          if (!inThisMonth) setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                        }}
+                        className={[
+                          'min-h-[78px] rounded-2xl border p-3 text-left transition',
+                          inThisMonth ? 'bg-pure-white border-soft-pebble' : 'bg-cloud-dancer border-soft-pebble/50',
+                          'hover:bg-soft-pebble/30',
+                          isSelected ? 'ring-midnight-ink ring-2' : '',
+                        ].join(' ')}
+                      >
+                        <div className="flex items-start justify-between">
+                          <span
+                            className={
+                              inThisMonth ? 'text-midnight-ink font-extrabold' : 'text-silver-mist font-extrabold'
+                            }
+                          >
+                            {d.getDate()}
+                          </span>
+
+                          {isToday && (
+                            <span className="bg-midnight-ink text-cloud-dancer rounded-full px-2 py-0.5 text-[10px] font-bold">
+                              TODAY
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 면접 일정 미리보기 */}
+                        <div className="mt-2 space-y-1">
+                          {ev.slice(0, 2).map((e) => (
+                            <p key={e.interview_id} className="text-slate-gray truncate text-xs font-semibold">
+                              • {e.companyName} {e.postingTitle}
+                            </p>
+                          ))}
+                          {ev.length > 2 && (
+                            <p className="text-slate-gray text-xs font-bold">+{ev.length - 2} more</p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 선택한 날짜 일정(면접만) */}
+                <div className="bg-pure-white mt-8 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-midnight-ink text-lg font-extrabold">선택한 날짜 일정</p>
+                      <p className="text-slate-gray mt-1 text-sm font-bold">{formatYmdToKorean(selectedDate)}</p>
                     </div>
-                  ))
-                )}
-              </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {selectedInterviews.length === 0 ? (
+                      <p className="text-slate-gray text-sm font-semibold">이 날짜에는 면접 일정이 없어요.</p>
+                    ) : (
+                      selectedInterviews.map((e) => {
+                        const startMs = new Date(e.scheduledAt).getTime();
+                        const nowMs = Date.now();
+
+                        const JOIN_BEFORE_MIN = 30; // ✅ 30분 전부터 입장 가능
+                        const JOIN_AFTER_HOURS = 2; // 시작 후 2시간까지 허용(원하면 0)
+
+                        const isToday = toYmdFromIso(e.scheduledAt) === todayYmd;
+
+                        const joinable =
+                          isToday &&
+                          nowMs >= startMs - JOIN_BEFORE_MIN * 60 * 1000 &&
+                          nowMs <= startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+
+                        const isPast = nowMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+
+                        const minutesToStart = Math.ceil((startMs - nowMs) / (60 * 1000));
+
+                        let btnText = '입장';
+                        let helperText: string | null = null;
+                        let disabled = false;
+
+                        if (isPast) {
+                          btnText = '종료';
+                          disabled = true;
+                        } else if (!isToday) {
+                          btnText = '예정';
+                          disabled = true;
+                        } else {
+                          if (joinable) {
+                            btnText = '입장';
+                            disabled = false;
+                            helperText = '입장 가능';
+                          } else {
+                            btnText = '대기';
+                            disabled = true;
+                            helperText =
+                              minutesToStart > 0
+                                ? `시작 ${minutesToStart}분 전 · 시작 30분 전부터 입장 가능`
+                                : '곧 시작돼요.';
+                          }
+                        }
+
+                        return (
+                          <div key={e.interview_id} className="bg-cloud-dancer rounded-xl p-4">
+                            <p className="text-midnight-ink text-sm font-extrabold">
+                              {e.companyName} - {e.postingTitle}
+                            </p>
+                            <p className="text-slate-gray mt-1 text-xs">{formatDateTime(e.scheduledAt)}</p>
+
+                            {helperText && <p className="text-slate-gray mt-2 text-xs font-semibold">{helperText}</p>}
+
+                            <div className="mt-3 flex justify-end">
+                              <Button
+                                type="button"
+                                variant={disabled ? 'outline' : 'dark'}
+                                size="sm"
+                                disabled={disabled}
+                                className={disabled ? 'cursor-not-allowed opacity-50' : ''}
+                                onClick={() => {
+                                  if (disabled) return;
+                                  navigate(`/interviews/${e.interview_id}/lobby`);
+                                }}
+                              >
+                                {btnText}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <Button variant="dark" size="md" onClick={() => navigate('/profile/edit')}>
+                회원 정보 수정
+              </Button>
             </div>
-          </div>
-        </section>
-        <section>
-          {/* ✅ 회원정보수정: 선택 박스 밖(캘린더 섹션의 하단) */}
-          <div className="mt-6 flex justify-end">
-            <Button variant="dark" size="md" onClick={() => navigate('/profile/edit')}>
-              회원 정보 수정
-            </Button>
           </div>
         </section>
       </div>
     </div>
   );
 }
+
+/* ------------------ 작은 컴포넌트들 ------------------ */
 
 function PreviewCard({
   title,
@@ -416,6 +580,53 @@ function PreviewCard({
       <div className="flex justify-end">
         <Button variant="outline" size="md" onClick={onClick}>
           {actionLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CalendarSkeleton() {
+  return (
+    <div>
+      <div className="text-slate-gray grid grid-cols-7 gap-3 text-center text-sm font-bold">
+        {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+          <div key={d}>{d}</div>
+        ))}
+      </div>
+
+      <div className="mt-3 grid grid-cols-7 gap-3">
+        {Array.from({ length: 42 }).map((_, i) => (
+          <div
+            key={i}
+            className="border-soft-pebble bg-pure-white/60 min-h-[78px] animate-pulse rounded-2xl border p-3"
+          >
+            <div className="bg-soft-pebble/60 h-4 w-8 rounded" />
+            <div className="bg-soft-pebble/40 mt-3 h-3 w-20 rounded" />
+            <div className="bg-soft-pebble/30 mt-2 h-3 w-16 rounded" />
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-pure-white mt-8 rounded-2xl p-6 shadow-sm">
+        <div className="bg-soft-pebble/40 h-5 w-40 animate-pulse rounded" />
+        <div className="mt-4 space-y-2">
+          <div className="bg-soft-pebble/20 h-16 animate-pulse rounded-xl" />
+          <div className="bg-soft-pebble/20 h-16 animate-pulse rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ErrorBox({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="bg-pure-white border-soft-pebble rounded-2xl border p-6 shadow-sm">
+      <p className="text-midnight-ink text-sm font-extrabold">데이터를 불러오지 못했어요</p>
+      <p className="text-slate-gray mt-2 text-sm font-semibold">{message}</p>
+      <div className="mt-4 flex justify-end">
+        <Button type="button" variant="dark" size="sm" onClick={onRetry}>
+          다시 시도
         </Button>
       </div>
     </div>
