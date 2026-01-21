@@ -18,13 +18,6 @@ public class CompanySignUpRequest {
     @NotBlank(message = "비밀번호는 필수입니다.")
     private String password;
 
-    @NotBlank(message = "사업자등록번호는 필수입니다.")
-    @Pattern(
-            regexp = "^(\\d{10}|\\d{3}-\\d{2}-\\d{5})$",
-            message = "사업자등록번호 형식이 올바르지 않습니다. (예: 1234567890 또는 123-45-67890)"
-    )
-    private String businessNumber;
-
     @NotBlank(message = "담당자 연락처는 필수입니다.")
     @Pattern(regexp = "^[0-9-]{9,20}$", message = "담당자 연락처 형식이 올바르지 않습니다.")
     private String managerPhone;

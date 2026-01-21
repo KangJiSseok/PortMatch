@@ -1,4 +1,4 @@
-package com.portmatch.domain.jobcompanies.dto;
+package com.portmatch.domain.companies.dto;
 
 import lombok.*;
 
@@ -10,7 +10,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class JobCompaniesDto implements Serializable {
+public class CompaniesDto implements Serializable {
     private String cid; //기업 ID
     private String corpName; //기업 이름
     private String totPsncnt;  // 전체 사원수
