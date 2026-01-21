@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import Button from '../components/Button/Button';
 import Input from '../components/Input/Input';
 import Checkbox from '../components/Checkbox/Checkbox';
+import { useLogin } from '../hooks/useAuth';
+import type { UserRole } from '../types/auth';
 
 const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boolean }) => {
   if (!isVisible || !message) return null;
@@ -23,22 +25,22 @@ const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boo
 };
 
 function LoginPage() {
-  const navigate = useNavigate();
-  const [userType, setUserType] = useState<'individual' | 'corporate'>('individual');
+  const [userType, setUserType] = useState<UserRole>('APPLICANT');
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeField, setShakeField] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const { mutate: loginMutate, isPending: isLoading } = useLogin(rememberMe);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
 
@@ -70,36 +72,26 @@ function LoginPage() {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      const response = await axios.post('/api/auth/login', {
+    loginMutate(
+      {
         email: formData.email,
         password: formData.password,
-        role: userType,
-      });
-
-      if (response.data.token) {
-        const storage = rememberMe ? localStorage : sessionStorage;
-
-        storage.setItem('accessToken', response.data.token);
-        storage.setItem('userRole', userType);
-        storage.setItem('isLoggedIn', 'true');
-
-        navigate('/main');
-      }
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          setErrors({ auth: '이메일 또는 비밀번호가 일치하지 않습니다.' });
-        } else {
-          setErrors({ auth: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.' });
-        }
-      } else {
-        setErrors({ auth: '예상치 못한 오류가 발생했습니다.' });
-      }
-    } finally {
-      setIsLoading(false);
-    }
+        expectedRole: userType,
+      },
+      {
+        onError: (error: unknown) => {
+          if (axios.isAxiosError(error)) {
+            if (error.response?.status === 401) {
+              setErrors({ auth: '이메일 또는 비밀번호가 일치하지 않습니다.' });
+            } else {
+              setErrors({ auth: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+            }
+          } else {
+            setErrors({ auth: '예상치 못한 오류가 발생했습니다.' });
+          }
+        },
+      },
+    );
   };
 
   return (
@@ -154,14 +146,19 @@ function LoginPage() {
         </div>
 
         <div className="bg-cloud-dancer mb-10 flex rounded-xl p-1">
-          {(['individual', 'corporate'] as const).map((type) => (
+          {(
+            [
+              { id: 'APPLICANT', label: '개인 로그인' },
+              { id: 'COMPANY', label: '기업 로그인' },
+            ] as const
+          ).map((tab) => (
             <button
-              key={type}
+              key={tab.id}
               type="button"
-              onClick={() => setUserType(type)}
-              className={`flex-1 rounded-lg py-2 text-sm font-bold transition-all ${userType === type ? 'bg-pure-white text-midnight-ink shadow-sm' : 'text-slate-gray'}`}
+              onClick={() => setUserType(tab.id)}
+              className={`flex-1 rounded-lg py-2 text-sm font-bold transition-all ${userType === tab.id ? 'bg-pure-white text-midnight-ink shadow-sm' : 'text-slate-gray'}`}
             >
-              {type === 'individual' ? '개인 로그인' : '기업 로그인'}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -181,7 +178,9 @@ function LoginPage() {
                 type="email"
                 placeholder="example@portmatch.com"
                 value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleInputChange('email', e.target.value)
+                }
                 disabled={isLoading}
               />
               <WarningBubble message={errors.email} isVisible={!!errors.email} />
@@ -200,7 +199,9 @@ function LoginPage() {
                 type="password"
                 placeholder="비밀번호를 입력하세요"
                 value={formData.password}
-                onChange={(e) => handleInputChange('password', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleInputChange('password', e.target.value)
+                }
                 disabled={isLoading}
               />
               <WarningBubble message={errors.password} isVisible={!!errors.password} />
@@ -211,7 +212,7 @@ function LoginPage() {
             <Checkbox
               label="로그인 상태 유지"
               checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRememberMe(e.target.checked)}
             />
             <button type="button" className="text-slate-gray text-sm font-medium hover:underline">
               비밀번호 찾기
@@ -236,7 +237,7 @@ function LoginPage() {
             >
               {isLoading
                 ? '로그인 중...'
-                : userType === 'individual'
+                : userType === 'APPLICANT'
                   ? '개인 로그인'
                   : '기업 로그인'}
             </Button>

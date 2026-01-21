@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import Button from '../components/Button/Button';
 import Input from '../components/Input/Input';
 import Select from '../components/Select/Select';
+import { useSignup } from '../hooks/useAuth';
+import type { UserRole } from '../types/auth';
 
 const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boolean }) => {
   if (!isVisible || !message) return null;
@@ -23,11 +25,9 @@ const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boo
 };
 
 function SignupPage() {
-  const navigate = useNavigate();
-  const [userType, setUserType] = useState<'individual' | 'corporate'>('individual');
+  const [userType, setUserType] = useState<UserRole>('individual');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeField, setShakeField] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -48,6 +48,8 @@ function SignupPage() {
   });
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const { mutate: signupMutate, isPending: isLoading } = useSignup(userType);
 
   const years = Array.from({ length: 100 }, (_, i) => ({
     value: `${2026 - i}`,
@@ -128,7 +130,7 @@ function SignupPage() {
     validateField(field, processedValue, nextFormData);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
 
@@ -175,21 +177,16 @@ function SignupPage() {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      await axios.post('/api/auth/signup', { ...formData, role: userType });
-      alert('회원가입이 완료되었습니다.');
-      navigate('/login');
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        setErrors((prev) => ({
-          ...prev,
-          submit: error.response?.data?.message || '회원가입 처리 중 오류가 발생했습니다.',
-        }));
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    signupMutate(formData, {
+      onError: (error) => {
+        if (axios.isAxiosError(error)) {
+          setErrors((prev) => ({
+            ...prev,
+            submit: error.response?.data?.message || '회원가입 처리 중 오류가 발생했습니다.',
+          }));
+        }
+      },
+    });
   };
 
   return (
@@ -284,7 +281,9 @@ function SignupPage() {
                     }
                     type={field.includes('password') ? 'password' : 'text'}
                     value={formData[field as keyof typeof formData]}
-                    onChange={(e) => handleInputChange(field, e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      handleInputChange(field, e.target.value)
+                    }
                     maxLength={field === 'phone' ? 13 : undefined}
                     disabled={isLoading}
                   />
@@ -314,17 +313,23 @@ function SignupPage() {
                       <Select
                         label="출생 연도 *"
                         options={[{ value: '', label: '선택' }, ...years]}
-                        onChange={(e) => handleInputChange('birthYear', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                          handleInputChange('birthYear', e.target.value)
+                        }
                       />
                       <Select
                         label="월 *"
                         options={[{ value: '', label: '선택' }, ...months]}
-                        onChange={(e) => handleInputChange('birthMonth', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                          handleInputChange('birthMonth', e.target.value)
+                        }
                       />
                       <Select
                         label="일 *"
                         options={[{ value: '', label: '선택' }, ...days]}
-                        onChange={(e) => handleInputChange('birthDay', e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                          handleInputChange('birthDay', e.target.value)
+                        }
                       />
                     </div>
                     <WarningBubble message={errors.birthYear} isVisible={!!errors.birthYear} />
@@ -343,7 +348,9 @@ function SignupPage() {
                         { value: 'male', label: '남성' },
                         { value: 'female', label: '여성' },
                       ]}
-                      onChange={(e) => handleInputChange('gender', e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        handleInputChange('gender', e.target.value)
+                      }
                     />
                     <WarningBubble message={errors.gender} isVisible={!!errors.gender} />
                   </motion.div>
@@ -352,7 +359,9 @@ function SignupPage() {
                     type="number"
                     min="0"
                     value={formData.experienceYears}
-                    onChange={(e) => handleInputChange('experienceYears', e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      handleInputChange('experienceYears', e.target.value)
+                    }
                     disabled={isLoading}
                   />
                 </>
@@ -369,7 +378,9 @@ function SignupPage() {
                       label="기업명 *"
                       placeholder="공식 기업명을 입력하세요"
                       value={formData.companyName}
-                      onChange={(e) => handleInputChange('companyName', e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        handleInputChange('companyName', e.target.value)
+                      }
                       disabled={isLoading}
                     />
                     <WarningBubble message={errors.companyName} isVisible={!!errors.companyName} />
@@ -385,7 +396,9 @@ function SignupPage() {
                       label="사업자 등록번호 *"
                       placeholder="000-00-00000"
                       value={formData.businessRegNo}
-                      onChange={(e) => handleInputChange('businessRegNo', e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        handleInputChange('businessRegNo', e.target.value)
+                      }
                       maxLength={12}
                       disabled={isLoading}
                     />
@@ -398,7 +411,9 @@ function SignupPage() {
                     label="홈페이지 URL"
                     placeholder="https://..."
                     value={formData.homepageUrl}
-                    onChange={(e) => handleInputChange('homepageUrl', e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      handleInputChange('homepageUrl', e.target.value)
+                    }
                     disabled={isLoading}
                   />
                   <motion.div
@@ -412,7 +427,9 @@ function SignupPage() {
                       label="기업 주소 *"
                       placeholder="상세 주소를 입력하세요"
                       value={formData.address}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        handleInputChange('address', e.target.value)
+                      }
                       disabled={isLoading}
                     />
                     <WarningBubble message={errors.address} isVisible={!!errors.address} />
@@ -427,7 +444,9 @@ function SignupPage() {
                     <Select
                       label="기업 형태 *"
                       options={companySizeOptions}
-                      onChange={(e) => handleInputChange('companySize', e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        handleInputChange('companySize', e.target.value)
+                      }
                     />
                     <WarningBubble message={errors.companySize} isVisible={!!errors.companySize} />
                   </motion.div>
