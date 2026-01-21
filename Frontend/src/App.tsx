@@ -8,7 +8,6 @@ import Footer from './components/Footer/Footer';
 import IntroPage from './pages/IntroPage';
 import MainPage from './pages/MainPage';
 import DesignSystemPage from './pages/DesignSystemPage';
-import MyPage from './pages/MyPage';
 import InterviewPage from './pages/InterviewPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
