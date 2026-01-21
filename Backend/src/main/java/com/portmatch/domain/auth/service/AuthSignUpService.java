@@ -78,15 +78,23 @@ public class AuthSignUpService {
         );
         userRepository.save(user);
 
-        // ✅ businessNumber는 받지만 매핑/저장에서는 무시
-        Company company = new Company(
-                user,
-                req.getCompanyName(),
-                req.getAddress(),
-                req.getSize(),
-                req.getHomepageUrl()
-        );
-        companyRepository.save(company);
+        // 2. companyName으로 회사 조회
+        Company company = companyRepository
+                .findByCompaniesName(req.getCompanyName())
+                .orElseGet(() -> {
+                    // 3. 없으면 새로 생성
+                    Company newCompany = new Company(
+                            null, // 아직 user 없음
+                            req.getCompanyName(),
+                            req.getAddress(),
+                            req.getSize(),
+                            req.getHomepageUrl()
+                    );
+                    return companyRepository.save(newCompany);
+                });
+
+        // 4. 회사에 user 연결
+        company.assignUser(user);
     }
 
     private String generateUniqueUsername(String email) {
