@@ -47,6 +47,9 @@ dependencies {
 
     //Swagger
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2'
+
+    //openVidu
+    implementation 'io.openvidu:openvidu-java-client:2.30.0'
 }
 
 
