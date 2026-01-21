@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import LoadingState from '@/components/States/LoadingState';
-import EmptyState from '@/components/States/EmptyState';
-import ErrorState from '@/components/States/ErrorState';
+import LoadingState from '@/components/states/LoadingState';
+import EmptyState from '@/components/states/EmptyState';
+import ErrorState from '@/components/states/ErrorState';
 
 // Mock 데이터
 const MOCK_JOBS = [
@@ -39,17 +39,7 @@ const MOCK_JOBS = [
     deadline: '오늘마감',
     type: '경력 5년↑',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/SK_Hynix_logo.svg/1024px-SK_Hynix_logo.svg.png',
-  }, // {
-  //   id: 4,
-  //   title: 'ThinQ Platform 백엔드/클라우드 엔지니어',
-  //   companyId: 103,
-  //   company: 'LG전자 (ThinQ)',
-  //   stacks: ['Node.js', 'AWS', 'Python'],
-  //   location: '서울 강서구(마곡)',
-  //   deadline: 'D-12',
-  //   type: '경력 무관',
-  //   logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/LG_logo_%282015%29.svg/1024px-LG_logo_%282015%29.svg.png',
-  // },
+  }, 
 ];
 
 type Sort = 'latest' | 'accuracy';
