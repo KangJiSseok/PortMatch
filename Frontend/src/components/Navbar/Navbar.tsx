@@ -138,6 +138,7 @@ function Navbar() {
 
         <div className="group absolute left-1/2 hidden w-full max-w-50 shrink-0 -translate-x-1/2 lg:block xl:max-w-sm">
           <input
+            id="navbar-search-input"
             type="text"
             placeholder={userState === 'corporate' ? '인재 검색' : '공고 검색'}
             className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"

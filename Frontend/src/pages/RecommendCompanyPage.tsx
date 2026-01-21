@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import LoadingState from '@/components/states/LoadingState';
@@ -102,6 +102,14 @@ function RecommendCompanyPage() {
   const [sortBy, setSortBy] = useState<SortBy>('score');
   const { data: apiData, isLoading, isError, refetch } = useRecommendedCompanies();
   const companies = apiData || MOCK_COMPANIES;
+
+  // Navbar의 검색어 초기화
+  useEffect(() => {
+    const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement;
+    if (navbarInput) {
+      navbarInput.value = '';
+    }
+  }, []);
 
   const sortedCompanies = [...companies].sort((a, b) => {
     return sortBy === 'score' ? b.matchScore - a.matchScore : b.hiringCount - a.hiringCount;
