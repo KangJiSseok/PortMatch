@@ -1,5 +1,7 @@
 package com.portmatch.domain.jobposting.service;
 
+import com.portmatch.domain.jobcompanies.entity.JobCompaniesEntity;
+import com.portmatch.domain.jobcompanies.repository.JobCompaniesRepository;
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.domain.jobposting.repository.JobPostingRepository;
@@ -14,21 +16,26 @@ import java.util.List;
 public class JobPostingServiceImpl implements JobPostingService {
 
     private final JobPostingRepository jobPostingRepository;
+    private final JobCompaniesRepository jobCompaniesRepository; // 기업 레포지토리 추가!
 
     @Override
     @Transactional
     public void saveJobPosting(JobPostingDto dto) {
-        // ID가 같으면 Update, 없으면 Insert (Upsert 방식)
+        // 1. DTO에 담긴 cid로 실제 기업 엔티티를 조회해와야 해.
+        JobCompaniesEntity company = jobCompaniesRepository.findById(dto.getCid())
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 기업 ID입니다: " + dto.getCid()));
+
+        // 2. 이제 cid 대신 .company(company)로 객체를 넣어줘!
         JobPostingEntity entity = JobPostingEntity.builder()
                 .id(dto.getId())
                 .title(dto.getTitle())
                 .active(dto.getActive())
                 .startDate(dto.getStartDate())
                 .endDate(dto.getEndDate())
-                .cid(dto.getCid())
+                .company(company) // String cid 대신 Entity 객체 주입
                 .detail(dto.getDetail())
                 .jobType(dto.getJobType())
-                .vcnt(dto.getVcnt()) // null 체크
+                .vcnt(dto.getVcnt())
                 .build();
 
         jobPostingRepository.save(entity);
@@ -36,7 +43,6 @@ public class JobPostingServiceImpl implements JobPostingService {
 
     @Override
     public List<JobPostingDto> getAllJobPostings() {
-        // DB의 모든 공고를 가져와서 DTO 리스트로 변환
         return jobPostingRepository.findAll().stream()
                 .map(this::convertToDto)
                 .toList();
@@ -44,7 +50,6 @@ public class JobPostingServiceImpl implements JobPostingService {
 
     @Override
     public JobPostingDto getJobDetail(String id) throws Exception {
-        // 상세 조회: 없으면 에러 던지기
         return jobPostingRepository.findById(id)
                 .map(this::convertToDto)
                 .orElseThrow(() -> new Exception("해당 공고를 찾을 수 없습니다. ID: " + id));
@@ -59,25 +64,24 @@ public class JobPostingServiceImpl implements JobPostingService {
     @Override
     @Transactional
     public void updateViewCount(String id) {
-        // 조회수 증가 로직
         jobPostingRepository.findById(id).ifPresent(entity -> {
-            // 기존 엔티티의 값을 하나 올린 뒤 save (더티 체킹 활용 가능)
+            // 더티 체킹(Dirty Checking)을 쓰고 싶다면 필드만 수정해도 되지만,
+            // 현재 빌더 패턴을 쓰고 있으니 아래처럼 명시적으로 업데이트해줄 수 있어.
             JobPostingEntity updated = JobPostingEntity.builder()
                     .id(entity.getId())
                     .title(entity.getTitle())
                     .active(entity.getActive())
                     .startDate(entity.getStartDate())
                     .endDate(entity.getEndDate())
-                    .cid(entity.getCid())
+                    .company(entity.getCompany()) // 기존 기업 정보 유지
                     .detail(entity.getDetail())
                     .jobType(entity.getJobType())
-                    .vcnt(entity.getVcnt() + 1) // 조회수 +1
+                    .vcnt(entity.getVcnt() + 1)
                     .build();
             jobPostingRepository.save(updated);
         });
     }
 
-    // Entity를 DTO로 변환하는 로직 (기존 코드 유지)
     private JobPostingDto convertToDto(JobPostingEntity entity) {
         return JobPostingDto.builder()
                 .id(entity.getId())
@@ -85,7 +89,7 @@ public class JobPostingServiceImpl implements JobPostingService {
                 .active(entity.getActive())
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
-                .cid(entity.getCid())
+                .cid(entity.getCompany() != null ? entity.getCompany().getCid() : null) // 객체에서 ID 추출
                 .detail(entity.getDetail())
                 .jobType(entity.getJobType())
                 .vcnt(entity.getVcnt())
