@@ -1,0 +1,84 @@
+version: "3.8"
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: portmatch-db
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    image: gradle:8-jdk21
+    container_name: portmatch-backend
+    working_dir: /app/Backend
+    volumes:
+      - ./Backend:/app/Backend
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - portfolio-analysis
+      - inference
+    command: ["bash", "-lc", "./gradlew bootRun"]
+
+  inference:
+    image: python:3.12-slim
+    container_name: portmatch-inference
+    working_dir: /app/Inference
+    volumes:
+      - ./Inference:/app/Inference
+    env_file:
+      - ./Inference/.env
+    ports:
+      - "8001:8001"
+    command: ["bash", "-lc", "pip install -r requirements.txt && uvicorn web.api.app:app --host 0.0.0.0 --port 8001"]
+
+  portfolio-analysis:
+    image: python:3.12-slim
+    container_name: portmatch-portfolio-analysis
+    working_dir: /app/Portfolio-Analysis
+    volumes:
+      - ./Portfolio-Analysis:/app/Portfolio-Analysis
+    env_file:
+      - ./Portfolio-Analysis/.env
+    ports:
+      - "8000:8000"
+    command: ["bash", "-lc", "pip install -r requirements.txt && uvicorn web.api.app:app --host 0.0.0.0 --port 8000"]
+
+  mineru-api:
+    image: mineru:latest
+    container_name: mineru-api
+    build:
+      context: ./mineru
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "18000:8000"
+    environment:
+      MINERU_MODEL_SOURCE: local
+    entrypoint: mineru-api
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
+
+volumes:
+  postgres-data:
