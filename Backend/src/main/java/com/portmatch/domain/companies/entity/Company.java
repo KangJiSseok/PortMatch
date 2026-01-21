@@ -102,4 +102,11 @@ public class Company {
         this.busiCont = busiCont;
         this.logo = logo;
     }
+
+    public void assignUser(User user) {
+        if (this.user != null) {
+            throw new IllegalStateException("이미 가입된 기업입니다.");
+        }
+        this.user = user;
+    }
 }
