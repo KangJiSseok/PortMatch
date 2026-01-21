@@ -30,3 +30,6 @@ portfolio-analysis:
 
 company-project-analysis:
   base-url: ${COMPANY_PROJECT_ANALYSIS_URL:http://localhost:8001}
+
+springdoc:
+  override-with-generic-response: false

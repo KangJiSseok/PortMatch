@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,6 +20,12 @@ import java.util.List;
 
 @Configuration
 public class SecurityConfig {
+
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html");
+    }
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -41,10 +48,17 @@ public class SecurityConfig {
                 // ✅ 인가 정책
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                // ✅ 인증 없이 허용
                                 "/api/accounts/signup/**",
                                 "/api/auth/login",
-                                "/api/auth/logout"
+                                "/api/auth/logout",
+
+                                // ✅ Swagger / OpenAPI 허용 (springdoc 기본 경로)
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
                         ).permitAll()
+
                         .requestMatchers("/api/auth/me").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -97,5 +111,4 @@ public class SecurityConfig {
     public SecurityContextRepository securityContextRepository() {
         return new HttpSessionSecurityContextRepository();
     }
-
 }
