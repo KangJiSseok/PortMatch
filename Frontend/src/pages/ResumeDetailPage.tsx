@@ -160,6 +160,8 @@ function ResumeDetailPage() {
     return saved ? JSON.parse(saved) : INITIAL_SELF_INTROS;
   });
 
+  const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
+
   const targetId = resumeId || 'frontend';
   const resume = allResumes[targetId] || allResumes['frontend'] || INITIAL_RESUMES['frontend'];
 
@@ -190,10 +192,9 @@ function ResumeDetailPage() {
   }, [toastMessage]);
 
   useEffect(() => {
-    localStorage.setItem('resumes', JSON.stringify(allResumes));
     localStorage.setItem('portfolios', JSON.stringify(portfolios));
     localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
-  }, [allResumes, portfolios, selfIntros]);
+  }, [portfolios, selfIntros]);
 
   const updateCurrentResume = (updates: Partial<ResumeData>) => {
     setAllResumes((prev) => ({
@@ -213,8 +214,19 @@ function ResumeDetailPage() {
   };
 
   const toggleEditMode = () => {
+    setResumeSnapshot(allResumes);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    if (resumeSnapshot) {
+      setAllResumes(resumeSnapshot);
+    }
+    setResumeSnapshot(null);
+    setIsEditing(false);
+    setInnerEditingIntro(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const validateAndSave = () => {
@@ -255,6 +267,8 @@ function ResumeDetailPage() {
       return;
     }
 
+    localStorage.setItem('resumes', JSON.stringify(allResumes));
+    setResumeSnapshot(null);
     setIsEditing(false);
     showToast('✅ 모든 정보가 안전하게 저장되었습니다!');
   };
@@ -792,6 +806,16 @@ function ResumeDetailPage() {
                           e.target.value = '';
                           return;
                         }
+
+                        const isDuplicate = portfolios.some(
+                          (p) => p.name.toLowerCase() === file.name.toLowerCase(),
+                        );
+                        if (isDuplicate) {
+                          showToast('⚠️ 이미 동일한 이름의 포트폴리오가 존재합니다.');
+                          e.target.value = '';
+                          return;
+                        }
+
                         const newP = { id: Date.now(), name: file.name };
                         setPortfolios((prev) => [newP, ...prev]);
                         updateCurrentResume({ selectedPortfolioId: newP.id });
@@ -990,7 +1014,7 @@ function ResumeDetailPage() {
             </div>
           </SectionCard>
 
-          <div className="flex justify-center pt-12 pb-24">
+          <div className="flex justify-center gap-6 pt-12 pb-24">
             <Button
               variant="blue"
               size="xl"
@@ -999,6 +1023,16 @@ function ResumeDetailPage() {
             >
               {isEditing ? '저장 및 완료하기' : '이력서 수정하기'}
             </Button>
+            {isEditing && (
+              <Button
+                variant="outline"
+                size="xl"
+                className="px-20 py-5 font-black whitespace-nowrap shadow-md transition-transform active:scale-95"
+                onClick={handleCancelEdit}
+              >
+                취소
+              </Button>
+            )}
           </div>
         </main>
       </div>
@@ -1027,8 +1061,6 @@ function ResumeDetailPage() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
                 >
                   <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                   <line x1="10" y1="11" x2="10" y2="17" />
