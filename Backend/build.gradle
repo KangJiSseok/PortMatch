@@ -66,7 +66,7 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.17.2'
 
     //Swagger
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
 
     //openVidu
     implementation 'io.openvidu:openvidu-java-client:2.30.0'
