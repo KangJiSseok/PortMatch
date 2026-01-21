@@ -27,12 +27,6 @@ interface Experience {
   period: string;
 }
 
-interface Project {
-  name: string;
-  desc: string;
-  link: string;
-}
-
 interface ResumeData {
   id: string;
   title: string;
@@ -41,11 +35,8 @@ interface ResumeData {
   email: string;
   address: string;
   profileImage: string | null;
-  intro: string;
   education: Education[];
   experience: Experience[];
-  projects: Project[];
-  techStack: string[];
   selectedPortfolioId: string | number | null;
   selectedSelfIntroId: string | null;
 }
@@ -59,6 +50,17 @@ interface SectionCardProps {
   titleSize?: string;
 }
 
+const MAX_LENGTHS = {
+  TITLE: 50,
+  NAME: 20,
+  EMAIL: 100,
+  ADDRESS: 200,
+  COMPANY: 50,
+  ROLE: 50,
+  SCHOOL: 50,
+  MAJOR: 50,
+};
+
 const INITIAL_RESUMES: Record<string, ResumeData> = {
   frontend: {
     id: 'frontend',
@@ -68,15 +70,10 @@ const INITIAL_RESUMES: Record<string, ResumeData> = {
     email: 'kim@ssafy.com',
     address: '서울특별시 강남구 테헤란로 123',
     profileImage: null,
-    intro: '사용자 경험을 최우선으로 생각하는 프론트엔드 개발자입니다.',
     education: [
       { school: '한국대학교', major: '컴퓨터공학과', status: '졸업', period: '2018.03 - 2023.02' },
     ],
     experience: [{ company: 'A 스타트업', role: '인턴', period: '2023.01 - 2023.06' }],
-    projects: [
-      { name: '커뮤니티 플랫폼', desc: 'React 기반 UI 구현', link: 'github.com/kim/project' },
-    ],
-    techStack: ['React', 'TypeScript', 'Tailwind'],
     selectedPortfolioId: 1,
     selectedSelfIntroId: 'si-1',
   },
@@ -88,19 +85,10 @@ const INITIAL_RESUMES: Record<string, ResumeData> = {
     email: 'kim@ssafy.com',
     address: '경기도 성남시 분당구 판교역로 456',
     profileImage: null,
-    intro: '안정적인 인프라와 효율적인 DB 설계가 강점인 백엔드 개발자입니다.',
     education: [
       { school: '한국대학교', major: '컴퓨터공학과', status: '졸업', period: '2018.03 - 2023.02' },
     ],
     experience: [{ company: 'B 솔루션', role: '백엔드 개발자', period: '2022.05 - 2023.12' }],
-    projects: [
-      {
-        name: '결제 모듈 최적화',
-        desc: 'MSA 기반 결제 시스템 구축',
-        link: 'github.com/kim/payment',
-      },
-    ],
-    techStack: ['Spring Boot', 'Java', 'MySQL'],
     selectedPortfolioId: 2,
     selectedSelfIntroId: 'si-2',
   },
@@ -157,10 +145,23 @@ function ResumeDetailPage() {
   const eduRef = useRef<HTMLDivElement>(null);
   const selfIntroRef = useRef<HTMLDivElement>(null);
 
-  const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>(INITIAL_RESUMES);
+  const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>(() => {
+    const saved = localStorage.getItem('resumes');
+    return saved ? JSON.parse(saved) : INITIAL_RESUMES;
+  });
+
+  const [portfolios, setPortfolios] = useState<Portfolio[]>(() => {
+    const saved = localStorage.getItem('portfolios');
+    return saved ? JSON.parse(saved) : INITIAL_PORTFOLIOS;
+  });
+
+  const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
+    const saved = localStorage.getItem('selfIntros');
+    return saved ? JSON.parse(saved) : INITIAL_SELF_INTROS;
+  });
 
   const targetId = resumeId || 'frontend';
-  const resume = allResumes[targetId] || allResumes['frontend'];
+  const resume = allResumes[targetId] || allResumes['frontend'] || INITIAL_RESUMES['frontend'];
 
   const [isEditing, setIsEditing] = useState(false);
   const [showResumeList, setShowResumeList] = useState(false);
@@ -168,9 +169,6 @@ function ResumeDetailPage() {
   const [showSelfIntroList, setShowSelfIntroList] = useState(false);
   const [innerEditingIntro, setInnerEditingIntro] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [showPhotoGuide, setShowPhotoGuide] = useState(false);
-  const [portfolios, setPortfolios] = useState<Portfolio[]>(INITIAL_PORTFOLIOS);
-  const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(INITIAL_SELF_INTROS);
   const [errorFields, setErrorFields] = useState<string[]>([]);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -190,6 +188,12 @@ function ResumeDetailPage() {
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
+
+  useEffect(() => {
+    localStorage.setItem('resumes', JSON.stringify(allResumes));
+    localStorage.setItem('portfolios', JSON.stringify(portfolios));
+    localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
+  }, [allResumes, portfolios, selfIntros]);
 
   const updateCurrentResume = (updates: Partial<ResumeData>) => {
     setAllResumes((prev) => ({
@@ -222,17 +226,17 @@ function ResumeDetailPage() {
       return;
     }
 
-    if (!resume.title.trim()) errors.push('title');
-    if (!resume.name.trim()) errors.push('name');
+    if (!resume.title?.trim()) errors.push('title');
+    if (!resume.name?.trim()) errors.push('name');
 
-    resume.experience.forEach((exp, i) => {
-      if (!exp.company.trim()) errors.push(`exp_company_${i}`);
-      if (!exp.role.trim()) errors.push(`exp_role_${i}`);
+    (resume.experience || []).forEach((exp, i) => {
+      if (!exp.company?.trim()) errors.push(`exp_company_${i}`);
+      if (!exp.role?.trim()) errors.push(`exp_role_${i}`);
     });
 
-    resume.education.forEach((edu, i) => {
-      if (!edu.school.trim()) errors.push(`edu_school_${i}`);
-      if (!edu.major.trim()) errors.push(`edu_major_${i}`);
+    (resume.education || []).forEach((edu, i) => {
+      if (!edu.school?.trim()) errors.push(`edu_school_${i}`);
+      if (!edu.major?.trim()) errors.push(`edu_major_${i}`);
     });
 
     if (errors.length > 0) {
@@ -252,6 +256,7 @@ function ResumeDetailPage() {
     }
 
     setIsEditing(false);
+    showToast('✅ 모든 정보가 안전하게 저장되었습니다!');
   };
 
   const handlePeriodChange = (
@@ -260,10 +265,11 @@ function ResumeDetailPage() {
     field: 'startYear' | 'startMonth' | 'endYear' | 'endMonth',
     value: string,
   ) => {
-    const items = resume[type];
+    const items = resume[type] || [];
     const item = items[index];
+    if (!item) return;
 
-    const parts = item.period.split(' - ');
+    const parts = item.period?.split(' - ') || ['', ''];
     const start = parts[0]?.split('.') || ['', ''];
     const end = parts[1]?.split('.') || ['', ''];
 
@@ -279,18 +285,18 @@ function ResumeDetailPage() {
     const endDate = parseInt(`${updated.endYear}${updated.endMonth}`);
 
     if (startDate > endDate) {
-      alert('시작일은 종료일보다 빨라야 합니다.');
+      showToast('⚠️ 시작일은 종료일보다 빨라야 합니다.');
       return;
     }
 
     const updatedPeriod = `${updated.startYear}.${updated.startMonth} - ${updated.endYear}.${updated.endMonth}`;
 
     if (type === 'experience') {
-      const newData = [...resume.experience];
+      const newData = [...(resume.experience || [])];
       newData[index] = { ...newData[index], period: updatedPeriod };
       updateCurrentResume({ experience: newData });
     } else {
-      const newData = [...resume.education];
+      const newData = [...(resume.education || [])];
       newData[index] = { ...newData[index], period: updatedPeriod };
       updateCurrentResume({ education: newData });
     }
@@ -316,11 +322,11 @@ function ResumeDetailPage() {
     if (!deleteConfirm) return;
     const { type, index } = deleteConfirm;
     if (type === 'experience') {
-      const newData = [...resume.experience];
+      const newData = [...(resume.experience || [])];
       newData.splice(index, 1);
       updateCurrentResume({ experience: newData });
     } else {
-      const newData = [...resume.education];
+      const newData = [...(resume.education || [])];
       newData.splice(index, 1);
       updateCurrentResume({ education: newData });
     }
@@ -363,7 +369,7 @@ function ResumeDetailPage() {
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className="bg-error fixed bottom-24 left-1/2 z-1000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl"
+            className={`${toastMessage.startsWith('✅') ? 'bg-point-blue' : 'bg-error'} fixed bottom-24 left-1/2 z-1000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
           >
             {toastMessage}
           </motion.div>
@@ -414,12 +420,8 @@ function ResumeDetailPage() {
             className={`bg-pure-white border-soft-pebble rounded-3xl border p-10 shadow-md transition-all ${isEditing ? 'border-point-blue/50 ring-point-blue/10 ring-8' : ''}`}
           >
             <div className="flex flex-col items-start gap-10 md:flex-row">
-              <div className="group relative shrink-0">
-                <div
-                  className="border-cloud-dancer bg-cloud-dancer flex h-56 w-44 cursor-pointer items-center justify-center overflow-hidden rounded-[30px] border-4 shadow-inner"
-                  onMouseEnter={() => isEditing && setShowPhotoGuide(true)}
-                  onMouseLeave={() => setShowPhotoGuide(false)}
-                >
+              <div className="shrink-0">
+                <div className="border-cloud-dancer bg-cloud-dancer relative flex h-56 w-44 items-center justify-center overflow-hidden rounded-[30px] border-4 shadow-inner">
                   {resume.profileImage ? (
                     <img
                       src={resume.profileImage}
@@ -439,32 +441,31 @@ function ResumeDetailPage() {
                       <circle cx="12" cy="7" r="4" />
                     </svg>
                   )}
-                </div>
-                <AnimatePresence>
-                  {showPhotoGuide && isEditing && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="border-point-blue/30 absolute top-full left-0 z-10 mt-3 w-64 rounded-2xl border-2 bg-white p-4 shadow-xl"
+                  {isEditing && (
+                    <button
+                      onClick={() => profileImgRef.current?.click()}
+                      className="bg-midnight-ink/40 hover:bg-midnight-ink/60 absolute inset-0 flex items-center justify-center text-lg font-bold text-white transition-opacity"
                     >
-                      <h4 className="text-point-blue mb-2 font-black">📷 증명사진 규격 안내</h4>
-                      <ul className="text-slate-gray space-y-1 text-sm font-bold">
-                        <li>• 권장 사이즈: 35 x 45 mm</li>
-                        <li>• 파일 형식: JPG, PNG</li>
-                        <li>• 배경: 단색 권장</li>
-                      </ul>
-                    </motion.div>
+                      사진 변경
+                    </button>
                   )}
-                </AnimatePresence>
+                </div>
+
                 {isEditing && (
-                  <button
-                    onClick={() => profileImgRef.current?.click()}
-                    className="bg-midnight-ink/40 absolute inset-0 flex items-center justify-center rounded-[30px] text-lg font-bold text-white opacity-0 transition-opacity group-hover:opacity-100"
+                  <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border-point-blue/20 mt-4 w-44 rounded-xl border bg-white p-3 shadow-sm"
                   >
-                    사진 변경
-                  </button>
+                    <h4 className="text-point-blue mb-1 text-sm font-black">📷 사진 규격 안내</h4>
+                    <ul className="text-slate-gray space-y-0.5 text-xs leading-tight font-bold">
+                      <li>• 권장: 35 x 45 mm</li>
+                      <li>• 형식: JPG, PNG</li>
+                      <li>• 배경: 단색 권장</li>
+                    </ul>
+                  </motion.div>
                 )}
+
                 <input
                   type="file"
                   ref={profileImgRef}
@@ -481,7 +482,8 @@ function ResumeDetailPage() {
                       <label className={labelClass}>이력서 제목</label>
                       <input
                         className={`${inputClass('title')} text-2xl`}
-                        value={resume.title}
+                        value={resume.title || ''}
+                        maxLength={MAX_LENGTHS.TITLE}
                         placeholder="예) 프론트엔드 개발자 이력서"
                         onChange={(e) => updateCurrentResume({ title: e.target.value })}
                       />
@@ -490,20 +492,21 @@ function ResumeDetailPage() {
                       <label className={labelClass}>성함</label>
                       <input
                         className={`${inputClass('name')} text-2xl`}
-                        value={resume.name}
+                        value={resume.name || ''}
+                        maxLength={MAX_LENGTHS.NAME}
                         placeholder="이름을 입력하세요"
                         onChange={(e) => updateCurrentResume({ name: e.target.value })}
                       />
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="min-w-0 space-y-3 overflow-hidden">
                     <h2 className="truncate text-3xl font-black opacity-40">{resume.title}</h2>
-                    <h1 className="text-point-blue text-3xl font-black">{resume.name}</h1>
+                    <h1 className="text-point-blue truncate text-3xl font-black">{resume.name}</h1>
                   </div>
                 )}
                 <div
-                  className={`grid grid-cols-1 gap-4 border-t pt-8 transition-colors ${isEditing ? 'border-point-blue/20' : 'border-soft-pebble'}`}
+                  className={`grid grid-cols-1 gap-4 border-t pt-4 transition-colors ${isEditing ? 'border-point-blue/20' : 'border-soft-pebble'}`}
                 >
                   {isEditing ? (
                     <>
@@ -512,7 +515,8 @@ function ResumeDetailPage() {
                           <label className={labelClass}>연락처</label>
                           <input
                             className={inputClass()}
-                            value={resume.contact}
+                            value={resume.contact || ''}
+                            maxLength={15}
                             placeholder="010-0000-0000"
                             onChange={(e) =>
                               updateCurrentResume({ contact: formatPhoneNumber(e.target.value) })
@@ -523,7 +527,8 @@ function ResumeDetailPage() {
                           <label className={labelClass}>이메일</label>
                           <input
                             className={inputClass()}
-                            value={resume.email}
+                            value={resume.email || ''}
+                            maxLength={MAX_LENGTHS.EMAIL}
                             placeholder="example@mail.com"
                             onChange={(e) => updateCurrentResume({ email: e.target.value })}
                           />
@@ -533,17 +538,28 @@ function ResumeDetailPage() {
                         <label className={labelClass}>주소</label>
                         <input
                           className={inputClass()}
-                          value={resume.address}
+                          value={resume.address || ''}
+                          maxLength={MAX_LENGTHS.ADDRESS}
                           placeholder="도로명 주소를 입력하세요"
                           onChange={(e) => updateCurrentResume({ address: e.target.value })}
                         />
                       </div>
                     </>
                   ) : (
-                    <div className="text-slate-gray space-y-2 text-lg font-bold">
+                    <div className="text-slate-gray space-y-2 text-lg font-bold break-all">
                       <div>📞 {resume.contact}</div>
-                      <div>✉️ {resume.email}</div>
-                      <div>📍 {resume.address}</div>
+                      <div className="flex gap-2">
+                        <span className="shrink-0">✉️</span>
+                        <span className="overflow-wrap-anywhere flex-1 break-all">
+                          {resume.email}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className="shrink-0">📍</span>
+                        <span className="flex-1 break-all whitespace-pre-wrap">
+                          {resume.address}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -565,14 +581,14 @@ function ResumeDetailPage() {
                       if (type === 'experience') {
                         updateCurrentResume({
                           experience: [
-                            ...resume.experience,
+                            ...(resume.experience || []),
                             { company: '', role: '', period: '2024.01 - 2024.01' },
                           ],
                         });
                       } else {
                         updateCurrentResume({
                           education: [
-                            ...resume.education,
+                            ...(resume.education || []),
                             { school: '', major: '', status: '', period: '2024.01 - 2024.01' },
                           ],
                         });
@@ -585,15 +601,15 @@ function ResumeDetailPage() {
               }
             >
               <div className="space-y-6">
-                {resume[type].map((item, i) => {
-                  const parts = item.period.split(' - ');
+                {resume[type]?.map((item, i) => {
+                  const parts = item.period?.split(' - ') || ['', ''];
                   const start = parts[0]?.split('.') || ['', ''];
                   const end = parts[1]?.split('.') || ['', ''];
                   const p = {
-                    startYear: start[0],
-                    startMonth: start[1],
-                    endYear: end[0],
-                    endMonth: end[1],
+                    startYear: start[0] || '2024',
+                    startMonth: start[1] || '01',
+                    endYear: end[0] || '2024',
+                    endMonth: end[1] || '01',
                   };
                   const isExp = type === 'experience';
                   return (
@@ -610,17 +626,20 @@ function ResumeDetailPage() {
                                 className={inputClass(
                                   isExp ? `exp_company_${i}` : `edu_school_${i}`,
                                 )}
+                                maxLength={isExp ? MAX_LENGTHS.COMPANY : MAX_LENGTHS.SCHOOL}
                                 value={
-                                  isExp ? (item as Experience).company : (item as Education).school
+                                  isExp
+                                    ? (item as Experience).company || ''
+                                    : (item as Education).school || ''
                                 }
                                 placeholder={isExp ? '회사명을 입력하세요' : '학교명을 입력하세요'}
                                 onChange={(e) => {
                                   if (isExp) {
-                                    const newData = [...resume.experience];
+                                    const newData = [...(resume.experience || [])];
                                     newData[i] = { ...newData[i], company: e.target.value };
                                     updateCurrentResume({ experience: newData });
                                   } else {
-                                    const newData = [...resume.education];
+                                    const newData = [...(resume.education || [])];
                                     newData[i] = { ...newData[i], school: e.target.value };
                                     updateCurrentResume({ education: newData });
                                   }
@@ -631,17 +650,20 @@ function ResumeDetailPage() {
                               <label className={labelClass}>{isExp ? '직무' : '전공/상태'}</label>
                               <input
                                 className={inputClass(isExp ? `exp_role_${i}` : `edu_major_${i}`)}
+                                maxLength={isExp ? MAX_LENGTHS.ROLE : MAX_LENGTHS.MAJOR}
                                 value={
-                                  isExp ? (item as Experience).role : (item as Education).major
+                                  isExp
+                                    ? (item as Experience).role || ''
+                                    : (item as Education).major || ''
                                 }
                                 placeholder={isExp ? '담당 직무' : '전공 및 졸업 상태'}
                                 onChange={(e) => {
                                   if (isExp) {
-                                    const newData = [...resume.experience];
+                                    const newData = [...(resume.experience || [])];
                                     newData[i] = { ...newData[i], role: e.target.value };
                                     updateCurrentResume({ experience: newData });
                                   } else {
-                                    const newData = [...resume.education];
+                                    const newData = [...(resume.education || [])];
                                     newData[i] = { ...newData[i], major: e.target.value };
                                     updateCurrentResume({ education: newData });
                                   }
@@ -821,7 +843,7 @@ function ResumeDetailPage() {
                     exit={{ opacity: 0 }}
                     className="border-point-blue absolute top-full left-0 z-100 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border-2 bg-white p-2 shadow-2xl"
                   >
-                    {portfolios.map((p) => (
+                    {portfolios?.map((p) => (
                       <div
                         key={p.id}
                         onClick={() => {
@@ -848,20 +870,23 @@ function ResumeDetailPage() {
                 <div className="flex gap-4">
                   <Button
                     variant="outline"
-                    className={`${actionButtonClass} bg-pure-white border-2`}
+                    className={`${actionButtonClass} bg-pure-white border-2 ${innerEditingIntro ? 'cursor-not-allowed opacity-50 shadow-none' : ''}`}
                     onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
+                      if (innerEditingIntro) return;
                       setShowSelfIntroList(!showSelfIntroList);
                     }}
                   >
                     자기소개 선택
                   </Button>
                   <Button
-                    variant="blue"
-                    className={actionButtonClass}
+                    variant={innerEditingIntro ? 'point' : 'blue'}
+                    className={`${actionButtonClass} min-w-[120px]`}
                     onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
-                      setInnerEditingIntro(!innerEditingIntro);
+                      const nextState = !innerEditingIntro;
+                      if (nextState) setShowSelfIntroList(false);
+                      setInnerEditingIntro(nextState);
                     }}
                   >
                     {innerEditingIntro ? '내용 저장' : '내용 수정'}
@@ -873,25 +898,32 @@ function ResumeDetailPage() {
             <div className="relative space-y-6">
               <div className="relative">
                 <div
-                  onClick={() => isEditing && setShowSelfIntroList(!showSelfIntroList)}
-                  className={`text-point-blue flex items-center justify-between rounded-xl border-2 px-10 py-5 text-lg font-black shadow-md transition-all ${isEditing ? 'border-point-blue hover:bg-cloud-dancer/20 cursor-pointer bg-white' : 'bg-pure-white border-soft-pebble shadow-sm'}`}
+                  onClick={() => {
+                    if (isEditing && !innerEditingIntro) {
+                      setShowSelfIntroList(!showSelfIntroList);
+                    }
+                  }}
+                  className={`text-point-blue flex items-center justify-between rounded-xl border-2 px-10 py-5 text-lg font-black shadow-md transition-all ${isEditing && !innerEditingIntro ? 'border-point-blue hover:bg-cloud-dancer/20 cursor-pointer bg-white' : 'bg-pure-white border-soft-pebble cursor-default shadow-sm'}`}
                 >
                   {isEditing && innerEditingIntro ? (
-                    <input
-                      className="w-full truncate bg-transparent outline-none"
-                      value={currentSelfIntro?.title || ''}
-                      placeholder="자기소개서 제목을 입력하세요"
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) =>
-                        setSelfIntros(
-                          selfIntros.map((s) =>
-                            s.id === resume.selectedSelfIntroId
-                              ? { ...s, title: e.target.value }
-                              : s,
-                          ),
-                        )
-                      }
-                    />
+                    <div className="flex w-full items-center gap-3">
+                      <span className="bg-point-blue h-2 w-2 animate-pulse rounded-full" />
+                      <input
+                        className="w-full truncate bg-transparent outline-none"
+                        value={currentSelfIntro?.title || ''}
+                        placeholder="자기소개서 제목을 입력하세요"
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) =>
+                          setSelfIntros(
+                            selfIntros.map((s) =>
+                              s.id === resume.selectedSelfIntroId
+                                ? { ...s, title: e.target.value }
+                                : s,
+                            ),
+                          )
+                        }
+                      />
+                    </div>
                   ) : (
                     <span className="mr-4 truncate">
                       {currentSelfIntro?.title || '자기소개서를 선택해주세요.'}
@@ -899,14 +931,14 @@ function ResumeDetailPage() {
                   )}
                 </div>
                 <AnimatePresence>
-                  {showSelfIntroList && isEditing && (
+                  {showSelfIntroList && isEditing && !innerEditingIntro && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       className="border-point-blue absolute top-full left-0 z-100 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border-2 bg-white p-2 shadow-2xl"
                     >
-                      {selfIntros.map((s) => (
+                      {selfIntros?.map((s) => (
                         <div
                           key={s.id}
                           onClick={() => {
@@ -923,12 +955,21 @@ function ResumeDetailPage() {
                 </AnimatePresence>
               </div>
               <div
-                className={`min-h-87.5 rounded-3xl border-2 p-10 shadow-inner transition-all ${isEditing ? 'border-point-blue/50 bg-white' : 'bg-cloud-dancer/30 border-soft-pebble'}`}
+                className={`relative min-h-87.5 rounded-3xl border-2 p-10 shadow-inner transition-all ${innerEditingIntro && isEditing ? 'border-point-blue ring-point-blue/10 bg-white ring-8' : 'bg-cloud-dancer/30 border-soft-pebble'}`}
               >
+                {innerEditingIntro && (
+                  <div className="bg-point-blue absolute top-4 right-6 flex items-center gap-2 rounded-full px-4 py-1.5 shadow-md">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                    <span className="text-xs font-black tracking-widest text-white uppercase">
+                      Editing Content
+                    </span>
+                  </div>
+                )}
                 {innerEditingIntro && isEditing && resume.selectedSelfIntroId ? (
                   <textarea
                     className="h-full min-h-75 w-full resize-none bg-transparent text-xl leading-relaxed font-medium outline-none"
                     placeholder="내용을 상세히 입력해 주세요."
+                    autoFocus
                     value={currentSelfIntro?.content || ''}
                     onChange={(e) =>
                       setSelfIntros(
@@ -941,7 +982,7 @@ function ResumeDetailPage() {
                     }
                   />
                 ) : (
-                  <p className="text-xl leading-relaxed font-medium whitespace-pre-wrap opacity-90">
+                  <p className="text-xl leading-relaxed font-medium break-all whitespace-pre-wrap opacity-90">
                     {currentSelfIntro?.content || '자기소개를 선택해주세요.'}
                   </p>
                 )}
@@ -998,13 +1039,7 @@ function ResumeDetailPage() {
               <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight">
                 정말 삭제할까요?
               </h3>
-              <p className="text-slate-gray mb-10 leading-relaxed font-bold opacity-60">
-                삭제된 데이터는 복구할 수 없습니다.
-                <br />
-                다시 한번 확인해주세요.
-              </p>
-
-              <div className="flex gap-4">
+              <div className="mt-8 flex gap-4">
                 <Button
                   variant="outline"
                   size="lg"
