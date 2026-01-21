@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import Button from '@/components/Button/Button';
 import LoadingState from '@/components/states/LoadingState';
 import EmptyState from '@/components/states/EmptyState';
 import ErrorState from '@/components/states/ErrorState';
@@ -149,26 +150,30 @@ function RecommendCompanyPage() {
               Matched Companies
             </h2>
             <div className="flex gap-1 rounded-2xl border border-zinc-100 bg-zinc-100/50 p-1.5">
-              <button
+              <Button
+                variant="light"
+                size="sm"
                 onClick={() => setSortBy('score')}
-                className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`!rounded-xl !px-4 !py-2 !text-xs ${
                   sortBy === 'score'
-                    ? 'text-midnight-ink bg-white shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-600'
+                    ? '!bg-white !text-midnight-ink !shadow-sm !border-transparent'
+                    : '!bg-transparent !text-zinc-400 hover:!text-zinc-600 !border-transparent'
                 }`}
               >
                 추천 점수 순
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="light"
+                size="sm"
                 onClick={() => setSortBy('hiring')}
-                className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`!rounded-xl !px-4 !py-2 !text-xs ${
                   sortBy === 'hiring'
-                    ? 'text-midnight-ink bg-white shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-600'
+                    ? '!bg-white !text-midnight-ink !shadow-sm !border-transparent'
+                    : '!bg-transparent !text-zinc-400 hover:!text-zinc-600 !border-transparent'
                 }`}
               >
                 공고 많은 순
-              </button>
+              </Button>
             </div>
           </div>
 
