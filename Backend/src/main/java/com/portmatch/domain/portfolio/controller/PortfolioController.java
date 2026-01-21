@@ -1,5 +1,6 @@
 package com.portmatch.domain.portfolio.controller;
 
+import com.portmatch.domain.portfolio.dto.PortfolioAnalysisResponse;
 import com.portmatch.domain.portfolio.dto.PortfolioResponse;
 import com.portmatch.domain.portfolio.dto.PresignedUrlResponse;
 import com.portmatch.domain.portfolio.service.PortfolioAnalysisService;
@@ -48,5 +49,10 @@ public class PortfolioController {
     @PostMapping("/{portfolioId}/analysis")
     public Object analyzePortfolio(@PathVariable Long portfolioId) {
         return portfolioAnalysisService.analyze(portfolioId);
+    }
+
+    @GetMapping("/{portfolioId}/analysis")
+    public PortfolioAnalysisResponse getAnalysis(@PathVariable Long portfolioId) {
+        return portfolioAnalysisService.getAnalysis(portfolioId);
     }
 }
