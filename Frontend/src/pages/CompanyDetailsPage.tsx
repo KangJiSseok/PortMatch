@@ -486,7 +486,7 @@ function CompanyDetailsPage() {
               <div className="sticky top-24 space-y-5">
                 <div className="bg-pure-white hidden rounded-4xl border border-zinc-100 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] lg:block">
                   <div className="mb-6">
-                    <h3 className="text-midnight-ink text-[13px] font-black tracking-widest uppercase opacity-40">
+                    <h3 className="text-midnight-ink text-md font-black tracking-widest uppercase opacity-40">
                       Quick Menu
                     </h3>
                   </div>
@@ -503,14 +503,14 @@ function CompanyDetailsPage() {
                         className="group flex w-full items-center py-1 transition-all active:scale-[0.98]"
                       >
                         <div className="bg-point-blue h-4 w-1 shrink-0 rounded-full" />
-                        <span className="text-midnight-ink group-hover:text-point-blue px-4 text-sm font-bold transition-all group-hover:translate-x-0.5">
+                        <span className="text-midnight-ink group-hover:text-point-blue text-md px-4 font-bold transition-all group-hover:translate-x-0.5">
                           {item.label}
                         </span>
                       </button>
                     ))}
                   </nav>
 
-                  <div className="mt-6 space-y-2 border-t border-zinc-50 pt-6">
+                  <div className="mt-6 space-y-2 border-t border-zinc-50">
                     <Button
                       variant="outline"
                       onClick={handleShare}
@@ -528,35 +528,19 @@ function CompanyDetailsPage() {
                   </div>
                 </div>
 
-                <div
-                  className={`rounded-4xl p-8 transition-all duration-500 ${
-                    hasJobPostings
-                      ? 'bg-midnight-ink text-pure-white shadow-2xl'
-                      : 'text-slate-gray bg-zinc-100'
-                  }`}
-                >
+                <div className="bg-midnight-ink text-pure-white rounded-4xl p-8 shadow-2xl transition-all duration-500">
                   <div className="mb-4">
-                    <span
-                      className={`mb-2 inline-block rounded-full px-2.5 py-0.5 text-[9px] font-black tracking-wider uppercase ${
-                        hasJobPostings ? 'bg-point-blue text-white' : 'bg-zinc-200 text-zinc-500'
-                      }`}
-                    >
+                    <span className="bg-point-blue mb-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-black tracking-wider text-white uppercase">
                       AI Analysis
                     </span>
                     <h4 className="text-lg leading-tight font-black">AI 역량 분석 매칭</h4>
                   </div>
                   <p className="mb-5 text-sm leading-relaxed font-medium opacity-70">
-                    {hasJobPostings
-                      ? '내 포트폴리오 기반 AI 리포트를 확인하세요.'
-                      : '공고 등록 시 분석이 활성화됩니다.'}
+                    내 포트폴리오 기반 AI 리포트를 확인하세요.
                   </p>
                   <Button
-                    className={`w-full rounded-xl py-3.5 text-sm font-black transition-all ${
-                      hasJobPostings
-                        ? 'bg-pure-white text-midnight-ink hover:bg-cloud-dancer'
-                        : 'cursor-not-allowed bg-zinc-200 text-zinc-400'
-                    }`}
-                    onClick={() => hasJobPostings && navigate('/portfolios')}
+                    className="bg-pure-white text-midnight-ink hover:bg-cloud-dancer w-full rounded-xl py-3.5 text-sm font-black transition-all"
+                    onClick={() => navigate('/portfolios')}
                   >
                     리포트 확인하기
                   </Button>
