@@ -880,8 +880,8 @@ function ResumeDetailPage() {
                     자기소개 선택
                   </Button>
                   <Button
-                    variant={innerEditingIntro ? 'point' : 'blue'}
-                    className={`${actionButtonClass} min-w-[120px]`}
+                    variant="blue"
+                    className={`${actionButtonClass} min-w-30`}
                     onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       const nextState = !innerEditingIntro;
