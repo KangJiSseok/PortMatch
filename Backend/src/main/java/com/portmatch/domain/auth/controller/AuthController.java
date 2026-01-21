@@ -2,7 +2,7 @@ package com.portmatch.domain.auth.controller;
 
 import com.portmatch.domain.auth.dto.request.LoginRequest;
 import com.portmatch.domain.auth.dto.response.LoginResponse;
-import com.portmatch.domain.auth.dto.response.MeResponse;
+import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.auth.security.UserPrincipal;
 import com.portmatch.domain.auth.service.AuthResponseMapper;
 import com.portmatch.domain.auth.service.AuthSessionService;
@@ -14,7 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -61,11 +61,14 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ApiResponse<MeResponse> me(Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal principal)) {
-            // 여기서도 BusinessException으로 통일하면 프론트 대응이 쉬움
+    public ApiResponse<LoginResponse> me(
+            @AuthenticationPrincipal(expression = "user") User user
+    ) {
+        if (user == null) {
             return ApiResponse.error("UNAUTHORIZED", "로그인이 필요합니다.");
         }
-        return ApiResponse.ok(authResponseMapper.toMeResponse(principal));
+        return ApiResponse.ok(authResponseMapper.toLoginResponse(user));
     }
+
+
 }
