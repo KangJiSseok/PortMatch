@@ -66,85 +66,27 @@ public class AuthSignUpService {
         }
 
         String username = generateUniqueUsername(req.getEmail());
-        String userName = resolveCompanyUserName(req);
         String phone = requirePhone(req.getManagerPhone(), "managerPhone", "담당자 연락처는 필수입니다.");
 
         User user = new User(
                 username,
                 passwordEncoder.encode(req.getPassword()),
-                userName,
+                req.getManagerName(),   // ✅ 담당자명
                 phone,
                 req.getEmail(),
                 Role.COMPANY
         );
         userRepository.save(user);
 
-        Company company = buildCompanyEntity(user, req);
-        companyRepository.save(company);
-    }
-
-    /* ===================== Company 생성 ===================== */
-
-    private Company buildCompanyEntity(
-            User user,
-            CompanySignUpRequest req
-    ) {
-        CompanySignUpRequest.CompanyLink link = req.getCompany();
-
-        // NEW 회사 등록
-        if (link.getType() == CompanySignUpRequest.CompanyLinkType.NEW) {
-            CompanySignUpRequest.NewCompany nc = link.getNewCompany();
-
-            if (nc.getAddress() == null || nc.getAddress().isBlank()) {
-                throw new BusinessException(
-                        "VALIDATION_ERROR",
-                        "company.newCompany.address",
-                        "기업 주소는 필수입니다."
-                );
-            }
-
-            return new Company(
-                    user,
-                    nc.getName(),
-                    nc.getAddress(),
-                    nc.getSize(),
-                    null
-            );
-        }
-
-        // EXISTING 회사 선택
-        if (link.getExistingCompanyId() == null) {
-            throw new BusinessException(
-                    "VALIDATION_ERROR",
-                    "company.existingCompanyId",
-                    "existingCompanyId가 필요합니다."
-            );
-        }
-
-        Company base = companyRepository.findById(link.getExistingCompanyId())
-                .orElseThrow(() -> new BusinessException(
-                        "COMPANY_NOT_FOUND",
-                        "company.existingCompanyId",
-                        "선택한 기업이 존재하지 않습니다."
-                ));
-
-        return new Company(
+        // ✅ businessNumber는 받지만 매핑/저장에서는 무시
+        Company company = new Company(
                 user,
-                base.getCompaniesName(),
-                base.getAddress(),
-                base.getSize(),
-                base.getHomepageUrl()
+                req.getCompanyName(),
+                req.getAddress(),
+                req.getSize(),
+                req.getHomepageUrl()
         );
-    }
-
-    /* ===================== 유틸 메서드 ===================== */
-
-    private String resolveCompanyUserName(CompanySignUpRequest req) {
-        CompanySignUpRequest.CompanyLink link = req.getCompany();
-        if (link.getType() == CompanySignUpRequest.CompanyLinkType.NEW && link.getNewCompany() != null) {
-            return link.getNewCompany().getName();
-        }
-        return "COMPANY";
+        companyRepository.save(company);
     }
 
     private String generateUniqueUsername(String email) {
