@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/Button/Button';
@@ -50,6 +50,15 @@ interface ResumeData {
   selectedSelfIntroId: string | null;
 }
 
+interface SectionCardProps {
+  title: string;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+  className?: string;
+  sectionRef?: React.RefObject<HTMLDivElement | null>;
+  titleSize?: string;
+}
+
 const INITIAL_RESUMES: Record<string, ResumeData> = {
   frontend: {
     id: 'frontend',
@@ -99,7 +108,7 @@ const INITIAL_RESUMES: Record<string, ResumeData> = {
 
 const INITIAL_PORTFOLIOS: Portfolio[] = [
   { id: 1, name: '2024_프론트엔드_이력서_최종.pdf' },
-  { id: 2, name: '경력기술서_백엔드_v2.docx' },
+  { id: 2, name: '경력기술서_백엔드_v2.pdf' },
   { id: 3, name: '개인프로젝트_상세_포트폴리오.pdf' },
 ];
 
@@ -123,7 +132,7 @@ const SectionCard = ({
   className = '',
   sectionRef,
   titleSize = 'text-lg',
-}: any) => (
+}: SectionCardProps) => (
   <div
     ref={sectionRef}
     className={`bg-pure-white border-soft-pebble relative rounded-2xl border shadow-md ${className}`}
@@ -149,8 +158,9 @@ function ResumeDetailPage() {
   const selfIntroRef = useRef<HTMLDivElement>(null);
 
   const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>(INITIAL_RESUMES);
+
   const targetId = resumeId || 'frontend';
-  const [resume, setResume] = useState<ResumeData>(allResumes[targetId] || allResumes['frontend']);
+  const resume = allResumes[targetId] || allResumes['frontend'];
 
   const [isEditing, setIsEditing] = useState(false);
   const [showResumeList, setShowResumeList] = useState(false);
@@ -168,12 +178,11 @@ function ResumeDetailPage() {
     index: number;
   } | null>(null);
 
-  const years = Array.from({ length: 30 }, (_, i) => (2026 - i).toString());
-  const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
-
-  useEffect(() => {
-    setResume(allResumes[targetId] || allResumes['frontend']);
-  }, [targetId, allResumes]);
+  const years = useMemo(() => Array.from({ length: 30 }, (_, i) => (2026 - i).toString()), []);
+  const months = useMemo(
+    () => Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')),
+    [],
+  );
 
   useEffect(() => {
     if (toastMessage) {
@@ -183,14 +192,15 @@ function ResumeDetailPage() {
   }, [toastMessage]);
 
   const updateCurrentResume = (updates: Partial<ResumeData>) => {
-    const updated = { ...resume, ...updates };
-    setResume(updated);
-    setAllResumes((prev) => ({ ...prev, [targetId]: updated }));
+    setAllResumes((prev) => ({
+      ...prev,
+      [targetId]: { ...prev[targetId], ...updates },
+    }));
   };
 
   const showToast = (msg: string) => setToastMessage(msg);
 
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (ref.current) {
       const yOffset = -180;
       const y = ref.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
@@ -247,35 +257,43 @@ function ResumeDetailPage() {
   const handlePeriodChange = (
     index: number,
     type: 'experience' | 'education',
-    field: string,
+    field: 'startYear' | 'startMonth' | 'endYear' | 'endMonth',
     value: string,
   ) => {
-    const newData = [...resume[type]] as any[];
+    const items = resume[type];
+    const item = items[index];
+
+    const parts = item.period.split(' - ');
+    const start = parts[0]?.split('.') || ['', ''];
+    const end = parts[1]?.split('.') || ['', ''];
+
     const current = {
-      startYear: '',
-      startMonth: '',
-      endYear: '',
-      endMonth: '',
-      ...(() => {
-        const parts = newData[index].period.split(' - ');
-        const start = parts[0]?.split('.') || ['', ''];
-        const end = parts[1]?.split('.') || ['', ''];
-        return { startYear: start[0], startMonth: start[1], endYear: end[0], endMonth: end[1] };
-      })(),
+      startYear: start[0],
+      startMonth: start[1],
+      endYear: end[0],
+      endMonth: end[1],
     };
 
-    const tempCurrent = { ...current, [field]: value } as any;
-    const startDate = parseInt(`${tempCurrent.startYear}${tempCurrent.startMonth}`);
-    const endDate = parseInt(`${tempCurrent.endYear}${tempCurrent.endMonth}`);
+    const updated = { ...current, [field]: value };
+    const startDate = parseInt(`${updated.startYear}${updated.startMonth}`);
+    const endDate = parseInt(`${updated.endYear}${updated.endMonth}`);
 
     if (startDate > endDate) {
       alert('시작일은 종료일보다 빨라야 합니다.');
       return;
     }
 
-    newData[index].period =
-      `${tempCurrent.startYear}.${tempCurrent.startMonth} - ${tempCurrent.endYear}.${tempCurrent.endMonth}`;
-    updateCurrentResume({ [type]: newData });
+    const updatedPeriod = `${updated.startYear}.${updated.startMonth} - ${updated.endYear}.${updated.endMonth}`;
+
+    if (type === 'experience') {
+      const newData = [...resume.experience];
+      newData[index] = { ...newData[index], period: updatedPeriod };
+      updateCurrentResume({ experience: newData });
+    } else {
+      const newData = [...resume.education];
+      newData[index] = { ...newData[index], period: updatedPeriod };
+      updateCurrentResume({ education: newData });
+    }
   };
 
   const formatPhoneNumber = (val: string) => {
@@ -297,9 +315,15 @@ function ResumeDetailPage() {
   const confirmDelete = () => {
     if (!deleteConfirm) return;
     const { type, index } = deleteConfirm;
-    const newData = [...resume[type]];
-    newData.splice(index, 1);
-    updateCurrentResume({ [type]: newData as any });
+    if (type === 'experience') {
+      const newData = [...resume.experience];
+      newData.splice(index, 1);
+      updateCurrentResume({ experience: newData });
+    } else {
+      const newData = [...resume.education];
+      newData.splice(index, 1);
+      updateCurrentResume({ education: newData });
+    }
     setDeleteConfirm(null);
   };
 
@@ -339,7 +363,7 @@ function ResumeDetailPage() {
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className="bg-error fixed bottom-24 left-1/2 z-[1000] flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl"
+            className="bg-error fixed bottom-24 left-1/2 z-1000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl"
           >
             {toastMessage}
           </motion.div>
@@ -354,7 +378,7 @@ function ResumeDetailPage() {
             onClick={() => setShowResumeList(!showResumeList)}
           >
             <span className="mr-4 truncate text-xl">📄 {resume.title}</span>
-            <span className="flex-shrink-0 text-xl">▾</span>
+            <span className="shrink-0 text-xl">▾</span>
           </Button>
           <AnimatePresence>
             {showResumeList && (
@@ -390,7 +414,7 @@ function ResumeDetailPage() {
             className={`bg-pure-white border-soft-pebble rounded-3xl border p-10 shadow-md transition-all ${isEditing ? 'border-point-blue/50 ring-point-blue/10 ring-8' : ''}`}
           >
             <div className="flex flex-col items-start gap-10 md:flex-row">
-              <div className="group relative flex-shrink-0">
+              <div className="group relative shrink-0">
                 <div
                   className="border-cloud-dancer bg-cloud-dancer flex h-56 w-44 cursor-pointer items-center justify-center overflow-hidden rounded-[30px] border-4 shadow-inner"
                   onMouseEnter={() => isEditing && setShowPhotoGuide(true)}
@@ -537,16 +561,23 @@ function ResumeDetailPage() {
                   <Button
                     variant="blue"
                     className={actionButtonClass}
-                    onClick={() =>
-                      updateCurrentResume({
-                        [type]: [
-                          ...resume[type],
-                          type === 'experience'
-                            ? { company: '', role: '', period: '2024.01 - 2024.01' }
-                            : { school: '', major: '', status: '', period: '2024.01 - 2024.01' },
-                        ] as any,
-                      })
-                    }
+                    onClick={() => {
+                      if (type === 'experience') {
+                        updateCurrentResume({
+                          experience: [
+                            ...resume.experience,
+                            { company: '', role: '', period: '2024.01 - 2024.01' },
+                          ],
+                        });
+                      } else {
+                        updateCurrentResume({
+                          education: [
+                            ...resume.education,
+                            { school: '', major: '', status: '', period: '2024.01 - 2024.01' },
+                          ],
+                        });
+                      }
+                    }}
                   >
                     + 추가
                   </Button>
@@ -554,7 +585,7 @@ function ResumeDetailPage() {
               }
             >
               <div className="space-y-6">
-                {(resume[type] as (Experience | Education)[]).map((item, i) => {
+                {resume[type].map((item, i) => {
                   const parts = item.period.split(' - ');
                   const start = parts[0]?.split('.') || ['', ''];
                   const end = parts[1]?.split('.') || ['', ''];
@@ -584,10 +615,15 @@ function ResumeDetailPage() {
                                 }
                                 placeholder={isExp ? '회사명을 입력하세요' : '학교명을 입력하세요'}
                                 onChange={(e) => {
-                                  const n = [...resume[type]];
-                                  if (isExp) (n[i] as Experience).company = e.target.value;
-                                  else (n[i] as Education).school = e.target.value;
-                                  updateCurrentResume({ [type]: n as any });
+                                  if (isExp) {
+                                    const newData = [...resume.experience];
+                                    newData[i] = { ...newData[i], company: e.target.value };
+                                    updateCurrentResume({ experience: newData });
+                                  } else {
+                                    const newData = [...resume.education];
+                                    newData[i] = { ...newData[i], school: e.target.value };
+                                    updateCurrentResume({ education: newData });
+                                  }
                                 }}
                               />
                             </div>
@@ -600,16 +636,21 @@ function ResumeDetailPage() {
                                 }
                                 placeholder={isExp ? '담당 직무' : '전공 및 졸업 상태'}
                                 onChange={(e) => {
-                                  const n = [...resume[type]];
-                                  if (isExp) (n[i] as Experience).role = e.target.value;
-                                  else (n[i] as Education).major = e.target.value;
-                                  updateCurrentResume({ [type]: n as any });
+                                  if (isExp) {
+                                    const newData = [...resume.experience];
+                                    newData[i] = { ...newData[i], role: e.target.value };
+                                    updateCurrentResume({ experience: newData });
+                                  } else {
+                                    const newData = [...resume.education];
+                                    newData[i] = { ...newData[i], major: e.target.value };
+                                    updateCurrentResume({ education: newData });
+                                  }
                                 }}
                               />
                             </div>
-                            <div className="flex-shrink-0 lg:col-span-5">
+                            <div className="shrink-0 lg:col-span-5">
                               <label className={labelClass}>기간 설정</label>
-                              <div className="flex h-[50px] items-center gap-1 whitespace-nowrap">
+                              <div className="flex h-12.5 items-center gap-1 whitespace-nowrap">
                                 <select
                                   className={selectClass}
                                   value={p.startYear}
@@ -658,7 +699,7 @@ function ResumeDetailPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="w-12 flex-shrink-0 pt-6">
+                          <div className="w-12 shrink-0 pt-6">
                             <button
                               onClick={() => setDeleteConfirm({ type, index: i })}
                               className="bg-error/10 text-error hover:bg-error flex h-12 w-12 items-center justify-center rounded-xl font-black shadow-sm transition-all hover:text-white"
@@ -673,12 +714,12 @@ function ResumeDetailPage() {
                             <p className="text-midnight-ink w-56 truncate text-xl font-black">
                               {isExp ? (item as Experience).company : (item as Education).school}
                             </p>
-                            <div className="bg-soft-pebble h-6 w-px flex-shrink-0" />
+                            <div className="bg-soft-pebble h-6 w-px shrink-0" />
                             <p className="text-slate-gray flex-1 truncate text-lg font-bold">
                               {isExp ? (item as Experience).role : (item as Education).major}
                             </p>
                           </div>
-                          <span className="text-point-blue border-point-blue/20 ml-8 flex-shrink-0 rounded-full border bg-white px-6 py-2 text-lg font-black shadow-md">
+                          <span className="text-point-blue border-point-blue/20 ml-8 shrink-0 rounded-full border bg-white px-6 py-2 text-lg font-black shadow-md">
                             {item.period}
                           </span>
                         </div>
@@ -699,7 +740,7 @@ function ResumeDetailPage() {
                   <Button
                     variant="outline"
                     className={`${actionButtonClass} bg-pure-white border-2`}
-                    onClick={(e: any) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       setShowPortfolioList(!showPortfolioList);
                     }}
@@ -709,7 +750,7 @@ function ResumeDetailPage() {
                   <Button
                     variant="blue"
                     className={actionButtonClass}
-                    onClick={(e: any) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       fileInputRef.current?.click();
                     }}
@@ -720,11 +761,17 @@ function ResumeDetailPage() {
                     type="file"
                     ref={fileInputRef}
                     className="hidden"
-                    onChange={(e) => {
+                    accept=".pdf"
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                       const file = e.target.files?.[0];
                       if (file) {
+                        if (file.type !== 'application/pdf') {
+                          showToast('⚠️ PDF 형식의 파일만 업로드 가능합니다.');
+                          e.target.value = '';
+                          return;
+                        }
                         const newP = { id: Date.now(), name: file.name };
-                        setPortfolios((p) => [newP, ...p]);
+                        setPortfolios((prev) => [newP, ...prev]);
                         updateCurrentResume({ selectedPortfolioId: newP.id });
                       }
                     }}
@@ -740,7 +787,7 @@ function ResumeDetailPage() {
               >
                 <div className="flex min-w-0 items-center gap-6">
                   <div
-                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${resume.selectedPortfolioId ? 'bg-point-blue text-white' : 'bg-silver-mist text-slate-gray'} shadow-sm`}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${resume.selectedPortfolioId ? 'bg-point-blue text-white' : 'bg-silver-mist text-slate-gray'} shadow-sm`}
                   >
                     <svg
                       width="20"
@@ -761,6 +808,11 @@ function ResumeDetailPage() {
                   </span>
                 </div>
               </div>
+              {isEditing && (
+                <p className="text-slate-gray text-s mt-3 px-2 font-bold">
+                  • PDF 형식의 파일만 업로드 가능합니다.
+                </p>
+              )}
               <AnimatePresence>
                 {showPortfolioList && isEditing && (
                   <motion.div
@@ -797,7 +849,7 @@ function ResumeDetailPage() {
                   <Button
                     variant="outline"
                     className={`${actionButtonClass} bg-pure-white border-2`}
-                    onClick={(e: any) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       setShowSelfIntroList(!showSelfIntroList);
                     }}
@@ -807,7 +859,7 @@ function ResumeDetailPage() {
                   <Button
                     variant="blue"
                     className={actionButtonClass}
-                    onClick={(e: any) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       setInnerEditingIntro(!innerEditingIntro);
                     }}
@@ -871,11 +923,11 @@ function ResumeDetailPage() {
                 </AnimatePresence>
               </div>
               <div
-                className={`min-h-[350px] rounded-3xl border-2 p-10 shadow-inner transition-all ${isEditing ? 'border-point-blue/50 bg-white' : 'bg-cloud-dancer/30 border-soft-pebble'}`}
+                className={`min-h-87.5 rounded-3xl border-2 p-10 shadow-inner transition-all ${isEditing ? 'border-point-blue/50 bg-white' : 'bg-cloud-dancer/30 border-soft-pebble'}`}
               >
                 {innerEditingIntro && isEditing && resume.selectedSelfIntroId ? (
                   <textarea
-                    className="h-full min-h-[300px] w-full resize-none bg-transparent text-xl leading-relaxed font-medium outline-none"
+                    className="h-full min-h-75 w-full resize-none bg-transparent text-xl leading-relaxed font-medium outline-none"
                     placeholder="내용을 상세히 입력해 주세요."
                     value={currentSelfIntro?.content || ''}
                     onChange={(e) =>
@@ -912,7 +964,7 @@ function ResumeDetailPage() {
 
       <AnimatePresence>
         {deleteConfirm && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center px-6">
+          <div className="fixed inset-0 z-300 flex items-center justify-center px-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
