@@ -65,17 +65,6 @@ public class AuthSignUpService {
             throw new BusinessException("DUPLICATE_EMAIL", "email", "이미 사용 중인 이메일입니다.");
         }
 
-        // 🔹 사업자번호 정규화 (단 한 번)
-        String normalizedBusinessNumber = normalizeBusinessNumber(req.getBusinessNumber());
-
-        if (companyRepository.existsByBusinessRegistrationNumber(normalizedBusinessNumber)) {
-            throw new BusinessException(
-                    "DUPLICATE_BUSINESS_NUMBER",
-                    "businessNumber",
-                    "이미 등록된 사업자등록번호입니다."
-            );
-        }
-
         String username = generateUniqueUsername(req.getEmail());
         String userName = resolveCompanyUserName(req);
         String phone = requirePhone(req.getManagerPhone(), "managerPhone", "담당자 연락처는 필수입니다.");
@@ -90,7 +79,7 @@ public class AuthSignUpService {
         );
         userRepository.save(user);
 
-        Company company = buildCompanyEntity(user, normalizedBusinessNumber, req);
+        Company company = buildCompanyEntity(user, req);
         companyRepository.save(company);
     }
 
@@ -98,7 +87,6 @@ public class AuthSignUpService {
 
     private Company buildCompanyEntity(
             User user,
-            String businessNumber, // ⭐ 반드시 정규화된 값만 받음
             CompanySignUpRequest req
     ) {
         CompanySignUpRequest.CompanyLink link = req.getCompany();
@@ -117,7 +105,6 @@ public class AuthSignUpService {
 
             return new Company(
                     user,
-                    businessNumber,
                     nc.getName(),
                     nc.getAddress(),
                     nc.getSize(),
@@ -143,7 +130,6 @@ public class AuthSignUpService {
 
         return new Company(
                 user,
-                businessNumber,
                 base.getCompaniesName(),
                 base.getAddress(),
                 base.getSize(),
@@ -180,7 +166,4 @@ public class AuthSignUpService {
         return phone;
     }
 
-    private String normalizeBusinessNumber(String raw) {
-        return raw.replaceAll("[^0-9]", "");
-    }
 }

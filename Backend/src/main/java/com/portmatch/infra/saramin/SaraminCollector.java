@@ -2,8 +2,8 @@ package com.portmatch.infra.saramin;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.portmatch.domain.jobcompanies.entity.JobCompaniesEntity;
-import com.portmatch.domain.jobcompanies.repository.JobCompaniesRepository;
+import com.portmatch.domain.companies.entity.Company;
+import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.domain.jobposting.repository.JobPostingRepository;
 import jakarta.transaction.Transactional;
@@ -24,7 +24,7 @@ import java.io.IOException;
 public class SaraminCollector {
 
     private final JobPostingRepository jobPostingRepository;
-    private final JobCompaniesRepository jobCompaniesRepository;
+    private final CompanyRepository companyRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -62,7 +62,7 @@ public class SaraminCollector {
         String href = job.path("company").path("detail").path("href").asText();
         String cid = extractCid(href);
 
-        if (cid != null && !jobCompaniesRepository.existsById(cid)) {
+        if (cid != null && !companyRepository.existsByCid(cid)) {
             // 기업 정보가 없으면 크롤링해서 저장
             saveCompany(cid);
         }
@@ -98,16 +98,19 @@ public class SaraminCollector {
         String corpNm = infoCompany.get(0).getElementsByClass("name").text();
 
         // 기업 정보 파싱
-        JobCompaniesEntity company = JobCompaniesEntity.builder()
-                .cid(cid)
-                .corpName(corpNm)
-                .corpAddr(doc.getElementsByClass("txt_address").text())
-                .logo(extractLogo(doc))
-                .homePg(infoCompany.get(0).getElementsByAttribute("href").attr("href"))
-                // 필요시 매출액, 사원수 로직 추가
-                .build();
+        Company company = new Company(
+                cid,
+                corpNm,
+                doc.getElementsByClass("txt_address").text(),
+                null,
+                infoCompany.get(0).getElementsByAttribute("href").attr("href"),
+                null,
+                null,
+                null,
+                extractLogo(doc)
+        );
 
-        jobCompaniesRepository.save(company);
+        companyRepository.save(company);
     }
 
     private String extractCid(String href) {

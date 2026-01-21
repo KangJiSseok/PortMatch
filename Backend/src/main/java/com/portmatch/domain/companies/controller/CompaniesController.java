@@ -1,7 +1,7 @@
-package com.portmatch.domain.jobcompanies.controller;
+package com.portmatch.domain.companies.controller;
 
-import com.portmatch.domain.jobcompanies.dto.JobCompaniesDto;
-import com.portmatch.domain.jobcompanies.service.JobCompaniesService;
+import com.portmatch.domain.companies.dto.CompaniesDto;
+import com.portmatch.domain.companies.service.CompaniesService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -15,13 +15,13 @@ import java.util.List;
 @RequestMapping("/api/companies")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
-public class JobCompaniesController {
+public class CompaniesController {
 
-    private final JobCompaniesService jobCompaniesService;
+    private final CompaniesService jobCompaniesService;
 
     // 0. 새로운 기업 정보 입력 (CREATE)
     @PostMapping
-    public ResponseEntity<String> createCompany(@RequestBody JobCompaniesDto dto) {
+    public ResponseEntity<String> createCompany(@RequestBody CompaniesDto dto) {
         log.info("새로운 기업 생성 요청: {}", dto.getCorpName());
 
         if (dto.getCorpName() == null || dto.getCorpName().isEmpty()) {
@@ -38,23 +38,23 @@ public class JobCompaniesController {
 
     // 1. 전체 기업 리스트 조회
     @GetMapping
-    public ResponseEntity<List<JobCompaniesDto>> getAllCompanys() {
+    public ResponseEntity<List<CompaniesDto>> getAllCompanys() {
         log.info("전체 기업 리스트 조회 요청");
-        List<JobCompaniesDto> companyList = jobCompaniesService.getAllCompanys();
+        List<CompaniesDto> companyList = jobCompaniesService.getAllCompanys();
         return ResponseEntity.ok(companyList);
     }
 
     // 2. [추가] 특정 기업 상세 조회 (이게 있어야 하나씩 볼 수 있어!)
     @GetMapping("/{cid}")
-    public ResponseEntity<JobCompaniesDto> getCompany(@PathVariable String cid) {
+    public ResponseEntity<CompaniesDto> getCompany(@PathVariable String cid) {
         log.info("기업 상세 조회 요청: {}", cid);
-        JobCompaniesDto dto = jobCompaniesService.getCompany(cid);
+        CompaniesDto dto = jobCompaniesService.getCompany(cid);
         return ResponseEntity.ok(dto);
     }
 
     // 3. 기업 정보 수정 (ID를 경로에서 받도록 수정!)
     @PutMapping("/{cid}")
-    public ResponseEntity<String> updateCompany(@PathVariable String cid, @RequestBody JobCompaniesDto dto) {
+    public ResponseEntity<String> updateCompany(@PathVariable String cid, @RequestBody CompaniesDto dto) {
         log.info("기업 수정 요청 - ID: {}", cid);
 
         // 경로의 ID를 DTO에도 세팅해주는 게 안전해

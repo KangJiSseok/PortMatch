@@ -17,11 +17,8 @@ public class Company {
 
     // companies.user_id -> users.id (FK)
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "user_id", unique = true)
     private User user;
-
-    @Column(name = "business_registration_number", nullable = false)
-    private String businessRegistrationNumber;
 
     @Column(name = "companies_name", nullable = false)
     private String companiesName;
@@ -35,19 +32,74 @@ public class Company {
     @Column(name = "homepage_url")
     private String homepageUrl;
 
+    @Column
+    private String cid;
+
+    @Column
+    private String totPsncnt;
+
+    @Column
+    private String yrSalesAmt;
+
+    @Column
+    private String busiCont;
+
+    @Column
+    private String logo;
+
     public Company(
             User user,
-            String businessRegistrationNumber,
             String companiesName,
             String address,
             String size,
             String homepageUrl
     ) {
         this.user = user;
-        this.businessRegistrationNumber = businessRegistrationNumber;
         this.companiesName = companiesName;
         this.address = address;
         this.size = size;
         this.homepageUrl = homepageUrl;
+    }
+
+    public Company(
+            String cid,
+            String companiesName,
+            String address,
+            String size,
+            String homepageUrl,
+            String totPsncnt,
+            String yrSalesAmt,
+            String busiCont,
+            String logo
+    ) {
+        this.cid = cid;
+        this.companiesName = companiesName;
+        this.address = address;
+        this.size = size;
+        this.homepageUrl = homepageUrl;
+        this.totPsncnt = totPsncnt;
+        this.yrSalesAmt = yrSalesAmt;
+        this.busiCont = busiCont;
+        this.logo = logo;
+    }
+
+    public void updateJobCompany(
+            String companiesName,
+            String address,
+            String size,
+            String homepageUrl,
+            String totPsncnt,
+            String yrSalesAmt,
+            String busiCont,
+            String logo
+    ) {
+        this.companiesName = companiesName;
+        this.address = address;
+        this.size = size;
+        this.homepageUrl = homepageUrl;
+        this.totPsncnt = totPsncnt;
+        this.yrSalesAmt = yrSalesAmt;
+        this.busiCont = busiCont;
+        this.logo = logo;
     }
 }
