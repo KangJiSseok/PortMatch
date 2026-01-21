@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import Button from '@/components/Button/Button';
 import LoadingState from '@/components/states/LoadingState';
 import EmptyState from '@/components/states/EmptyState';
 import ErrorState from '@/components/states/ErrorState';
@@ -44,10 +45,29 @@ const MOCK_JOBS = [
 
 type Sort = 'latest' | 'accuracy';
 type DeadlineFilter = 'all' | 'urgent' | 'relaxed' | 'always';
-type ExperienceFilter = 'all' | 'junior' | '1-3' | '3-5' | '5+';
+type ExperienceFilter = 'all' | 'junior' | '1+' | '3+' | '5+';
+// ⭐ 타입 변경: '1-3' | '3-5' | '5+' → '1+' | '3+' | '5+'
 
 // 모든 기술 스택 추출
 const ALL_STACKS = Array.from(new Set(MOCK_JOBS.flatMap((job) => job.stacks))).sort();
+
+// 아이콘 컴포넌트들
+const FilterIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+    />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
 
 function JobPostingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -155,22 +175,31 @@ function JobPostingsPage() {
       });
     }
 
-    // 경력 필터링
+    // ⭐ 경력 필터링 로직 수정
     if (experienceFilter !== 'all') {
       filtered = filtered.filter((job) => {
         const type = job.type;
+        
         if (experienceFilter === 'junior') {
+          // 신입만
           return type.includes('신입');
         }
-        if (experienceFilter === '1-3') {
-          return /[1-3]년/.test(type) && !/[5-9]년/.test(type);
+        
+        if (experienceFilter === '1+') {
+          // 1년 이상: "경력", "1년", "2년", "3년" 등 포함 (신입 제외)
+          return type.includes('경력') && !type.includes('신입만');
         }
-        if (experienceFilter === '3-5') {
-          return /[3-5]년/.test(type);
+        
+        if (experienceFilter === '3+') {
+          // 3년 이상: 3, 4, 5, 6, 7, 8, 9년 포함
+          return /[3-9]년/.test(type);
         }
+        
         if (experienceFilter === '5+') {
-          return /[5-9]년↑/.test(type) || type.includes('5년↑');
+          // 5년 이상: 5, 6, 7, 8, 9년 포함 또는 "5년↑"
+          return /[5-9]년/.test(type) || type.includes('5년↑');
         }
+        
         return true;
       });
     }
@@ -200,14 +229,7 @@ function JobPostingsPage() {
     <div className="bg-white border border-zinc-100 rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-midnight-ink text-lg font-black flex items-center gap-2">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
+          <FilterIcon />
           필터
         </h2>
         {activeFilterCount > 0 && (
@@ -227,17 +249,16 @@ function JobPostingsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {ALL_STACKS.map((stack) => (
-            <button
+            <Button
               key={stack}
+              variant="filter-chip"
+              size="sm"
+              isActive={selectedStacks.includes(stack)}
               onClick={() => toggleStack(stack)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                selectedStacks.includes(stack)
-                  ? 'bg-point-blue text-white shadow-sm'
-                  : 'bg-zinc-50 text-zinc-600 border border-zinc-200 hover:border-point-blue/30'
-              }`}
+              className="!rounded-lg"
             >
               {stack}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -252,58 +273,65 @@ function JobPostingsPage() {
             { value: 'relaxed' as const, label: '여유있는 공고' },
             { value: 'always' as const, label: '상시 채용' },
           ].map((option) => (
-            <button
+            <Button
               key={option.value}
+              variant="light"
+              size="sm"
+              fullWidth
               onClick={() => changeDeadlineFilter(option.value)}
-              className={`rounded-lg px-3 py-2 text-xs font-bold text-left transition-all ${
+              className={`!justify-start !rounded-lg ${
                 deadlineFilter === option.value
-                  ? 'bg-midnight-ink text-white shadow-sm'
-                  : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'
+                  ? '!bg-midnight-ink !text-white !shadow-sm'
+                  : '!bg-zinc-50 !text-zinc-600 hover:!bg-zinc-100'
               }`}
             >
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
-      {/* 경력 필터 */}
+      {/* ⭐ 경력 필터 - 라벨 수정 */}
       <div className="mb-6">
         <h3 className="text-midnight-ink text-sm font-bold mb-3">경력</h3>
         <div className="flex flex-col gap-2">
           {[
             { value: 'all' as const, label: '전체' },
             { value: 'junior' as const, label: '신입' },
-            { value: '1-3' as const, label: '1-3년' },
-            { value: '3-5' as const, label: '3-5년' },
+            { value: '1+' as const, label: '1년 이상' },
+            { value: '3+' as const, label: '3년 이상' },
             { value: '5+' as const, label: '5년 이상' },
           ].map((option) => (
-            <button
+            <Button
               key={option.value}
+              variant="light"
+              size="sm"
+              fullWidth
               onClick={() => changeExperienceFilter(option.value)}
-              className={`rounded-lg px-3 py-2 text-xs font-bold text-left transition-all ${
+              className={`!justify-start !rounded-lg ${
                 experienceFilter === option.value
-                  ? 'bg-midnight-ink text-white shadow-sm'
-                  : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'
+                  ? '!bg-midnight-ink !text-white !shadow-sm'
+                  : '!bg-zinc-50 !text-zinc-600 hover:!bg-zinc-100'
               }`}
             >
               {option.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       {/* 필터 초기화 */}
       {activeFilterCount > 0 && (
-        <button
+        <Button
+          variant="outline"
+          size="sm"
+          fullWidth
+          icon={<CloseIcon />}
           onClick={clearAllFilters}
-          className="w-full text-zinc-500 hover:text-midnight-ink text-xs font-bold flex items-center justify-center gap-2 py-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-all"
+          className="!text-zinc-500 hover:!text-midnight-ink !rounded-lg"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
           모든 필터 초기화
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -333,52 +361,44 @@ function JobPostingsPage() {
 
             <div className="flex gap-2 items-center">
               {/* 모바일 필터 버튼 */}
-              <button
+              <Button
+                variant="filter"
+                size="sm"
+                icon={<FilterIcon />}
+                badge={activeFilterCount > 0 ? activeFilterCount : undefined}
+                isActive={activeFilterCount > 0}
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className={`lg:hidden relative flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                  activeFilterCount > 0
-                    ? 'bg-point-blue text-white'
-                    : 'bg-zinc-100/50 text-zinc-600 border border-zinc-100 hover:border-zinc-200'
-                }`}
+                className="lg:hidden"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                  />
-                </svg>
                 필터
-                {activeFilterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-white text-point-blue rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-black">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
+              </Button>
 
               {/* 정렬 */}
               <div className="bg-zinc-100/50 flex gap-1 rounded-xl p-1 border border-zinc-100">
-                <button
+                <Button
+                  variant="light"
+                  size="sm"
                   onClick={() => changeSort('latest')}
-                  className={`rounded-lg px-4 py-1.5 text-[11px] font-bold transition-all ${
+                  className={`!px-4 !py-1.5 !text-[11px] !rounded-lg ${
                     sort === 'latest'
-                      ? 'bg-white text-midnight-ink shadow-sm'
-                      : 'text-zinc-400 hover:text-zinc-600'
+                      ? '!bg-white !text-midnight-ink !shadow-sm !border-transparent'
+                      : '!bg-transparent !text-zinc-400 hover:!text-zinc-600 !border-transparent'
                   }`}
                 >
                   최신순
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="light"
+                  size="sm"
                   onClick={() => changeSort('accuracy')}
-                  className={`rounded-lg px-4 py-1.5 text-[11px] font-bold transition-all ${
+                  className={`!px-4 !py-1.5 !text-[11px] !rounded-lg ${
                     sort === 'accuracy'
-                      ? 'bg-white text-midnight-ink shadow-sm'
-                      : 'text-zinc-400 hover:text-zinc-600'
+                      ? '!bg-white !text-midnight-ink !shadow-sm !border-transparent'
+                      : '!bg-transparent !text-zinc-400 hover:!text-zinc-600 !border-transparent'
                   }`}
                 >
                   정확도순
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -480,9 +500,13 @@ function JobPostingsPage() {
                             {job.deadline}
                           </span>
                         </div>
-                        <button className="bg-midnight-ink text-white hover:bg-point-blue w-full rounded-xl px-6 py-2.5 text-xs font-black transition-colors md:w-auto">
+                        <Button
+                          variant="dark"
+                          size="sm"
+                          className="!w-full md:!w-auto hover:!bg-point-blue !rounded-xl !px-6 !py-2.5"
+                        >
                           공고 보기
-                        </button>
+                        </Button>
                       </div>
                     </motion.div>
                   ))
