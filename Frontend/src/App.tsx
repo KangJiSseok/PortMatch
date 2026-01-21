@@ -19,6 +19,7 @@ import ResumeDetailPage from './pages/ResumeDetailPage';
 import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 import InterviewListPage from './pages/InterviewListPage';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
+import JobPostDetailPage from './pages/JobPostDetailPage';
 
 function AppContent() {
   const location = useLocation();
@@ -127,6 +128,13 @@ function AppContent() {
               <ProtectedRoute>
                 <RecommendCompanyPage />
               </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="job-posts/:id"
+            element={
+              <JobPostDetailPage />
             }
           />
 

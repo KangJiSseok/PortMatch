@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+wheelhouse/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.venv/
+
+# IDE/editor
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Runtime artifacts
+/runs/*
+/temp_files/*
+/docs_cache/*
+!/runs/.gitkeep
+!/temp_files/.gitkeep
+!/docs_cache/.gitkeep
+
+# Env
+.env
+.env.*
+
+# Logs
+*.log

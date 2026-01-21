@@ -15,7 +15,7 @@ Tool1: 후보 앵커 생성
 Tool2: 검증 및 상세 추출
 - `company_text`를 읽고 다음을 생성합니다:
   - `project_statement` (한국어 한 문장)
-  - `problem` / `solution` / `role` / `tech`
+  - `problem` / `solution` / `tech`
   - `evidence` (snippet + source)
   - `support_type` (explicit/implicit/none)
   - `evidence_summary`
@@ -60,7 +60,6 @@ POST /api/company-project-analysis
       "project_name": "string",
       "problem": "string",
       "solution": "string",
-      "role": "string",
       "tech": ["string"]
     }
   ]
