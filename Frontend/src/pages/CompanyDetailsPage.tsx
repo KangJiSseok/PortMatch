@@ -70,13 +70,13 @@ const DUMMY_COMPANY: CompanyDetails = {
   ],
   jobPostings: [
     {
-      id: 101,
+      id: 1,
       title: '시니어 프론트엔드 개발자 (React/TS)',
       deadline: 'D-5',
       tags: ['채용중', '경력 5년↑'],
     },
     {
-      id: 102,
+      id: 2,
       title: '백엔드 개발자 (Node.js/Go)',
       deadline: 'D-12',
       tags: ['채용중', '정규직', '경력 3년↑'],
@@ -89,6 +89,7 @@ function CompanyDetailsPage() {
   const navigate = useNavigate();
   const [company, setCompany] = useState<CompanyDetails | null>(DUMMY_COMPANY);
   const [isLoading, setIsLoading] = useState(false);
+  const [isScraping, setIsScraping] = useState(false);
   const [hasJobPostings, setHasJobPostings] = useState(true);
   const [toast, setToast] = useState<{ message: React.ReactNode; visible: boolean }>({
     message: '',
@@ -113,13 +114,21 @@ function CompanyDetailsPage() {
     fetchDetails();
   }, [companyId]);
 
-  if (isLoading) {
-    return (
-      <div className="bg-pure-white flex min-h-screen items-center justify-center">
-        <div className="border-point-blue h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"></div>
-      </div>
-    );
-  }
+  const scrollToId = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const offset = 120;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = element.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   const showToastMessage = (msg: React.ReactNode) => {
     setToast({ message: msg, visible: true });
@@ -127,7 +136,7 @@ function CompanyDetailsPage() {
   };
 
   const handleScrap = async () => {
-    if (!company) return;
+    if (!company || isScraping) return;
 
     const previousScrappedState = company.isScrapped;
     const nextState = !previousScrappedState;
@@ -148,6 +157,7 @@ function CompanyDetailsPage() {
       return;
     }
 
+    setIsScraping(true);
     setCompany({ ...company, isScrapped: nextState });
 
     try {
@@ -168,6 +178,8 @@ function CompanyDetailsPage() {
     } catch {
       setCompany({ ...company, isScrapped: previousScrappedState });
       alert('스크랩 처리 중 서버 오류가 발생했습니다. 다시 시도해 주세요.');
+    } finally {
+      setIsScraping(false);
     }
   };
 
@@ -193,6 +205,14 @@ function CompanyDetailsPage() {
       }
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="bg-pure-white flex min-h-screen items-center justify-center">
+        <div className="border-point-blue h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"></div>
+      </div>
+    );
+  }
 
   const heartPath =
     'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.505 3.975 3 5.5l7 7Z';
@@ -265,19 +285,34 @@ function CompanyDetailsPage() {
                 <Button
                   size="lg"
                   disabled={!hasJobPostings}
-                  className={`h-12 flex-1 rounded-2xl px-6 text-sm font-black whitespace-nowrap shadow-lg transition-all md:h-14.5 md:flex-none md:text-base ${hasJobPostings ? 'bg-cloud-dancer text-midnight-ink hover:bg-pure-white hover:scale-105' : 'text-pure-white/30 cursor-not-allowed border-none bg-white/10'}`}
+                  className={`h-14.5 flex-1 rounded-2xl px-6 text-sm font-black whitespace-nowrap shadow-lg transition-all md:flex-none md:text-base ${
+                    hasJobPostings
+                      ? 'bg-pure-white text-midnight-ink hover:bg-cloud-dancer hover:scale-105'
+                      : 'text-pure-white/30 cursor-not-allowed border-none bg-white/10'
+                  }`}
                   onClick={() => window.open(company?.website, '_blank')}
                 >
                   기업 홈페이지 〉
                 </Button>
+
                 <motion.button
-                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={
+                    !isScraping
+                      ? {
+                          scale: 1.05,
+                          backgroundColor: company?.isScrapped ? '#fff1f2' : '#f9fafb',
+                        }
+                      : {}
+                  }
+                  whileTap={!isScraping ? { scale: 0.95 } : {}}
                   onClick={handleScrap}
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 shadow-lg transition-all md:h-14.5 md:w-14.5 ${
+                  disabled={isScraping}
+                  className={`flex h-14.5 w-14.5 shrink-0 items-center justify-center rounded-2xl border-2 shadow-xl transition-all ${
+                    isScraping ? 'cursor-not-allowed opacity-50' : ''
+                  } ${
                     company?.isScrapped
-                      ? 'bg-pure-white border-red-500'
-                      : 'text-pure-white border-white/20 bg-black/40 backdrop-blur-md'
+                      ? 'bg-pure-white border-red-500 text-red-500'
+                      : 'bg-pure-white text-midnight-ink border-zinc-100'
                   }`}
                 >
                   <svg
@@ -287,7 +322,6 @@ function CompanyDetailsPage() {
                     fill={company?.isScrapped ? '#ef4444' : 'none'}
                     stroke={company?.isScrapped ? '#ef4444' : 'currentColor'}
                     strokeWidth="2.5"
-                    className="transition-colors duration-200"
                   >
                     <path d={heartPath} />
                   </svg>
@@ -325,7 +359,10 @@ function CompanyDetailsPage() {
         <div className="mx-auto mt-12 w-full max-w-7xl px-6 md:mt-16 md:px-8">
           <div className="grid grid-cols-12 gap-8 md:gap-12">
             <div className="col-span-12 space-y-8 md:space-y-12 lg:col-span-8">
-              <section className="border-silver-mist bg-pure-white rounded-3xl border p-6 shadow-sm md:rounded-[40px] md:p-12">
+              <section
+                id="section-info"
+                className="border-silver-mist bg-pure-white rounded-3xl border p-6 shadow-sm md:rounded-[40px] md:p-12"
+              >
                 <h2 className="border-point-blue text-midnight-ink mb-8 border-l-4 pl-4 text-xl font-black tracking-tighter md:mb-10 md:border-l-8 md:pl-6 md:text-3xl">
                   기업 정보
                 </h2>
@@ -355,7 +392,10 @@ function CompanyDetailsPage() {
                 </p>
               </section>
 
-              <section className="border-silver-mist bg-pure-white rounded-3xl border p-6 shadow-sm md:rounded-[40px] md:p-12">
+              <section
+                id="section-projects"
+                className="border-silver-mist bg-pure-white rounded-3xl border p-6 shadow-sm md:rounded-[40px] md:p-12"
+              >
                 <h2 className="border-point-blue text-midnight-ink mb-8 border-l-4 pl-4 text-xl font-black tracking-tighter md:mb-10 md:border-l-8 md:pl-6 md:text-3xl">
                   기업 프로젝트 내역
                 </h2>
@@ -387,7 +427,10 @@ function CompanyDetailsPage() {
                 </div>
               </section>
 
-              <section className="border-silver-mist bg-pure-white rounded-3xl border p-6 shadow-sm md:rounded-[40px] md:p-12">
+              <section
+                id="section-jobs"
+                className="border-silver-mist bg-pure-white rounded-3xl border p-6 shadow-sm md:rounded-[40px] md:p-12"
+              >
                 <h2 className="border-point-blue text-midnight-ink mb-8 border-l-4 pl-4 text-xl font-black tracking-tighter md:mb-10 md:border-l-8 md:pl-6 md:text-3xl">
                   채용 중인 공고
                 </h2>
@@ -397,7 +440,7 @@ function CompanyDetailsPage() {
                       <div
                         key={job.id}
                         className="group flex flex-col justify-between gap-4 py-6 first:pt-0 last:pb-0 md:flex-row md:items-center md:py-8"
-                        onClick={() => navigate(`/jobs/${job.id}`)}
+                        onClick={() => navigate(`/job-posts/${job.id}`)}
                       >
                         <div className="min-w-0 flex-1 space-y-2 md:space-y-3">
                           <h4 className="group-hover:text-point-blue text-base font-black break-keep transition-colors md:text-2xl">
@@ -440,42 +483,82 @@ function CompanyDetailsPage() {
             </div>
 
             <aside className="col-span-12 min-w-0 lg:col-span-4">
-              <div className="sticky top-32 space-y-6">
-                <div className="border-silver-mist bg-pure-white hidden rounded-3xl border p-6 shadow-sm md:rounded-4xl md:p-8 lg:block">
-                  <h3 className="text-midnight-ink mb-6 text-lg font-black tracking-tight md:text-xl">
-                    Quick Actions
-                  </h3>
-                  <div className="space-y-3 md:space-y-4">
+              <div className="sticky top-24 space-y-5">
+                <div className="bg-pure-white hidden rounded-4xl border border-zinc-100 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] lg:block">
+                  <div className="mb-6">
+                    <h3 className="text-midnight-ink text-[13px] font-black tracking-widest uppercase opacity-40">
+                      Quick Menu
+                    </h3>
+                  </div>
+
+                  <nav className="space-y-3">
+                    {[
+                      { id: 'section-info', label: '기업 정보' },
+                      { id: 'section-projects', label: '프로젝트 내역' },
+                      { id: 'section-jobs', label: '진행 중인 공고' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => scrollToId(item.id)}
+                        className="group flex w-full items-center py-1 transition-all active:scale-[0.98]"
+                      >
+                        <div className="bg-point-blue h-4 w-1 shrink-0 rounded-full" />
+                        <span className="text-midnight-ink group-hover:text-point-blue px-4 text-sm font-bold transition-all group-hover:translate-x-0.5">
+                          {item.label}
+                        </span>
+                      </button>
+                    ))}
+                  </nav>
+
+                  <div className="mt-6 space-y-2 border-t border-zinc-50 pt-6">
                     <Button
-                      variant="blue"
-                      size="xl"
-                      className="h-auto w-full rounded-2xl py-4 text-sm font-black shadow-lg transition-all hover:brightness-110 md:py-5 md:text-xl"
+                      variant="outline"
                       onClick={handleShare}
+                      className="w-full rounded-xl border-zinc-200 py-3 text-sm font-black transition-all hover:border-zinc-900 hover:bg-zinc-900 hover:text-white"
                     >
-                      기업 정보 공유하기
+                      공유하기
                     </Button>
                     <Button
-                      className="bg-cloud-dancer text-midnight-ink border-silver-mist hover:bg-silver-mist h-auto w-full rounded-2xl py-4 text-sm font-black transition-all md:py-5 md:text-xl"
-                      onClick={() => navigate('/recommend/companies')}
+                      variant="blue"
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                      className="w-full rounded-xl py-3 text-sm font-black shadow-[0_8px_15px_rgba(0,119,255,0.1)] transition-all hover:scale-[1.01]"
                     >
-                      비슷한 기업 추천보기
+                      맨 위로 이동
                     </Button>
                   </div>
                 </div>
+
                 <div
-                  className={`rounded-3xl p-6 shadow-xl transition-all md:rounded-4xl md:p-8 ${hasJobPostings ? 'bg-point-blue text-pure-white shadow-point-blue/20' : 'bg-silver-mist text-slate-gray'}`}
+                  className={`rounded-4xl p-8 transition-all duration-500 ${
+                    hasJobPostings
+                      ? 'bg-midnight-ink text-pure-white shadow-2xl'
+                      : 'text-slate-gray bg-zinc-100'
+                  }`}
                 >
-                  <h4 className="mb-2 text-lg font-black md:text-xl">AI 역량 분석 매칭</h4>
-                  <p className="mb-6 text-[10px] leading-relaxed font-medium break-keep opacity-80 md:text-sm">
+                  <div className="mb-4">
+                    <span
+                      className={`mb-2 inline-block rounded-full px-2.5 py-0.5 text-[9px] font-black tracking-wider uppercase ${
+                        hasJobPostings ? 'bg-point-blue text-white' : 'bg-zinc-200 text-zinc-500'
+                      }`}
+                    >
+                      AI Analysis
+                    </span>
+                    <h4 className="text-lg leading-tight font-black">AI 역량 분석 매칭</h4>
+                  </div>
+                  <p className="mb-5 text-sm leading-relaxed font-medium opacity-70">
                     {hasJobPostings
-                      ? '내 포트폴리오를 분석하여 이 기업과의 합격률을 확인해 보세요.'
-                      : '채용 공고가 등록되면 매칭 점수를 확인할 수 있습니다.'}
+                      ? '내 포트폴리오 기반 AI 리포트를 확인하세요.'
+                      : '공고 등록 시 분석이 활성화됩니다.'}
                   </p>
                   <Button
-                    className={`w-full rounded-xl py-3 text-sm font-black md:py-4 md:text-base ${hasJobPostings ? 'bg-pure-white text-point-blue' : 'text-slate-gray cursor-not-allowed border-none bg-white/50'}`}
+                    className={`w-full rounded-xl py-3.5 text-sm font-black transition-all ${
+                      hasJobPostings
+                        ? 'bg-pure-white text-midnight-ink hover:bg-cloud-dancer'
+                        : 'cursor-not-allowed bg-zinc-200 text-zinc-400'
+                    }`}
                     onClick={() => hasJobPostings && navigate('/portfolios')}
                   >
-                    포트폴리오 리포트 확인
+                    리포트 확인하기
                   </Button>
                 </div>
               </div>
@@ -483,49 +566,44 @@ function CompanyDetailsPage() {
           </div>
         </div>
 
-        <div className="bg-pure-white/95 border-silver-mist fixed right-0 bottom-0 left-0 z-50 border-t px-6 pt-4 pb-8 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] backdrop-blur-xl lg:hidden">
-          <div className="mx-auto flex max-w-2xl items-center gap-3">
-            <div className="h-15 flex-2">
-              <Button
-                variant="blue"
-                size="xl"
-                className="flex h-full w-full items-center justify-center rounded-2xl text-sm font-black shadow-lg transition-all hover:brightness-110 md:text-base"
-                onClick={handleShare}
+        <div className="bg-pure-white/80 fixed right-4 bottom-6 left-4 z-50 rounded-3xl border border-zinc-100 px-4 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-2xl lg:hidden">
+          <div className="mx-auto flex max-w-lg items-center gap-3">
+            <Button
+              variant="blue"
+              onClick={handleShare}
+              className="bg-point-blue text-pure-white flex flex-1 items-center justify-center rounded-2xl py-4 text-sm font-black shadow-lg transition-all active:scale-[0.97]"
+            >
+              정보 공유하기
+            </Button>
+
+            <motion.button
+              whileHover={
+                !isScraping
+                  ? { scale: 1.05, backgroundColor: company?.isScrapped ? '#fef2f2' : '#f4f4f5' }
+                  : {}
+              }
+              whileTap={!isScraping ? { scale: 0.9 } : {}}
+              onClick={handleScrap}
+              disabled={isScraping}
+              className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 shadow-sm transition-all ${
+                isScraping ? 'cursor-not-allowed opacity-50' : ''
+              } ${
+                company?.isScrapped
+                  ? 'border-red-200 bg-red-50 text-red-500'
+                  : 'text-midnight-ink border-zinc-100 bg-zinc-50'
+              }`}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill={company?.isScrapped ? '#ef4444' : 'none'}
+                stroke={company?.isScrapped ? '#ef4444' : 'currentColor'}
+                strokeWidth="2.5"
               >
-                기업 정보 공유하기
-              </Button>
-            </div>
-            <div className="h-15 flex-1">
-              <motion.button
-                whileHover={{ scale: 1.02, backgroundColor: 'rgba(240, 240, 240, 0.8)' }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleScrap}
-                className={`flex h-full w-full items-center justify-center rounded-2xl border-2 shadow-lg transition-all ${
-                  company?.isScrapped
-                    ? 'bg-pure-white border-red-500 text-red-500'
-                    : 'bg-pure-white text-midnight-ink border-silver-mist/50'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill={company?.isScrapped ? '#ef4444' : 'none'}
-                    stroke={company?.isScrapped ? '#ef4444' : 'currentColor'}
-                    strokeWidth="2.5"
-                    className="transition-colors duration-200"
-                  >
-                    <path d={heartPath} />
-                  </svg>
-                  <span
-                    className={`text-sm font-black whitespace-nowrap ${company?.isScrapped ? 'text-red-500' : 'text-midnight-ink'}`}
-                  >
-                    스크랩
-                  </span>
-                </div>
-              </motion.button>
-            </div>
+                <path d={heartPath} />
+              </svg>
+            </motion.button>
           </div>
         </div>
 
@@ -535,7 +613,7 @@ function CompanyDetailsPage() {
               initial={{ opacity: 0, y: 50, x: '-50%' }}
               animate={{ opacity: 1, y: 0, x: '-50%' }}
               exit={{ opacity: 0, y: 50, x: '-50%' }}
-              className="bg-midnight-ink text-pure-white fixed bottom-24 left-1/2 z-100 rounded-2xl px-6 py-3 text-center text-sm font-bold whitespace-nowrap shadow-2xl lg:bottom-10"
+              className="bg-midnight-ink text-pure-white fixed bottom-28 left-1/2 z-100 rounded-2xl px-6 py-3 text-center text-sm font-bold whitespace-nowrap shadow-2xl lg:bottom-10"
             >
               {toast.message}
             </motion.div>
