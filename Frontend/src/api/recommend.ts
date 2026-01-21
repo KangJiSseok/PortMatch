@@ -1,37 +1,40 @@
-import type { RecommendedCompany, RecommendedCompaniesResponse } from '@/types/recommend';
+import type { RecommendedCompany } from '@/types/recommend';
 
 /**
  * Mock 데이터 (개발용)
  * - 실제 API 연동 전까지 사용
  * - 백엔드 API 준비되면 제거
  */
-const mockCompanies: RecommendedCompany[] = [
+export const mockCompanies: RecommendedCompany[] = [
   {
-    id: 1,
-    name: '네오랩스',
+    id: 101,
+    companyId: 101,
+    name: '삼성전자 (DX부문)',
     reason:
-      'React/TypeScript 기반 프론트 경험이 있고, 협업 커뮤니케이션 키워드가 강하게 잡혀서 추천했어요.',
-    hiringCount: 12,
+      '글로벌 서비스의 복잡한 UI/UX를 다루기 위해 React와 TypeScript 숙련도가 필수적인데, 유저님의 컴포넌트 설계 역량이 삼성닷컴 및 내부 시스템 고도화에 적합하다고 판단되어 추천합니다.',
+    hiringCount: 2,
     stacks: ['React', 'TypeScript', 'Tailwind'],
     matchScore: 98,
   },
   {
-    id: 2,
-    name: '포트웨이브',
+    id: 102,
+    companyId: 102,
+    name: 'SK하이닉스',
     reason:
-      '프로젝트에서 API 연동과 상태 관리 경험이 강조되어 있고, 사용자 중심 UI 개선 경험이 보여요.',
-    hiringCount: 7,
+      '반도체 공정 모니터링 시스템의 실시간 데이터 시각화가 중요한 과제입니다. 유저님이 보유한 Next.js 및 상태 관리(Redux) 경험이 대규모 대시보드 성능 최적화에 큰 기여를 할 수 있습니다.',
+    hiringCount: 1,
     stacks: ['Next.js', 'Redux', 'Framer Motion'],
-    matchScore: 85,
+    matchScore: 92,
   },
   {
-    id: 3,
-    name: '클라우드코어',
+    id: 103,
+    companyId: 103,
+    name: 'LG전자 (ThinQ)',
     reason:
-      '데이터 파이프라인/크롤링 관련 관심사가 있고, 문제 해결 방식(트러블슈팅)이 잘 드러나서 매칭됐어요.',
-    hiringCount: 19,
+      'ThinQ 앱의 대규모 트래픽 처리와 클라우드 기반 IoT 데이터 파이프라인 구축을 위해 Node.js 및 AWS 역량이 필요합니다. 유저님의 트러블슈팅 경험이 플랫폼 안정성에 적합합니다.',
+    hiringCount: 0,
     stacks: ['Python', 'Node.js', 'AWS'],
-    matchScore: 92,
+    matchScore: 89,
   },
 ];
 

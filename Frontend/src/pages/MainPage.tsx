@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/Button/Button';
@@ -98,6 +98,13 @@ function MainPage() {
   const isLoggedIn = !!localStorage.getItem('accessToken');
   const userRole = localStorage.getItem('userRole');
   const [trendIndex, setTrendIndex] = useState(0);
+
+  useEffect(() => {
+  const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement;
+  if (navbarInput) {
+    navbarInput.value = '';
+  }
+}, []);
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     e.currentTarget.src = FALLBACK_IMAGE;

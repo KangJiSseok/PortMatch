@@ -59,6 +59,9 @@ function Navbar() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // 검색어 state 추가
+  const [searchKeyword, setSearchKeyword] = useState('');
+
   const handleStateChange = (state: UserState) => {
     if (state === 'guest') {
       localStorage.removeItem('accessToken');
@@ -76,6 +79,14 @@ function Navbar() {
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     navigate('/main');
+  };
+
+  // 검색 처리 함수 추가
+  const handleSearch = () => {
+    const trimmed = searchKeyword.trim();
+    if (trimmed) {
+      navigate(`/job-postings?companyName=${encodeURIComponent(trimmed)}`);
+    }
   };
 
   const logoPart1 = 'PORT'.split('');
@@ -131,18 +142,22 @@ function Navbar() {
 
           <div className="hidden items-center gap-6 lg:flex xl:gap-8">
             <NavAction to="/main">홈</NavAction>
-            {userState === 'individual' && <NavAction to="/resume">이력서 관리</NavAction>}
+            {userState === 'individual' && <NavAction to="/resumes/me">이력서 관리</NavAction>}
             {userState === 'corporate' && <NavAction to="/manage">공고 관리</NavAction>}
           </div>
         </div>
 
         <div className="group absolute left-1/2 hidden w-full max-w-50 shrink-0 -translate-x-1/2 lg:block xl:max-w-sm">
           <input
+            id="navbar-search-input"
             type="text"
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder={userState === 'corporate' ? '인재 검색' : '공고 검색'}
             className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"
           />
-          <button className="text-slate-gray absolute top-1/2 right-5 -translate-y-1/2">
+          <button onClick={handleSearch} className="text-slate-gray absolute top-1/2 right-5 -translate-y-1/2">
             <svg
               width="20"
               height="20"
