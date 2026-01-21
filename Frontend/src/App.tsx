@@ -8,7 +8,6 @@ import Footer from './components/Footer/Footer';
 import IntroPage from './pages/IntroPage';
 import MainPage from './pages/MainPage';
 import DesignSystemPage from './pages/DesignSystemPage';
-import MyPage from './pages/MyPage';
 import InterviewPage from './pages/InterviewPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -21,6 +20,7 @@ import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 import InterviewListPage from './pages/InterviewListPage';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
 import JobPostDetailPage from './pages/JobPostDetailPage';
+import MypageGate from './routes/MyPageGate';
 
 function AppContent() {
   const location = useLocation();
@@ -76,7 +76,12 @@ function AppContent() {
           />
 
           <Route path="/main" element={<MainPage />} />
-          <Route path="/mypage" element={<MyPage />} />
+          <Route path="/mypage" element={
+            <ProtectedRoute>
+              <MypageGate />
+            </ProtectedRoute>
+            }
+          />
 
           <Route path="/companies/:companyId" element={<CompanyDetailsPage />} />
 
