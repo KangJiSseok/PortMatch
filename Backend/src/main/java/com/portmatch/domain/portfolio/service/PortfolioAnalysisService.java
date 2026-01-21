@@ -7,6 +7,7 @@ import com.portmatch.domain.portfolio.dto.PortfolioAnalysisResponse;
 import com.portmatch.domain.portfolio.entity.Portfolio;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysis;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProject;
+import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectTech;
 import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -97,6 +98,25 @@ public class PortfolioAnalysisService {
                     exception
             );
         }
+    }
+
+    @Transactional(readOnly = true)
+    public PortfolioAnalysisResponse getAnalysis(Long portfolioId) {
+        PortfolioAnalysis analysis = portfolioAnalysisRepository.findWithProjectsByPortfolioId(portfolioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
+
+        List<PortfolioAnalysisResponse.Project> projects = analysis.getProjects().stream()
+                .map(project -> new PortfolioAnalysisResponse.Project(
+                        project.getName(),
+                        project.getProblem(),
+                        project.getSolution(),
+                        project.getTechs().stream()
+                                .map(PortfolioAnalysisProjectTech::getTech)
+                                .toList()
+                ))
+                .toList();
+
+        return new PortfolioAnalysisResponse(projects);
     }
 
     private void persistResult(Long portfolioId, Object body) {
