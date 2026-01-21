@@ -700,12 +700,12 @@ function ResumeDetailPage() {
                             </div>
                           </div>
                           <div className="w-12 shrink-0 pt-6">
-                            <button
+                            <Button
+                              variant="close"
+                              size="lg"
+                              className="rounded-xl"
                               onClick={() => setDeleteConfirm({ type, index: i })}
-                              className="bg-error/10 text-error hover:bg-error flex h-12 w-12 items-center justify-center rounded-xl font-black shadow-sm transition-all hover:text-white"
-                            >
-                              ✕
-                            </button>
+                            />
                           </div>
                         </div>
                       ) : (
@@ -952,8 +952,8 @@ function ResumeDetailPage() {
           <div className="flex justify-center pt-12 pb-24">
             <Button
               variant="blue"
-              size="lg"
-              className="px-20 py-5 text-2xl font-black whitespace-nowrap shadow-xl transition-transform hover:scale-105 active:scale-95"
+              size="xl"
+              className="px-20 py-5 font-black whitespace-nowrap shadow-xl transition-transform hover:scale-105 active:scale-95"
               onClick={isEditing ? validateAndSave : toggleEditMode}
             >
               {isEditing ? '저장 및 완료하기' : '이력서 수정하기'}
@@ -964,28 +964,28 @@ function ResumeDetailPage() {
 
       <AnimatePresence>
         {deleteConfirm && (
-          <div className="fixed inset-0 z-300 flex items-center justify-center px-6">
+          <div className="fixed inset-0 z-300 flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirm(null)}
-              className="bg-midnight-ink/40 absolute inset-0 backdrop-blur-sm"
+              className="bg-midnight-ink/60 fixed inset-0 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-pure-white border-soft-pebble relative w-full max-w-sm overflow-hidden rounded-2xl border p-8 shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md overflow-hidden rounded-[40px] bg-white p-10 text-center shadow-2xl"
             >
-              <div className="bg-error/10 text-error mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full">
+              <div className="bg-error/10 text-error mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl">
                 <svg
-                  width="40"
-                  height="40"
+                  width="32"
+                  height="32"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2.5"
+                  strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
@@ -995,26 +995,28 @@ function ResumeDetailPage() {
                 </svg>
               </div>
 
-              <h3 className="text-midnight-ink mb-3 text-center text-2xl font-black tracking-tight">
+              <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight">
                 정말 삭제할까요?
               </h3>
-              <p className="text-slate-gray mb-8 text-center text-base leading-relaxed font-bold">
+              <p className="text-slate-gray mb-10 leading-relaxed font-bold opacity-60">
                 삭제된 데이터는 복구할 수 없습니다.
                 <br />
                 다시 한번 확인해주세요.
               </p>
 
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <Button
                   variant="outline"
-                  className="flex-1 rounded-xl py-3.5"
+                  size="lg"
+                  className="flex-1 rounded-2xl"
                   onClick={() => setDeleteConfirm(null)}
                 >
                   취소
                 </Button>
                 <Button
-                  variant="blue"
-                  className="bg-error hover:bg-error/80 flex-1 rounded-xl border-none py-3.5 text-white hover:text-white"
+                  variant="red"
+                  size="lg"
+                  className="flex-1 rounded-2xl shadow-lg"
                   onClick={confirmDelete}
                 >
                   삭제하기
