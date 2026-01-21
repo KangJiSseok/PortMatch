@@ -1,7 +1,7 @@
 package com.portmatch.domain.jobposting.service;
 
-import com.portmatch.domain.jobcompanies.entity.JobCompaniesEntity;
-import com.portmatch.domain.jobcompanies.repository.JobCompaniesRepository;
+import com.portmatch.domain.companies.entity.Company;
+import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.domain.jobposting.repository.JobPostingRepository;
@@ -16,13 +16,13 @@ import java.util.List;
 public class JobPostingServiceImpl implements JobPostingService {
 
     private final JobPostingRepository jobPostingRepository;
-    private final JobCompaniesRepository jobCompaniesRepository; // 기업 레포지토리 추가!
+    private final CompanyRepository jobCompaniesRepository; // 기업 레포지토리 추가!
 
     @Override
     @Transactional
     public void saveJobPosting(JobPostingDto dto) {
         // 1. DTO에 담긴 cid로 실제 기업 엔티티를 조회해와야 해.
-        JobCompaniesEntity company = jobCompaniesRepository.findById(dto.getCid())
+        Company company = jobCompaniesRepository.findByCid(dto.getCid())
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 기업 ID입니다: " + dto.getCid()));
 
         // 2. 이제 cid 대신 .company(company)로 객체를 넣어줘!

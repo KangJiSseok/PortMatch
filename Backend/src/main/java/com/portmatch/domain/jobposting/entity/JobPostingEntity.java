@@ -1,6 +1,6 @@
 package com.portmatch.domain.jobposting.entity;
 
-import com.portmatch.domain.jobcompanies.entity.JobCompaniesEntity;
+import com.portmatch.domain.companies.entity.Company;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,7 +31,7 @@ public class JobPostingEntity {
     // 1. 단순 String cid 대신, 기업 엔티티와 'N:1' 관계를 맺어줘!
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cid") // DB에는 여전히 cid라는 컬럼명으로 저장돼
-    private JobCompaniesEntity company;
+    private Company company;
 
     @Column(columnDefinition = "TEXT")
     private String detail;

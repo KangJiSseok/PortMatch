@@ -55,31 +55,35 @@ public class SaraminCollector {
     private void processJob(JsonNode job) throws IOException {
         String wid = job.path("id").asText();
 
-        // [중복 체크] 공고가 이미 우리 DB에 있으면 스킵!
         if (jobPostingRepository.existsById(wid)) return;
 
-        // [기업 정보 처리]
         String href = job.path("company").path("detail").path("href").asText();
         String cid = extractCid(href);
 
-        if (cid != null && !companyRepository.existsByCid(cid)) {
-            // 기업 정보가 없으면 크롤링해서 저장
-            saveCompany(cid);
+        // 1. 기업(Company) 엔티티를 먼저 준비하자
+        Company company = null;
+        if (cid != null) {
+            // 이미 DB에 있는 기업인지 확인
+            company = companyRepository.findByCid(cid).orElse(null);
+
+            // DB에 없으면 새로 저장하고 그 객체를 가져옴
+            if (company == null) {
+                company = saveCompany(cid); // saveCompany가 Company 객체를 반환하도록 수정할 거야!
+            }
         }
 
-        // [공고 상세 크롤링]
         String detailUrl = "https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=" + wid;
         Document doc = Jsoup.connect(detailUrl).userAgent("Mozilla/5.0").get();
         String detailHtml = doc.getElementsByClass("user_content").html();
 
-        // [공고 Entity 저장]
+        // 2. 빌더에서 .cid(cid) 대신 .company(company)로 넣어주기!
         JobPostingEntity posting = JobPostingEntity.builder()
                 .id(wid)
                 .title(job.path("position").path("title").asText())
                 .active(job.path("active").asInt())
                 .startDate(job.path("opening-timestamp").asText())
                 .endDate(job.path("expiration-timestamp").asText())
-                .cid(cid)
+                .company(company)
                 .detail(detailHtml)
                 .vcnt(0)
                 .jobType(job.path("position").path("job-type").path("code").asInt())
@@ -88,29 +92,27 @@ public class SaraminCollector {
         jobPostingRepository.save(posting);
     }
 
-    private void saveCompany(String cid) throws IOException {
+    private Company saveCompany(String cid) throws IOException {
         String url = "https://www.saramin.co.kr/zf_user/company-info/view?csn=" + cid;
         Document doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get();
 
-        if (!doc.getElementsByClass("result_txt").isEmpty()) return;
+        // 기업 정보가 없으면 null 반환
+        if (!doc.getElementsByClass("result_txt").isEmpty()) return null;
 
         Elements infoCompany = doc.getElementsByClass("info_company");
         String corpNm = infoCompany.get(0).getElementsByClass("name").text();
 
-        // 기업 정보 파싱
         Company company = new Company(
                 cid,
                 corpNm,
                 doc.getElementsByClass("txt_address").text(),
                 null,
                 infoCompany.get(0).getElementsByAttribute("href").attr("href"),
-                null,
-                null,
-                null,
+                null, null, null,
                 extractLogo(doc)
         );
 
-        companyRepository.save(company);
+        return companyRepository.save(company);
     }
 
     private String extractCid(String href) {
