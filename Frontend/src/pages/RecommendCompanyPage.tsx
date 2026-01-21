@@ -76,7 +76,7 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
         className="flex min-w-[140px] cursor-pointer flex-col items-center justify-center self-end border-t border-zinc-50 pt-6 transition-all md:self-center md:border-t-0 md:border-l md:pt-0 md:pl-10"
       >
         <span className="group-hover:text-point-blue mb-1 text-[11px] font-black tracking-[0.2em] text-zinc-400 uppercase">
-          Open Positions
+          모집 중
         </span>
         <div className="flex items-baseline gap-1">
           <span className="text-midnight-ink group-hover:text-point-blue text-3xl font-black tabular-nums transition-colors">
