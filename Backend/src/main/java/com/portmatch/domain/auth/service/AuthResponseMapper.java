@@ -1,7 +1,7 @@
 package com.portmatch.domain.auth.service;
 
 import com.portmatch.domain.auth.dto.response.LoginResponse;
-import com.portmatch.domain.auth.dto.response.MeResponse;
+import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.auth.security.UserPrincipal;
 import org.springframework.stereotype.Component;
 
@@ -17,12 +17,12 @@ public class AuthResponseMapper {
                 .build();
     }
 
-    public MeResponse toMeResponse(UserPrincipal principal) {
-        return MeResponse.builder()
-                .userId(principal.getUser().getId())
-                .email(principal.getUser().getEmail())
-                .name(principal.getUser().getName())
-                .role(principal.getUser().getRole())
+    public LoginResponse toLoginResponse(User user) {
+        return LoginResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .role(user.getRole())
                 .build();
     }
 }
