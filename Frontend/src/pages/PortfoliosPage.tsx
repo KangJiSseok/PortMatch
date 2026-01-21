@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
 import Button from '../components/Button/Button';
 
 type AnalysisStep = 'upload' | 'analyzing' | 'result';
@@ -16,6 +15,7 @@ interface SavedPortfolio {
   name: string;
   isLocal?: boolean;
   fileObject?: File;
+  hasAnalysis?: boolean;
 }
 
 interface ModalConfig {
@@ -41,9 +41,9 @@ function PortfoliosPage() {
   });
 
   const [savedPortfolios, setSavedPortfolios] = useState<SavedPortfolio[]>([
-    { id: 1, name: '2024_프론트엔드_이력서_최종.pdf' },
-    { id: 2, name: '경력기술서_백엔드_v2.docx' },
-    { id: 3, name: '개인프로젝트_포트폴리오.pdf' },
+    { id: 1, name: '2024_프론트엔드_이력서_최종.pdf', hasAnalysis: true },
+    { id: 2, name: '경력기술서_백엔드_v2.docx', hasAnalysis: false },
+    { id: 3, name: '개인프로젝트_포트폴리오.pdf', hasAnalysis: true },
   ]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | number | null>(null);
   const [isListOpen, setIsListOpen] = useState(false);
@@ -76,6 +76,16 @@ function PortfoliosPage() {
   const closeModal = () => setModal((prev) => ({ ...prev, isOpen: false }));
 
   const processFile = (uploadedFile: File) => {
+    if (uploadedFile.type !== 'application/pdf') {
+      setModal({
+        isOpen: true,
+        title: '파일 형식 오류',
+        message: 'PDF 파일만 업로드할 수 있습니다.',
+        type: 'alert',
+      });
+      return;
+    }
+
     if (savedPortfolios.some((p) => p.name === uploadedFile.name)) {
       setModal({
         isOpen: true,
@@ -92,6 +102,7 @@ function PortfoliosPage() {
       name: uploadedFile.name,
       isLocal: true,
       fileObject: uploadedFile,
+      hasAnalysis: false,
     };
 
     setSavedPortfolios((prev) => [newEntry, ...prev]);
@@ -152,6 +163,18 @@ function PortfoliosPage() {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
   };
 
+  const handleViewResults = () => {
+    setAnalysisData({
+      strengths: [
+        '고성능 엔터프라이즈 시스템 아키텍처 설계 및 최적화 능력을 보유하고 있습니다.',
+        'React Core 라이프사이클에 최적화된 고도화 렌더링 성능 개선 경험이 풍부합니다.',
+        '복잡한 비즈니스 로직 설계 및 코드 가독성 유지 능력이 매우 우수합니다.',
+      ],
+      techStacks: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Recoil', 'GraphQL', 'AWS'],
+    });
+    setStep('result');
+  };
+
   const handleAnalysis = async () => {
     if (!selectedPortfolioId) return;
     setStep('analyzing');
@@ -169,19 +192,13 @@ function PortfoliosPage() {
     }, 100);
 
     try {
-      if (file) {
-        const formData = new FormData();
-        formData.append('file', file);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       setAnalysisData({
         strengths: [
-          '고성능 엔터프라이즈 시스템 아키텍처 설계 및 최적화',
-          'React Core 라이프사이클에 최적화된 고도화 렌더링 성능 개선',
-          '비즈니스 로직 설계 및 코드 가독성 우수',
+          '고성능 엔터프라이즈 시스템 아키텍처 설계 및 최적화 능력을 보유하고 있습니다.',
+          'React Core 라이프사이클에 최적화된 고도화 렌더링 성능 개선 경험이 풍부합니다.',
+          '복잡한 비즈니스 로직 설계 및 코드 가독성 유지 능력이 매우 우수합니다.',
         ],
         techStacks: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Recoil', 'GraphQL', 'AWS'],
       });
@@ -190,7 +207,12 @@ function PortfoliosPage() {
       setProgress(100);
       setActiveStage(2);
 
-      setTimeout(() => setStep('result'), 800);
+      setTimeout(() => {
+        setSavedPortfolios((prev) =>
+          prev.map((p) => (p.id === selectedPortfolioId ? { ...p, hasAnalysis: true } : p)),
+        );
+        setStep('result');
+      }, 800);
     } catch (error) {
       console.error(error);
       setModal({
@@ -203,6 +225,8 @@ function PortfoliosPage() {
       clearInterval(progressInterval);
     }
   };
+
+  const selectedPortfolio = savedPortfolios.find((p) => p.id === selectedPortfolioId);
 
   return (
     <div className="bg-pure-white text-midnight-ink min-h-screen pt-28 pb-20">
@@ -274,7 +298,7 @@ function PortfoliosPage() {
                         취소
                       </Button>
                       <Button
-                        variant="blue"
+                        variant={modal.title.includes('삭제') ? 'red' : 'blue'}
                         size="lg"
                         className="flex-1 rounded-2xl shadow-lg"
                         onClick={modal.onConfirm}
@@ -307,17 +331,17 @@ function PortfoliosPage() {
           </p>
         </header>
 
-        <main className="border-silver-mist relative overflow-hidden rounded-[40px] border bg-white shadow-xl">
-          <div className="flex min-h-125 flex-col justify-center bg-white p-12">
-            <AnimatePresence mode="wait">
-              {step === 'upload' && (
-                <motion.div
-                  key="upload"
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  className="space-y-8 text-center"
-                >
+        <main className="relative overflow-hidden">
+          <AnimatePresence mode="wait">
+            {step === 'upload' && (
+              <motion.div
+                key="upload"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="border-silver-mist rounded-[40px] border bg-white p-12 shadow-xl"
+              >
+                <div className="space-y-8 text-center">
                   <div className="flex flex-col gap-4">
                     <div className="relative">
                       <button
@@ -345,9 +369,7 @@ function PortfoliosPage() {
                           <span
                             className={`text-xl font-black tracking-tight ${selectedPortfolioId ? 'text-point-blue' : 'text-midnight-ink'}`}
                           >
-                            {selectedPortfolioId
-                              ? savedPortfolios.find((p) => p.id === selectedPortfolioId)?.name
-                              : '저장된 포트폴리오 선택'}
+                            {selectedPortfolio?.name || '저장된 포트폴리오 선택'}
                           </span>
                         </div>
                         <motion.svg
@@ -403,6 +425,11 @@ function PortfoliosPage() {
                                       </svg>
                                     </button>
                                     <span className="text-lg font-bold">{p.name}</span>
+                                    {p.hasAnalysis && (
+                                      <span className="ml-1 rounded-full bg-emerald-500/10 px-3 py-1 text-[13px] font-black tracking-tight whitespace-nowrap text-emerald-600">
+                                        분석 완료
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-2">
                                     {p.isLocal && (
@@ -410,24 +437,12 @@ function PortfoliosPage() {
                                         New
                                       </span>
                                     )}
-                                    <button
+                                    <Button
+                                      variant="close"
+                                      size="sm"
+                                      className="rounded-lg"
                                       onClick={(e) => handleDeletePortfolio(e, p.id)}
-                                      className="flex h-8 w-8 items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600"
-                                    >
-                                      <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="3"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <line x1="18" y1="6" x2="6" y2="18" />
-                                        <line x1="6" y1="6" x2="18" y2="18" />
-                                      </svg>
-                                    </button>
+                                    />
                                   </div>
                                 </div>
                               ))
@@ -452,7 +467,7 @@ function PortfoliosPage() {
                         ref={fileInputRef}
                         onChange={handleFileChange}
                         className="hidden"
-                        accept=".pdf,.doc,.docx"
+                        accept=".pdf"
                       />
                       <div className="pointer-events-none flex flex-col items-center gap-4">
                         <motion.div
@@ -480,7 +495,7 @@ function PortfoliosPage() {
                             {isDragging ? '여기에 놓으세요!' : '새 포트폴리오 업로드'}
                           </h3>
                           <p className="text-slate-gray text-[14px] font-bold tracking-widest uppercase opacity-40">
-                            파일을 드래그하거나 클릭하여 추가하세요
+                            PDF 파일을 드래그하거나 클릭하여 추가하세요
                           </p>
                         </div>
                       </div>
@@ -505,28 +520,70 @@ function PortfoliosPage() {
                           </motion.div>
                         )}
                       </AnimatePresence>
-                      <Button
-                        variant="blue"
-                        size="xl"
-                        disabled={!selectedPortfolioId}
-                        className="disabled:bg-silver-mist disabled:text-slate-gray w-full rounded-2xl py-6! text-2xl! font-black shadow-xl transition-all disabled:cursor-not-allowed"
-                        onClick={handleAnalysis}
-                      >
-                        분석 시작하기
-                      </Button>
+
+                      <div className="min-h-18 w-full">
+                        <AnimatePresence mode="wait">
+                          {selectedPortfolio?.hasAnalysis ? (
+                            <motion.div
+                              key="has-analysis-buttons"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="flex w-full gap-4"
+                            >
+                              <Button
+                                variant="blue"
+                                size="xl"
+                                className="flex-2 rounded-2xl py-6! text-xl! font-black break-keep shadow-xl"
+                                onClick={handleViewResults}
+                              >
+                                결과 바로보기
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="xl"
+                                className="flex-1 rounded-2xl py-6! text-xl! font-black break-keep"
+                                onClick={handleAnalysis}
+                              >
+                                다시 분석하기
+                              </Button>
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              key="no-analysis-button"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="w-full"
+                            >
+                              <Button
+                                variant="blue"
+                                size="xl"
+                                disabled={!selectedPortfolioId}
+                                className="disabled:bg-silver-mist disabled:text-slate-gray w-full rounded-2xl py-6! text-2xl! font-black break-keep shadow-xl disabled:cursor-not-allowed"
+                                onClick={handleAnalysis}
+                              >
+                                분석 시작하기
+                              </Button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     </div>
                   </div>
-                </motion.div>
-              )}
+                </div>
+              </motion.div>
+            )}
 
-              {step === 'analyzing' && (
-                <motion.div
-                  key="analyzing"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-12 py-10 text-center"
-                >
+            {step === 'analyzing' && (
+              <motion.div
+                key="analyzing"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="border-silver-mist rounded-[40px] border bg-white p-12 shadow-xl"
+              >
+                <div className="space-y-12 py-10 text-center">
                   <div className="relative mx-auto h-52 w-52">
                     <motion.div
                       animate={{ rotate: 360 }}
@@ -616,84 +673,99 @@ function PortfoliosPage() {
                       })}
                     </div>
                   </div>
-                </motion.div>
-              )}
+                </div>
+              </motion.div>
+            )}
 
-              {step === 'result' && analysisData && (
-                <motion.div
-                  key="result"
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-12"
-                >
-                  <div className="border-point-blue border-b-4 pb-6 text-left">
-                    <p className="text-slate-gray mb-1 text-sm font-black tracking-widest uppercase opacity-40">
-                      Match Complete
+            {step === 'result' && analysisData && (
+              <motion.div
+                key="result"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mx-auto max-w-4xl space-y-8"
+              >
+                <div className="flex items-end justify-between border-b-2 border-slate-200 pb-4">
+                  <div>
+                    <p className="text-point-blue mb-1 text-xs font-black tracking-[0.2em] uppercase">
+                      Analysis Complete
                     </p>
-                    <h2 className="text-4xl leading-none font-black tracking-tighter uppercase">
-                      분석 결과 리포트
-                    </h2>
+                    <h2 className="text-3xl font-black tracking-tighter">분석 리포트</h2>
                   </div>
-                  <div className="flex flex-col gap-8">
-                    <div className="bg-cloud-dancer border-silver-mist space-y-8 rounded-4xl border p-10 text-left shadow-sm">
-                      <h4 className="border-point-blue text-midnight-ink border-l-6 pl-6 text-3xl font-black tracking-tighter">
-                        핵심 역량 키워드
-                      </h4>
-                      <div className="space-y-5">
-                        {analysisData.strengths.map((text) => (
-                          <div key={text} className="flex items-start gap-4">
-                            <div className="bg-point-blue mt-2 h-2 w-2 shrink-0 rounded-full" />
-                            <span className="text-midnight-ink text-xl leading-snug font-bold opacity-80">
-                              {text}
+                  <div className="max-w-70 truncate rounded-lg bg-slate-100 px-3 py-1 text-sm font-bold text-slate-500">
+                    {selectedPortfolio?.name}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                  <section className="border-silver-mist bg-pure-white rounded-3xl border p-7 shadow-sm md:col-span-2">
+                    <div className="mb-6 flex items-center gap-2">
+                      <div className="bg-point-blue h-5 w-1 rounded-full" />
+                      <h3 className="text-lg font-black tracking-tight">핵심 역량</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {analysisData.strengths.map((text, idx) => (
+                        <div
+                          key={idx}
+                          className="bg-cloud-dancer/40 hover:bg-cloud-dancer/60 rounded-2xl p-4 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="text-point-blue mt-0.5 text-sm font-black">
+                              0{idx + 1}
                             </span>
+                            <p className="text-midnight-ink text-[15px] leading-relaxed font-bold break-keep">
+                              {text}
+                            </p>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="bg-cloud-dancer border-silver-mist space-y-8 rounded-4xl border p-10 text-left shadow-sm">
-                      <h4 className="border-point-blue text-midnight-ink border-l-6 pl-6 text-3xl font-black tracking-tighter">
-                        추천 기술 스택
-                      </h4>
-                      <div className="flex flex-wrap gap-3">
-                        {analysisData.techStacks.map((tech) => (
-                          <span
-                            key={tech}
-                            className="bg-pure-white text-midnight-ink border-silver-mist rounded-xl border px-6 py-2.5 text-lg font-black tracking-tighter opacity-80"
-                          >
-                            {tech}
-                          </span>
-                        ))}
-                      </div>
+                  </section>
+
+                  <section className="border-silver-mist bg-pure-white rounded-3xl border p-7 shadow-sm">
+                    <div className="mb-6 flex items-center gap-2">
+                      <div className="bg-point-blue h-5 w-1 rounded-full" />
+                      <h3 className="text-lg font-black tracking-tight">기술 스택</h3>
                     </div>
-                  </div>
-                  <div className="flex gap-4 pt-4">
-                    <Button
-                      variant="blue"
-                      size="xl"
-                      className="flex-1 rounded-2xl py-6! text-2xl! font-black shadow-xl"
-                      onClick={() => navigate('/recommend/companies')}
-                    >
-                      맞춤 공고 확인하기
-                    </Button>
-                    <Button
-                      variant="dark"
-                      size="xl"
-                      className="flex-1 rounded-2xl border py-6! text-2xl! font-black"
-                      onClick={() => {
-                        setFile(null);
-                        setSelectedPortfolioId(null);
-                        setStep('upload');
-                        setAnalysisData(null);
-                        setProgress(0);
-                      }}
-                    >
-                      다시 분석
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisData.techStacks.map((tech) => (
+                        <span
+                          key={tech}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-black text-slate-600 shadow-xs transition-transform hover:-translate-y-0.5"
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    variant="blue"
+                    size="lg"
+                    className="flex-2 rounded-xl py-4 font-black break-keep shadow-lg"
+                    onClick={() => navigate('/recommend/companies')}
+                  >
+                    맞춤 공고 확인하기
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="flex-1 rounded-xl py-4 font-black break-keep"
+                    onClick={() => {
+                      setFile(null);
+                      setSelectedPortfolioId(null);
+                      setStep('upload');
+                      setAnalysisData(null);
+                      setProgress(0);
+                    }}
+                  >
+                    다시 분석
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
       </div>
     </div>
