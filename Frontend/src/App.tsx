@@ -21,6 +21,7 @@ import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
 import InterviewListPage from './pages/InterviewListPage';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
 import JobPostDetailPage from './pages/JobPostDetailPage';
+import MypageGate from './routes/MyPageGate';
 
 function AppContent() {
   const location = useLocation();
@@ -76,7 +77,12 @@ function AppContent() {
           />
 
           <Route path="/main" element={<MainPage />} />
-          <Route path="/mypage" element={<MyPage />} />
+          <Route path="/mypage" element={
+            <ProtectedRoute>
+              <MypageGate />
+            </ProtectedRoute>
+            }
+          />
 
           <Route path="/companies/:companyId" element={<CompanyDetailsPage />} />
 
