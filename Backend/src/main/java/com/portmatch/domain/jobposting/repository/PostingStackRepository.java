@@ -14,4 +14,7 @@ public interface PostingStackRepository extends JpaRepository<PostingStackEntity
     // 2. 스택 ID로 조회 (TechStackEntity 내부의 id 필드 참조)
     // 필드명이 techStack이고 그 안의 필드가 id이므로 아래 이름이 정확해!
     List<PostingStackEntity> findByTechStackId(Long techStackId);
+
+    // 여러 스택 ID 중 하나라도 포함된 데이터를 조회 (IN 연산자 사용)
+    List<PostingStackEntity> findByTechStackIdIn(List<Long> techStackIds);
 }

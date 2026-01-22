@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface TechStackRepository extends JpaRepository<TechStackEntity, Long> { // String -> Long으로 변경
 
     Optional<TechStackEntity> findByStackName(String stackName);
+    Optional<TechStackEntity> findById(Long id);
 }

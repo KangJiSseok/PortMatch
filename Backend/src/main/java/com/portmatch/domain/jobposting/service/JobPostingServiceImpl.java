@@ -2,6 +2,7 @@ package com.portmatch.domain.jobposting.service;
 
 import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
+import com.portmatch.domain.companies.service.CompaniesService;
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.domain.jobposting.entity.PostingStackEntity;
@@ -23,6 +24,7 @@ public class JobPostingServiceImpl implements JobPostingService {
     private final CompanyRepository jobCompaniesRepository; // 기업 레포지토리 추가!
     private final TechStackRepository techStackRepository;
     private final PostingStackRepository postingStackRepository;
+    private final CompaniesService companiesService;
 
     @Override
     @Transactional
@@ -75,12 +77,15 @@ public class JobPostingServiceImpl implements JobPostingService {
     }
 
     @Override
-    public List<JobPostingDto> getJobsByStack(Long stackId) {
-        // Repository에서 Long 타입 stackId로 조회
-        List<PostingStackEntity> postingStacks = postingStackRepository.findByTechStackId(stackId);
+    public List<JobPostingDto> getJobsByStacks(List<Long> stackIds) {
+        // 1. 선택한 스택 ID들에 해당하는 중간 테이블 엔티티들을 가져옴
+        List<PostingStackEntity> postingStacks = postingStackRepository.findByTechStackIdIn(stackIds);
 
+        // 2. 중복 제거를 위해 Stream 사용 (공고 ID 기준)
         return postingStacks.stream()
-                .map(ps -> convertToDto(ps.getJobPosting()))
+                .map(PostingStackEntity::getJobPosting) // 공고 엔티티 추출
+                .distinct()                            // 중복된 공고 제거
+                .map(this::convertToDto)               // DTO 변환
                 .toList();
     }
 
@@ -126,6 +131,12 @@ public class JobPostingServiceImpl implements JobPostingService {
     }
 
     private JobPostingDto convertToDto(JobPostingEntity entity) {
+        List<Long> stackIds = null;
+        if (entity.getTechStacks() != null) {
+            stackIds = entity.getTechStacks().stream()
+                    .map(ps -> ps.getTechStack().getId()) // 중간 엔티티를 거쳐 실제 스택 ID 가져오기
+                    .toList();
+        }
         return JobPostingDto.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
@@ -136,6 +147,8 @@ public class JobPostingServiceImpl implements JobPostingService {
                 .detail(entity.getDetail())
                 .jobType(entity.getJobType())
                 .vcnt(entity.getVcnt())
+                .company(entity.getCompany() != null ? companiesService.getCompany(entity.getCompany().getCid()) : null)
+                .stackIds(stackIds)
                 .build();
     }
 }

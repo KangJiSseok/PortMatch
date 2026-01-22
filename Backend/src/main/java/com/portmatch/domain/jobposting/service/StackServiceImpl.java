@@ -33,16 +33,7 @@ public class StackServiceImpl implements StackService {
         techStackRepository.save(entity);
     }
 
-    // 2. 공고와 스택 연결 데이터 생성
-    @Override
-    @Transactional
-    public void createPosingStack(PostingStackEntity ps) {
-        log.info("공고 스택 연결 저장: JobID={}, StackID={}",
-                ps.getJobPosting().getId(), ps.getTechStack().getId());
-        postingStackRepository.save(ps);
-    }
-
-    // 3. 전체 기술 스택 목록 조회
+    // 2. 전체 기술 스택 목록 조회
     @Override
     public List<TechStackDto> getAllTechStacks() {
         log.info("전체 기술 스택 목록 조회");
@@ -51,7 +42,7 @@ public class StackServiceImpl implements StackService {
                 .collect(Collectors.toList());
     }
 
-    // 4. 특정 공고에 포함된 스택 리스트 조회
+    // 3. 특정 공고에 포함된 스택 리스트 조회
     @Override
     public List<TechStackDto> getPostingStacks(String postingId) {
         log.info("공고별 스택 조회 요청 - ID: {}", postingId);
@@ -63,5 +54,20 @@ public class StackServiceImpl implements StackService {
         return entities.stream()
                 .map(entity -> TechStackDto.fromEntity(entity.getTechStack()))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public TechStackDto getTechStackById(Long id) {
+        log.info("stack id로 stack 조회");
+        return techStackRepository.findById(id)
+                .map(this::convertToDto)
+                .orElseThrow(() -> new RuntimeException("해당 스택을 찾을 수 없습니다. ID: " + id));
+    }
+
+    private TechStackDto convertToDto(TechStackEntity techStackEntity) {
+        return TechStackDto.builder()
+                .stackId(techStackEntity.getId())
+                .stackName(techStackEntity.getStackName())
+                .build();
     }
 }

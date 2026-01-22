@@ -14,9 +14,6 @@ public interface JobPostingService {
     // 2. [Read] 전체 공고 목록 조회 (기존 getJobPostings 대체)
     List<JobPostingDto> getAllJobPostings();
 
-    // [추가] 2-1. 특정 기술 스택(stackId)을 가진 공고 목록 조회
-    List<JobPostingDto> getJobsByStack(Long stackId);
-
     // 3. [Read] 특정 공고 상세 조회 (기존 getJobDetail 활용)
     JobPostingDto getJobDetail(String id) throws Exception;
 
@@ -25,4 +22,6 @@ public interface JobPostingService {
 
     // 5. [Update] 조회수 증가 (필요하다면!)
     void updateViewCount(String id);
+
+    List<JobPostingDto> getJobsByStacks(List<Long> stackIds);
 }

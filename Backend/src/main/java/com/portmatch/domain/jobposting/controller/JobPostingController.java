@@ -50,11 +50,11 @@ public class JobPostingController {
         return ResponseEntity.status(HttpStatus.CREATED).body("공고와 기술 스택이 성공적으로 등록되었습니다.");
     }
 
-    // [추가] 6. 기술 스택별 공고 필터링 조회
-    @GetMapping("/search")
-    public ResponseEntity<List<JobPostingDto>> getJobsByStack(@RequestParam("stackId") Long stackId) {
-        log.info("기술 스택 필터링 조회 요청 - Stack ID: {}", stackId);
-        List<JobPostingDto> jobs = jobPostingService.getJobsByStack(stackId);
+    // [추가] 기술 스택별 공고 필터링 조회
+   @GetMapping("/search")
+    public ResponseEntity<List<JobPostingDto>> getJobsByStacks(@RequestParam("stackIds") List<Long> stackIds) {
+        log.info("기술 스택 다중 필터링 조회 요청 - Stack IDs: {}", stackIds);
+        List<JobPostingDto> jobs = jobPostingService.getJobsByStacks(stackIds);
         return ResponseEntity.ok(jobs);
     }
 

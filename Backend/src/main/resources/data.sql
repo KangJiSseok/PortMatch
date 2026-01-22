@@ -276,3 +276,6 @@ VALUES (1, 'company_admin', '1234', '채용담당자', '010-1234-5678', 'admin@k
 -- 4. 회사 데이터 (엔티티에 없는 business_registration_number 삭제!)
 INSERT INTO companies (user_id, cid, companies_name, address, busi_cont, size, tot_psncnt, yr_sales_amt, homepage_url)
 VALUES (1, 'KAKAO_001', '카카오', '제주특별자치도 제주시', 'IT 서비스', '대기업', '3000', '7조', 'https://www.kakaocorp.com');
+
+INSERT INTO job_postings (id, title, active, start_date, end_date, vcnt, cid, detail, job_type)
+VALUES ('1', '2', 0, '2026-01-22', '2026-02-22', 0, 'KAKAO_001', '카카오에서 함께 성장할 동료를 찾습니다', 1);

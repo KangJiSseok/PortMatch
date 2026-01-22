@@ -43,4 +43,11 @@ public class StackController {
         stackService.createStack(stackName);
         return ResponseEntity.status(HttpStatus.CREATED).body("기술 스택이 등록되었습니다.");
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TechStackDto> getStackById(@PathVariable Long id) {
+        log.info("stack id로 기술 스택 조회");
+        TechStackDto stack = stackService.getTechStackById(id);
+        return ResponseEntity.ok(stack);
+    }
 }
