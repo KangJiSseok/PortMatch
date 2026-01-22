@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+// src/pages/InterviewLobbyPage.tsx
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../components/Button/Button';
@@ -15,12 +16,84 @@ function formatDateTime(iso: string) {
 }
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
+type UserRole = 'guest' | 'individual' | 'corporate';
+
+const ROUTES = {
+  list: '/interviews',
+  lobby: (id: number) => `/interviews/${id}/lobby`,
+  room: (id: number) => `/interviews/${id}/room`,
+} as const;
+
+function LobbyHeader({ subtitle, onBack }: { subtitle: string; onBack: () => void }) {
+  return (
+    <header className="border-b border-zinc-100 pb-6">
+      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div className="min-w-0">
+          <div className="mb-4 flex items-center gap-3">
+            <p className="text-xs font-black tracking-[0.35em] text-zinc-400 uppercase">
+              interview lobby
+            </p>
+          </div>
+          <p className="mt-4 truncate text-lg font-bold text-zinc-600 sm:text-xl">{subtitle}</p>
+        </div>
+
+        {/* ✅ 헤더 버튼은 딱 1개: 목록 */}
+        <div className="flex shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="md"
+            className="rounded-2xl"
+            onClick={onBack}
+          >
+            목록
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function ToggleRow({
+  label,
+  value,
+  onToggle,
+}: {
+  label: string;
+  value: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
+      <div>
+        <p className="text-sm font-black">{label}</p>
+        <p className="mt-1 text-xs font-semibold text-zinc-500">현재: {value ? 'ON' : 'OFF'}</p>
+      </div>
+
+      {/* ✅ M부터: md 사용 */}
+      <Button
+        type="button"
+        variant="filter"
+        size="md"
+        isActive={value}
+        className="rounded-2xl border-2"
+        onClick={onToggle}
+      >
+        {value ? 'ON' : 'OFF'}
+      </Button>
+    </div>
+  );
+}
 
 export default function InterviewLobbyPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const interviewId = Number(id);
+
+  // ✅ role 분기 (MyPageGate랑 동일하게 localStorage 기준)
+  const role = ((localStorage.getItem('userRole') ?? 'guest') as UserRole) || 'guest';
+  const isCorporate = role === 'corporate';
 
   const [status, setStatus] = useState<PageStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('세션 정보를 불러오지 못했어요.');
@@ -60,141 +133,168 @@ export default function InterviewLobbyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (status === 'loading') {
-    return <LobbySkeleton onBack={() => navigate('/interviews')} />;
-  }
+  const goList = () => navigate(ROUTES.list);
+  const goRoom = () => {
+    if (!session) return;
+    navigate(ROUTES.room(session.interview_id), { state: { micOn, camOn } });
+  };
 
-  if (status === 'error') {
-    return (
-      <ErrorBox message={errorMessage} onRetry={load} onBack={() => navigate('/interviews')} />
-    );
-  }
+  // ✅ 기업 전용: 초대 링크 (같은 URL 유지)
+  const inviteLink = useMemo(() => {
+    if (!session) return '';
+    return `${window.location.origin}${ROUTES.lobby(session.interview_id)}`;
+  }, [session]);
 
-  if (status === 'notfound' || !session) {
-    return <NotFoundBox onBack={() => navigate('/interviews')} />;
-  }
+  const copyInviteLink = async () => {
+    if (!inviteLink) return;
+
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      alert('초대 링크 복사 완료!');
+    } catch {
+      // fallback (보안/권한/HTTPS 이슈)
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = inviteLink;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('초대 링크 복사 완료!');
+      } catch {
+        alert('복사에 실패했어요. 링크를 직접 복사해 주세요.');
+      }
+    }
+  };
+
+  if (status === 'loading') return <LobbySkeleton onBack={goList} />;
+  if (status === 'error') return <ErrorBox message={errorMessage} onRetry={load} onBack={goList} />;
+  if (status === 'notfound' || !session) return <NotFoundBox onBack={goList} />;
 
   return (
-    <div className="bg-pure-white min-h-screen p-10">
-      <header className="border-soft-pebble border-b pb-6">
-        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">Lobby</h1>
-        <p className="text-slate-gray mt-2">입장 전 대기실</p>
-      </header>
+    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
+      {/* ✅ InterviewListPage랑 컨테이너/여백 통일 */}
+      <div className="mx-auto max-w-6xl space-y-10 px-6">
+        <LobbyHeader
+          subtitle={`${session.companyName} · ${session.postingTitle}`}
+          onBack={goList}
+        />
 
-      <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* 왼쪽: 정보/설정 */}
-        <div className="bg-cloud-dancer rounded-2xl p-8 shadow-sm lg:col-span-1">
-          <p className="text-slate-gray text-sm font-bold tracking-widest uppercase">
-            {session.companyName}
-          </p>
-          <p className="text-midnight-ink mt-2 text-2xl font-black">{session.postingTitle}</p>
-          <p className="text-slate-gray mt-2 text-sm font-semibold">
-            {formatDateTime(session.scheduledAt)}
-          </p>
-
-          {/* room_id 표시 */}
-          <div className="bg-pure-white mt-4 rounded-2xl p-4">
-            <p className="text-midnight-ink text-sm font-extrabold">Room ID</p>
-            <p className="text-slate-gray mt-1 text-xs font-semibold break-all">
-              {session.room_id}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* 좌측: 세션/설정/입장 */}
+          <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-1">
+            <p className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
+              {session.companyName}
             </p>
-          </div>
+            <p className="mt-2 text-2xl font-black tracking-tighter">{session.postingTitle}</p>
 
-          <div className="mt-8 space-y-4">
-            <div className="bg-pure-white flex items-center justify-between rounded-2xl p-4">
-              <p className="text-midnight-ink font-extrabold">마이크</p>
-              <Button
-                type="button"
-                variant={!micOn ? 'dark' : 'outline'}
-                size="sm"
-                onClick={() => setMicOn((v) => !v)}
-              >
-                {!micOn ? 'ON' : 'OFF'}
-              </Button>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-zinc-600 shadow-sm ring-1 ring-zinc-100">
+                {formatDateTime(session.scheduledAt)}
+              </span>
+              <span className="bg-cloud-dancer text-midnight-ink rounded-full px-3 py-1 text-xs font-black">
+                ROOM ·{' '}
+                <span className="font-semibold break-all text-zinc-600">{session.room_id}</span>
+              </span>
             </div>
 
-            <div className="bg-pure-white flex items-center justify-between rounded-2xl p-4">
-              <p className="text-midnight-ink font-extrabold">카메라</p>
+            {/* ✅ 기업 전용: 초대 링크 카드 (형태는 유지, 블럭만 추가) */}
+            {isCorporate && (
+              <div className="mt-6 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
+                <p className="text-sm font-black">지원자 초대 링크</p>
+                <p className="mt-2 break-all text-xs font-semibold text-zinc-500">{inviteLink}</p>
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="md"
+                    className="w-full rounded-2xl"
+                    onClick={copyInviteLink}
+                  >
+                    링크 복사
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-8 space-y-3">
+              <ToggleRow label="마이크" value={micOn} onToggle={() => setMicOn((v) => !v)} />
+              <ToggleRow label="카메라" value={camOn} onToggle={() => setCamOn((v) => !v)} />
+            </div>
+
+            {/* ✅ 버튼은 딱 1개만: role 따라 텍스트만 변경 */}
+            <div className="mt-8">
               <Button
                 type="button"
-                variant={!camOn ? 'dark' : 'outline'}
-                size="sm"
-                onClick={() => setCamOn((v) => !v)}
+                variant="blue"
+                size="md"
+                className="w-full rounded-2xl"
+                onClick={goRoom}
               >
-                {!camOn ? 'ON' : 'OFF'}
+                {isCorporate ? '면접 시작' : '면접 입장'}
               </Button>
+
+              <p className="mt-3 text-sm font-semibold text-zinc-500">
+                {isCorporate
+                  ? '시작하면 바로 면접방으로 이동해요.'
+                  : '입장하면 바로 면접방으로 이동해요.'}
+              </p>
             </div>
-          </div>
+          </section>
 
-          <div className="mt-8 flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              onClick={() => navigate('/interviews')}
-            >
-              목록
-            </Button>
-            <Button
-              type="button"
-              variant="dark"
-              size="md"
-              onClick={() =>
-                navigate(`/interviews/${session.interview_id}/room`, { state: { micOn, camOn } })
-              }
-            >
-              면접 입장
-            </Button>
-          </div>
-        </div>
+          {/* 우측: 미리보기 */}
+          <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-2">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-lg font-black tracking-tighter">내 화면 미리보기</p>
+                <p className="mt-1 text-sm font-semibold text-zinc-500">
+                  Mic: {micOn ? 'ON' : 'OFF'} · Cam: {camOn ? 'ON' : 'OFF'}
+                </p>
+              </div>
+            </div>
 
-        {/* 오른쪽: 미리보기 */}
-        <div className="bg-cloud-dancer rounded-2xl p-8 shadow-sm lg:col-span-2">
-          <p className="text-midnight-ink text-lg font-extrabold">내 화면 미리보기</p>
+            <div className="mt-6 overflow-hidden rounded-4xl border border-zinc-100 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-zinc-100 bg-white px-6 py-4">
+                <div className="flex items-center gap-2">
+                  <span className="bg-point-blue/60 inline-flex h-2 w-2 rounded-full" />
+                  <p className="text-sm font-black text-zinc-600">
+                    {camOn ? 'CAM PREVIEW' : 'CAM OFF'}
+                  </p>
+                </div>
+                <span className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
+                  preview
+                </span>
+              </div>
 
-          <div className="bg-midnight-ink mt-6 flex h-[360px] items-center justify-center rounded-2xl">
-            <span className="text-cloud-dancer font-extrabold">
-              {camOn ? 'CAM PREVIEW' : 'CAM OFF'}
-            </span>
-          </div>
-
-          <div className="bg-pure-white mt-6 flex items-center justify-between rounded-2xl p-5">
-            <p className="text-midnight-ink font-extrabold">현재 설정</p>
-            <p className="text-slate-gray text-sm font-semibold">
-              Mic: {micOn ? 'ON' : 'OFF'} / Cam: {camOn ? 'ON' : 'OFF'}
-            </p>
-          </div>
-
-          <div className="bg-pure-white mt-6 rounded-2xl p-5">
-            <p className="text-midnight-ink font-extrabold">입장 전 체크</p>
-            <ul className="text-slate-gray mt-3 list-disc space-y-1 pl-5 text-sm font-semibold">
-              <li>마이크/카메라 설정 확인</li>
-              <li>네트워크 안정 확인</li>
-              <li>입장 버튼 누르면 바로 면접방으로 이동</li>
-            </ul>
-          </div>
+              <div className="bg-midnight-ink flex h-[360px] items-center justify-center">
+                <span className="text-cloud-dancer text-sm font-black tracking-[0.3em] uppercase">
+                  {camOn ? 'your video' : 'camera disabled'}
+                </span>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>
   );
 }
 
+/* ---------------- 상태 UI ---------------- */
+
 function NotFoundBox({ onBack }: { onBack: () => void }) {
   return (
-    <div className="bg-pure-white min-h-screen p-10">
-      <header className="border-soft-pebble border-b pb-6">
-        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">Lobby</h1>
-        <p className="text-slate-gray mt-2">입장 전 대기실</p>
-      </header>
+    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
+      <div className="mx-auto max-w-6xl space-y-10 px-6">
+        <LobbyHeader subtitle="입장 전 대기실" onBack={onBack} />
 
-      <div className="bg-cloud-dancer mt-10 rounded-2xl p-10 text-center shadow-sm">
-        <p className="text-midnight-ink text-lg font-extrabold">유효하지 않은 면접 세션이에요.</p>
-        <p className="text-slate-gray mt-2 text-sm">목록에서 다시 선택해 주세요.</p>
-
-        <div className="mt-6 flex justify-center">
-          <Button type="button" variant="dark" size="md" onClick={onBack}>
-            면접 목록으로
-          </Button>
+        <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
+          <p className="text-lg font-black">유효하지 않은 면접 세션이에요.</p>
+          <p className="mt-2 text-sm font-semibold text-zinc-500">목록에서 다시 선택해 주세요.</p>
+          <div className="mt-6 flex justify-center">
+            <Button type="button" variant="blue" size="md" className="rounded-2xl" onClick={onBack}>
+              면접 목록으로
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -211,23 +311,34 @@ function ErrorBox({
   onBack: () => void;
 }) {
   return (
-    <div className="bg-pure-white min-h-screen p-10">
-      <header className="border-soft-pebble border-b pb-6">
-        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">Lobby</h1>
-        <p className="text-slate-gray mt-2">입장 전 대기실</p>
-      </header>
+    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
+      <div className="mx-auto max-w-6xl space-y-10 px-6">
+        <LobbyHeader subtitle="세션 정보를 불러오지 못했어요." onBack={onBack} />
 
-      <div className="bg-pure-white border-soft-pebble mt-10 rounded-2xl border p-10 text-center shadow-sm">
-        <p className="text-midnight-ink text-lg font-extrabold">데이터를 불러오지 못했어요</p>
-        <p className="text-slate-gray mt-2 text-sm font-semibold">{message}</p>
+        <div className="rounded-4xl border border-zinc-100 bg-white p-10 text-center shadow-sm">
+          <p className="text-lg font-black">데이터를 불러오지 못했어요</p>
+          <p className="mt-2 text-sm font-semibold text-zinc-500">{message}</p>
 
-        <div className="mt-6 flex justify-center gap-3">
-          <Button type="button" variant="outline" size="md" onClick={onBack}>
-            목록
-          </Button>
-          <Button type="button" variant="dark" size="md" onClick={onRetry}>
-            다시 시도
-          </Button>
+          <div className="mt-6 flex justify-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              className="rounded-2xl"
+              onClick={onBack}
+            >
+              목록
+            </Button>
+            <Button
+              type="button"
+              variant="blue"
+              size="md"
+              className="rounded-2xl"
+              onClick={onRetry}
+            >
+              다시 시도
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -236,57 +347,34 @@ function ErrorBox({
 
 function LobbySkeleton({ onBack }: { onBack: () => void }) {
   return (
-    <div className="bg-pure-white min-h-screen p-10">
-      <header className="border-soft-pebble border-b pb-6">
-        <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">Lobby</h1>
-        <p className="text-slate-gray mt-2">입장 전 대기실</p>
-      </header>
+    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
+      <div className="mx-auto max-w-6xl space-y-10 px-6">
+        <LobbyHeader subtitle="입장 전 대기실" onBack={onBack} />
 
-      <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="bg-cloud-dancer rounded-2xl p-8 shadow-sm lg:col-span-1">
-          <div className="bg-soft-pebble/50 h-3 w-28 animate-pulse rounded" />
-          <div className="bg-soft-pebble/40 mt-3 h-7 w-60 animate-pulse rounded" />
-          <div className="bg-soft-pebble/30 mt-3 h-4 w-40 animate-pulse rounded" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-1">
+            <div className="h-3 w-24 rounded bg-zinc-200/70" />
+            <div className="mt-3 h-7 w-64 rounded bg-zinc-200/60" />
+            <div className="mt-4 h-4 w-40 rounded bg-zinc-200/50" />
 
-          <div className="bg-pure-white mt-6 rounded-2xl p-4">
-            <div className="bg-soft-pebble/40 h-3 w-20 animate-pulse rounded" />
-            <div className="bg-soft-pebble/30 mt-2 h-3 w-full animate-pulse rounded" />
-          </div>
-
-          <div className="mt-8 space-y-4">
-            <div className="bg-pure-white rounded-2xl p-4">
-              <div className="flex items-center justify-between">
-                <div className="bg-soft-pebble/40 h-4 w-16 animate-pulse rounded" />
-                <div className="bg-soft-pebble/30 h-8 w-16 animate-pulse rounded" />
-              </div>
+            <div className="mt-8 space-y-3">
+              <div className="h-16 rounded-3xl bg-white ring-1 ring-zinc-100" />
+              <div className="h-16 rounded-3xl bg-white ring-1 ring-zinc-100" />
             </div>
-            <div className="bg-pure-white rounded-2xl p-4">
-              <div className="flex items-center justify-between">
-                <div className="bg-soft-pebble/40 h-4 w-16 animate-pulse rounded" />
-                <div className="bg-soft-pebble/30 h-8 w-16 animate-pulse rounded" />
-              </div>
+
+            <div className="mt-8 h-11 w-full rounded-2xl bg-zinc-200/60" />
+          </div>
+
+          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-2">
+            <div className="h-5 w-48 rounded bg-zinc-200/60" />
+            <div className="mt-3 h-4 w-56 rounded bg-zinc-200/50" />
+
+            <div className="mt-6 overflow-hidden rounded-4xl border border-zinc-100 bg-white">
+              <div className="h-14 border-b border-zinc-100 bg-white" />
+              <div className="bg-midnight-ink/70 h-[360px]" />
             </div>
-          </div>
 
-          <div className="mt-8 flex gap-3">
-            <Button type="button" variant="outline" size="md" onClick={onBack}>
-              목록
-            </Button>
-            <div className="bg-soft-pebble/30 h-10 flex-1 animate-pulse rounded-md" />
-          </div>
-        </div>
-
-        <div className="bg-cloud-dancer rounded-2xl p-8 shadow-sm lg:col-span-2">
-          <div className="bg-soft-pebble/40 h-4 w-40 animate-pulse rounded" />
-          <div className="bg-midnight-ink/70 mt-6 h-[360px] animate-pulse rounded-2xl" />
-          <div className="bg-pure-white mt-6 rounded-2xl p-5">
-            <div className="bg-soft-pebble/40 h-4 w-28 animate-pulse rounded" />
-            <div className="bg-soft-pebble/30 mt-3 h-3 w-52 animate-pulse rounded" />
-          </div>
-          <div className="bg-pure-white mt-6 rounded-2xl p-5">
-            <div className="bg-soft-pebble/40 h-4 w-28 animate-pulse rounded" />
-            <div className="bg-soft-pebble/30 mt-3 h-3 w-64 animate-pulse rounded" />
-            <div className="bg-soft-pebble/30 mt-2 h-3 w-56 animate-pulse rounded" />
+            <div className="mt-6 h-24 rounded-3xl bg-white ring-1 ring-zinc-100" />
           </div>
         </div>
       </div>
