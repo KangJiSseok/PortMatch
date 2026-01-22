@@ -275,468 +275,455 @@ export default function MyPage() {
   }, [scrapQuery.data, navigate]);
 
   return (
-    // ✅ 페이지 단위 고정: 창 줄이면 “가로 스크롤”이 생기도록
-    <div className="w-full overflow-x-auto">
-      {/* ✅ 여기부터는 “절대 줄어들지 않는” 캔버스(=고정 폭) */}
-      <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
-        {/* ✅ max-w 제거 + 고정 폭 적용 (1280px 캔버스에 딱 고정) */}
-        <div className="mx-auto w-[1280px] space-y-10 px-6">
-          {/* ✅ 헤더 */}
-          <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
-            <div className="relative p-10">
-              <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
-              <div className="relative flex flex-nowrap items-start justify-between gap-5">
-                <div>
-                  <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
-                    PERSONAL DASHBOARD
-                  </p>
-                  <h1 className="mt-2 text-4xl font-black tracking-tighter">My Page</h1>
-                  <p className="mt-2 text-sm font-semibold text-zinc-500">
-                    이력서 · 면접 · 스크랩을 한 곳에서 관리해요.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="md"
-                    className="bg-pure-white rounded-2xl"
-                    onClick={() => {
-                      if (notiQuery.isError) notiQuery.refetch();
-                      setIsNotiOpen(true);
-                    }}
-                  >
-                    알림 {unreadCount > 0 ? `(${unreadCount})` : ''}
-                  </Button>
-
-                  <Button
-                    variant="blue"
-                    size="md"
-                    className="rounded-2xl"
-                    onClick={() => navigate(ROUTES.profileEdit)}
-                  >
-                    회원 정보 수정
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          {/* ✅ 관리 바로가기 (3개) */}
-          <section className="space-y-5">
-            <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
+    // ✅ [해결 1] body 자체가 넓어지도록: root에 min-w를 직접 준다
+    // - 브라우저 가로 스크롤(윈도우 스크롤)로 옆으로 가도 "흰 화면" 안 뜸
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
+      {/* ✅ max-w 제거 + 고정 폭 적용 (1280px 캔버스에 딱 고정) */}
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
+        {/* ✅ 헤더 */}
+        <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
+          <div className="relative p-10">
+            <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
+            <div className="relative flex flex-nowrap items-start justify-between gap-5">
               <div>
-                <h2 className="text-2xl font-black tracking-tighter">관리 바로가기</h2>
-                <p className="mt-1 text-sm font-semibold text-zinc-500">
-                  자주 쓰는 기능은 여기서 바로 이동해요.
+                <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
+                  PERSONAL DASHBOARD
+                </p>
+                <h1 className="mt-2 text-4xl font-black tracking-tighter">My Page</h1>
+                <p className="mt-2 text-sm font-semibold text-zinc-500">
+                  이력서 · 면접 · 스크랩을 한 곳에서 관리해요.
                 </p>
               </div>
-            </div>
 
-            {/* ✅ 반응형 제거: 무조건 3열 고정 */}
-            <div className="grid grid-cols-3 gap-5">
-              {/* 이력서 */}
-              <HubCard title="이력서" onHeaderClick={() => navigate(ROUTES.resume)}>
-                <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-6 py-10">
-                  <div className="bg-cloud-dancer text-midnight-ink grid h-14 w-14 place-items-center rounded-2xl">
-                    <IconUser />
-                  </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="md"
+                  className="bg-pure-white rounded-2xl"
+                  onClick={() => {
+                    if (notiQuery.isError) notiQuery.refetch();
+                    setIsNotiOpen(true);
+                  }}
+                >
+                  알림 {unreadCount > 0 ? `(${unreadCount})` : ''}
+                </Button>
 
-                  <div className="mt-5 text-center">
-                    <p className="text-midnight-ink text-lg font-black">최근 수정</p>
-                    <p className="mt-2 text-sm font-semibold text-zinc-500">{resumeLastEdited}</p>
-                  </div>
-                </div>
-              </HubCard>
-
-              {/* 면접 */}
-              <HubCard title="면접" onHeaderClick={() => navigate(ROUTES.interviewList)}>
-                <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
-                  <div className="flex-1">
-                    {upcomingQuery.isLoading ? (
-                      <div className="flex h-full items-center justify-center">
-                        <ListSkeleton />
-                      </div>
-                    ) : upcomingQuery.isError ? (
-                      <div className="flex h-full items-center justify-center">
-                        <InlineError
-                          message={upcomingQuery.errorMessage ?? '면접 정보를 불러오지 못했어요.'}
-                          onRetry={upcomingQuery.refetch}
-                        />
-                      </div>
-                    ) : upcomingCount === 0 ? (
-                      <div className="flex h-full items-center justify-center">
-                        <EmptyHint text="예정된 면접이 없어요." />
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {interviewItems.map((it) => (
-                          <ListRow
-                            key={String(it.key)}
-                            thumb={<InitialThumb text={it.subtitle} />}
-                            title={it.title}
-                            subtitle={it.subtitle}
-                            meta={it.meta}
-                            onClick={it.onClick}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </HubCard>
-
-              {/* ✅ 스크랩: 헤더 클릭은 모달 전체 보기 */}
-              <HubCard
-                title="스크랩한 공고"
-                onHeaderClick={() => {
-                  if (scrapQuery.isError) scrapQuery.refetch();
-                  setIsScrapOpen(true);
-                }}
-              >
-                <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
-                  <div className="flex-1">
-                    {scrapQuery.isLoading ? (
-                      <div className="flex h-full items-center justify-center">
-                        <ListSkeleton />
-                      </div>
-                    ) : scrapQuery.isError ? (
-                      <div className="flex h-full items-center justify-center">
-                        <InlineError
-                          message={scrapQuery.errorMessage ?? '스크랩을 불러오지 못했어요.'}
-                          onRetry={scrapQuery.refetch}
-                        />
-                      </div>
-                    ) : scrapCount === 0 ? (
-                      <div className="flex h-full items-center justify-center">
-                        <EmptyHint text="스크랩한 공고가 없어요." />
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {scrapItems.map((it) => (
-                          <ListRow
-                            key={String(it.key)}
-                            thumb={<InitialThumb text={it.subtitle} />}
-                            title={it.title}
-                            subtitle={it.subtitle}
-                            meta={it.meta}
-                            onClick={it.onClick}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </HubCard>
-            </div>
-          </section>
-
-          {/* ✅ 캘린더 */}
-          <section className="space-y-5">
-            <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
-              <div>
-                <h2 className="text-2xl font-black tracking-tighter">캘린더</h2>
-                <p className="mt-1 text-sm font-semibold text-zinc-500">면접 일정만 모아봤어요.</p>
+                <Button
+                  variant="blue"
+                  size="md"
+                  className="rounded-2xl"
+                  onClick={() => navigate(ROUTES.profileEdit)}
+                >
+                  회원 정보 수정
+                </Button>
               </div>
             </div>
+          </div>
+        </header>
 
-            <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-8 shadow-sm">
-              <div className="mb-6 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-lg font-black">{thisMonthLabel}</p>
+        {/* ✅ 관리 바로가기 (3개) */}
+        <section className="space-y-5">
+          <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
+            <div>
+              <h2 className="text-2xl font-black tracking-tighter">관리 바로가기</h2>
+              <p className="mt-1 text-sm font-semibold text-zinc-500">
+                자주 쓰는 기능은 여기서 바로 이동해요.
+              </p>
+            </div>
+          </div>
+
+          {/* ✅ 반응형 제거: 무조건 3열 고정 */}
+          <div className="grid grid-cols-3 gap-5">
+            {/* 이력서 */}
+            <HubCard title="이력서" onHeaderClick={() => navigate(ROUTES.resume)}>
+              <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-6 py-10">
+                <div className="bg-cloud-dancer text-midnight-ink grid h-14 w-14 place-items-center rounded-2xl">
+                  <IconUser />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" size="md" onClick={goPrevMonth}>
-                    ◀
-                  </Button>
-                  <Button type="button" variant="outline" size="md" onClick={goNextMonth}>
-                    ▶
-                  </Button>
-                  <Button type="button" variant="outline" size="md" onClick={goToday}>
-                    오늘
-                  </Button>
+                <div className="mt-5 text-center">
+                  <p className="text-midnight-ink text-lg font-black">최근 수정</p>
+                  <p className="mt-2 text-sm font-semibold text-zinc-500">{resumeLastEdited}</p>
                 </div>
               </div>
+            </HubCard>
 
-              {interviewQuery.isLoading ? (
-                <CalendarSkeleton />
-              ) : interviewQuery.isError ? (
-                <ErrorBox
-                  message={interviewQuery.errorMessage ?? '면접 일정을 불러오지 못했어요.'}
-                  onRetry={interviewQuery.refetch}
-                />
-              ) : (
-                <div className="grid grid-cols-[1fr_380px] gap-8">
-                  {/* LEFT: 달력 */}
-                  <div>
-                    <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
-                      {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-                        <div key={d}>{d}</div>
+            {/* 면접 */}
+            <HubCard title="면접" onHeaderClick={() => navigate(ROUTES.interviewList)}>
+              <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
+                <div className="flex-1">
+                  {upcomingQuery.isLoading ? (
+                    <div className="flex h-full items-center justify-center">
+                      <ListSkeleton />
+                    </div>
+                  ) : upcomingQuery.isError ? (
+                    <div className="flex h-full items-center justify-center">
+                      <InlineError
+                        message={upcomingQuery.errorMessage ?? '면접 정보를 불러오지 못했어요.'}
+                        onRetry={upcomingQuery.refetch}
+                      />
+                    </div>
+                  ) : upcomingCount === 0 ? (
+                    <div className="flex h-full items-center justify-center">
+                      <EmptyHint text="예정된 면접이 없어요." />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {interviewItems.map((it) => (
+                        <ListRow
+                          key={String(it.key)}
+                          thumb={<InitialThumb text={it.subtitle} />}
+                          title={it.title}
+                          subtitle={it.subtitle}
+                          meta={it.meta}
+                          onClick={it.onClick}
+                        />
                       ))}
                     </div>
+                  )}
+                </div>
+              </div>
+            </HubCard>
 
-                    <div className="mt-3 grid grid-cols-7 gap-3">
-                      {cells.map((d, idx) => {
-                        const ymd = toYmd(d);
-                        const inThisMonth = d.getMonth() === month0;
-                        const isToday = ymd === todayYmd;
-                        const isSelected = ymd === selectedDate;
+            {/* ✅ 스크랩: 헤더 클릭은 모달 전체 보기 */}
+            <HubCard
+              title="스크랩한 공고"
+              onHeaderClick={() => {
+                if (scrapQuery.isError) scrapQuery.refetch();
+                setIsScrapOpen(true);
+              }}
+            >
+              <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
+                <div className="flex-1">
+                  {scrapQuery.isLoading ? (
+                    <div className="flex h-full items-center justify-center">
+                      <ListSkeleton />
+                    </div>
+                  ) : scrapQuery.isError ? (
+                    <div className="flex h-full items-center justify-center">
+                      <InlineError
+                        message={scrapQuery.errorMessage ?? '스크랩을 불러오지 못했어요.'}
+                        onRetry={scrapQuery.refetch}
+                      />
+                    </div>
+                  ) : scrapCount === 0 ? (
+                    <div className="flex h-full items-center justify-center">
+                      <EmptyHint text="스크랩한 공고가 없어요." />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {scrapItems.map((it) => (
+                        <ListRow
+                          key={String(it.key)}
+                          thumb={<InitialThumb text={it.subtitle} />}
+                          title={it.title}
+                          subtitle={it.subtitle}
+                          meta={it.meta}
+                          onClick={it.onClick}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </HubCard>
+          </div>
+        </section>
 
-                        const ev = interviewEventMap.get(ymd) ?? [];
-                        const cnt = ev.length;
+        {/* ✅ 캘린더 */}
+        <section className="space-y-5">
+          <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
+            <div>
+              <h2 className="text-2xl font-black tracking-tighter">캘린더</h2>
+              <p className="mt-1 text-sm font-semibold text-zinc-500">면접 일정만 모아봤어요.</p>
+            </div>
+          </div>
+
+          <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-8 shadow-sm">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-lg font-black">{thisMonthLabel}</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="md" onClick={goPrevMonth}>
+                  ◀
+                </Button>
+                <Button type="button" variant="outline" size="md" onClick={goNextMonth}>
+                  ▶
+                </Button>
+                <Button type="button" variant="outline" size="md" onClick={goToday}>
+                  오늘
+                </Button>
+              </div>
+            </div>
+
+            {interviewQuery.isLoading ? (
+              <CalendarSkeleton />
+            ) : interviewQuery.isError ? (
+              <ErrorBox
+                message={interviewQuery.errorMessage ?? '면접 일정을 불러오지 못했어요.'}
+                onRetry={interviewQuery.refetch}
+              />
+            ) : (
+              <div className="grid grid-cols-[1fr_380px] gap-8">
+                {/* LEFT: 달력 */}
+                <div>
+                  <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
+                    {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+                      <div key={d}>{d}</div>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-7 gap-3">
+                    {cells.map((d, idx) => {
+                      const ymd = toYmd(d);
+                      const inThisMonth = d.getMonth() === month0;
+                      const isToday = ymd === todayYmd;
+                      const isSelected = ymd === selectedDate;
+
+                      const ev = interviewEventMap.get(ymd) ?? [];
+                      const cnt = ev.length;
+
+                      return (
+                        <Button
+                          key={`${ymd}-${idx}`}
+                          type="button"
+                          variant="outline"
+                          size="md"
+                          onClick={() => {
+                            setSelectedDate(ymd);
+                            if (!inThisMonth) setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                          }}
+                          className={[
+                            'flex w-full flex-col items-stretch justify-start text-left',
+                            'min-h-[90px] cursor-pointer rounded-2xl border p-3 transition',
+                            inThisMonth ? 'border-zinc-200 bg-white' : 'border-zinc-200/60 bg-zinc-50',
+                            'hover:bg-zinc-100/60',
+                            isSelected ? 'ring-midnight-ink ring-2' : '',
+                          ].join(' ')}
+                        >
+                          <div className="flex items-start justify-between">
+                            <span
+                              className={
+                                inThisMonth
+                                  ? 'text-midnight-ink font-extrabold'
+                                  : 'font-extrabold text-zinc-400'
+                              }
+                            >
+                              {d.getDate()}
+                            </span>
+                            {isToday && (
+                              <span className="bg-midnight-ink rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
+                                TODAY
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between">
+                            {cnt > 0 ? (
+                              <>
+                                <span className="bg-point-blue mt-0.5 h-2 w-2 rounded-full" />
+                                <span className="text-xs font-black text-zinc-600">{cnt}건</span>
+                              </>
+                            ) : (
+                              <span className="text-xs font-semibold text-zinc-400"></span>
+                            )}
+                          </div>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* RIGHT: 선택한 날짜 일정 */}
+                <div className="rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-lg font-black">선택한 날짜 일정</p>
+                      <p className="mt-1 text-sm font-semibold text-zinc-500">
+                        {formatYmdToKorean(selectedDate)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 max-h-[520px] space-y-2 overflow-auto pr-1">
+                    {selectedInterviews.length === 0 ? (
+                      <p className="text-sm font-semibold text-zinc-500">
+                        이 날짜에는 면접 일정이 없어요.
+                      </p>
+                    ) : (
+                      selectedInterviews.map((e) => {
+                        const startMs = new Date(e.scheduledAt).getTime();
+                        const nowMs = Date.now();
+
+                        const JOIN_BEFORE_MIN = 30;
+                        const JOIN_AFTER_HOURS = 2;
+
+                        const isToday = toYmdFromIso(e.scheduledAt) === todayYmd;
+                        const joinable =
+                          isToday &&
+                          nowMs >= startMs - JOIN_BEFORE_MIN * 60 * 1000 &&
+                          nowMs <= startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+
+                        const isPast = nowMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+                        const minutesToStart = Math.ceil((startMs - nowMs) / (60 * 1000));
+
+                        let btnText = '입장';
+                        let helperText: string | null = null;
+                        let disabled = false;
+
+                        if (isPast) {
+                          btnText = '종료';
+                          disabled = true;
+                        } else if (!isToday) {
+                          btnText = '예정';
+                          disabled = true;
+                        } else if (joinable) {
+                          btnText = '입장';
+                          helperText = '입장 가능';
+                        } else {
+                          btnText = '대기';
+                          disabled = true;
+                          helperText =
+                            minutesToStart > 0
+                              ? `시작 ${minutesToStart}분 전 · 시작 30분 전부터 입장 가능`
+                              : '곧 시작돼요.';
+                        }
 
                         return (
-                          <Button
-                            key={`${ymd}-${idx}`}
-                            type="button"
-                            variant="outline"
-                            size="md"
-                            onClick={() => {
-                              setSelectedDate(ymd);
-                              if (!inThisMonth)
-                                setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-                            }}
-                            className={[
-                              'flex w-full flex-col items-stretch justify-start text-left',
-                              'min-h-[90px] cursor-pointer rounded-2xl border p-3 transition',
-                              inThisMonth
-                                ? 'border-zinc-200 bg-white'
-                                : 'border-zinc-200/60 bg-zinc-50',
-                              'hover:bg-zinc-100/60',
-                              isSelected ? 'ring-midnight-ink ring-2' : '',
-                            ].join(' ')}
+                          <div
+                            key={e.interview_id}
+                            className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
                           >
-                            <div className="flex items-start justify-between">
-                              <span
-                                className={
-                                  inThisMonth
-                                    ? 'text-midnight-ink font-extrabold'
-                                    : 'font-extrabold text-zinc-400'
-                                }
+                            <p className="text-midnight-ink text-sm font-black">
+                              {e.companyName} - {e.postingTitle}
+                            </p>
+                            <p className="mt-1 text-xs font-semibold text-zinc-500">
+                              {formatDateTime(e.scheduledAt)}
+                            </p>
+
+                            {helperText && (
+                              <p className="mt-2 text-xs font-semibold text-zinc-500">
+                                {helperText}
+                              </p>
+                            )}
+
+                            <div className="mt-3 flex justify-end">
+                              <Button
+                                type="button"
+                                variant={disabled ? 'outline' : 'dark'}
+                                size="md"
+                                disabled={disabled}
+                                className={disabled ? 'cursor-not-allowed opacity-50' : ''}
+                                onClick={() => {
+                                  if (disabled) return;
+                                  navigate(`/interviews/${e.interview_id}/lobby`);
+                                }}
                               >
-                                {d.getDate()}
-                              </span>
-                              {isToday && (
-                                <span className="bg-midnight-ink rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
-                                  TODAY
-                                </span>
-                              )}
+                                {btnText}
+                              </Button>
                             </div>
-
-                            <div className="mt-3 flex items-center justify-between">
-                              {cnt > 0 ? (
-                                <>
-                                  <span className="bg-point-blue mt-0.5 h-2 w-2 rounded-full" />
-                                  <span className="text-xs font-black text-zinc-600">{cnt}건</span>
-                                </>
-                              ) : (
-                                <span className="text-xs font-semibold text-zinc-400"></span>
-                              )}
-                            </div>
-                          </Button>
+                          </div>
                         );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* RIGHT: 선택한 날짜 일정 */}
-                  <div className="rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-lg font-black">선택한 날짜 일정</p>
-                        <p className="mt-1 text-sm font-semibold text-zinc-500">
-                          {formatYmdToKorean(selectedDate)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 max-h-[520px] space-y-2 overflow-auto pr-1">
-                      {selectedInterviews.length === 0 ? (
-                        <p className="text-sm font-semibold text-zinc-500">
-                          이 날짜에는 면접 일정이 없어요.
-                        </p>
-                      ) : (
-                        selectedInterviews.map((e) => {
-                          const startMs = new Date(e.scheduledAt).getTime();
-                          const nowMs = Date.now();
-
-                          const JOIN_BEFORE_MIN = 30;
-                          const JOIN_AFTER_HOURS = 2;
-
-                          const isToday = toYmdFromIso(e.scheduledAt) === todayYmd;
-                          const joinable =
-                            isToday &&
-                            nowMs >= startMs - JOIN_BEFORE_MIN * 60 * 1000 &&
-                            nowMs <= startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
-
-                          const isPast = nowMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
-                          const minutesToStart = Math.ceil((startMs - nowMs) / (60 * 1000));
-
-                          let btnText = '입장';
-                          let helperText: string | null = null;
-                          let disabled = false;
-
-                          if (isPast) {
-                            btnText = '종료';
-                            disabled = true;
-                          } else if (!isToday) {
-                            btnText = '예정';
-                            disabled = true;
-                          } else if (joinable) {
-                            btnText = '입장';
-                            helperText = '입장 가능';
-                          } else {
-                            btnText = '대기';
-                            disabled = true;
-                            helperText =
-                              minutesToStart > 0
-                                ? `시작 ${minutesToStart}분 전 · 시작 30분 전부터 입장 가능`
-                                : '곧 시작돼요.';
-                          }
-
-                          return (
-                            <div
-                              key={e.interview_id}
-                              className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
-                            >
-                              <p className="text-midnight-ink text-sm font-black">
-                                {e.companyName} - {e.postingTitle}
-                              </p>
-                              <p className="mt-1 text-xs font-semibold text-zinc-500">
-                                {formatDateTime(e.scheduledAt)}
-                              </p>
-
-                              {helperText && (
-                                <p className="mt-2 text-xs font-semibold text-zinc-500">
-                                  {helperText}
-                                </p>
-                              )}
-
-                              <div className="mt-3 flex justify-end">
-                                <Button
-                                  type="button"
-                                  variant={disabled ? 'outline' : 'dark'}
-                                  size="md"
-                                  disabled={disabled}
-                                  className={disabled ? 'cursor-not-allowed opacity-50' : ''}
-                                  onClick={() => {
-                                    if (disabled) return;
-                                    navigate(`/interviews/${e.interview_id}/lobby`);
-                                  }}
-                                >
-                                  {btnText}
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-
-        {/* ✅ 알림 모달 */}
-        <NotificationModal open={isNotiOpen} onClose={() => setIsNotiOpen(false)} title="알림">
-          {notiQuery.isLoading ? (
-            <div className="space-y-3">
-              <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-              <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-              <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            </div>
-          ) : notiQuery.isError ? (
-            <div className="rounded-xl border border-zinc-100 bg-white p-4">
-              <p className="text-midnight-ink text-sm font-black">알림을 불러오지 못했어요</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-500">
-                {notiQuery.errorMessage ?? '잠시 후 다시 시도해 주세요.'}
-              </p>
-              <div className="mt-4 flex justify-end">
-                <Button variant="dark" size="sm" onClick={notiQuery.refetch}>
-                  다시 시도
-                </Button>
-              </div>
-            </div>
-          ) : (notiQuery.data ?? []).length === 0 ? (
-            <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
-              <p className="text-midnight-ink text-sm font-black">알림이 없어요</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-500">조용해서 좋다… 💤</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {(notiQuery.data ?? []).map((n) => (
-                <div key={n.id} className="rounded-xl border border-zinc-100 bg-white p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
-                    {!n.read && (
-                      <span className="bg-point-blue mt-1 h-2 w-2 shrink-0 rounded-full" />
+                      })
                     )}
                   </div>
-                  <p className="mt-2 text-xs font-semibold text-zinc-500">
-                    {formatDateTime(n.createdAt)}
-                  </p>
                 </div>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* ✅ 알림 모달 */}
+      <NotificationModal open={isNotiOpen} onClose={() => setIsNotiOpen(false)} title="알림">
+        {notiQuery.isLoading ? (
+          <div className="space-y-3">
+            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+          </div>
+        ) : notiQuery.isError ? (
+          <div className="rounded-xl border border-zinc-100 bg-white p-4">
+            <p className="text-midnight-ink text-sm font-black">알림을 불러오지 못했어요</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">
+              {notiQuery.errorMessage ?? '잠시 후 다시 시도해 주세요.'}
+            </p>
+            <div className="mt-4 flex justify-end">
+              <Button variant="dark" size="sm" onClick={notiQuery.refetch}>
+                다시 시도
+              </Button>
+            </div>
+          </div>
+        ) : (notiQuery.data ?? []).length === 0 ? (
+          <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
+            <p className="text-midnight-ink text-sm font-black">알림이 없어요</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">조용해서 좋다… 💤</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {(notiQuery.data ?? []).map((n) => (
+              <div key={n.id} className="rounded-xl border border-zinc-100 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
+                  {!n.read && <span className="bg-point-blue mt-1 h-2 w-2 shrink-0 rounded-full" />}
+                </div>
+                <p className="mt-2 text-xs font-semibold text-zinc-500">
+                  {formatDateTime(n.createdAt)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </NotificationModal>
+
+      {/* ✅ 스크랩 전체 모달 */}
+      <NotificationModal open={isScrapOpen} onClose={() => setIsScrapOpen(false)} title="스크랩한 공고">
+        {scrapQuery.isLoading ? (
+          <div className="space-y-3">
+            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+          </div>
+        ) : scrapQuery.isError ? (
+          <div className="rounded-xl border border-zinc-100 bg-white p-4">
+            <p className="text-midnight-ink text-sm font-black">스크랩을 불러오지 못했어요</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">
+              {scrapQuery.errorMessage ?? '잠시 후 다시 시도해 주세요.'}
+            </p>
+            <div className="mt-4 flex justify-end">
+              <Button variant="dark" size="sm" onClick={scrapQuery.refetch}>
+                다시 시도
+              </Button>
+            </div>
+          </div>
+        ) : (scrapQuery.data ?? []).length === 0 ? (
+          <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
+            <p className="text-midnight-ink text-sm font-black">스크랩한 공고가 없어요</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">마음에 드는 공고를 찜해보세요.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-end justify-between">
+              <p className="text-xs font-semibold text-zinc-500">총 {scrapAllItems.length}개</p>
+            </div>
+
+            <div className="space-y-2">
+              {scrapAllItems.map((it) => (
+                <ListRow
+                  key={String(it.key)}
+                  thumb={<InitialThumb text={it.subtitle} />}
+                  title={it.title}
+                  subtitle={it.subtitle}
+                  meta={it.jobPostId ? '' : '상세 이동 불가'}
+                  onClick={it.onClick}
+                />
               ))}
             </div>
-          )}
-        </NotificationModal>
-
-        {/* ✅ 스크랩 전체 모달 */}
-        <NotificationModal
-          open={isScrapOpen}
-          onClose={() => setIsScrapOpen(false)}
-          title="스크랩한 공고"
-        >
-          {scrapQuery.isLoading ? (
-            <div className="space-y-3">
-              <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-              <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-              <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            </div>
-          ) : scrapQuery.isError ? (
-            <div className="rounded-xl border border-zinc-100 bg-white p-4">
-              <p className="text-midnight-ink text-sm font-black">스크랩을 불러오지 못했어요</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-500">
-                {scrapQuery.errorMessage ?? '잠시 후 다시 시도해 주세요.'}
-              </p>
-              <div className="mt-4 flex justify-end">
-                <Button variant="dark" size="sm" onClick={scrapQuery.refetch}>
-                  다시 시도
-                </Button>
-              </div>
-            </div>
-          ) : (scrapQuery.data ?? []).length === 0 ? (
-            <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
-              <p className="text-midnight-ink text-sm font-black">스크랩한 공고가 없어요</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-500">
-                마음에 드는 공고를 찜해보세요.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-end justify-between">
-                <p className="text-xs font-semibold text-zinc-500">총 {scrapAllItems.length}개</p>
-              </div>
-
-              <div className="space-y-2">
-                {scrapAllItems.map((it) => (
-                  <ListRow
-                    key={String(it.key)}
-                    thumb={<InitialThumb text={it.subtitle} />}
-                    title={it.title}
-                    subtitle={it.subtitle}
-                    meta={it.jobPostId ? '' : '상세 이동 불가'}
-                    onClick={it.onClick}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </NotificationModal>
-      </div>
+          </div>
+        )}
+      </NotificationModal>
     </div>
   );
 }

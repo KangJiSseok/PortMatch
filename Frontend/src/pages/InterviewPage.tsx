@@ -54,7 +54,6 @@ function RoomHeader({
           {tags ? <div className="mt-4 flex flex-wrap items-center gap-2">{tags}</div> : null}
         </div>
 
-        {/* ✅ 버튼은 헤더에만: 나가기 (중복 제거) */}
         <div className="flex shrink-0 gap-2">
           <Button type="button" variant="red" size="md" className="rounded-2xl" onClick={onExit}>
             나가기
@@ -105,7 +104,6 @@ export default function InterviewPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ role 분기 (로비에서 했던 방식 그대로)
   const role = ((localStorage.getItem('userRole') ?? 'guest') as UserRole) || 'guest';
   const isCorporate = role === 'corporate';
 
@@ -175,7 +173,6 @@ export default function InterviewPage() {
   const goLobby = () => navigate(ROUTES.lobby(Number(id)));
   const goList = () => navigate(ROUTES.list);
 
-  // ✅ role에 따라 메인 영상(큰 화면) 라벨/타이틀만 스왑
   const mainVideo = useMemo(() => {
     if (isCorporate) {
       return {
@@ -201,8 +198,10 @@ export default function InterviewPage() {
     return <NotFoundBox onList={goList} onBackToLobby={goLobby} />;
 
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
+    // ✅ 가로 스크롤: body가 넓어지도록 root에 min-w 고정
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      {/* ✅ 컨테이너도 고정 폭 */}
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
         <RoomHeader
           subtitle={`${session.companyName} · ${session.postingTitle}`}
           onBackToLobby={goLobby}
@@ -221,7 +220,6 @@ export default function InterviewPage() {
         />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* ✅ 메인(큰 화면): role에 따라 기업/지원자 라벨만 스왑 */}
           <div className="lg:col-span-2">
             <VideoPanel
               title={mainVideo.title}
@@ -231,7 +229,6 @@ export default function InterviewPage() {
             />
           </div>
 
-          {/* ✅ 내 화면 + 토글(컨트롤바 삭제하고 여기로 통합) */}
           <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-1">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
@@ -242,7 +239,6 @@ export default function InterviewPage() {
               </div>
 
               <div className="flex gap-2">
-                {/* ✅ 버튼 size는 md만 */}
                 <Button
                   type="button"
                   variant="filter"
@@ -270,7 +266,9 @@ export default function InterviewPage() {
               <div className="flex items-center justify-between border-b border-zinc-100 bg-white px-6 py-4">
                 <div className="flex items-center gap-2">
                   <span className="bg-point-blue/60 inline-flex h-2 w-2 rounded-full" />
-                  <p className="text-sm font-black text-zinc-600">{camOn ? 'MY VIDEO' : 'CAM OFF'}</p>
+                  <p className="text-sm font-black text-zinc-600">
+                    {camOn ? 'MY VIDEO' : 'CAM OFF'}
+                  </p>
                 </div>
                 <span className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
                   preview
@@ -286,7 +284,6 @@ export default function InterviewPage() {
           </section>
         </div>
 
-        {/* 나가기 모달 */}
         {exitOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
@@ -349,9 +346,13 @@ export default function InterviewPage() {
 
 function NotFoundBox({ onList, onBackToLobby }: { onList: () => void; onBackToLobby: () => void }) {
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
-        <RoomHeader subtitle="세션을 찾을 수 없어요." onBackToLobby={onBackToLobby} onExit={onList} />
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
+        <RoomHeader
+          subtitle="세션을 찾을 수 없어요."
+          onBackToLobby={onBackToLobby}
+          onExit={onList}
+        />
 
         <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
           <p className="text-lg font-black">유효하지 않은 면접 세션이에요.</p>
@@ -379,8 +380,8 @@ function ErrorBox({
   onList: () => void;
 }) {
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
         <RoomHeader
           subtitle="연결 준비 중 문제가 발생했어요."
           onBackToLobby={onBackToLobby}
@@ -416,8 +417,8 @@ function RoomSkeleton({
   onExit: () => void;
 }) {
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
         <RoomHeader subtitle="방에 연결하는 중..." onBackToLobby={onBackToLobby} onExit={onExit} />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

@@ -46,10 +46,8 @@ function calcDday(deadline?: string | null) {
 }
 
 function ddayClass(dday: string) {
-  // D-DAY / 마감은 무조건 빨강
   if (dday === 'D-DAY' || dday === '마감') return 'text-red-500';
 
-  // D-숫자면 숫자 파싱해서 3 이하면 빨강, 그 외는 포인트블루
   const m = dday.match(/^D-(\d+)$/);
   if (m) {
     const n = Number(m[1]);
@@ -57,7 +55,6 @@ function ddayClass(dday: string) {
     return 'text-point-blue';
   }
 
-  // 그 외(예: '-') 기본 텍스트
   return 'text-zinc-800';
 }
 
@@ -139,8 +136,9 @@ function SectionCard({
 
 function DetailSkeleton({ onBack }: { onBack: () => void }) {
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-24 pb-20">
-      <div className="mx-auto max-w-6xl px-6">
+    // ✅ 가로 스크롤: root에 min-w + container 고정
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-24 pb-20">
+      <div className="mx-auto w-[1280px] px-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="h-6 w-36 animate-pulse rounded bg-zinc-100" />
           <Button type="button" variant="outline" size="md" onClick={onBack}>
@@ -201,8 +199,8 @@ function ErrorBox({
   onBack: () => void;
 }) {
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-24 pb-20">
-      <div className="mx-auto max-w-6xl px-6">
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-24 pb-20">
+      <div className="mx-auto w-[1280px] px-6">
         <div className="rounded-4xl border border-zinc-100 bg-white p-10 text-center shadow-sm">
           <p className="text-xl font-black">{title}</p>
           <p className="mt-2 text-sm font-medium text-zinc-500">{message}</p>
@@ -230,8 +228,8 @@ function EmptyBox({
   onBack: () => void;
 }) {
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-24 pb-20">
-      <div className="mx-auto max-w-6xl px-6">
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-24 pb-20">
+      <div className="mx-auto w-[1280px] px-6">
         <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
           <p className="text-xl font-black">{title}</p>
           <p className="mt-2 text-sm font-medium text-zinc-500">{message}</p>
@@ -251,7 +249,6 @@ export default function JobPostDetailPage() {
   const navigate = useNavigate();
   const jobPostId = Number(id);
 
-  // ✅ navbar 기준 offset
   const [navH, setNavH] = useState(80);
   const GAP = 16;
   const OFFSET = useMemo(() => navH + GAP, [navH]);
@@ -280,19 +277,14 @@ export default function JobPostDetailPage() {
   const handleToggleScrap = async () => {
     if (!data || scrapPending) return;
 
-    // 1) UI 먼저 바꿈 (optimistic)
     const optimistic = !data.isScrapped;
     setData((prev) => (prev ? { ...prev, isScrapped: optimistic } : prev));
 
-    // 2) 그 다음 "저장"을 비동기로
     setScrapPending(true);
     try {
       const confirmed = await toggleJobPostScrapAsync(jobPost.id, optimistic);
-
-      // 서버(여기선 mock)가 준 값으로 최종 확정
       setData((prev) => (prev ? { ...prev, isScrapped: confirmed } : prev));
     } catch (e) {
-      // 3) 실패하면 롤백
       setData((prev) => (prev ? { ...prev, isScrapped: !optimistic } : prev));
       console.error(e);
       alert('스크랩 처리 실패! 다시 시도해줘 🥲');
@@ -300,7 +292,6 @@ export default function JobPostDetailPage() {
       setScrapPending(false);
     }
   };
-
 
   const scrollToId = (sectionId: string) => {
     const el = document.getElementById(sectionId);
@@ -340,7 +331,6 @@ export default function JobPostDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // ✅ 조건 return (여기 아래 hook 절대 없음)
   if (status === 'loading') return <DetailSkeleton onBack={() => navigate(-1)} />;
 
   if (status === 'error') {
@@ -365,8 +355,6 @@ export default function JobPostDetailPage() {
   }
 
   const { jobPost, company } = data;
-
-  // ✅ 타입 확장(필드 추가 전에도 TS 안 터지게)
   const jp = jobPost as typeof jobPost & JobPostExtraFields;
 
   const dday = calcDday(jobPost.deadline);
@@ -382,12 +370,12 @@ export default function JobPostDetailPage() {
   const workTimeText =
     jp.work_days && jp.work_hours
       ? `${jp.work_days} ${jp.work_hours}`
-      : jp.work_days ?? jp.work_hours ?? null;
+      : (jp.work_days ?? jp.work_hours ?? null);
 
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pb-20 pt-26">
-      <div className="mx-auto max-w-6xl px-6">
-        {/* 상단 */}
+    // ✅ 가로 스크롤: root에 min-w + container 고정
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-26 pb-20">
+      <div className="mx-auto w-[1280px] px-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="space-y-1">
             <h2 className="text-midnight-ink text-2xl font-black tracking-tighter">공고 상세</h2>
@@ -397,15 +385,15 @@ export default function JobPostDetailPage() {
           </Button>
         </div>
 
-        {/* 요약 카드 */}
         <section className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
           <div className="p-10 lg:p-14">
-            {/* 회사명 */}
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-black tracking-[0.2em] text-zinc-400 uppercase">COMPANY</p>
+                <p className="text-xs font-black tracking-[0.2em] text-zinc-400 uppercase">
+                  COMPANY
+                </p>
                 <p
-                  className="mt-1 inline-flex max-w-full cursor-pointer items-center gap-2 text-base font-black text-midnight-ink transition-colors hover:text-point-blue"
+                  className="text-midnight-ink hover:text-point-blue mt-1 inline-flex max-w-full cursor-pointer items-center gap-2 text-base font-black transition-colors"
                   onClick={() => navigate(`/companies/${company.id}`)}
                   role="button"
                   tabIndex={0}
@@ -431,13 +419,11 @@ export default function JobPostDetailPage() {
               </div>
             </div>
 
-            {/* 제목 + 우측 라인 */}
             <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <h1 className="text-midnight-ink text-3xl font-black tracking-tighter lg:text-4xl">
                 {jobPost.title}
               </h1>
 
-              {/* ✅ D-day + 마감 + 스크랩 (같은 줄) */}
               <div className="flex flex-wrap items-center gap-3">
                 <span className={`text-lg font-black ${ddayClass(dday)}`}>{dday}</span>
 
@@ -449,14 +435,11 @@ export default function JobPostDetailPage() {
                   type="button"
                   onClick={handleToggleScrap}
                   disabled={scrapPending}
-                  className={`ml-1 inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black transition-all
-                    ${
-                      data.isScrapped
-                        ? 'border-point-blue/30 bg-point-blue/10 text-point-blue'
-                        : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900'
-                    }
-                    ${scrapPending ? 'opacity-60 cursor-not-allowed' : ''}
-                  `}
+                  className={`ml-1 inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black transition-all ${
+                    data.isScrapped
+                      ? 'border-point-blue/30 bg-point-blue/10 text-point-blue'
+                      : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900'
+                  } ${scrapPending ? 'cursor-not-allowed opacity-60' : ''} `}
                   aria-label={data.isScrapped ? '스크랩 해제' : '스크랩'}
                 >
                   <svg
@@ -471,29 +454,27 @@ export default function JobPostDetailPage() {
                   </svg>
                   {scrapPending ? '처리중...' : '스크랩'}
                 </button>
-
               </div>
             </div>
 
-            {/* ✅ 사람인 파란 박스 느낌: 경력/학력/근무형태/급여/근무지역(+근무시간 옵션) */}
             <div className="mt-8 rounded-2xl border border-zinc-100 bg-white">
               <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
-                {/* 왼쪽 */}
                 <div className="space-y-6 p-7">
                   <SummaryRow label="경력">
-                    <span className="font-black text-point-blue">{jp.career ?? '무관'}</span>
+                    <span className="text-point-blue font-black">{jp.career ?? '무관'}</span>
                   </SummaryRow>
 
                   <SummaryRow label="학력">
-                    <span className="font-black text-point-blue">{jp.education ?? '학력무관'}</span>
+                    <span className="text-point-blue font-black">{jp.education ?? '학력무관'}</span>
                   </SummaryRow>
 
                   <SummaryRow label="근무형태">
-                    <span className="font-black text-point-blue">{jp.employment_type ?? '협의'}</span>
+                    <span className="text-point-blue font-black">
+                      {jp.employment_type ?? '협의'}
+                    </span>
                   </SummaryRow>
                 </div>
 
-                {/* 오른쪽 */}
                 <div className="space-y-6 border-t border-zinc-100 p-7 md:border-t-0 md:border-l">
                   <SummaryRow label="급여">
                     <span className="font-black text-zinc-800">{jp.salary ?? '면접 후 결정'}</span>
@@ -521,7 +502,6 @@ export default function JobPostDetailPage() {
                     </div>
                   </SummaryRow>
 
-                  {/* 있으면 보여주기(없으면 숨김) */}
                   {workTimeText ? (
                     <SummaryRow label="근무시간">
                       <span className="font-black text-zinc-800">{workTimeText}</span>
@@ -533,7 +513,6 @@ export default function JobPostDetailPage() {
               <div className="h-px w-full bg-zinc-100" />
             </div>
 
-            {/* 스택 태그 */}
             {(jobPost.required_stacks ?? []).length > 0 && (
               <div className="mt-6 flex flex-wrap gap-2">
                 {(jobPost.required_stacks ?? []).map((s) => (
@@ -549,9 +528,7 @@ export default function JobPostDetailPage() {
           </div>
         </section>
 
-        {/* 본문 + sticky */}
         <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* 왼쪽 */}
           <div className="space-y-6 lg:col-span-2">
             <SectionCard id="detail" title="상세요강" offset={OFFSET}>
               <div className="rounded-xl bg-zinc-50 p-6">
@@ -586,7 +563,8 @@ export default function JobPostDetailPage() {
                 <div className="rounded-xl bg-zinc-50 p-6">
                   <p className="text-midnight-ink text-sm font-black">우대사항</p>
                   <p className="mt-2 text-sm leading-6 font-medium text-zinc-500">
-                    (데모) 경력/학력/고용형태/근무지/급여/근무시간 정보는 상단 요약 영역에서 먼저 보여줘요.
+                    (데모) 경력/학력/고용형태/근무지/급여/근무시간 정보는 상단 요약 영역에서 먼저
+                    보여줘요.
                     <br />
                     (추후) 상세 요건 컬럼이 더 늘어나면 이 섹션에 사람인처럼 쫘악 풀어쓰면 됨.
                   </p>
@@ -598,7 +576,11 @@ export default function JobPostDetailPage() {
               <div className="space-y-3">
                 <InfoRow label="기업명" value={company.companies_name} />
                 <InfoRow label="주소" value={company.address ?? '-'} />
-                <InfoRow label="홈페이지" value={company.homepage_url ?? '-'} isLink={!!company.homepage_url} />
+                <InfoRow
+                  label="홈페이지"
+                  value={company.homepage_url ?? '-'}
+                  isLink={!!company.homepage_url}
+                />
               </div>
             </SectionCard>
 
@@ -609,7 +591,6 @@ export default function JobPostDetailPage() {
             </SectionCard>
           </div>
 
-          {/* 오른쪽 sticky */}
           <aside className="lg:col-span-1">
             <div
               className="sticky rounded-[20px] border border-zinc-100 bg-white p-6 shadow-sm"
@@ -628,7 +609,6 @@ export default function JobPostDetailPage() {
                 <MiniRow label="등록일" value={formatIsoDot(jobPost.created_at)} />
               </div>
 
-              {/* 바로가기 */}
               <div className="mt-6 rounded-2xl bg-zinc-50 p-4">
                 <p className="text-midnight-ink text-sm font-black">바로가기</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
@@ -650,7 +630,6 @@ export default function JobPostDetailPage() {
                 </div>
               </div>
 
-              {/* CTA */}
               <div className="mt-6">
                 {data.external_apply_url ? (
                   <Button

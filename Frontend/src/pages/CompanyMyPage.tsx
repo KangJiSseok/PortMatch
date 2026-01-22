@@ -12,7 +12,8 @@ const ROUTES = {
   resumeView: (applicantId: number) => `/resume/${applicantId}`,
   // ✅ 공고 상세 라우트(프로젝트에 맞게 변경)
   jobPostDetail: (jobPostId: number) => `/job-posts/${jobPostId}`,
-  companyEdit: '/companies/${companyId}'
+  // ⚠️ 원본 코드 유지 (필요하면 함수로 바꿔서 회사ID 넣어주세요)
+  companyEdit: '/companies/${companyId}',
 } as const;
 
 /** ------------------ types ------------------ */
@@ -245,15 +246,13 @@ export default function CorporateMyPage() {
   const companyEmail = profileQuery.data?.email ?? '-';
 
   // ==========================
-  // ✅ Quick Filter (피드백 #3)
+  // ✅ Quick Filter
   // ==========================
   const [jobPostSort, setJobPostSort] = useState<'latest' | 'deadline'>('latest');
   const [interviewFilter, setInterviewFilter] = useState<'upcoming' | 'today'>('upcoming');
 
   // ==========================
   // ✅ 관리 바로가기 - 공고 리스트
-  // - 마감 임박 배지(D-Day) (피드백 #2)
-  // - 퀵 정렬(최신/마감임박) (피드백 #3)
   // ==========================
   const jobPostItems = useMemo(() => {
     const list = jobPostQuery.data ?? [];
@@ -300,8 +299,6 @@ export default function CorporateMyPage() {
 
   // ==========================
   // ✅ 면접 프리뷰 리스트
-  // - 퀵 필터(다가오는/오늘) (피드백 #3)
-  // - title(몇 차 면접) 강조 + 모바일에서 버튼 겹침 방지 (피드백 #2, #5)
   // ==========================
   const interviewPreviewItems = useMemo(() => {
     const now = new Date();
@@ -321,7 +318,7 @@ export default function CorporateMyPage() {
       key: e.id,
       applicantId: e.applicantId,
       candidateName: e.candidateName,
-      stageTitle: e.title, // ✅ 면접 단계 강조용
+      stageTitle: e.title,
       subtitle: e.position ? e.position : companyName,
       meta: formatDateTime(e.scheduledAt),
       onClick: () => navigate(ROUTES.interviewManage),
@@ -329,8 +326,7 @@ export default function CorporateMyPage() {
   }, [interviewQuery.data, interviewFilter, navigate, companyName]);
 
   // ==========================
-  // ✅ 캘린더
-  // - 모바일: 리스트형 캘린더 (피드백 #5)
+  // ✅ 캘린더 (고정 레이아웃: 데스크탑 버전만 유지)
   // ==========================
   const todayYmd = toYmd(new Date());
 
@@ -392,32 +388,22 @@ export default function CorporateMyPage() {
     [interviewEventMap, selectedDate],
   );
 
-  const monthEventDays = useMemo(() => {
-    // 모바일 리스트형: 이번 달에 면접 있는 날짜만 뽑기
-    const out: Array<{ ymd: string; events: InterviewEvent[] }> = [];
-    for (const [ymd, list] of interviewEventMap.entries()) {
-      const d = new Date(`${ymd}T00:00:00`);
-      if (d.getFullYear() === year && d.getMonth() === month0) {
-        out.push({ ymd, events: list });
-      }
-    }
-    out.sort((a, b) => (a.ymd < b.ymd ? -1 : 1));
-    return out;
-  }, [interviewEventMap, year, month0]);
-
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-28 pb-20">
+    // ✅ [해결 1 방식] 문서(body) 자체가 넓어지도록 root에 min-w 고정
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
+      {/* ✅ 캔버스 고정 폭 */}
       <div
         className={[
-          'mx-auto max-w-6xl space-y-10 px-6 transition-all duration-200',
+          'mx-auto w-[1280px] space-y-10 px-6 transition-all duration-200',
           entered ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0',
         ].join(' ')}
       >
-        {/* ✅ 헤더 (피드백 #3: CTA 하나만 강조) */}
+        {/* ✅ 헤더 */}
         <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
-          <div className="relative p-8 md:p-10">
+          <div className="relative p-10">
             <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
-            <div className="relative flex flex-wrap items-start justify-between gap-5">
+            {/* ✅ 반응형 제거: wrap 금지 */}
+            <div className="relative flex flex-nowrap items-start justify-between gap-5">
               <div>
                 <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
                   CORPORATE DASHBOARD
@@ -430,18 +416,16 @@ export default function CorporateMyPage() {
                 </p>
               </div>
 
-              {/* ✅ 메인 CTA: 정보 수정 */}
               <div className="flex items-center gap-3">
                 <Button
                   variant="blue"
                   size="md"
                   className="rounded-2xl shadow-md"
-                  onClick={() => navigate(ROUTES.companyEdit)} // 예: 회사 정보 수정 페이지
+                  onClick={() => navigate(ROUTES.companyEdit)}
                 >
                   정보 수정
                 </Button>
               </div>
-
             </div>
           </div>
         </header>
@@ -454,7 +438,8 @@ export default function CorporateMyPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2">
+          {/* ✅ 반응형 제거: 무조건 2열 고정 */}
+          <div className="grid grid-cols-2 gap-5">
             {/* ✅ 공고 */}
             <HubCard title="공고" onHeaderClick={() => navigate(ROUTES.jobPostManage)}>
               <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
@@ -523,15 +508,12 @@ export default function CorporateMyPage() {
                     </div>
                   )}
                 </div>
-
-                {/* ✅ 중복 CTA 제거(피드백 #3): 하단 '공고 등록' 삭제 */}
               </div>
             </HubCard>
 
             {/* ✅ 면접 */}
             <HubCard title="면접" onHeaderClick={() => navigate(ROUTES.interviewManage)}>
               <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
-                {/* ✅ 퀵 필터 */}
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Button
@@ -588,7 +570,6 @@ export default function CorporateMyPage() {
                   )}
                 </div>
 
-                {/* ✅ 눈에 띄게: 면접 리스트로 이동 (기존 모달 버튼 자리) */}
                 <div className="mt-4 flex justify-end">
                   <Button
                     variant="dark"
@@ -604,7 +585,7 @@ export default function CorporateMyPage() {
           </div>
         </section>
 
-        {/* ✅ 캘린더 */}
+        {/* ✅ 캘린더 (고정 레이아웃) */}
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
             <div>
@@ -613,8 +594,8 @@ export default function CorporateMyPage() {
             </div>
           </div>
 
-          <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm md:p-8">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-8 shadow-sm">
+            <div className="mb-6 flex items-center justify-between gap-4">
               <div>
                 <p className="text-lg font-black">{thisMonthLabel}</p>
               </div>
@@ -640,234 +621,127 @@ export default function CorporateMyPage() {
                 onRetry={interviewQuery.refetch}
               />
             ) : (
-              <>
-                {/* ✅ Mobile: 리스트형 캘린더 (피드백 #5) */}
-                <div className="sm:hidden">
-                  <div className="space-y-3">
-                    {monthEventDays.length === 0 ? (
-                      <div className="rounded-2xl border border-zinc-100 bg-white p-6 text-center">
-                        <p className="text-sm font-semibold text-zinc-500">
-                          이번 달에는 면접 일정이 없어요.
-                        </p>
-                      </div>
-                    ) : (
-                      monthEventDays.map(({ ymd, events }) => (
+              <div className="grid grid-cols-[1fr_380px] gap-8">
+                {/* LEFT: 달력 */}
+                <div>
+                  <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
+                    {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+                      <div key={d}>{d}</div>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-7 gap-3">
+                    {cells.map((d, idx) => {
+                      const ymd = toYmd(d);
+                      const inThisMonth = d.getMonth() === month0;
+                      const isToday = ymd === todayYmd;
+                      const isSelected = ymd === selectedDate;
+
+                      const ev = interviewEventMap.get(ymd) ?? [];
+                      const cnt = ev.length;
+
+                      return (
                         <Button
-                          key={ymd}
+                          key={`${ymd}-${idx}`}
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelectedDate(ymd)}
+                          onClick={() => {
+                            setSelectedDate(ymd);
+                            if (!inThisMonth)
+                              setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                          }}
                           className={[
-                            'w-full rounded-2xl border p-4 text-left',
-                            ymd === selectedDate ? 'ring-midnight-ink ring-2' : '',
+                            'flex w-full flex-col items-stretch justify-start text-left',
+                            'min-h-[90px] cursor-pointer rounded-2xl border p-3 transition',
+                            inThisMonth
+                              ? 'border-zinc-200 bg-white'
+                              : 'border-zinc-200/60 bg-zinc-50',
+                            'hover:bg-zinc-100/60',
+                            isSelected ? 'ring-midnight-ink ring-2' : '',
                           ].join(' ')}
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-sm font-black">{formatYmdToKorean(ymd)}</p>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {events.slice(0, 2).map((e) => (
-                                  <span
-                                    key={e.id}
-                                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-bold text-zinc-700"
-                                  >
-                                    {formatDateTime(e.scheduledAt).slice(-5)} · {e.title}
-                                  </span>
-                                ))}
-                                {events.length > 2 ? (
-                                  <span className="rounded-full bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-zinc-500">
-                                    +{events.length - 2}건
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-
-                            <span className="bg-point-blue/10 text-point-blue shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black">
-                              {events.length}건
+                          <div className="flex items-start justify-between">
+                            <span
+                              className={
+                                inThisMonth
+                                  ? 'text-midnight-ink font-extrabold'
+                                  : 'font-extrabold text-zinc-400'
+                              }
+                            >
+                              {d.getDate()}
                             </span>
+                            {isToday && (
+                              <span className="bg-midnight-ink rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
+                                TODAY
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between">
+                            {cnt > 0 ? (
+                              <>
+                                <span className="bg-point-blue mt-0.5 h-2 w-2 rounded-full" />
+                                <span className="text-xs font-black text-zinc-600">{cnt}건</span>
+                              </>
+                            ) : (
+                              <span className="text-xs font-semibold text-zinc-400"></span>
+                            )}
                           </div>
                         </Button>
-                      ))
-                    )}
+                      );
+                    })}
+                  </div>
+                </div>
 
-                    {/* ✅ 선택한 날짜 상세 */}
-                    <div className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
-                      <p className="text-base font-black">선택한 날짜</p>
+                {/* RIGHT: 선택한 날짜 일정 */}
+                <div className="rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-lg font-black">선택한 날짜 일정</p>
                       <p className="mt-1 text-sm font-semibold text-zinc-500">
                         {formatYmdToKorean(selectedDate)}
                       </p>
-
-                      <div className="mt-4 space-y-2">
-                        {selectedEvents.length === 0 ? (
-                          <p className="text-sm font-semibold text-zinc-500">
-                            이 날짜에는 면접 일정이 없어요.
-                          </p>
-                        ) : (
-                          selectedEvents.map((e) => (
-                            <div
-                              key={e.id}
-                              className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="text-sm font-black">
-                                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-black text-zinc-700">
-                                      {e.title}
-                                    </span>
-                                    <span className="ml-2">{e.candidateName}</span>
-                                  </p>
-                                  <p className="mt-2 text-xs font-semibold text-zinc-500">
-                                    {formatDateTime(e.scheduledAt)}
-                                  </p>
-                                </div>
-
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => navigate(ROUTES.resumeView(e.applicantId))}
-                                  className="shrink-0 rounded-xl"
-                                >
-                                  이력서 보기
-                                </Button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* ✅ Desktop: 기존 달력 + 우측 패널 */}
-                <div className="hidden sm:block">
-                  <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-                    {/* LEFT: 달력 */}
-                    <div>
-                      <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
-                        {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-                          <div key={d}>{d}</div>
-                        ))}
-                      </div>
+                  <div className="mt-4 max-h-[520px] space-y-2 overflow-auto pr-1">
+                    {selectedEvents.length === 0 ? (
+                      <p className="text-sm font-semibold text-zinc-500">
+                        이 날짜에는 면접 일정이 없어요.
+                      </p>
+                    ) : (
+                      selectedEvents.map((e) => (
+                        <div
+                          key={e.id}
+                          className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
+                        >
+                          <p className="text-midnight-ink text-sm font-black">
+                            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-black text-zinc-700">
+                              {e.title}
+                            </span>
+                            <span className="ml-2">{e.candidateName}</span>
+                          </p>
+                          <p className="mt-2 text-xs font-semibold text-zinc-500">
+                            {formatDateTime(e.scheduledAt)}
+                          </p>
 
-                      <div className="mt-3 grid grid-cols-7 gap-3">
-                        {cells.map((d, idx) => {
-                          const ymd = toYmd(d);
-                          const inThisMonth = d.getMonth() === month0;
-                          const isToday = ymd === todayYmd;
-                          const isSelected = ymd === selectedDate;
-
-                          const ev = interviewEventMap.get(ymd) ?? [];
-                          const cnt = ev.length;
-
-                          return (
+                          <div className="mt-3 flex justify-end gap-2">
                             <Button
-                              key={`${ymd}-${idx}`}
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setSelectedDate(ymd);
-                                if (!inThisMonth)
-                                  setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-                              }}
-                              className={[
-                                'flex w-full flex-col items-stretch justify-start text-left',
-                                'min-h-[90px] cursor-pointer rounded-2xl border p-3 transition',
-                                inThisMonth
-                                  ? 'border-zinc-200 bg-white'
-                                  : 'border-zinc-200/60 bg-zinc-50',
-                                'hover:bg-zinc-100/60',
-                                isSelected ? 'ring-midnight-ink ring-2' : '',
-                              ].join(' ')}
+                              onClick={() => navigate(ROUTES.resumeView(e.applicantId))}
                             >
-                              <div className="flex items-start justify-between">
-                                <span
-                                  className={
-                                    inThisMonth
-                                      ? 'text-midnight-ink font-extrabold'
-                                      : 'font-extrabold text-zinc-400'
-                                  }
-                                >
-                                  {d.getDate()}
-                                </span>
-                                {isToday && (
-                                  <span className="bg-midnight-ink rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
-                                    TODAY
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* ✅ 동그라미 1개 + 건수 */}
-                              <div className="mt-3 flex items-center justify-between">
-                                {cnt > 0 ? (
-                                  <>
-                                    <span className="bg-point-blue mt-0.5 h-2 w-2 rounded-full" />
-                                    <span className="text-xs font-black text-zinc-600">
-                                      {cnt}건
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-xs font-semibold text-zinc-400"></span>
-                                )}
-                              </div>
+                              이력서 보기
                             </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* RIGHT: 선택한 날짜 일정 */}
-                    <div className="rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-lg font-black">선택한 날짜 일정</p>
-                          <p className="mt-1 text-sm font-semibold text-zinc-500">
-                            {formatYmdToKorean(selectedDate)}
-                          </p>
+                          </div>
                         </div>
-                      </div>
-
-                      <div className="mt-4 max-h-[520px] space-y-2 overflow-auto pr-1">
-                        {selectedEvents.length === 0 ? (
-                          <p className="text-sm font-semibold text-zinc-500">
-                            이 날짜에는 면접 일정이 없어요.
-                          </p>
-                        ) : (
-                          selectedEvents.map((e) => (
-                            <div
-                              key={e.id}
-                              className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
-                            >
-                              <p className="text-midnight-ink text-sm font-black">
-                                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-black text-zinc-700">
-                                  {e.title}
-                                </span>
-                                <span className="ml-2">{e.candidateName}</span>
-                              </p>
-                              <p className="mt-2 text-xs font-semibold text-zinc-500">
-                                {formatDateTime(e.scheduledAt)}
-                              </p>
-
-                              <div className="mt-3 flex justify-end gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => navigate(ROUTES.resumeView(e.applicantId))}
-                                >
-                                  이력서 보기
-                                </Button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
+                      ))
+                    )}
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </section>
@@ -909,7 +783,7 @@ function HubCard({
 
 /**
  * ✅ 공고 Row
- * - 마감임박 배지 지원 (피드백 #2)
+ * - 마감임박 배지 지원
  */
 function ListRowNoThumb({
   title,
@@ -956,8 +830,7 @@ function ListRowNoThumb({
 
 /**
  * ✅ 면접 Row
- * - "몇 차 면접"을 더 강조 (피드백 #2)
- * - 모바일에서 버튼 겹침 방지 (피드백 #5)
+ * - "몇 차 면접" 강조
  */
 function ListRowInterviewWithResume({
   candidateName,
@@ -984,7 +857,7 @@ function ListRowInterviewWithResume({
       }}
       className="group w-full cursor-pointer rounded-2xl p-3 text-left transition hover:bg-zinc-50"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-midnight-ink line-clamp-2 text-sm font-black">
             <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-black text-zinc-700">
@@ -1004,7 +877,7 @@ function ListRowInterviewWithResume({
           </div>
         </div>
 
-        <div className="flex justify-end sm:block">
+        <div className="shrink-0">
           <Button
             type="button"
             variant="outline"
@@ -1059,56 +932,35 @@ function InlineError({ message, onRetry }: { message: string; onRetry: () => voi
 }
 
 /**
- * ✅ 캘린더 스켈레톤도 모바일/데스크탑 분기해서 레이아웃 붕괴 줄임 (피드백 #4, #5)
+ * ✅ 캘린더 스켈레톤 (고정 레이아웃: 데스크탑 버전만)
  */
 function CalendarSkeleton() {
   return (
-    <div className="space-y-4">
-      {/* Mobile skeleton */}
-      <div className="space-y-3 sm:hidden">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="animate-pulse rounded-2xl border border-zinc-200 bg-white/60 p-4">
-            <div className="h-4 w-32 rounded bg-zinc-200/70" />
-            <div className="mt-3 h-3 w-56 rounded bg-zinc-200/50" />
-          </div>
+    <div>
+      <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
+        {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+          <div key={d}>{d}</div>
         ))}
-        <div className="animate-pulse rounded-3xl border border-zinc-200 bg-white/60 p-5">
-          <div className="h-4 w-28 rounded bg-zinc-200/70" />
-          <div className="mt-3 h-3 w-40 rounded bg-zinc-200/50" />
-          <div className="mt-4 space-y-2">
-            <div className="h-16 rounded-xl bg-zinc-200/30" />
-            <div className="h-16 rounded-xl bg-zinc-200/30" />
-          </div>
-        </div>
       </div>
 
-      {/* Desktop skeleton */}
-      <div className="hidden sm:block">
-        <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
-          {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-            <div key={d}>{d}</div>
-          ))}
-        </div>
-
-        <div className="mt-3 grid grid-cols-7 gap-3">
-          {Array.from({ length: 42 }).map((_, i) => (
-            <div
-              key={i}
-              className="min-h-[78px] animate-pulse rounded-2xl border border-zinc-200 bg-white/60 p-3"
-            >
-              <div className="h-4 w-8 rounded bg-zinc-200/70" />
-              <div className="mt-3 h-3 w-20 rounded bg-zinc-200/50" />
-              <div className="mt-2 h-3 w-16 rounded bg-zinc-200/40" />
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
-          <div className="h-5 w-40 animate-pulse rounded bg-zinc-200/60" />
-          <div className="mt-4 space-y-2">
-            <div className="h-16 animate-pulse rounded-xl bg-zinc-200/30" />
-            <div className="h-16 animate-pulse rounded-xl bg-zinc-200/30" />
+      <div className="mt-3 grid grid-cols-7 gap-3">
+        {Array.from({ length: 42 }).map((_, i) => (
+          <div
+            key={i}
+            className="min-h-[78px] animate-pulse rounded-2xl border border-zinc-200 bg-white/60 p-3"
+          >
+            <div className="h-4 w-8 rounded bg-zinc-200/70" />
+            <div className="mt-3 h-3 w-20 rounded bg-zinc-200/50" />
+            <div className="mt-2 h-3 w-16 rounded bg-zinc-200/40" />
           </div>
+        ))}
+      </div>
+
+      <div className="mt-8 rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
+        <div className="h-5 w-40 animate-pulse rounded bg-zinc-200/60" />
+        <div className="mt-4 space-y-2">
+          <div className="h-16 animate-pulse rounded-xl bg-zinc-200/30" />
+          <div className="h-16 animate-pulse rounded-xl bg-zinc-200/30" />
         </div>
       </div>
     </div>
