@@ -57,11 +57,14 @@ export default function InterviewListPage() {
   }, [tab]);
 
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
+    // ✅ [해결 1 방식] body 자체가 넓어지도록 root에 min-w 고정
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      {/* ✅ 캔버스 고정 폭 */}
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
         {/* 탭 + 리스트 */}
         <section className="space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 pb-4">
+          {/* ✅ 반응형 제거: flex-wrap 금지 */}
+          <div className="flex flex-nowrap items-center justify-between gap-3 border-b border-zinc-100 pb-4">
             <div>
               <h2 className="text-2xl font-black tracking-tighter">면접 목록</h2>
             </div>
@@ -117,7 +120,10 @@ export default function InterviewListPage() {
                 items.map((s) => (
                   <div
                     key={s.interview_id}
-                    className="group flex flex-col gap-4 rounded-4xl border border-zinc-100 bg-white p-6 shadow-sm transition-all hover:border-zinc-200 hover:shadow-md md:flex-row md:items-center md:justify-between"
+                    className={
+                      // ✅ 반응형 제거: md:flex-row 같은 거 금지 → 무조건 row 고정
+                      'group flex items-center justify-between gap-4 rounded-4xl border border-zinc-100 bg-white p-6 shadow-sm transition-all hover:border-zinc-200 hover:shadow-md'
+                    }
                   >
                     <div className="min-w-0">
                       <p className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
@@ -126,6 +132,8 @@ export default function InterviewListPage() {
                       <p className="mt-2 truncate text-2xl font-black tracking-tighter">
                         {s.postingTitle}
                       </p>
+                      {/* ✅ 반응형 제거: wrap은 유지해도 “배치 변경”은 아니라서 OK
+                          (좁아지면 줄바꿈은 생길 수 있음. 줄바꿈도 싫으면 flex-nowrap로 바꿔줘) */}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-600">
                           {formatDateTime(s.scheduledAt)}
@@ -148,9 +156,7 @@ export default function InterviewListPage() {
                         >
                           입장
                         </Button>
-                      ) : (
-                        null
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))
@@ -171,7 +177,8 @@ function ListSkeleton() {
           key={i}
           className="animate-pulse rounded-4xl border border-zinc-100 bg-white p-6 shadow-sm"
         >
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          {/* ✅ 반응형 제거: md:flex-row 금지 → 무조건 row 고정 */}
+          <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <div className="h-3 w-24 rounded bg-zinc-200/70" />
               <div className="mt-3 h-7 w-72 rounded bg-zinc-200/60" />
