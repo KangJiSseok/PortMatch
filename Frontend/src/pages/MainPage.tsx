@@ -100,11 +100,11 @@ function MainPage() {
   const [trendIndex, setTrendIndex] = useState(0);
 
   useEffect(() => {
-  const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement;
-  if (navbarInput) {
-    navbarInput.value = '';
-  }
-}, []);
+    const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement;
+    if (navbarInput) {
+      navbarInput.value = '';
+    }
+  }, []);
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     e.currentTarget.src = FALLBACK_IMAGE;
@@ -113,6 +113,11 @@ function MainPage() {
   const goToCompanyDetail = (e: React.MouseEvent, companyId: number) => {
     e.stopPropagation();
     navigate(`/companies/${companyId}`);
+  };
+
+  const goToJobPostDetail = (e: React.MouseEvent, companyId: number) => {
+    e.stopPropagation();
+    navigate(`/job-posts/${companyId}`);
   };
 
   const getHeroContent = () => {
@@ -214,6 +219,7 @@ function MainPage() {
                     <div
                       key={item.id}
                       className="group flex cursor-pointer items-center justify-between rounded-xl border border-zinc-100 bg-white p-5 transition-all hover:border-zinc-300 hover:shadow-md"
+                      onClick={(e) => goToJobPostDetail(e, item.companyId)}
                     >
                       <div className="mr-3 min-w-0 flex-1 space-y-1">
                         <p className="text-midnight-ink truncate text-base font-bold">
@@ -275,6 +281,7 @@ function MainPage() {
               key={job.id}
               whileHover={{ y: -5 }}
               className="group flex flex-col overflow-hidden rounded-[20px] border border-zinc-100 bg-white shadow-sm transition-all hover:shadow-lg"
+              onClick={(e) => goToJobPostDetail(e, job.companyId)}
             >
               <div className="relative h-28 w-full overflow-hidden">
                 <img
@@ -290,7 +297,7 @@ function MainPage() {
                 <div className="mb-3 min-w-0 flex-1 space-y-1.5">
                   <p
                     onClick={(e) => goToCompanyDetail(e, job.companyId)}
-                    className={`hover:text-point-blue inline-block cursor-pointer text-[11px] font-bold text-zinc-400 transition-colors duration-300 ${underlineEffect}`}
+                    className={`hover:text-point-blue inline-block cursor-pointer text-sm font-bold text-zinc-400 transition-colors duration-300 ${underlineEffect}`}
                   >
                     {job.company}
                   </p>
@@ -300,10 +307,10 @@ function MainPage() {
                 </div>
 
                 <div className="mt-auto flex items-center justify-between border-t border-zinc-50 pt-3">
-                  <span className="text-[11px] font-bold text-zinc-400">{job.location}</span>
+                  <span className="text-xs font-bold text-zinc-400">{job.location}</span>
                   <div className="flex items-center gap-2.5">
                     <span
-                      className={`text-xs font-black ${job.deadline === '오늘마감' ? 'text-red-500' : 'text-zinc-800'}`}
+                      className={`text-sm font-black ${job.deadline === '오늘마감' ? 'text-red-500' : 'text-zinc-800'}`}
                     >
                       {job.deadline}
                     </span>

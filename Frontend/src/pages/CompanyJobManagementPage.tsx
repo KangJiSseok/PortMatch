@@ -75,7 +75,7 @@ const CompanyJobManagementPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-32 pb-32">
+    <div className="bg-pure-white min-h-screen pt-32 pb-32">
       <div className="mx-auto max-w-5xl px-6">
         <AnimatePresence>
           {modal.isOpen && (
@@ -91,7 +91,7 @@ const CompanyJobManagementPage = () => {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative w-full max-w-md overflow-hidden rounded-[40px] bg-white p-10 text-center shadow-2xl"
+                className="bg-pure-white relative w-full max-w-md overflow-hidden rounded-[40px] p-10 text-center shadow-2xl"
               >
                 <div className="text-error mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50">
                   <svg
@@ -176,7 +176,7 @@ const CompanyJobManagementPage = () => {
               jobs.map((job) => (
                 <div
                   key={job.id}
-                  className="border-silver-mist flex items-center justify-between rounded-4xl border bg-white p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
+                  className="border-silver-mist bg-pure-white flex items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
                 >
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-3">
@@ -243,7 +243,7 @@ const CompanyJobManagementPage = () => {
                 </div>
               ))
             ) : (
-              <div className="border-silver-mist rounded-[40px] border-2 border-dashed bg-white py-32 text-center">
+              <div className="border-silver-mist bg-pure-white rounded-[40px] border-2 border-dashed py-32 text-center">
                 <div className="mb-4 text-6xl opacity-20">📄</div>
                 <p className="text-soft-pebble text-xl font-black italic">
                   아직 등록된 공고가 없습니다.
