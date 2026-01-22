@@ -203,7 +203,7 @@ function MainPage() {
     "relative after:content-[''] after:absolute after:left-0 after:bottom-[-2px] after:w-0 after:h-[2px] after:bg-point-blue after:transition-all after:duration-300 hover:after:w-full";
 
   return (
-    <div className="text-midnight-ink min-h-screen overflow-x-auto bg-white">
+    <div className="text-midnight-ink min-h-screen min-w-max bg-white">
       <div className="mx-auto w-350 px-6 pt-24 pb-20">
         <section className="mb-10 flex gap-6">
           <div className="relative flex h-55 flex-1 overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">

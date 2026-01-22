@@ -75,7 +75,7 @@ const CompanyJobManagementPage = () => {
   };
 
   return (
-    <div className="bg-pure-white min-h-screen min-w-5xl pt-32 pb-32">
+    <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
       <div className="mx-auto w-5xl px-6">
         <AnimatePresence>
           {modal.isOpen && (

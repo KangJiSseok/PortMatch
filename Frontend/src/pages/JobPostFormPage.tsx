@@ -196,7 +196,7 @@ const JobPostFormPage = () => {
 
   if (isEdit && isLoading) {
     return (
-      <div className="flex min-h-screen min-w-5xl items-center justify-center bg-white pt-32">
+      <div className="bg-pure-white flex min-h-screen min-w-350 items-center justify-center pt-32">
         <div className="text-center">
           <div className="relative mx-auto mb-6 h-24 w-24">
             <motion.div
@@ -206,7 +206,7 @@ const JobPostFormPage = () => {
             />
           </div>
           <p className="text-lg font-black whitespace-nowrap text-slate-400">
-            데이터를 불러오고 있습니다
+            데이터 불러오고 있습니다
           </p>
         </div>
       </div>
@@ -214,7 +214,7 @@ const JobPostFormPage = () => {
   }
 
   return (
-    <div className="bg-pure-white min-h-screen min-w-5xl pt-32 pb-32">
+    <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
       <div className="mx-auto w-5xl px-6">
         <header className="mb-12 border-l-4 border-blue-600 pl-6">
           <motion.h1
@@ -497,7 +497,7 @@ const JobPostFormPage = () => {
 
       <AnimatePresence>
         {blocker.state === 'blocked' && (
-          <div className="fixed inset-0 z-300 flex min-w-5xl items-center justify-center p-6">
+          <div className="fixed inset-0 z-300 flex min-w-350 items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

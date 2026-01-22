@@ -2,8 +2,8 @@ function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-midnight-ink text-cloud-dancer min-w-[1024px] pt-20 pb-10">
-      <div className="mx-auto w-[1024px] px-6">
+    <footer className="bg-midnight-ink text-cloud-dancer min-w-max pt-20 pb-10">
+      <div className="mx-auto w-350 px-6">
         <div className="mb-16 grid grid-cols-4 gap-12">
           <div className="col-span-1">
             <h2 className="text-pure-white mb-6 text-2xl font-black tracking-tighter">PORTMATCH</h2>
