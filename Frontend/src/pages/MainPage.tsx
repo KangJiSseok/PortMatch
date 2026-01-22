@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/Button/Button';
 import heroBg from '../assets/images/main/HERO_BG.avif';
+import { useAuthStore } from '@/store/authStore';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop';
@@ -148,8 +149,7 @@ const MOCK_JOBS = [
 
 function MainPage() {
   const navigate = useNavigate();
-  const isLoggedIn = !!localStorage.getItem('accessToken');
-  const userRole = localStorage.getItem('userRole');
+  const { isLoggedIn, user } = useAuthStore();
   const [trendIndex, setTrendIndex] = useState(0);
 
   useEffect(() => {
@@ -181,7 +181,8 @@ function MainPage() {
         button: '로그인 후 시작',
         link: '/login',
       };
-    if (userRole === 'corporate')
+
+    if (user?.role === 'COMPANY')
       return {
         line1: '기업을 위한 추천,',
         highlight: '적합한 인재',
@@ -189,6 +190,7 @@ function MainPage() {
         button: '인재 탐색하기',
         link: '/recommend/companies',
       };
+
     return {
       line1: '나만의 경쟁력,',
       highlight: 'AI 분석 리포트',

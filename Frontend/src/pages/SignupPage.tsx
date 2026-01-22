@@ -25,7 +25,7 @@ const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boo
 };
 
 function SignupPage() {
-  const [userType, setUserType] = useState<UserRole>('individual');
+  const [userType, setUserType] = useState<UserRole>('APPLICANT');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeField, setShakeField] = useState<string | null>(null);
 
@@ -41,7 +41,7 @@ function SignupPage() {
     gender: '',
     experienceYears: '0',
     companyName: '',
-    businessRegNo: '',
+    businessNumber: '',
     homepageUrl: '',
     address: '',
     companySize: '',
@@ -49,7 +49,7 @@ function SignupPage() {
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const { mutate: signupMutate, isPending: isLoading } = useSignup(userType);
+  const { mutate: signupMutate, isPending: isLoading } = useSignup();
 
   const years = Array.from({ length: 100 }, (_, i) => ({
     value: `${2026 - i}`,
@@ -99,7 +99,7 @@ function SignupPage() {
       }
     }
 
-    if (['name', 'phone', 'companyName', 'businessRegNo', 'address'].includes(field) && !value) {
+    if (['name', 'phone', 'companyName', 'businessNumber', 'address'].includes(field) && !value) {
       error = '필수 입력 항목입니다.';
     }
 
@@ -116,7 +116,7 @@ function SignupPage() {
       else processedValue = `${nums.slice(0, 3)}-${nums.slice(3, 7)}-${nums.slice(7, 11)}`;
     }
 
-    if (field === 'businessRegNo') {
+    if (field === 'businessNumber') {
       const onlyNums = value.replace(/[^0-9]/g, '');
       if (onlyNums.length <= 3) processedValue = onlyNums;
       else if (onlyNums.length <= 5)
@@ -135,7 +135,7 @@ function SignupPage() {
     if (isLoading) return;
 
     const requiredFields =
-      userType === 'individual'
+      userType === 'APPLICANT'
         ? ['email', 'password', 'passwordConfirm', 'name', 'phone', 'birthYear', 'gender']
         : [
             'email',
@@ -144,7 +144,7 @@ function SignupPage() {
             'name',
             'phone',
             'companyName',
-            'businessRegNo',
+            'businessNumber',
             'address',
             'companySize',
           ];
@@ -166,27 +166,78 @@ function SignupPage() {
       if (errorField) {
         setShakeField(errorField);
         fieldRefs.current[errorField]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
         const inputElement = fieldRefs.current[errorField]?.querySelector(
           'input, select',
         ) as HTMLElement;
         inputElement?.focus();
-
         setTimeout(() => setShakeField(null), 500);
       }
       return;
     }
 
-    signupMutate(formData, {
-      onError: (error) => {
-        if (axios.isAxiosError(error)) {
-          setErrors((prev) => ({
-            ...prev,
-            submit: error.response?.data?.message || '회원가입 처리 중 오류가 발생했습니다.',
-          }));
-        }
-      },
-    });
+    if (userType === 'APPLICANT') {
+      signupMutate(
+        {
+          type: 'APPLICANT',
+          data: {
+            email: formData.email,
+            password: formData.password,
+            name: formData.name,
+            phone: formData.phone.replace(/-/g, ''),
+            birthYear: formData.birthYear,
+            birthMonth: formData.birthMonth.padStart(2, '0'),
+            birthDay: formData.birthDay.padStart(2, '0'),
+            gender: formData.gender.toUpperCase(),
+            experienceYears: Number(formData.experienceYears),
+          },
+        },
+        {
+          onError: (error: unknown) => {
+            if (axios.isAxiosError(error)) {
+              const detailedError = error.response?.data?.data?.errors?.[0]?.reason;
+              setErrors((prev) => ({
+                ...prev,
+                submit:
+                  detailedError ||
+                  error.response?.data?.message ||
+                  '회원가입 처리 중 오류가 발생했습니다.',
+              }));
+            }
+          },
+        },
+      );
+    } else {
+      signupMutate(
+        {
+          type: 'COMPANY',
+          data: {
+            email: formData.email,
+            password: formData.password,
+            companyName: formData.companyName,
+            businessNumber: formData.businessNumber.replace(/-/g, ''),
+            managerName: formData.name,
+            managerPhone: formData.phone.replace(/-/g, ''),
+            address: formData.address,
+            companySize: formData.companySize,
+            homepageUrl: formData.homepageUrl || null,
+          },
+        },
+        {
+          onError: (error: unknown) => {
+            if (axios.isAxiosError(error)) {
+              const detailedError = error.response?.data?.data?.errors?.[0]?.reason;
+              setErrors((prev) => ({
+                ...prev,
+                submit:
+                  detailedError ||
+                  error.response?.data?.message ||
+                  '회원가입 처리 중 오류가 발생했습니다.',
+              }));
+            }
+          },
+        },
+      );
+    }
   };
 
   return (
@@ -238,16 +289,20 @@ function SignupPage() {
         </div>
 
         <div className="bg-cloud-dancer mb-12 flex rounded-2xl p-1.5 shadow-inner">
-          {(['individual', 'corporate'] as const).map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => setUserType(type)}
-              className={`flex-1 rounded-xl py-3 text-sm font-extrabold whitespace-nowrap transition-all duration-300 ${userType === type ? 'bg-pure-white text-midnight-ink scale-[1.02] shadow-md' : 'text-slate-gray hover:text-midnight-ink'}`}
-            >
-              {type === 'individual' ? '개인 회원' : '기업 회원'}
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={() => setUserType('APPLICANT')}
+            className={`flex-1 rounded-xl py-3 text-sm font-extrabold whitespace-nowrap transition-all duration-300 ${userType === 'APPLICANT' ? 'bg-pure-white text-midnight-ink scale-[1.02] shadow-md' : 'text-slate-gray hover:text-midnight-ink'}`}
+          >
+            개인 회원
+          </button>
+          <button
+            type="button"
+            onClick={() => setUserType('COMPANY')}
+            className={`flex-1 rounded-xl py-3 text-sm font-extrabold whitespace-nowrap transition-all duration-300 ${userType === 'COMPANY' ? 'bg-pure-white text-midnight-ink scale-[1.02] shadow-md' : 'text-slate-gray hover:text-midnight-ink'}`}
+          >
+            기업 회원
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-10">
@@ -296,11 +351,11 @@ function SignupPage() {
           <section className="space-y-8">
             <div className="border-soft-pebble border-b pb-2">
               <h2 className="text-midnight-ink text-xl font-black whitespace-nowrap">
-                {userType === 'individual' ? '개인 상세 정보' : '기업 상세 정보'}
+                {userType === 'APPLICANT' ? '개인 상세 정보' : '기업 상세 정보'}
               </h2>
             </div>
             <div className="grid grid-cols-2 gap-x-8 gap-y-10">
-              {userType === 'individual' ? (
+              {userType === 'APPLICANT' ? (
                 <>
                   <motion.div
                     ref={(el) => {
@@ -387,24 +442,24 @@ function SignupPage() {
                   </motion.div>
                   <motion.div
                     ref={(el) => {
-                      fieldRefs.current.businessRegNo = el;
+                      fieldRefs.current.businessNumber = el;
                     }}
-                    animate={shakeField === 'businessRegNo' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+                    animate={shakeField === 'businessNumber' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
                     className="relative"
                   >
                     <Input
                       label="사업자 등록번호 *"
                       placeholder="000-00-00000"
-                      value={formData.businessRegNo}
+                      value={formData.businessNumber}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        handleInputChange('businessRegNo', e.target.value)
+                        handleInputChange('businessNumber', e.target.value)
                       }
                       maxLength={12}
                       disabled={isLoading}
                     />
                     <WarningBubble
-                      message={errors.businessRegNo}
-                      isVisible={!!errors.businessRegNo}
+                      message={errors.businessNumber}
+                      isVisible={!!errors.businessNumber}
                     />
                   </motion.div>
                   <Input

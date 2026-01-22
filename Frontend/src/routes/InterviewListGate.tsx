@@ -1,27 +1,21 @@
-// src/routes/InterviewListGate.tsx
 import { Navigate } from 'react-router-dom';
-
+import { useAuthStore } from '@/store/authStore';
 import InterviewListPage from '../pages/InterviewListPage';
 import CorporateInterviewListPage from '../pages/CompanyInterviewListPage';
 
-type UserRole = 'guest' | 'individual' | 'corporate';
-
 export default function InterviewListGate() {
-  const token = localStorage.getItem('accessToken') ?? sessionStorage.getItem('accessToken');
+  const { isLoggedIn, user } = useAuthStore();
 
-  const roleRaw = localStorage.getItem('userRole') ?? sessionStorage.getItem('userRole');
-  const role = (roleRaw as UserRole) ?? 'guest';
-
-  // 로그인 안 했으면 접근 불가 (ProtectedRoute로 감싸져도 2중 안전장치)
-  if (!token || role === 'guest') {
+  // 1. 로그인 여부 확인 및 2중 안전장치
+  if (!isLoggedIn || !user) {
     return <Navigate to="/login" replace />;
   }
 
-  // 기업이면 기업용 리스트
-  if (role === 'corporate') {
+  // 2. 기업 회원이면 기업용 인터뷰 리스트 페이지
+  if (user.role === 'COMPANY') {
     return <CorporateInterviewListPage />;
   }
 
-  // 개인이면 기존 리스트
+  // 3. 개인 회원이면 개인용 인터뷰 리스트 페이지
   return <InterviewListPage />;
 }

@@ -6,14 +6,20 @@ export interface LoginRequest {
   expectedRole: UserRole;
 }
 
-export interface LoginResponse {
-  token: string;
-  user?: {
-    id: string;
-    email: string;
-    role: UserRole;
-  };
+export interface UserData {
+  userId: number;
+  email: string;
+  name: string;
+  role: UserRole;
 }
+
+export interface ApiResponse<T> {
+  code: string;
+  message: string;
+  data: T;
+}
+
+export type LoginResponse = ApiResponse<UserData>;
 
 export interface SignupBaseRequest {
   email: string;
@@ -27,13 +33,24 @@ export interface ApplicantSignupRequest extends SignupBaseRequest {
   birthMonth: string;
   birthDay: string;
   gender: string;
-  experienceYears: string;
+  experienceYears: number;
 }
 
-export interface CompanySignupRequest extends SignupBaseRequest {
+export interface CompanySignupRequest {
+  email: string;
+  password: string;
   companyName: string;
-  businessRegNo: string;
-  homepageUrl?: string;
+  businessNumber: string;
+  managerName: string;
+  managerPhone: string;
   address: string;
   companySize: string;
+  homepageUrl?: string | null;
+}
+
+export interface AuthState {
+  user: UserData | null;
+  isLoggedIn: boolean;
+  setAuth: (user: UserData) => void;
+  clearAuth: () => void;
 }

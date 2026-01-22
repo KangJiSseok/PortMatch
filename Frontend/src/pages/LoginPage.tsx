@@ -33,7 +33,7 @@ function LoginPage() {
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const { mutate: loginMutate, isPending: isLoading } = useLogin(rememberMe);
+  const { mutate: loginMutate, isPending: isLoading } = useLogin();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -81,8 +81,12 @@ function LoginPage() {
       {
         onError: (error: unknown) => {
           if (axios.isAxiosError(error)) {
+            const serverMessage = error.response?.data?.message;
+
             if (error.response?.status === 401) {
               setErrors({ auth: '이메일 또는 비밀번호가 일치하지 않습니다.' });
+            } else if (serverMessage) {
+              setErrors({ auth: serverMessage });
             } else {
               setErrors({ auth: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.' });
             }
