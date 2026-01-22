@@ -95,7 +95,10 @@ function Navbar() {
   const groupPause = 0.4;
 
   return (
-    <nav id="app-navbar" className="bg-pure-white/70 border-soft-pebble fixed top-0 z-100 w-full border-b backdrop-blur-xl transition-all duration-300">
+    <nav
+      id="app-navbar"
+      className="bg-pure-white/70 border-soft-pebble fixed top-0 z-100 w-full border-b backdrop-blur-xl transition-all duration-300"
+    >
       <style>{`
         @keyframes logo-appear {
           from { opacity: 0; transform: translateY(10px); filter: blur(4px); }
@@ -143,7 +146,7 @@ function Navbar() {
           <div className="hidden items-center gap-6 lg:flex xl:gap-8">
             <NavAction to="/main">홈</NavAction>
             {userState === 'individual' && <NavAction to="/resumes/me">이력서 관리</NavAction>}
-            {userState === 'corporate' && <NavAction to="/manage">공고 관리</NavAction>}
+            {userState === 'corporate' && <NavAction to="/company/jobs">공고 관리</NavAction>}
           </div>
         </div>
 
@@ -157,7 +160,10 @@ function Navbar() {
             placeholder={userState === 'corporate' ? '인재 검색' : '공고 검색'}
             className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"
           />
-          <button onClick={handleSearch} className="text-slate-gray absolute top-1/2 right-5 -translate-y-1/2">
+          <button
+            onClick={handleSearch}
+            className="text-slate-gray absolute top-1/2 right-5 -translate-y-1/2"
+          >
             <svg
               width="20"
               height="20"
@@ -236,7 +242,7 @@ function Navbar() {
               </NavAction>
             )}
             {userState === 'corporate' && (
-              <NavAction to="/manage" mobile onClick={() => setIsMenuOpen(false)}>
+              <NavAction to="/company/jobs" mobile onClick={() => setIsMenuOpen(false)}>
                 공고 관리
               </NavAction>
             )}
