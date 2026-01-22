@@ -32,9 +32,7 @@ public class JobPostingController {
     public ResponseEntity<JobPostingDto> getJobDetail(@PathVariable("id") String id) {
         log.info("공고 상세 조회 요청 - ID: {}", id);
         try {
-            // 상세 정보를 가져오기 전에 조회수를 1 올림
             jobPostingService.updateViewCount(id);
-
             JobPostingDto jobDetail = jobPostingService.getJobDetail(id);
             return ResponseEntity.ok(jobDetail);
         } catch (Exception e) {
@@ -43,19 +41,28 @@ public class JobPostingController {
         }
     }
 
-    // 3. 새로운 공고 수동 등록 (필요시)
+    // 3. 새로운 공고 수동 등록 (스택 포함)
     @PostMapping
     public ResponseEntity<String> createJob(@RequestBody JobPostingDto dto) {
-        log.info("새로운 공고 등록 요청: {}", dto.getTitle());
-        jobPostingService.saveJobPosting(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body("공고가 성공적으로 등록되었습니다.");
+        log.info("새로운 공고 등록 요청(스택 포함): {}", dto.getTitle());
+        // 기존 saveJobPosting 대신 스택까지 처리하는 메서드 호출
+        jobPostingService.saveJobPostingWithStacks(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body("공고와 기술 스택이 성공적으로 등록되었습니다.");
+    }
+
+    // [추가] 6. 기술 스택별 공고 필터링 조회
+    @GetMapping("/search")
+    public ResponseEntity<List<JobPostingDto>> getJobsByStack(@RequestParam("stackId") Long stackId) {
+        log.info("기술 스택 필터링 조회 요청 - Stack ID: {}", stackId);
+        List<JobPostingDto> jobs = jobPostingService.getJobsByStack(stackId);
+        return ResponseEntity.ok(jobs);
     }
 
     // 4. 공고 수정
     @PutMapping("/{id}")
     public ResponseEntity<String> updateJob(@PathVariable String id, @RequestBody JobPostingDto dto) {
         log.info("공고 수정 요청 - ID: {}", id);
-        dto.setId(id); // 경로의 ID를 DTO에 설정
+        dto.setId(id);
         jobPostingService.saveJobPosting(dto);
         return ResponseEntity.ok("공고 정보가 수정되었습니다.");
     }

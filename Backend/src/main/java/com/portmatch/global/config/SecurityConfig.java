@@ -54,6 +54,12 @@ public class SecurityConfig {
                                 "/api/auth/logout",
                                 "/api/company-projects/**",
 
+                                "/api/job-postings/**",
+                                "/api/stacks/**",
+                                "/api/companies/**",
+                                "/api/interview/sessions/**",
+                                "/api/stacks/**",
+
                                 // ✅ Swagger / OpenAPI 허용 (springdoc 기본 경로)
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",

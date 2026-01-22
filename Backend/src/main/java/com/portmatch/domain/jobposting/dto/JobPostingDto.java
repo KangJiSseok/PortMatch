@@ -4,6 +4,7 @@ import com.portmatch.domain.companies.dto.CompaniesDto;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.List;
 
 @Getter
 @Setter
@@ -21,4 +22,5 @@ public class JobPostingDto implements Serializable {
     private String detail; // 공고 상세 내용/설명
     private int jobType; // 채용 형태 코드
     private CompaniesDto company; //기업 정보
+    private List<Long> stackIds; // 등록할 때 사용할 스택 ID 리스트
 }

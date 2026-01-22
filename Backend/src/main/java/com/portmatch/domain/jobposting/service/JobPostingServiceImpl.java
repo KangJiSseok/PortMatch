@@ -4,7 +4,11 @@ import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
+import com.portmatch.domain.jobposting.entity.PostingStackEntity;
+import com.portmatch.domain.jobposting.entity.TechStackEntity;
 import com.portmatch.domain.jobposting.repository.JobPostingRepository;
+import com.portmatch.domain.jobposting.repository.PostingStackRepository;
+import com.portmatch.domain.jobposting.repository.TechStackRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +21,8 @@ public class JobPostingServiceImpl implements JobPostingService {
 
     private final JobPostingRepository jobPostingRepository;
     private final CompanyRepository jobCompaniesRepository; // 기업 레포지토리 추가!
+    private final TechStackRepository techStackRepository;
+    private final PostingStackRepository postingStackRepository;
 
     @Override
     @Transactional
@@ -39,6 +45,43 @@ public class JobPostingServiceImpl implements JobPostingService {
                 .build();
 
         jobPostingRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public void saveJobPostingWithStacks(JobPostingDto dto) {
+        // 1. 공고 정보 저장 (saveJobPosting 메서드 내부에서 기업 조회 및 저장을 다 처리함)
+        saveJobPosting(dto);
+
+        // 2. 방금 저장한 공고 가져오기 (ID가 String인 점 주의!)
+        JobPostingEntity jobPosting = jobPostingRepository.findById(dto.getId())
+                .orElseThrow(() -> new RuntimeException("공고를 찾을 수 없습니다."));
+
+        // 3. 스택 연결 저장
+        if (dto.getStackIds() != null) {
+            for (Long sId : dto.getStackIds()) {
+                // TechStackEntity 조회 (ID가 Long인 점 주의!)
+                TechStackEntity techStack = techStackRepository.findById(sId)
+                        .orElseThrow(() -> new RuntimeException("존재하지 않는 스택 ID: " + sId));
+
+                PostingStackEntity psEntity = PostingStackEntity.builder()
+                        .jobPosting(jobPosting)
+                        .techStack(techStack)
+                        .build();
+
+                postingStackRepository.save(psEntity);
+            }
+        }
+    }
+
+    @Override
+    public List<JobPostingDto> getJobsByStack(Long stackId) {
+        // Repository에서 Long 타입 stackId로 조회
+        List<PostingStackEntity> postingStacks = postingStackRepository.findByTechStackId(stackId);
+
+        return postingStacks.stream()
+                .map(ps -> convertToDto(ps.getJobPosting()))
+                .toList();
     }
 
     @Override

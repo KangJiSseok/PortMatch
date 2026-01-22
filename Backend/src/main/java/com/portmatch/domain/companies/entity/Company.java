@@ -32,7 +32,7 @@ public class Company {
     @Column(name = "homepage_url")
     private String homepageUrl;
 
-    @Column
+    @Column(unique = true, name = "cid")
     private String cid;
 
     @Column

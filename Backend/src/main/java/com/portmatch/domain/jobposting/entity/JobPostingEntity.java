@@ -30,7 +30,11 @@ public class JobPostingEntity {
 
     // 1. 단순 String cid 대신, 기업 엔티티와 'N:1' 관계를 맺어줘!
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cid") // DB에는 여전히 cid라는 컬럼명으로 저장돼
+    @JoinColumn(
+            name = "cid",                       // job_postings 테이블에 생성될 FK 컬럼명
+            referencedColumnName = "cid",        // Company 엔티티(companies 테이블)의 cid 컬럼을 참조
+            foreignKey = @ForeignKey(name = "fk_job_posting_company") // 제약조건 이름 강제 지정
+    )
     private Company company;
 
     @Column(columnDefinition = "TEXT")

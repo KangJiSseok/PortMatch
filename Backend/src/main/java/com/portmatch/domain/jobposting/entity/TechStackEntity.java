@@ -11,7 +11,6 @@ import lombok.*;
 @Builder
 public class TechStackEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(unique = true, nullable = false)

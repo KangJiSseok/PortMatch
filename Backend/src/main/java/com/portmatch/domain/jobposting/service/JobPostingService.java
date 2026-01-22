@@ -8,8 +8,14 @@ public interface JobPostingService {
     // 1. [Create / Update] 공고 저장 및 수정 (Upsert)
     void saveJobPosting(JobPostingDto dto);
 
+    // [추가] 1-1. 공고 정보와 기술 스택 리스트를 함께 저장
+    void saveJobPostingWithStacks(JobPostingDto dto);
+
     // 2. [Read] 전체 공고 목록 조회 (기존 getJobPostings 대체)
     List<JobPostingDto> getAllJobPostings();
+
+    // [추가] 2-1. 특정 기술 스택(stackId)을 가진 공고 목록 조회
+    List<JobPostingDto> getJobsByStack(Long stackId);
 
     // 3. [Read] 특정 공고 상세 조회 (기존 getJobDetail 활용)
     JobPostingDto getJobDetail(String id) throws Exception;
