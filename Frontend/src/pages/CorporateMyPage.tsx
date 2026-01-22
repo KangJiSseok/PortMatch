@@ -7,7 +7,7 @@ import Button from '../components/Button/Button';
 const ROUTES = {
   jobPostNew: '/jobposts/new',
   jobPostManage: '/jobposts',
-  interviewManage: '/company/interviews',
+  interviewManage: '/interviews',
   // ✅ 이력서 보기 라우트(프로젝트에 맞게 변경)
   resumeView: (applicantId: number) => `/resume/${applicantId}`,
   // ✅ 공고 상세 라우트(프로젝트에 맞게 변경)

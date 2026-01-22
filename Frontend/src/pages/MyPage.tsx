@@ -274,6 +274,27 @@ export default function MyPage() {
     });
   }, [scrapQuery.data, navigate]);
 
+  // ✅ MyPage 컴포넌트 안, return 위쪽에 추가
+  const monthEventDays = useMemo(() => {
+    const days: Array<{ ymd: string; events: InterviewSessionView[] }> = [];
+    const seen = new Set<string>();
+
+    for (const d of cells) {
+      const ymd = toYmd(d);
+      if (seen.has(ymd)) continue;
+      seen.add(ymd);
+
+      const inThisMonth = d.getMonth() === month0;
+      if (!inThisMonth) continue;
+
+      const ev = interviewEventMap.get(ymd) ?? [];
+      if (ev.length > 0) days.push({ ymd, events: ev });
+    }
+
+    days.sort((a, b) => a.ymd.localeCompare(b.ymd));
+    return days;
+  }, [cells, interviewEventMap, month0]);
+
   return (
     <div className="text-midnight-ink min-h-screen bg-white pt-28 pb-20">
       <div className="mx-auto max-w-6xl space-y-10 px-6">
@@ -438,18 +459,18 @@ export default function MyPage() {
           <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm md:p-8">
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-lg font-black">이번 달</p>
-                <p className="mt-1 text-sm font-semibold text-zinc-500">{thisMonthLabel}</p>
+                <p className="text-lg font-black">{thisMonthLabel}</p>
               </div>
 
+              {/* ✅ sm → md */}
               <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={goPrevMonth}>
+                <Button type="button" variant="outline" size="md" onClick={goPrevMonth}>
                   ◀
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={goNextMonth}>
+                <Button type="button" variant="outline" size="md" onClick={goNextMonth}>
                   ▶
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={goToday}>
+                <Button type="button" variant="outline" size="md" onClick={goToday}>
                   오늘
                 </Button>
               </div>
@@ -464,164 +485,321 @@ export default function MyPage() {
               />
             ) : (
               <>
-                <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
-                  {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-                    <div key={d}>{d}</div>
-                  ))}
-                </div>
+                {/* ✅ Mobile: 리스트형 캘린더 */}
+                <div className="sm:hidden">
+                  <div className="space-y-3">
+                    {monthEventDays.length === 0 ? (
+                      <div className="rounded-2xl border border-zinc-100 bg-white p-6 text-center">
+                        <p className="text-sm font-semibold text-zinc-500">
+                          이번 달에는 면접 일정이 없어요.
+                        </p>
+                      </div>
+                    ) : (
+                      monthEventDays.map(({ ymd, events }) => (
+                        <Button
+                          key={ymd}
+                          type="button"
+                          variant="outline"
+                          size="md"
+                          onClick={() => setSelectedDate(ymd)}
+                          className={[
+                            'w-full rounded-2xl border p-4 text-left',
+                            ymd === selectedDate ? 'ring-midnight-ink ring-2' : '',
+                          ].join(' ')}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-black">{formatYmdToKorean(ymd)}</p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {events.slice(0, 2).map((e) => (
+                                  <span
+                                    key={e.interview_id}
+                                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-bold text-zinc-700"
+                                  >
+                                    {formatDateTime(e.scheduledAt).slice(-5)} · {e.companyName}
+                                  </span>
+                                ))}
+                                {events.length > 2 ? (
+                                  <span className="rounded-full bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-zinc-500">
+                                    +{events.length - 2}건
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
 
-                <div className="mt-3 grid grid-cols-7 gap-3">
-                  {cells.map((d, idx) => {
-                    const ymd = toYmd(d);
-                    const inThisMonth = d.getMonth() === month0;
-                    const isToday = ymd === todayYmd;
-                    const isSelected = ymd === selectedDate;
-                    const ev = interviewEventMap.get(ymd) ?? [];
-
-                    return (
-                      <Button
-                        key={`${ymd}-${idx}`}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedDate(ymd);
-                          if (!inThisMonth) setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-                        }}
-                        className={[
-                          'w-full flex flex-col items-stretch justify-start text-left',
-                          'min-h-[78px] rounded-2xl border p-3 transition',
-                          inThisMonth ? 'border-zinc-200 bg-white' : 'border-zinc-200/60 bg-zinc-50',
-                          'hover:bg-zinc-100/60',
-                          isSelected ? 'ring-midnight-ink ring-2' : '',
-                        ].join(' ')}
-                      >
-                        <div className="flex items-start justify-between">
-                          <span
-                            className={
-                              inThisMonth
-                                ? 'text-midnight-ink font-extrabold'
-                                : 'font-extrabold text-zinc-400'
-                            }
-                          >
-                            {d.getDate()}
-                          </span>
-                          {isToday && (
-                            <span className="bg-midnight-ink rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
-                              TODAY
+                            <span className="bg-point-blue/10 text-point-blue shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black">
+                              {events.length}건
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        </Button>
+                      ))
+                    )}
 
-                        <div className="mt-2 space-y-1">
-                          {ev.slice(0, 2).map((e) => (
-                            <p
-                              key={e.interview_id}
-                              className="truncate text-xs font-semibold text-zinc-500"
-                            >
-                              • {e.companyName} {e.postingTitle}
-                            </p>
-                          ))}
-                          {ev.length > 2 && (
-                            <p className="text-xs font-black text-zinc-600">+{ev.length - 2} more</p>
-                          )}
-                        </div>
-                      </Button>
-                    );
-                  })}
-                </div>
-
-                {/* 선택한 날짜 일정 */}
-                <div className="mt-8 rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-lg font-black">선택한 날짜 일정</p>
+                    {/* ✅ 선택한 날짜 상세 */}
+                    <div className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
+                      <p className="text-base font-black">선택한 날짜</p>
                       <p className="mt-1 text-sm font-semibold text-zinc-500">
                         {formatYmdToKorean(selectedDate)}
                       </p>
+
+                      <div className="mt-4 space-y-2">
+                        {selectedInterviews.length === 0 ? (
+                          <p className="text-sm font-semibold text-zinc-500">
+                            이 날짜에는 면접 일정이 없어요.
+                          </p>
+                        ) : (
+                          selectedInterviews.map((e) => {
+                            const startMs = new Date(e.scheduledAt).getTime();
+                            const nowMs = Date.now();
+
+                            const JOIN_BEFORE_MIN = 30;
+                            const JOIN_AFTER_HOURS = 2;
+
+                            const isToday = toYmdFromIso(e.scheduledAt) === todayYmd;
+                            const joinable =
+                              isToday &&
+                              nowMs >= startMs - JOIN_BEFORE_MIN * 60 * 1000 &&
+                              nowMs <= startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+
+                            const isPast = nowMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+                            const minutesToStart = Math.ceil((startMs - nowMs) / (60 * 1000));
+
+                            let btnText = '입장';
+                            let helperText: string | null = null;
+                            let disabled = false;
+
+                            if (isPast) {
+                              btnText = '종료';
+                              disabled = true;
+                            } else if (!isToday) {
+                              btnText = '예정';
+                              disabled = true;
+                            } else if (joinable) {
+                              btnText = '입장';
+                              helperText = '입장 가능';
+                            } else {
+                              btnText = '대기';
+                              disabled = true;
+                              helperText =
+                                minutesToStart > 0
+                                  ? `시작 ${minutesToStart}분 전 · 시작 30분 전부터 입장 가능`
+                                  : '곧 시작돼요.';
+                            }
+
+                            return (
+                              <div
+                                key={e.interview_id}
+                                className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
+                              >
+                                <p className="text-midnight-ink text-sm font-black">
+                                  {e.companyName} - {e.postingTitle}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-zinc-500">
+                                  {formatDateTime(e.scheduledAt)}
+                                </p>
+
+                                {helperText && (
+                                  <p className="mt-2 text-xs font-semibold text-zinc-500">
+                                    {helperText}
+                                  </p>
+                                )}
+
+                                <div className="mt-3 flex justify-end">
+                                  <Button
+                                    type="button"
+                                    variant={disabled ? 'outline' : 'dark'}
+                                    size="md"
+                                    disabled={disabled}
+                                    className={disabled ? 'cursor-not-allowed opacity-50' : ''}
+                                    onClick={() => {
+                                      if (disabled) return;
+                                      navigate(`/interviews/${e.interview_id}/lobby`);
+                                    }}
+                                  >
+                                    {btnText}
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="mt-4 space-y-2">
-                    {selectedInterviews.length === 0 ? (
-                      <p className="text-sm font-semibold text-zinc-500">
-                        이 날짜에는 면접 일정이 없어요.
-                      </p>
-                    ) : (
-                      selectedInterviews.map((e) => {
-                        const startMs = new Date(e.scheduledAt).getTime();
-                        const nowMs = Date.now();
+                {/* ✅ Desktop: 달력 LEFT + 선택 일정 RIGHT */}
+                <div className="hidden sm:block">
+                  <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+                    {/* LEFT: 달력 */}
+                    <div>
+                      <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
+                        {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+                          <div key={d}>{d}</div>
+                        ))}
+                      </div>
 
-                        const JOIN_BEFORE_MIN = 30;
-                        const JOIN_AFTER_HOURS = 2;
+                      <div className="mt-3 grid grid-cols-7 gap-3">
+                        {cells.map((d, idx) => {
+                          const ymd = toYmd(d);
+                          const inThisMonth = d.getMonth() === month0;
+                          const isToday = ymd === todayYmd;
+                          const isSelected = ymd === selectedDate;
 
-                        const isToday = toYmdFromIso(e.scheduledAt) === todayYmd;
+                          const ev = interviewEventMap.get(ymd) ?? [];
+                          const cnt = ev.length;
 
-                        const joinable =
-                          isToday &&
-                          nowMs >= startMs - JOIN_BEFORE_MIN * 60 * 1000 &&
-                          nowMs <= startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+                          return (
+                            <Button
+                              key={`${ymd}-${idx}`}
+                              type="button"
+                              variant="outline"
+                              size="md"
+                              onClick={() => {
+                                setSelectedDate(ymd);
+                                if (!inThisMonth)
+                                  setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                              }}
+                              className={[
+                                'flex w-full flex-col items-stretch justify-start text-left',
+                                'min-h-[90px] cursor-pointer rounded-2xl border p-3 transition',
+                                inThisMonth
+                                  ? 'border-zinc-200 bg-white'
+                                  : 'border-zinc-200/60 bg-zinc-50',
+                                'hover:bg-zinc-100/60',
+                                isSelected ? 'ring-midnight-ink ring-2' : '',
+                              ].join(' ')}
+                            >
+                              <div className="flex items-start justify-between">
+                                <span
+                                  className={
+                                    inThisMonth
+                                      ? 'text-midnight-ink font-extrabold'
+                                      : 'font-extrabold text-zinc-400'
+                                  }
+                                >
+                                  {d.getDate()}
+                                </span>
+                                {isToday && (
+                                  <span className="bg-midnight-ink rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
+                                    TODAY
+                                  </span>
+                                )}
+                              </div>
 
-                        const isPast = nowMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
-                        const minutesToStart = Math.ceil((startMs - nowMs) / (60 * 1000));
+                              {/* ✅ 동그라미 1개 + 건수 */}
+                              <div className="mt-3 flex items-center justify-between">
+                                {cnt > 0 ? (
+                                  <>
+                                    <span className="bg-point-blue mt-0.5 h-2 w-2 rounded-full" />
+                                    <span className="text-xs font-black text-zinc-600">
+                                      {cnt}건
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs font-semibold text-zinc-400"></span>
+                                )}
+                              </div>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                        let btnText = '입장';
-                        let helperText: string | null = null;
-                        let disabled = false;
+                    {/* RIGHT: 선택한 날짜 일정 */}
+                    <div className="rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-lg font-black">선택한 날짜 일정</p>
+                          <p className="mt-1 text-sm font-semibold text-zinc-500">
+                            {formatYmdToKorean(selectedDate)}
+                          </p>
+                        </div>
+                      </div>
 
-                        if (isPast) {
-                          btnText = '종료';
-                          disabled = true;
-                        } else if (!isToday) {
-                          btnText = '예정';
-                          disabled = true;
-                        } else if (joinable) {
-                          btnText = '입장';
-                          helperText = '입장 가능';
-                        } else {
-                          btnText = '대기';
-                          disabled = true;
-                          helperText =
-                            minutesToStart > 0
-                              ? `시작 ${minutesToStart}분 전 · 시작 30분 전부터 입장 가능`
-                              : '곧 시작돼요.';
-                        }
+                      <div className="mt-4 max-h-[520px] space-y-2 overflow-auto pr-1">
+                        {selectedInterviews.length === 0 ? (
+                          <p className="text-sm font-semibold text-zinc-500">
+                            이 날짜에는 면접 일정이 없어요.
+                          </p>
+                        ) : (
+                          selectedInterviews.map((e) => {
+                            const startMs = new Date(e.scheduledAt).getTime();
+                            const nowMs = Date.now();
 
-                        return (
-                          <div
-                            key={e.interview_id}
-                            className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
-                          >
-                            <p className="text-midnight-ink text-sm font-black">
-                              {e.companyName} - {e.postingTitle}
-                            </p>
-                            <p className="mt-1 text-xs font-semibold text-zinc-500">
-                              {formatDateTime(e.scheduledAt)}
-                            </p>
+                            const JOIN_BEFORE_MIN = 30;
+                            const JOIN_AFTER_HOURS = 2;
 
-                            {helperText && (
-                              <p className="mt-2 text-xs font-semibold text-zinc-500">{helperText}</p>
-                            )}
+                            const isToday = toYmdFromIso(e.scheduledAt) === todayYmd;
+                            const joinable =
+                              isToday &&
+                              nowMs >= startMs - JOIN_BEFORE_MIN * 60 * 1000 &&
+                              nowMs <= startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
 
-                            <div className="mt-3 flex justify-end">
-                              <Button
-                                type="button"
-                                variant={disabled ? 'outline' : 'dark'}
-                                size="sm"
-                                disabled={disabled}
-                                className={disabled ? 'cursor-not-allowed opacity-50' : ''}
-                                onClick={() => {
-                                  if (disabled) return;
-                                  navigate(`/interviews/${e.interview_id}/lobby`);
-                                }}
+                            const isPast = nowMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+                            const minutesToStart = Math.ceil((startMs - nowMs) / (60 * 1000));
+
+                            let btnText = '입장';
+                            let helperText: string | null = null;
+                            let disabled = false;
+
+                            if (isPast) {
+                              btnText = '종료';
+                              disabled = true;
+                            } else if (!isToday) {
+                              btnText = '예정';
+                              disabled = true;
+                            } else if (joinable) {
+                              btnText = '입장';
+                              helperText = '입장 가능';
+                            } else {
+                              btnText = '대기';
+                              disabled = true;
+                              helperText =
+                                minutesToStart > 0
+                                  ? `시작 ${minutesToStart}분 전 · 시작 30분 전부터 입장 가능`
+                                  : '곧 시작돼요.';
+                            }
+
+                            return (
+                              <div
+                                key={e.interview_id}
+                                className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
                               >
-                                {btnText}
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
+                                <p className="text-midnight-ink text-sm font-black">
+                                  {e.companyName} - {e.postingTitle}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-zinc-500">
+                                  {formatDateTime(e.scheduledAt)}
+                                </p>
+
+                                {helperText && (
+                                  <p className="mt-2 text-xs font-semibold text-zinc-500">
+                                    {helperText}
+                                  </p>
+                                )}
+
+                                <div className="mt-3 flex justify-end">
+                                  <Button
+                                    type="button"
+                                    variant={disabled ? 'outline' : 'dark'}
+                                    size="md"
+                                    disabled={disabled}
+                                    className={disabled ? 'cursor-not-allowed opacity-50' : ''}
+                                    onClick={() => {
+                                      if (disabled) return;
+                                      navigate(`/interviews/${e.interview_id}/lobby`);
+                                    }}
+                                  >
+                                    {btnText}
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </>
@@ -663,7 +841,9 @@ export default function MyPage() {
                   <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
                   {!n.read && <span className="bg-point-blue mt-1 h-2 w-2 shrink-0 rounded-full" />}
                 </div>
-                <p className="mt-2 text-xs font-semibold text-zinc-500">{formatDateTime(n.createdAt)}</p>
+                <p className="mt-2 text-xs font-semibold text-zinc-500">
+                  {formatDateTime(n.createdAt)}
+                </p>
               </div>
             ))}
           </div>
@@ -671,7 +851,11 @@ export default function MyPage() {
       </NotificationModal>
 
       {/* ✅ 스크랩 전체 모달 */}
-      <NotificationModal open={isScrapOpen} onClose={() => setIsScrapOpen(false)} title="스크랩한 공고">
+      <NotificationModal
+        open={isScrapOpen}
+        onClose={() => setIsScrapOpen(false)}
+        title="스크랩한 공고"
+      >
         {scrapQuery.isLoading ? (
           <div className="space-y-3">
             <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
@@ -693,7 +877,9 @@ export default function MyPage() {
         ) : (scrapQuery.data ?? []).length === 0 ? (
           <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
             <p className="text-midnight-ink text-sm font-black">스크랩한 공고가 없어요</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">마음에 드는 공고를 찜해보세요.</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">
+              마음에 드는 공고를 찜해보세요.
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -740,9 +926,7 @@ function HubCard({
         variant="outline"
         size="sm"
         onClick={onHeaderClick}
-        className="flex w-full items-center justify-between text-left text-base font-black
-                   rounded-none border-x-0 border-t-0 border-b border-zinc-100
-                   px-6 py-4 bg-transparent hover:bg-zinc-50"
+        className="flex w-full items-center justify-between rounded-none border-x-0 border-t-0 border-b border-zinc-100 bg-transparent px-6 py-4 text-left text-base font-black hover:bg-zinc-50"
       >
         <p className="text-midnight-ink text-base font-black">{title}</p>
         <span className="text-zinc-300">›</span>
@@ -772,9 +956,7 @@ function ListRow({
       variant="outline"
       size="sm"
       onClick={onClick}
-      className="group flex w-full items-center justify-start gap-4 text-left
-                 border-0 bg-transparent rounded-2xl p-3
-                 transition hover:bg-zinc-50"
+      className="group flex w-full items-center justify-start gap-4 rounded-2xl border-0 bg-transparent p-3 text-left transition hover:bg-zinc-50"
     >
       <div className="shrink-0">{thumb}</div>
 
@@ -931,8 +1113,7 @@ function NotificationModal({
         size="sm"
         aria-label="close modal"
         onClick={onClose}
-        className="absolute inset-0 h-full w-full rounded-none border-0 p-0
-                  bg-midnight-ink/40 backdrop-blur-[2px]"
+        className="bg-midnight-ink/40 absolute inset-0 h-full w-full rounded-none border-0 p-0 backdrop-blur-[2px]"
       >
         <span className="sr-only">close</span>
       </Button>
@@ -952,8 +1133,7 @@ function NotificationModal({
               variant="outline"
               size="sm"
               onClick={onClose}
-              className="text-midnight-ink rounded-xl border border-zinc-200 bg-white
-                        px-3 py-2 text-sm font-black transition hover:bg-zinc-50"
+              className="text-midnight-ink rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-black transition hover:bg-zinc-50"
             >
               닫기
             </Button>
