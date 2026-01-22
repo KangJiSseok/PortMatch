@@ -230,7 +230,7 @@ function CompanyDetailsPage() {
         </div>
 
         {/* 상단 배너 영역 리디자인: 배경 이미지 제거, 다크 그라디언트 적용 */}
-        <section className="bg-midnight-ink relative flex min-h-110 w-full flex-col justify-end overflow-hidden pb-12 md:min-h-90 md:pb-16">
+        <section className="bg-midnight-ink relative flex min-h-110 w-full flex-col justify-end overflow-hidden pb-12 md:min-h-100 md:pb-16">
           {/* 은은한 방사형 그라디언트 배경 추가 */}
           <div className="from-point-blue/20 absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--tw-gradient-stops))] via-transparent to-transparent" />
           <div className="bg-point-blue/10 absolute -bottom-24 -left-24 h-96 w-96 rounded-full blur-3xl" />
