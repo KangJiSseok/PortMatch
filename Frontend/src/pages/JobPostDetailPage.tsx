@@ -385,7 +385,7 @@ export default function JobPostDetailPage() {
       : jp.work_days ?? jp.work_hours ?? null;
 
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pb-20 pt-32">
+    <div className="text-midnight-ink min-h-screen bg-white pb-20 pt-26">
       <div className="mx-auto max-w-6xl px-6">
         {/* 상단 */}
         <div className="mb-6 flex items-center justify-between">
