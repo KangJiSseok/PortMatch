@@ -16,14 +16,14 @@ public class Company {
     private Long id;
 
     // companies.user_id -> users.id (FK)
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", unique = true)
+    @OneToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "user_id", unique = true, nullable = true)
     private User user;
 
-    @Column(name = "companies_name", nullable = false)
+    @Column(name = "companies_name", nullable = false, unique = true)
     private String companiesName;
 
-    @Column(nullable = false)
+    @Column
     private String address;
 
     @Column
