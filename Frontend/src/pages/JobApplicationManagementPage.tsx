@@ -44,7 +44,7 @@ const JobApplicationManagementPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-32 pb-32">
+    <div className="bg-pure-white min-h-screen pt-32 pb-32">
       <div className="mx-auto max-w-5xl px-6">
         <button
           onClick={() => navigate(-1)}
@@ -86,7 +86,7 @@ const JobApplicationManagementPage = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as '최신순' | '경력순' | '이름순')}
-                className="border-silver-mist text-slate-gray focus:border-point-blue cursor-pointer rounded-xl border bg-white px-5 py-2.5 text-sm font-black shadow-sm transition-all focus:outline-none"
+                className="border-silver-mist text-slate-gray focus:border-point-blue bg-pure-white cursor-pointer rounded-xl border px-5 py-2.5 text-sm font-black shadow-sm transition-all focus:outline-none"
               >
                 <option value="최신순">최신순 정렬</option>
                 <option value="경력순">경력순 정렬</option>
@@ -97,7 +97,7 @@ const JobApplicationManagementPage = () => {
 
           <div className="min-h-100">
             {sortedApplications.length > 0 ? (
-              <div className="border-silver-mist overflow-hidden rounded-4xl border bg-white shadow-xl shadow-gray-200/50">
+              <div className="border-silver-mist bg-pure-white overflow-hidden rounded-4xl border shadow-xl shadow-gray-200/50">
                 <div className="divide-cloud-dancer divide-y">
                   {sortedApplications.map((app) => (
                     <div
@@ -169,7 +169,7 @@ const JobApplicationManagementPage = () => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="border-silver-mist flex flex-col items-center justify-center rounded-[40px] border-2 border-dashed bg-white py-32 text-center"
+                className="border-silver-mist bg-pure-white flex flex-col items-center justify-center rounded-[40px] border-2 border-dashed py-32 text-center"
               >
                 <div className="bg-cloud-dancer mb-6 flex h-24 w-24 items-center justify-center rounded-3xl text-5xl">
                   👥

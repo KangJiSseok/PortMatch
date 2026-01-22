@@ -191,7 +191,7 @@ const JobPostFormPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-32 pb-32">
+    <div className="bg-pure-white min-h-screen pt-32 pb-32">
       <div className="mx-auto max-w-4xl px-6">
         <header className="mb-12 border-l-4 border-blue-600 pl-6">
           <motion.h1
@@ -211,7 +211,7 @@ const JobPostFormPage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-8"
         >
-          <section className="rounded-4xl border border-slate-100 bg-white p-10 shadow-xl shadow-slate-200/50">
+          <section className="bg-pure-white rounded-4xl border border-slate-100 p-10 shadow-xl shadow-slate-200/50">
             <div className="mb-8 flex items-center gap-3">
               <div className="h-6 w-1.5 rounded-full bg-blue-600" />
               <h2 className="text-2xl font-black tracking-tight text-slate-800">기본 정보</h2>
@@ -234,7 +234,7 @@ const JobPostFormPage = () => {
                   className={`w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${
                     errors.title
                       ? 'border-red-500 bg-red-50/30 ring-4 ring-red-500/5'
-                      : 'border-slate-100 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/5'
+                      : 'focus:bg-pure-white border-slate-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5'
                   }`}
                 />
                 <ErrorDisplay name="title" errors={errors} isShaking={isShaking} />
@@ -290,7 +290,7 @@ const JobPostFormPage = () => {
             </div>
           </section>
 
-          <section className="rounded-4xl border border-slate-100 bg-white p-10 shadow-xl shadow-slate-200/50">
+          <section className="bg-pure-white rounded-4xl border border-slate-100 p-10 shadow-xl shadow-slate-200/50">
             <div className="mb-8 flex items-center gap-3">
               <div className="h-6 w-1.5 rounded-full bg-blue-600" />
               <h2 className="text-2xl font-black tracking-tight text-slate-800">근무 환경</h2>
@@ -382,7 +382,7 @@ const JobPostFormPage = () => {
             </div>
           </section>
 
-          <section className="rounded-4xl border border-slate-100 bg-white p-10 shadow-xl shadow-slate-200/50">
+          <section className="bg-pure-white rounded-4xl border border-slate-100 p-10 shadow-xl shadow-slate-200/50">
             <div className="mb-8 flex items-center gap-3">
               <div className="h-6 w-1.5 rounded-full bg-blue-600" />
               <h2 className="text-2xl font-black tracking-tight text-slate-800">기술 스택</h2>
@@ -420,7 +420,7 @@ const JobPostFormPage = () => {
             </div>
           </section>
 
-          <section className="rounded-4xl border border-slate-100 bg-white p-10 shadow-xl shadow-slate-200/50">
+          <section className="bg-pure-white rounded-4xl border border-slate-100 p-10 shadow-xl shadow-slate-200/50">
             <div className="mb-8 flex items-center gap-3">
               <div className="h-6 w-1.5 rounded-full bg-blue-600" />
               <h2 className="text-2xl font-black tracking-tight text-slate-800">상세 요강</h2>
