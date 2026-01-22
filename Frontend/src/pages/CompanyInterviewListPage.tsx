@@ -308,17 +308,7 @@ export default function CorporateInterviewListPage() {
                               입장
                             </Button>
                           </>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="md"
-                            className="rounded-2xl"
-                            onClick={() => alert('TODO: 완료 면접 기록/리포트 페이지')}
-                          >
-                            기록
-                          </Button>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   );

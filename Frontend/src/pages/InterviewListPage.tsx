@@ -149,15 +149,7 @@ export default function InterviewListPage() {
                           입장
                         </Button>
                       ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="md"
-                          className="rounded-2xl"
-                          onClick={() => alert('TODO: 완료 면접 리포트 페이지')}
-                        >
-                          기록
-                        </Button>
+                        null
                       )}
                     </div>
                   </div>

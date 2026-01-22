@@ -2,7 +2,7 @@
 import { Navigate } from 'react-router-dom';
 
 import InterviewListPage from '../pages/InterviewListPage';
-import CorporateInterviewListPage from '../pages/CorporateInterviewListPage';
+import CorporateInterviewListPage from '../pages/CompanyInterviewListPage';
 
 type UserRole = 'guest' | 'individual' | 'corporate';
 
