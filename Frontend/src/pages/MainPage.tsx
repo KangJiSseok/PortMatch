@@ -193,7 +193,7 @@ function MainPage() {
       line1: '나만의 경쟁력,',
       highlight: 'AI 분석 리포트',
       line2Suffix: '를 확인하세요.',
-      button: '결과 보기',
+      button: '포트폴리오 분석하기',
       link: '/portfolios',
     };
   };

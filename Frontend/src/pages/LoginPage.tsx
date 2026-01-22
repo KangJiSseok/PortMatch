@@ -95,11 +95,11 @@ function LoginPage() {
   };
 
   return (
-    <div className="bg-cloud-dancer relative flex min-h-screen flex-col items-center justify-center px-6 py-12">
+    <div className="bg-cloud-dancer relative flex min-h-screen min-w-5xl flex-col items-center justify-center px-6 py-12">
       <div className="mb-6 flex items-center gap-6">
         <Link
           to="/main"
-          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold transition-colors"
+          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold whitespace-nowrap transition-colors"
         >
           <svg
             width="18"
@@ -119,7 +119,7 @@ function LoginPage() {
         <div className="bg-soft-pebble h-3 w-px" />
         <Link
           to="/signup"
-          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold transition-colors"
+          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold whitespace-nowrap transition-colors"
         >
           <svg
             width="18"
@@ -140,8 +140,8 @@ function LoginPage() {
         </Link>
       </div>
 
-      <div className="bg-pure-white w-full max-w-lg rounded-3xl p-10 shadow-xl">
-        <div className="text-midnight-ink decoration-soft-pebble mb-10 text-center text-3xl font-black tracking-tighter uppercase underline underline-offset-8">
+      <div className="bg-pure-white w-lg rounded-3xl p-10 shadow-xl">
+        <div className="text-midnight-ink decoration-soft-pebble mb-10 text-center text-3xl font-black tracking-tighter whitespace-nowrap uppercase underline underline-offset-8">
           PORTMATCH
         </div>
 
@@ -156,7 +156,7 @@ function LoginPage() {
               key={tab.id}
               type="button"
               onClick={() => setUserType(tab.id)}
-              className={`flex-1 rounded-lg py-2 text-sm font-bold transition-all ${userType === tab.id ? 'bg-pure-white text-midnight-ink shadow-sm' : 'text-slate-gray'}`}
+              className={`flex-1 rounded-lg py-2 text-sm font-bold whitespace-nowrap transition-all ${userType === tab.id ? 'bg-pure-white text-midnight-ink shadow-sm' : 'text-slate-gray'}`}
             >
               {tab.label}
             </button>
@@ -214,7 +214,10 @@ function LoginPage() {
               checked={rememberMe}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRememberMe(e.target.checked)}
             />
-            <button type="button" className="text-slate-gray text-sm font-medium hover:underline">
+            <button
+              type="button"
+              className="text-slate-gray text-sm font-medium whitespace-nowrap hover:underline"
+            >
               비밀번호 찾기
             </button>
           </div>
@@ -224,7 +227,7 @@ function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-lg bg-red-50 px-2 py-3 text-center text-[13px] font-bold whitespace-nowrap text-red-500 sm:text-sm"
+                className="rounded-lg bg-red-50 px-2 py-3 text-center text-sm font-bold whitespace-nowrap text-red-500"
               >
                 {errors.auth}
               </motion.div>
@@ -233,7 +236,7 @@ function LoginPage() {
               variant="dark"
               type="submit"
               disabled={isLoading}
-              className={`shadow-midnight-ink/20 w-full py-5 text-xl font-black shadow-lg ${isLoading ? 'opacity-50' : ''}`}
+              className={`shadow-midnight-ink/20 w-full shrink-0 py-5 text-xl font-black shadow-lg ${isLoading ? 'opacity-50' : ''}`}
             >
               {isLoading
                 ? '로그인 중...'

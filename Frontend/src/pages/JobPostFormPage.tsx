@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/Button/Button';
@@ -40,7 +40,7 @@ const ErrorDisplay = ({
           }}
           exit={{ opacity: 0 }}
           transition={{ x: { duration: 0.4 } }}
-          className="text-sm font-black text-red-500"
+          className="text-sm font-black whitespace-nowrap text-red-500"
         >
           {errors[name]}
         </motion.p>
@@ -72,8 +72,25 @@ const JobPostFormPage = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isShaking, setIsShaking] = useState(false);
   const [stackInput, setStackInput] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
 
   const inputRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   const { isLoading } = useQuery({
     queryKey: ['jobPost', id],
@@ -98,6 +115,7 @@ const JobPostFormPage = () => {
       return response.json();
     },
     onSuccess: () => {
+      setIsDirty(false);
       queryClient.invalidateQueries({ queryKey: ['companyJobs'] });
       navigate('/company/jobs');
     },
@@ -147,6 +165,7 @@ const JobPostFormPage = () => {
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    setIsDirty(true);
 
     if (errors[name as keyof JobPostForm]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
@@ -161,6 +180,7 @@ const JobPostFormPage = () => {
           ...prev,
           required_stacks: [...prev.required_stacks, stackInput.trim()],
         }));
+        setIsDirty(true);
       }
       setStackInput('');
     }
@@ -171,11 +191,12 @@ const JobPostFormPage = () => {
       ...prev,
       required_stacks: prev.required_stacks.filter((s) => s !== stack),
     }));
+    setIsDirty(true);
   };
 
   if (isEdit && isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white pt-32">
+      <div className="flex min-h-screen min-w-5xl items-center justify-center bg-white pt-32">
         <div className="text-center">
           <div className="relative mx-auto mb-6 h-24 w-24">
             <motion.div
@@ -184,24 +205,26 @@ const JobPostFormPage = () => {
               className="absolute inset-0 rounded-full border-t-4 border-b-4 border-blue-600"
             />
           </div>
-          <p className="text-lg font-black text-slate-400">데이터를 불러오고 있습니다</p>
+          <p className="text-lg font-black whitespace-nowrap text-slate-400">
+            데이터를 불러오고 있습니다
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-pure-white min-h-screen pt-32 pb-32">
-      <div className="mx-auto max-w-4xl px-6">
+    <div className="bg-pure-white min-h-screen min-w-5xl pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
         <header className="mb-12 border-l-4 border-blue-600 pl-6">
           <motion.h1
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-4xl font-black tracking-tighter text-slate-900 uppercase"
+            className="text-4xl font-black tracking-tighter whitespace-nowrap text-slate-900 uppercase"
           >
             {isEdit ? 'Edit Job Posting' : 'New Job Posting'}
           </motion.h1>
-          <p className="mt-2 text-lg font-bold text-slate-400 italic">
+          <p className="mt-2 text-lg font-bold whitespace-nowrap text-slate-400 italic">
             기업의 미래를 함께할 인재를 위한 공고를 작성하세요
           </p>
         </header>
@@ -214,12 +237,14 @@ const JobPostFormPage = () => {
           <section className="bg-pure-white rounded-4xl border border-slate-100 p-10 shadow-xl shadow-slate-200/50">
             <div className="mb-8 flex items-center gap-3">
               <div className="h-6 w-1.5 rounded-full bg-blue-600" />
-              <h2 className="text-2xl font-black tracking-tight text-slate-800">기본 정보</h2>
+              <h2 className="text-2xl font-black tracking-tight whitespace-nowrap text-slate-800">
+                기본 정보
+              </h2>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="mb-2.5 block text-sm font-black tracking-wider text-slate-500 uppercase">
+                <label className="mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
                   공고 제목
                 </label>
                 <input
@@ -242,7 +267,7 @@ const JobPostFormPage = () => {
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="mb-2.5 block text-sm font-black tracking-wider text-slate-500 uppercase">
+                  <label className="mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
                     경력 조건
                   </label>
                   <select
@@ -266,7 +291,7 @@ const JobPostFormPage = () => {
                   <ErrorDisplay name="career" errors={errors} isShaking={isShaking} />
                 </div>
                 <div>
-                  <label className="mb-2.5 block text-sm font-black tracking-wider text-slate-500 uppercase">
+                  <label className="mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
                     학력 사항
                   </label>
                   <input
@@ -293,11 +318,13 @@ const JobPostFormPage = () => {
           <section className="bg-pure-white rounded-4xl border border-slate-100 p-10 shadow-xl shadow-slate-200/50">
             <div className="mb-8 flex items-center gap-3">
               <div className="h-6 w-1.5 rounded-full bg-blue-600" />
-              <h2 className="text-2xl font-black tracking-tight text-slate-800">근무 환경</h2>
+              <h2 className="text-2xl font-black tracking-tight whitespace-nowrap text-slate-800">
+                근무 환경
+              </h2>
             </div>
-            <div className="grid grid-cols-2 gap-x-8">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
               <div>
-                <label className="mb-2.5 block text-sm font-black tracking-wider text-slate-500 uppercase">
+                <label className="mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
                   고용 형태
                 </label>
                 <input
@@ -318,7 +345,7 @@ const JobPostFormPage = () => {
                 <ErrorDisplay name="employment_type" errors={errors} isShaking={isShaking} />
               </div>
               <div>
-                <label className="mb-2.5 block text-sm font-black tracking-wider text-slate-500 uppercase">
+                <label className="mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
                   급여 조건
                 </label>
                 <input
@@ -339,7 +366,7 @@ const JobPostFormPage = () => {
                 <ErrorDisplay name="salary" errors={errors} isShaking={isShaking} />
               </div>
               <div>
-                <label className="mb-2.5 block text-sm font-black tracking-wider text-slate-500 uppercase">
+                <label className="mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
                   근무 지역
                 </label>
                 <input
@@ -360,7 +387,7 @@ const JobPostFormPage = () => {
                 <ErrorDisplay name="work_location" errors={errors} isShaking={isShaking} />
               </div>
               <div>
-                <label className="mb-2.5 block text-sm font-black tracking-wider text-slate-500 uppercase">
+                <label className="mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
                   접수 마감일
                 </label>
                 <input
@@ -385,7 +412,9 @@ const JobPostFormPage = () => {
           <section className="bg-pure-white rounded-4xl border border-slate-100 p-10 shadow-xl shadow-slate-200/50">
             <div className="mb-8 flex items-center gap-3">
               <div className="h-6 w-1.5 rounded-full bg-blue-600" />
-              <h2 className="text-2xl font-black tracking-tight text-slate-800">기술 스택</h2>
+              <h2 className="text-2xl font-black tracking-tight whitespace-nowrap text-slate-800">
+                기술 스택
+              </h2>
             </div>
             <div className="space-y-5">
               <input
@@ -404,7 +433,7 @@ const JobPostFormPage = () => {
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
-                      className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-black text-blue-600"
+                      className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-black whitespace-nowrap text-blue-600"
                     >
                       {stack}
                       <button
@@ -423,7 +452,9 @@ const JobPostFormPage = () => {
           <section className="bg-pure-white rounded-4xl border border-slate-100 p-10 shadow-xl shadow-slate-200/50">
             <div className="mb-8 flex items-center gap-3">
               <div className="h-6 w-1.5 rounded-full bg-blue-600" />
-              <h2 className="text-2xl font-black tracking-tight text-slate-800">상세 요강</h2>
+              <h2 className="text-2xl font-black tracking-tight whitespace-nowrap text-slate-800">
+                상세 요강
+              </h2>
             </div>
             <textarea
               ref={(el) => {
@@ -448,7 +479,7 @@ const JobPostFormPage = () => {
               variant="outline"
               size="xl"
               onClick={() => navigate(-1)}
-              className="w-48 rounded-[20px] py-5 text-xl font-black transition-all hover:bg-slate-100"
+              className="w-48 shrink-0 rounded-[20px] py-5 text-xl font-black transition-all hover:bg-slate-100"
             >
               취소
             </Button>
@@ -456,13 +487,75 @@ const JobPostFormPage = () => {
               variant="blue"
               size="xl"
               onClick={handleSubmit}
-              className="w-64 rounded-[20px] py-5 text-xl font-black shadow-lg shadow-blue-600/20"
+              className="w-64 shrink-0 rounded-[20px] py-5 text-xl font-black shadow-lg shadow-blue-600/20"
             >
               {isEdit ? '수정 완료' : '공고 등록하기'}
             </Button>
           </div>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {blocker.state === 'blocked' && (
+          <div className="fixed inset-0 z-300 flex min-w-5xl items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => blocker.reset?.()}
+              className="bg-midnight-ink/60 fixed inset-0 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md overflow-hidden rounded-[40px] bg-white p-10 text-center shadow-2xl"
+            >
+              <div className="bg-error/10 text-error mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+
+              <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight whitespace-nowrap">
+                작성을 중단할까요?
+              </h3>
+              <p className="text-slate-gray text-lg font-bold">
+                페이지를 벗어나면 입력하신 <br /> 공고 내용이 저장되지 않습니다.
+              </p>
+              <div className="mt-8 flex gap-4">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 rounded-2xl"
+                  onClick={() => blocker.reset?.()}
+                >
+                  계속 작성하기
+                </Button>
+                <Button
+                  variant="red"
+                  size="lg"
+                  className="flex-1 rounded-2xl shadow-lg"
+                  onClick={() => blocker.proceed?.()}
+                >
+                  나가기
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

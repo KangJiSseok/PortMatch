@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/Button/Button';
 
@@ -126,12 +126,14 @@ const SectionCard = ({
     className={`bg-pure-white border-soft-pebble relative rounded-2xl border shadow-md ${className}`}
   >
     <div className="bg-cloud-dancer flex items-center justify-between rounded-t-[15px] px-6 py-4">
-      <h3 className={`text-midnight-ink ${titleSize} font-black tracking-tight uppercase`}>
+      <h3
+        className={`text-midnight-ink ${titleSize} font-black tracking-tight whitespace-nowrap uppercase`}
+      >
         {title}
       </h3>
       <div className="flex gap-3">{actions}</div>
     </div>
-    <div className="p-6 md:p-10">{children}</div>
+    <div className="p-10">{children}</div>
   </div>
 );
 
@@ -177,6 +179,22 @@ function ResumeDetailPage() {
     type: 'experience' | 'education';
     index: number;
   } | null>(null);
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isEditing && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isEditing) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isEditing]);
 
   const years = useMemo(() => Array.from({ length: 30 }, (_, i) => (2026 - i).toString()), []);
   const months = useMemo(
@@ -332,7 +350,7 @@ function ResumeDetailPage() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDeleteAction = () => {
     if (!deleteConfirm) return;
     const { type, index } = deleteConfirm;
     if (type === 'experience') {
@@ -352,7 +370,8 @@ function ResumeDetailPage() {
 
   const inputClass = (fieldId?: string) =>
     `w-full bg-white border-2 ${errorFields.includes(fieldId || '') ? 'border-error ring-4 ring-error/10 animate-pulse' : 'border-point-blue/20'} focus:border-point-blue rounded-xl px-4 py-3 outline-none transition-all font-bold text-midnight-ink text-base shadow-sm`;
-  const labelClass = 'text-point-blue ml-1 text-xs font-black uppercase tracking-wider mb-1 block';
+  const labelClass =
+    'text-point-blue ml-1 text-xs font-black uppercase tracking-wider mb-1 block whitespace-nowrap';
   const selectClass =
     'bg-white border-2 border-point-blue/20 rounded-xl px-2 py-2 text-base font-bold outline-none focus:border-point-blue cursor-pointer shadow-sm transition-all hover:border-point-blue/40';
   const actionButtonClass =
@@ -360,7 +379,7 @@ function ResumeDetailPage() {
 
   return (
     <div
-      className={`bg-pure-white text-midnight-ink min-h-screen pt-24 pb-12 transition-colors duration-500 ${isEditing ? 'bg-cloud-dancer/20' : ''}`}
+      className={`bg-pure-white text-midnight-ink min-h-screen min-w-5xl pt-24 pb-12 transition-colors duration-500 ${isEditing ? 'bg-cloud-dancer/20' : ''}`}
     >
       <AnimatePresence>
         {isEditing && (
@@ -368,9 +387,9 @@ function ResumeDetailPage() {
             initial={{ y: 50 }}
             animate={{ y: 0 }}
             exit={{ y: 50 }}
-            className="bg-point-blue fixed right-0 bottom-0 left-0 z-200 py-4 text-center shadow-[0_-5px_20px_rgba(0,0,0,0.15)]"
+            className="bg-point-blue fixed right-0 bottom-0 left-0 z-200 min-w-5xl py-4 text-center shadow-[0_-5px_20px_rgba(0,0,0,0.15)]"
           >
-            <span className="text-pure-white text-sm font-black tracking-widest">
+            <span className="text-pure-white text-sm font-black tracking-widest whitespace-nowrap">
               ⚠️ 현재 이력서 수정 모드입니다. 수정을 마치면 하단의 저장 버튼을 눌러주세요.
             </span>
           </motion.div>
@@ -390,7 +409,7 @@ function ResumeDetailPage() {
         )}
       </AnimatePresence>
 
-      <div className="mx-auto max-w-5xl px-6">
+      <div className="mx-auto w-5xl px-6">
         <div className="relative mb-10 w-full">
           <Button
             variant="outline"
@@ -429,11 +448,12 @@ function ResumeDetailPage() {
         </div>
 
         <main className="space-y-8">
+          {/* ... 상단 섹션 생략 ... */}
           <section
             ref={infoRef}
             className={`bg-pure-white border-soft-pebble rounded-3xl border p-10 shadow-md transition-all ${isEditing ? 'border-point-blue/50 ring-point-blue/10 ring-8' : ''}`}
           >
-            <div className="flex flex-col items-start gap-10 md:flex-row">
+            <div className="flex flex-row items-start gap-10">
               <div className="shrink-0">
                 <div className="border-cloud-dancer bg-cloud-dancer relative flex h-56 w-44 items-center justify-center overflow-hidden rounded-[30px] border-4 shadow-inner">
                   {resume.profileImage ? (
@@ -458,7 +478,7 @@ function ResumeDetailPage() {
                   {isEditing && (
                     <button
                       onClick={() => profileImgRef.current?.click()}
-                      className="bg-midnight-ink/40 hover:bg-midnight-ink/60 absolute inset-0 flex items-center justify-center text-lg font-bold text-white transition-opacity"
+                      className="bg-midnight-ink/40 hover:bg-midnight-ink/60 absolute inset-0 flex items-center justify-center text-lg font-bold whitespace-nowrap text-white transition-opacity"
                     >
                       사진 변경
                     </button>
@@ -471,8 +491,10 @@ function ResumeDetailPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="border-point-blue/20 mt-4 w-44 rounded-xl border bg-white p-3 shadow-sm"
                   >
-                    <h4 className="text-point-blue mb-1 text-sm font-black">📷 사진 규격 안내</h4>
-                    <ul className="text-slate-gray space-y-0.5 text-xs leading-tight font-bold">
+                    <h4 className="text-point-blue mb-1 text-sm font-black whitespace-nowrap">
+                      📷 사진 규격 안내
+                    </h4>
+                    <ul className="text-slate-gray space-y-0.5 text-xs leading-tight font-bold whitespace-nowrap">
                       <li>• 권장: 35 x 45 mm</li>
                       <li>• 형식: JPG, PNG</li>
                       <li>• 배경: 단색 권장</li>
@@ -515,8 +537,12 @@ function ResumeDetailPage() {
                   </div>
                 ) : (
                   <div className="min-w-0 space-y-3 overflow-hidden">
-                    <h2 className="truncate text-3xl font-black opacity-40">{resume.title}</h2>
-                    <h1 className="text-point-blue truncate text-3xl font-black">{resume.name}</h1>
+                    <h2 className="truncate text-3xl font-black whitespace-nowrap opacity-40">
+                      {resume.title}
+                    </h2>
+                    <h1 className="text-point-blue truncate text-3xl font-black whitespace-nowrap">
+                      {resume.name}
+                    </h1>
                   </div>
                 )}
                 <div
@@ -524,7 +550,7 @@ function ResumeDetailPage() {
                 >
                   {isEditing ? (
                     <>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className={labelClass}>연락처</label>
                           <input
@@ -560,19 +586,15 @@ function ResumeDetailPage() {
                       </div>
                     </>
                   ) : (
-                    <div className="text-slate-gray space-y-2 text-lg font-bold break-all">
-                      <div>📞 {resume.contact}</div>
-                      <div className="flex gap-2">
+                    <div className="text-slate-gray space-y-2 text-lg font-bold">
+                      <div className="whitespace-nowrap">📞 {resume.contact}</div>
+                      <div className="flex gap-2 whitespace-nowrap">
                         <span className="shrink-0">✉️</span>
-                        <span className="overflow-wrap-anywhere flex-1 break-all">
-                          {resume.email}
-                        </span>
+                        <span className="flex-1 truncate">{resume.email}</span>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 whitespace-nowrap">
                         <span className="shrink-0">📍</span>
-                        <span className="flex-1 break-all whitespace-pre-wrap">
-                          {resume.address}
-                        </span>
+                        <span className="flex-1 truncate">{resume.address}</span>
                       </div>
                     </div>
                   )}
@@ -632,9 +654,9 @@ function ResumeDetailPage() {
                       className={`relative flex flex-col justify-center rounded-2xl border-l-[6px] p-8 shadow-sm transition-all ${isEditing ? 'border-point-blue bg-point-blue/5' : 'border-soft-pebble bg-cloud-dancer/10'}`}
                     >
                       {isEditing ? (
-                        <div className="flex w-full items-start gap-6 overflow-hidden">
-                          <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-12">
-                            <div className="min-w-0 lg:col-span-4">
+                        <div className="flex w-full items-start gap-6">
+                          <div className="grid flex-1 grid-cols-12 gap-4">
+                            <div className="col-span-4">
                               <label className={labelClass}>{isExp ? '회사명' : '학교명'}</label>
                               <input
                                 className={inputClass(
@@ -660,7 +682,7 @@ function ResumeDetailPage() {
                                 }}
                               />
                             </div>
-                            <div className="min-w-0 lg:col-span-3">
+                            <div className="col-span-3">
                               <label className={labelClass}>{isExp ? '직무' : '전공/상태'}</label>
                               <input
                                 className={inputClass(isExp ? `exp_role_${i}` : `edu_major_${i}`)}
@@ -684,7 +706,7 @@ function ResumeDetailPage() {
                                 }}
                               />
                             </div>
-                            <div className="shrink-0 lg:col-span-5">
+                            <div className="col-span-5">
                               <label className={labelClass}>기간 설정</label>
                               <div className="flex h-12.5 items-center gap-1 whitespace-nowrap">
                                 <select
@@ -747,15 +769,15 @@ function ResumeDetailPage() {
                       ) : (
                         <div className="flex items-center justify-between">
                           <div className="flex min-w-0 flex-1 items-center gap-8">
-                            <p className="text-midnight-ink w-56 truncate text-xl font-black">
+                            <p className="text-midnight-ink w-56 truncate text-xl font-black whitespace-nowrap">
                               {isExp ? (item as Experience).company : (item as Education).school}
                             </p>
                             <div className="bg-soft-pebble h-6 w-px shrink-0" />
-                            <p className="text-slate-gray flex-1 truncate text-lg font-bold">
+                            <p className="text-slate-gray flex-1 truncate text-lg font-bold whitespace-nowrap">
                               {isExp ? (item as Experience).role : (item as Education).major}
                             </p>
                           </div>
-                          <span className="text-point-blue border-point-blue/20 ml-8 shrink-0 rounded-full border bg-white px-6 py-2 text-lg font-black shadow-md">
+                          <span className="text-point-blue border-point-blue/20 ml-8 shrink-0 rounded-full border bg-white px-6 py-2 text-lg font-black whitespace-nowrap shadow-md">
                             {item.period}
                           </span>
                         </div>
@@ -848,14 +870,14 @@ function ResumeDetailPage() {
                     </svg>
                   </div>
                   <span
-                    className={`truncate text-lg font-black ${resume.selectedPortfolioId ? 'text-point-blue' : 'text-slate-gray'}`}
+                    className={`truncate text-lg font-black whitespace-nowrap ${resume.selectedPortfolioId ? 'text-point-blue' : 'text-slate-gray'}`}
                   >
                     {currentPortfolio?.name || '등록된 포트폴리오가 없습니다.'}
                   </span>
                 </div>
               </div>
               {isEditing && (
-                <p className="text-slate-gray text-s mt-3 px-2 font-bold">
+                <p className="text-slate-gray text-s mt-3 px-2 font-bold whitespace-nowrap">
                   • PDF 형식의 파일만 업로드 가능합니다.
                 </p>
               )}
@@ -874,7 +896,7 @@ function ResumeDetailPage() {
                           updateCurrentResume({ selectedPortfolioId: p.id });
                           setShowPortfolioList(false);
                         }}
-                        className="hover:bg-cloud-dancer cursor-pointer truncate rounded-xl px-6 py-4 text-xl font-bold transition-colors"
+                        className="hover:bg-cloud-dancer cursor-pointer truncate rounded-xl px-6 py-4 text-xl font-bold whitespace-nowrap transition-colors"
                       >
                         {p.name}
                       </div>
@@ -933,7 +955,7 @@ function ResumeDetailPage() {
                     <div className="flex w-full items-center gap-3">
                       <span className="bg-point-blue h-2 w-2 animate-pulse rounded-full" />
                       <input
-                        className="w-full truncate bg-transparent outline-none"
+                        className="w-full truncate bg-transparent whitespace-nowrap outline-none"
                         value={currentSelfIntro?.title || ''}
                         placeholder="자기소개서 제목을 입력하세요"
                         onClick={(e) => e.stopPropagation()}
@@ -949,7 +971,7 @@ function ResumeDetailPage() {
                       />
                     </div>
                   ) : (
-                    <span className="mr-4 truncate">
+                    <span className="mr-4 truncate whitespace-nowrap">
                       {currentSelfIntro?.title || '자기소개서를 선택해주세요.'}
                     </span>
                   )}
@@ -969,7 +991,7 @@ function ResumeDetailPage() {
                             updateCurrentResume({ selectedSelfIntroId: s.id });
                             setShowSelfIntroList(false);
                           }}
-                          className="hover:bg-cloud-dancer cursor-pointer truncate rounded-xl px-6 py-4 text-xl font-bold transition-colors"
+                          className="hover:bg-cloud-dancer cursor-pointer truncate rounded-xl px-6 py-4 text-xl font-bold whitespace-nowrap transition-colors"
                         >
                           {s.title}
                         </div>
@@ -984,7 +1006,7 @@ function ResumeDetailPage() {
                 {innerEditingIntro && (
                   <div className="bg-point-blue absolute top-4 right-6 flex items-center gap-2 rounded-full px-4 py-1.5 shadow-md">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                    <span className="text-xs font-black tracking-widest text-white uppercase">
+                    <span className="text-xs font-black tracking-widest whitespace-nowrap text-white uppercase">
                       Editing Content
                     </span>
                   </div>
@@ -1018,7 +1040,7 @@ function ResumeDetailPage() {
             <Button
               variant="blue"
               size="xl"
-              className="px-20 py-5 font-black whitespace-nowrap shadow-xl transition-transform hover:scale-105 active:scale-95"
+              className="shrink-0 px-20 py-5 font-black whitespace-nowrap shadow-xl transition-transform hover:scale-105 active:scale-95"
               onClick={isEditing ? validateAndSave : toggleEditMode}
             >
               {isEditing ? '저장 및 완료하기' : '이력서 수정하기'}
@@ -1027,7 +1049,7 @@ function ResumeDetailPage() {
               <Button
                 variant="outline"
                 size="xl"
-                className="px-20 py-5 font-black whitespace-nowrap shadow-md transition-transform active:scale-95"
+                className="shrink-0 px-20 py-5 font-black whitespace-nowrap shadow-md transition-transform active:scale-95"
                 onClick={handleCancelEdit}
               >
                 취소
@@ -1039,7 +1061,7 @@ function ResumeDetailPage() {
 
       <AnimatePresence>
         {deleteConfirm && (
-          <div className="fixed inset-0 z-300 flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-300 flex min-w-5xl items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1068,7 +1090,7 @@ function ResumeDetailPage() {
                 </svg>
               </div>
 
-              <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight">
+              <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight whitespace-nowrap">
                 정말 삭제할까요?
               </h3>
               <div className="mt-8 flex gap-4">
@@ -1084,9 +1106,71 @@ function ResumeDetailPage() {
                   variant="red"
                   size="lg"
                   className="flex-1 rounded-2xl shadow-lg"
-                  onClick={confirmDelete}
+                  onClick={confirmDeleteAction}
                 >
                   삭제하기
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {blocker.state === 'blocked' && (
+          <div className="fixed inset-0 z-300 flex min-w-5xl items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => blocker.reset?.()}
+              className="bg-midnight-ink/60 fixed inset-0 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md overflow-hidden rounded-[40px] bg-white p-10 text-center shadow-2xl"
+            >
+              <div className="bg-error/10 text-error mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+
+              <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight whitespace-nowrap">
+                수정 사항을 취소할까요?
+              </h3>
+              <p className="text-slate-gray text-lg font-bold">
+                페이지를 벗어나면 저장되지 않은 <br /> 변경 사항이 모두 사라집니다.
+              </p>
+              <div className="mt-8 flex gap-4">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 rounded-2xl"
+                  onClick={() => blocker.reset?.()}
+                >
+                  계속 수정하기
+                </Button>
+                <Button
+                  variant="red"
+                  size="lg"
+                  className="flex-1 rounded-2xl shadow-lg"
+                  onClick={() => blocker.proceed?.()}
+                >
+                  나가기
                 </Button>
               </div>
             </motion.div>

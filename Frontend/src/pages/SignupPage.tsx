@@ -190,11 +190,11 @@ function SignupPage() {
   };
 
   return (
-    <div className="bg-cloud-dancer relative flex min-h-screen flex-col items-center justify-center px-6 py-12">
+    <div className="bg-cloud-dancer relative flex min-h-screen min-w-18 flex-col items-center justify-center px-6 py-12">
       <div className="mb-8 flex items-center gap-6">
         <Link
           to="/main"
-          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold transition-colors"
+          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold whitespace-nowrap transition-colors"
         >
           <svg
             width="18"
@@ -214,7 +214,7 @@ function SignupPage() {
         <div className="bg-soft-pebble h-3 w-px" />
         <Link
           to="/login"
-          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold transition-colors"
+          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold whitespace-nowrap transition-colors"
         >
           <svg
             width="18"
@@ -232,8 +232,8 @@ function SignupPage() {
         </Link>
       </div>
 
-      <div className="bg-pure-white w-full max-w-2xl rounded-[40px] p-12 shadow-2xl">
-        <div className="text-midnight-ink decoration-soft-pebble mb-12 text-center text-4xl font-black tracking-tighter uppercase underline underline-offset-8">
+      <div className="bg-pure-white w-2xl rounded-[40px] p-12 shadow-2xl">
+        <div className="text-midnight-ink decoration-soft-pebble mb-12 text-center text-4xl font-black tracking-tighter whitespace-nowrap uppercase underline underline-offset-8">
           PORTMATCH
         </div>
 
@@ -243,7 +243,7 @@ function SignupPage() {
               key={type}
               type="button"
               onClick={() => setUserType(type)}
-              className={`flex-1 rounded-xl py-3 text-sm font-extrabold transition-all duration-300 ${userType === type ? 'bg-pure-white text-midnight-ink scale-[1.02] shadow-md' : 'text-slate-gray hover:text-midnight-ink'}`}
+              className={`flex-1 rounded-xl py-3 text-sm font-extrabold whitespace-nowrap transition-all duration-300 ${userType === type ? 'bg-pure-white text-midnight-ink scale-[1.02] shadow-md' : 'text-slate-gray hover:text-midnight-ink'}`}
             >
               {type === 'individual' ? '개인 회원' : '기업 회원'}
             </button>
@@ -253,9 +253,9 @@ function SignupPage() {
         <form onSubmit={handleSubmit} className="space-y-10">
           <section className="space-y-8">
             <div className="border-soft-pebble border-b pb-2">
-              <h2 className="text-midnight-ink text-xl font-black">기본 정보</h2>
+              <h2 className="text-midnight-ink text-xl font-black whitespace-nowrap">기본 정보</h2>
             </div>
-            <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-10">
               {['email', 'password', 'passwordConfirm', 'name', 'phone'].map((field) => (
                 <motion.div
                   key={field}
@@ -264,7 +264,7 @@ function SignupPage() {
                   }}
                   animate={shakeField === field ? { x: [0, -10, 10, -10, 10, 0] } : {}}
                   transition={{ duration: 0.4 }}
-                  className={`relative ${field === 'email' ? 'md:col-span-2' : ''}`}
+                  className={`relative ${field === 'email' ? 'col-span-2' : ''}`}
                 >
                   <Input
                     label={`${field === 'email' ? '이메일' : field === 'password' ? '비밀번호' : field === 'passwordConfirm' ? '비밀번호 확인' : field === 'name' ? '성함 / 담당자명' : '연락처'} *`}
@@ -295,11 +295,11 @@ function SignupPage() {
 
           <section className="space-y-8">
             <div className="border-soft-pebble border-b pb-2">
-              <h2 className="text-midnight-ink text-xl font-black">
+              <h2 className="text-midnight-ink text-xl font-black whitespace-nowrap">
                 {userType === 'individual' ? '개인 상세 정보' : '기업 상세 정보'}
               </h2>
             </div>
-            <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-10">
               {userType === 'individual' ? (
                 <>
                   <motion.div
@@ -307,7 +307,7 @@ function SignupPage() {
                       fieldRefs.current.birthYear = el;
                     }}
                     animate={shakeField === 'birthYear' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-                    className="relative md:col-span-2"
+                    className="relative col-span-2"
                   >
                     <div className="grid grid-cols-3 gap-4">
                       <Select
@@ -372,7 +372,7 @@ function SignupPage() {
                       fieldRefs.current.companyName = el;
                     }}
                     animate={shakeField === 'companyName' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-                    className="relative md:col-span-2"
+                    className="relative col-span-2"
                   >
                     <Input
                       label="기업명 *"
@@ -421,7 +421,7 @@ function SignupPage() {
                       fieldRefs.current.address = el;
                     }}
                     animate={shakeField === 'address' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-                    className="relative md:col-span-2"
+                    className="relative col-span-2"
                   >
                     <Input
                       label="기업 주소 *"
@@ -439,7 +439,7 @@ function SignupPage() {
                       fieldRefs.current.companySize = el;
                     }}
                     animate={shakeField === 'companySize' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-                    className="relative md:col-span-2"
+                    className="relative col-span-2"
                   >
                     <Select
                       label="기업 형태 *"
@@ -460,7 +460,7 @@ function SignupPage() {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-red-100 bg-red-50 p-4 text-center text-sm font-bold text-red-500"
+                className="rounded-xl border border-red-100 bg-red-50 p-4 text-center text-sm font-bold whitespace-nowrap text-red-500"
               >
                 {errors.submit}
               </motion.div>
@@ -469,7 +469,7 @@ function SignupPage() {
               variant="dark"
               type="submit"
               disabled={isLoading}
-              className={`w-full py-5 text-xl font-black shadow-lg transition-all active:scale-95 ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+              className={`w-full py-5 text-xl font-black whitespace-nowrap shadow-lg transition-all active:scale-95 ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               {isLoading ? '가입 중...' : '회원가입 완료'}
             </Button>

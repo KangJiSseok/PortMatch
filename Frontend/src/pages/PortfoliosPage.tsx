@@ -229,8 +229,8 @@ function PortfoliosPage() {
   const selectedPortfolio = savedPortfolios.find((p) => p.id === selectedPortfolioId);
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-32 pb-32">
-      <div className="mx-auto max-w-5xl px-6">
+    <div className="min-h-screen min-w-5xl bg-gray-50 pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
         <AnimatePresence>
           {modal.isOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -280,7 +280,7 @@ function PortfoliosPage() {
                     </svg>
                   )}
                 </div>
-                <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight">
+                <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight whitespace-nowrap">
                   {modal.title}
                 </h3>
                 <p className="text-slate-gray mb-10 leading-relaxed font-bold whitespace-pre-wrap opacity-60">
@@ -324,31 +324,31 @@ function PortfoliosPage() {
 
         <header className="border-point-blue mb-12 flex items-start justify-between border-l-4 pl-6">
           <div className="flex flex-col gap-1">
-            <span className="text-point-blue text-xs font-black tracking-[0.2em] uppercase">
+            <span className="text-point-blue text-xs font-black tracking-[0.2em] whitespace-nowrap uppercase">
               Career Analysis
             </span>
             <motion.h1
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="text-midnight-ink text-4xl font-black tracking-tighter uppercase"
+              className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
             >
               Portfolio Analysis
             </motion.h1>
-            <p className="text-slate-gray mt-2 text-lg font-bold italic opacity-40">
+            <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
               데이터로 증명하는 당신의 커리어 가치
             </p>
           </div>
           <Button
             variant="outline"
             size="md"
-            className="border-soft-pebble text-soft-pebble hover:border-midnight-ink hover:text-midnight-ink rounded-xl"
+            className="border-soft-pebble text-soft-pebble hover:border-midnight-ink hover:text-midnight-ink shrink-0 rounded-xl"
             onClick={() => navigate(-1)}
           >
             ← 뒤로가기
           </Button>
         </header>
 
-        <main className="relative overflow-hidden">
+        <main className="relative">
           <AnimatePresence mode="wait">
             {step === 'upload' && (
               <motion.div
@@ -384,7 +384,7 @@ function PortfoliosPage() {
                             </svg>
                           </div>
                           <span
-                            className={`text-xl font-black tracking-tight ${selectedPortfolioId ? 'text-point-blue' : 'text-midnight-ink'}`}
+                            className={`text-xl font-black tracking-tight whitespace-nowrap ${selectedPortfolioId ? 'text-point-blue' : 'text-midnight-ink'}`}
                           >
                             {selectedPortfolio?.name || '저장된 포트폴리오 선택'}
                           </span>
@@ -425,7 +425,7 @@ function PortfoliosPage() {
                                   <div className="flex items-center gap-3">
                                     <button
                                       onClick={(e) => handleOpenFile(e, p)}
-                                      className="hover:text-point-blue p-1 transition-colors"
+                                      className="hover:text-point-blue shrink-0 p-1 transition-colors"
                                     >
                                       <svg
                                         width="18"
@@ -441,16 +441,18 @@ function PortfoliosPage() {
                                         <line x1="21" y1="21" x2="16.65" y2="16.65" />
                                       </svg>
                                     </button>
-                                    <span className="text-lg font-bold">{p.name}</span>
+                                    <span className="text-lg font-bold whitespace-nowrap">
+                                      {p.name}
+                                    </span>
                                     {p.hasAnalysis && (
-                                      <span className="ml-1 rounded-full bg-emerald-500/10 px-3 py-1 text-[13px] font-black tracking-tight whitespace-nowrap text-emerald-600">
+                                      <span className="ml-1 shrink-0 rounded-full bg-emerald-500/10 px-3 py-1 text-[13px] font-black tracking-tight whitespace-nowrap text-emerald-600">
                                         분석 완료
                                       </span>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex shrink-0 items-center gap-2">
                                     {p.isLocal && (
-                                      <span className="bg-point-blue/10 rounded-md px-2 py-1 text-[10px] font-black uppercase">
+                                      <span className="bg-point-blue/10 rounded-md px-2 py-1 text-[10px] font-black whitespace-nowrap uppercase">
                                         New
                                       </span>
                                     )}
@@ -464,7 +466,7 @@ function PortfoliosPage() {
                                 </div>
                               ))
                             ) : (
-                              <div className="text-slate-gray py-10 font-bold opacity-40">
+                              <div className="text-slate-gray py-10 font-bold whitespace-nowrap opacity-40">
                                 목록이 비어있습니다.
                               </div>
                             )}
@@ -508,10 +510,10 @@ function PortfoliosPage() {
                           </svg>
                         </motion.div>
                         <div className="space-y-1">
-                          <h3 className="text-2xl font-black tracking-tight">
+                          <h3 className="text-2xl font-black tracking-tight whitespace-nowrap">
                             {isDragging ? '여기에 놓으세요!' : '새 포트폴리오 업로드'}
                           </h3>
-                          <p className="text-slate-gray text-[14px] font-bold tracking-widest uppercase opacity-40">
+                          <p className="text-slate-gray text-[14px] font-bold tracking-widest whitespace-nowrap uppercase opacity-40">
                             PDF 파일을 드래그하거나 클릭하여 추가하세요
                           </p>
                         </div>
@@ -632,10 +634,10 @@ function PortfoliosPage() {
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-point-blue text-5xl font-black tracking-tighter tabular-nums">
+                      <span className="text-point-blue text-5xl font-black tracking-tighter whitespace-nowrap tabular-nums">
                         {progress}%
                       </span>
-                      <span className="text-slate-gray mt-1 text-[10px] font-black tracking-widest uppercase opacity-50">
+                      <span className="text-slate-gray mt-1 text-[10px] font-black tracking-widest whitespace-nowrap uppercase opacity-50">
                         Analyzing
                       </span>
                     </div>
@@ -646,7 +648,7 @@ function PortfoliosPage() {
                         key={activeStage}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-midnight-ink text-2xl font-black tracking-tight"
+                        className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap"
                       >
                         {stages[activeStage].label}
                       </motion.h3>
@@ -654,7 +656,7 @@ function PortfoliosPage() {
                         key={`desc-${activeStage}`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 0.6 }}
-                        className="text-slate-gray font-medium"
+                        className="text-slate-gray font-medium whitespace-nowrap"
                       >
                         {stages[activeStage].description}
                       </motion.p>
@@ -680,7 +682,7 @@ function PortfoliosPage() {
                               />
                             </div>
                             <span
-                              className={`text-xs font-black transition-colors duration-500 ${progress >= stage.threshold ? 'text-point-blue' : 'text-slate-gray opacity-30'}`}
+                              className={`text-xs font-black whitespace-nowrap transition-colors duration-500 ${progress >= stage.threshold ? 'text-point-blue' : 'text-slate-gray opacity-30'}`}
                             >
                               {stage.label}
                             </span>
@@ -698,27 +700,27 @@ function PortfoliosPage() {
                 key="result"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mx-auto max-w-4xl space-y-8"
+                className="space-y-8"
               >
                 <div className="border-cloud-dancer flex items-end justify-between border-b-2 pb-6">
                   <div>
-                    <p className="text-point-blue mb-1 text-xs font-black tracking-[0.2em] uppercase">
+                    <p className="text-point-blue mb-1 text-xs font-black tracking-[0.2em] whitespace-nowrap uppercase">
                       Analysis Complete
                     </p>
-                    <h2 className="text-midnight-ink text-4xl font-black tracking-tighter">
+                    <h2 className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap">
                       분석 리포트
                     </h2>
                   </div>
-                  <div className="bg-cloud-dancer text-slate-gray max-w-70 truncate rounded-xl px-4 py-2 text-sm font-black">
+                  <div className="bg-cloud-dancer text-slate-gray max-w-70 truncate rounded-xl px-4 py-2 text-sm font-black whitespace-nowrap">
                     {selectedPortfolio?.name}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-                  <section className="border-silver-mist rounded-4xl border bg-white p-8 shadow-sm md:col-span-2">
+                <div className="grid grid-cols-3 gap-8">
+                  <section className="border-silver-mist col-span-2 rounded-4xl border bg-white p-8 shadow-sm">
                     <div className="mb-8 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
-                      <h3 className="text-midnight-ink text-xl font-black tracking-tight">
+                      <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
                         핵심 역량
                       </h3>
                     </div>
@@ -729,7 +731,7 @@ function PortfoliosPage() {
                           className="hover:bg-point-blue/5 hover:border-point-blue/10 rounded-2xl border border-transparent bg-gray-50 p-5 transition-colors"
                         >
                           <div className="flex items-start gap-4">
-                            <span className="text-point-blue mt-0.5 text-sm font-black">
+                            <span className="text-point-blue mt-0.5 shrink-0 text-sm font-black">
                               0{idx + 1}
                             </span>
                             <p className="text-midnight-ink text-[16px] leading-relaxed font-bold break-keep">
@@ -744,7 +746,7 @@ function PortfoliosPage() {
                   <section className="border-silver-mist rounded-4xl border bg-white p-8 shadow-sm">
                     <div className="mb-8 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
-                      <h3 className="text-midnight-ink text-xl font-black tracking-tight">
+                      <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
                         기술 스택
                       </h3>
                     </div>
@@ -752,7 +754,7 @@ function PortfoliosPage() {
                       {analysisData.techStacks.map((tech) => (
                         <span
                           key={tech}
-                          className="border-silver-mist text-slate-gray rounded-xl border bg-white px-4 py-2 text-sm font-black shadow-sm transition-transform hover:-translate-y-1"
+                          className="border-silver-mist text-slate-gray rounded-xl border bg-white px-4 py-2 text-sm font-black whitespace-nowrap shadow-sm transition-transform hover:-translate-y-1"
                         >
                           {tech}
                         </span>
@@ -761,7 +763,7 @@ function PortfoliosPage() {
                   </section>
                 </div>
 
-                <div className="flex flex-col gap-4 pt-8 sm:flex-row">
+                <div className="flex flex-row gap-4 pt-8">
                   <Button
                     variant="blue"
                     size="xl"
