@@ -6,12 +6,13 @@ import Button from '../components/Button/Button';
 /** ------------------ routes (프로젝트 라우트에 맞게 수정) ------------------ */
 const ROUTES = {
   jobPostNew: '/jobposts/new',
-  jobPostManage: '/jobposts',
+  jobPostManage: '/company/jobs',
   interviewManage: '/interviews',
   // ✅ 이력서 보기 라우트(프로젝트에 맞게 변경)
   resumeView: (applicantId: number) => `/resume/${applicantId}`,
   // ✅ 공고 상세 라우트(프로젝트에 맞게 변경)
   jobPostDetail: (jobPostId: number) => `/job-posts/${jobPostId}`,
+  companyEdit: '/companies/${companyId}'
 } as const;
 
 /** ------------------ types ------------------ */
@@ -429,17 +430,18 @@ export default function CorporateMyPage() {
                 </p>
               </div>
 
-              {/* ✅ 메인 CTA: 공고 등록만 남김 */}
+              {/* ✅ 메인 CTA: 정보 수정 */}
               <div className="flex items-center gap-3">
                 <Button
                   variant="blue"
                   size="md"
                   className="rounded-2xl shadow-md"
-                  onClick={() => navigate(ROUTES.jobPostNew)}
+                  onClick={() => navigate(ROUTES.companyEdit)} // 예: 회사 정보 수정 페이지
                 >
-                  공고 등록
+                  정보 수정
                 </Button>
               </div>
+
             </div>
           </div>
         </header>
