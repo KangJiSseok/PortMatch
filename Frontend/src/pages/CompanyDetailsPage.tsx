@@ -4,12 +4,13 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/Button/Button';
 
+// 백엔드 데이터 구조에 맞춰 이미지 관련 필드 제거
 interface CompanyDetails {
   id: number;
   name: string;
   logo: string;
-  bannerImage: string;
-  officeImages: string[];
+  // bannerImage: string; // 제거
+  // officeImages: string[]; // 제거
   description: string;
   location: string;
   industry: string;
@@ -36,13 +37,7 @@ const DUMMY_COMPANY: CompanyDetails = {
   id: 1,
   name: '넥스트웨이브 테크놀로지스',
   logo: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?q=80&w=200&auto=format&fit=crop',
-  bannerImage:
-    'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1200&auto=format&fit=crop',
-  officeImages: [
-    'https://images.unsplash.com/photo-1497366811353-6870744d04b2?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1497215842964-222b430dc094?q=80&w=400&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1531973576160-7125cd663d86?q=80&w=400&auto=format&fit=crop',
-  ],
+  // bannerImage, officeImages 제거됨
   description:
     '넥스트웨이브 테크놀로지스는 차세대 AI 기반 데이터 분석 솔루션을 제공하는 혁신 기업입니다. 클라우드 네이티브 아키텍처를 기반으로 확장성 높은 서비스를 개발하며 사람이 중심이 되는 기술 생태계를 구축합니다.',
   location: '서울 강남구 테헤란로 518',
@@ -234,20 +229,14 @@ function CompanyDetailsPage() {
           </Button>
         </div>
 
-        <section className="bg-midnight-ink relative flex min-h-125 w-full flex-col pt-16 pb-12 md:min-h-130 md:pt-20 md:pb-16">
-          <div
-            className={`absolute inset-0 transition-opacity duration-500 ${hasJobPostings ? 'opacity-100' : 'opacity-20'}`}
-          >
-            <img
-              src={company?.bannerImage}
-              className="h-full w-full object-cover brightness-50"
-              alt="banner"
-            />
-          </div>
-          <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/90" />
+        {/* 상단 배너 영역 리디자인: 배경 이미지 제거, 다크 그라디언트 적용 */}
+        <section className="bg-midnight-ink relative flex min-h-110 w-full flex-col justify-end overflow-hidden pb-12 md:min-h-90 md:pb-16">
+          {/* 은은한 방사형 그라디언트 배경 추가 */}
+          <div className="from-point-blue/20 absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--tw-gradient-stops))] via-transparent to-transparent" />
+          <div className="bg-point-blue/10 absolute -bottom-24 -left-24 h-96 w-96 rounded-full blur-3xl" />
 
-          <div className="relative z-10 mx-auto flex h-full w-full max-w-7xl flex-1 flex-col px-6 md:px-8">
-            <div className="mt-auto flex flex-col items-center gap-6 md:flex-row md:items-end md:gap-8 lg:gap-12">
+          <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col px-6 md:px-8">
+            <div className="flex flex-col items-center gap-6 md:flex-row md:items-end md:gap-8 lg:gap-12">
               <div
                 className={`border-pure-white bg-pure-white h-32 w-32 shrink-0 overflow-hidden rounded-3xl border-4 shadow-xl transition-all md:h-40 md:w-40 ${!hasJobPostings && 'opacity-50 grayscale'}`}
               >
@@ -331,30 +320,10 @@ function CompanyDetailsPage() {
           </div>
         </section>
 
-        <div className="mx-auto mt-8 w-full max-w-7xl px-6 text-center md:mt-12 md:px-8 md:text-left">
-          <div className="bg-cloud-dancer border-silver-mist/20 grid min-h-40 grid-cols-2 gap-3 overflow-hidden rounded-3xl border-2 md:min-h-60 md:grid-cols-4 md:gap-4 md:rounded-4xl">
-            {hasJobPostings ? (
-              <>
-                {company?.officeImages?.slice(0, 3).map((img, i) => (
-                  <div key={i} className="h-40 overflow-hidden md:h-60">
-                    <img
-                      src={img}
-                      className="h-full w-full object-cover transition-transform hover:scale-105"
-                      alt="office"
-                    />
-                  </div>
-                ))}
-                <div className="bg-slate-gray text-pure-white relative flex h-40 items-center justify-center text-xl font-black md:h-60 md:text-2xl">
-                  + 3
-                </div>
-              </>
-            ) : (
-              <div className="text-silver-mist col-span-full flex h-40 items-center justify-center px-4 text-center text-sm font-bold md:h-60 md:text-base">
-                등록된 기업 이미지가 없습니다.
-              </div>
-            )}
-          </div>
-        </div>
+        {/* 오피스 이미지 그리드 섹션 제거됨 */}
+        {/* <div className="mx-auto mt-8 w-full max-w-7xl px-6 text-center md:mt-12 md:px-8 md:text-left">
+          ...
+        </div> */}
 
         <div className="mx-auto mt-12 w-full max-w-7xl px-6 md:mt-16 md:px-8">
           <div className="grid grid-cols-12 gap-8 md:gap-12">
