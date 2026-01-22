@@ -64,8 +64,10 @@ public class PortfolioAnalysisService {
         this.objectMapper = objectMapper;
     }
 
-    public Object analyze(Long portfolioId) {
-        PresignedUrlResponse presigned = portfolioService.getPresignedUrl(portfolioId, 10);
+    public Object analyze(Long userId, Long portfolioId) {
+        Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
+        PresignedUrlResponse presigned = portfolioService.getPresignedUrlForUser(userId, portfolioId, 10);
         String endpoint = normalizeBaseUrl(portfolioAnalysisBaseUrl) + "/api/parse";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -88,7 +90,7 @@ public class PortfolioAnalysisService {
         try {
             ResponseEntity<Object> response = restTemplate.exchange(endpoint, HttpMethod.POST, request, Object.class);
             Object body = response.getBody();
-            persistResult(portfolioId, body);
+            persistResult(portfolio, body);
             return body;
         } catch (RestClientException exception) {
             log.error("Portfolio analysis request failed. endpoint={}", endpoint, exception);
@@ -101,7 +103,9 @@ public class PortfolioAnalysisService {
     }
 
     @Transactional(readOnly = true)
-    public PortfolioAnalysisResponse getAnalysis(Long portfolioId) {
+    public PortfolioAnalysisResponse getAnalysis(Long userId, Long portfolioId) {
+        portfolioRepository.findByIdAndUserId(portfolioId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
         PortfolioAnalysis analysis = portfolioAnalysisRepository.findWithProjectsByPortfolioId(portfolioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
 
@@ -119,16 +123,14 @@ public class PortfolioAnalysisService {
         return new PortfolioAnalysisResponse(projects);
     }
 
-    private void persistResult(Long portfolioId, Object body) {
+    private void persistResult(Portfolio portfolio, Object body) {
         if (body == null) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Portfolio analysis returned empty body");
         }
 
         PortfolioAnalysisResponse result = objectMapper.convertValue(body, PortfolioAnalysisResponse.class);
-        Portfolio portfolio = portfolioRepository.findById(portfolioId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
 
-        PortfolioAnalysis analysis = portfolioAnalysisRepository.findByPortfolioId(portfolioId)
+        PortfolioAnalysis analysis = portfolioAnalysisRepository.findByPortfolioId(portfolio.getId())
                 .orElseGet(() -> new PortfolioAnalysis(portfolio));
 
         analysis.replaceProjects(buildProjects(analysis, result));

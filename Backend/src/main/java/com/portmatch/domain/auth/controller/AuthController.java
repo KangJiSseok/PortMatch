@@ -6,7 +6,7 @@ import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.auth.security.UserPrincipal;
 import com.portmatch.domain.auth.service.AuthResponseMapper;
 import com.portmatch.domain.auth.service.AuthSessionService;
-import com.portmatch.global.api.ApiResponse;
+import com.portmatch.global.api.BaseApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -27,18 +27,18 @@ public class AuthController {
     private final AuthResponseMapper authResponseMapper;
 
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
+    public BaseApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
         UserPrincipal principal = authSessionService.loginByEmail(
                 req.getEmail(),
                 req.getPassword(),
                 req.getExpectedRole(),
                 servletRequest,
                 servletResponse);
-        return ApiResponse.ok(authResponseMapper.toLoginResponse(principal));
+        return BaseApiResponse.ok(authResponseMapper.toLoginResponse(principal));
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+    public BaseApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         // 1) 세션 무효화
         HttpSession session = request.getSession(false);
         if (session != null) {
@@ -57,17 +57,17 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        return ApiResponse.ok(null);
+        return BaseApiResponse.ok(null);
     }
 
     @GetMapping("/me")
-    public ApiResponse<LoginResponse> me(
+    public BaseApiResponse<LoginResponse> me(
             @AuthenticationPrincipal(expression = "user") User user
     ) {
         if (user == null) {
-            return ApiResponse.error("UNAUTHORIZED", "로그인이 필요합니다.");
+            return BaseApiResponse.error("UNAUTHORIZED", "로그인이 필요합니다.");
         }
-        return ApiResponse.ok(authResponseMapper.toLoginResponse(user));
+        return BaseApiResponse.ok(authResponseMapper.toLoginResponse(user));
     }
 
 

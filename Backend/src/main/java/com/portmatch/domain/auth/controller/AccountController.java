@@ -3,7 +3,7 @@ package com.portmatch.domain.auth.controller;
 import com.portmatch.domain.auth.dto.request.ApplicantSignUpRequest;
 import com.portmatch.domain.auth.dto.request.CompanySignUpRequest;
 import com.portmatch.domain.auth.service.AuthSignUpService;
-import com.portmatch.global.api.ApiResponse;
+import com.portmatch.global.api.BaseApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,21 +18,21 @@ public class AccountController {
     private final AuthSignUpService authSignUpService;
 
     @PostMapping("/signup/applicant")
-    public ResponseEntity<ApiResponse<Void>> signUpApplicant(
+    public ResponseEntity<BaseApiResponse<Void>> signUpApplicant(
             @Valid @RequestBody ApplicantSignUpRequest req
     ) {
         authSignUpService.signUpApplicant(req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(null));
+        return ResponseEntity.status(HttpStatus.CREATED).body(BaseApiResponse.ok(null));
     }
 
     @PostMapping("/signup/company")
-    public ResponseEntity<ApiResponse<Void>> signUpCompany(
+    public ResponseEntity<BaseApiResponse<Void>> signUpCompany(
             @Valid @RequestBody CompanySignUpRequest req
     ) {
 
         System.out.println(">>> company signup request arrived");
 
         authSignUpService.signUpCompany(req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(null));
+        return ResponseEntity.status(HttpStatus.CREATED).body(BaseApiResponse.ok(null));
     }
 }
