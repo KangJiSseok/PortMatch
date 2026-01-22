@@ -23,13 +23,13 @@ import CompanyDetailsPage from './pages/CompanyDetailsPage';
 import ResumeDetailPage from './pages/ResumeDetailPage';
 import JobPostingsPage from '@/pages/JobPostingsPage';
 import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
-import InterviewListPage from './pages/InterviewListPage';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
 import JobPostDetailPage from './pages/JobPostDetailPage';
 import MypageGate from './routes/MyPageGate';
 import CompanyJobManagementPage from './pages/CompanyJobManagementPage';
 import JobApplicationManagementPage from './pages/JobApplicationManagementPage';
 import JobPostFormPage from './pages/JobPostFormPage';
+import InterviewListGate from './routes/InterviewListGate';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -125,7 +125,7 @@ const router = createBrowserRouter([
         path: 'interviews',
         element: (
           <ProtectedRoute>
-            <InterviewListPage />
+            <InterviewListGate />
           </ProtectedRoute>
         ),
       },
@@ -138,7 +138,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: 'interview/:id/room',
+        path: 'interviews/:id/room',
         element: (
           <ProtectedRoute>
             <InterviewPage />

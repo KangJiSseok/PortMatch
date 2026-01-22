@@ -1,7 +1,7 @@
 // src/routes/MyPageGate.tsx
 import { Navigate } from 'react-router-dom';
 import MyPage from '../pages/MyPage';
-import CorporateMyPage from '../pages/CorporateMyPage';
+import CorporateMyPage from '../pages/CompanyMyPage';
 
 type UserRole = 'guest' | 'individual' | 'corporate';
 
