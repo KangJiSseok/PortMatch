@@ -56,26 +56,44 @@ export default function InterviewListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  const isUpcoming = tab === 'UPCOMING';
+
   return (
-    // ✅ [해결 1 방식] body 자체가 넓어지도록 root에 min-w 고정
-    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
-      {/* ✅ 캔버스 고정 폭 */}
-      <div className="mx-auto w-[1280px] space-y-10 px-6">
-        {/* 탭 + 리스트 */}
-        <section className="space-y-5">
-          {/* ✅ 반응형 제거: flex-wrap 금지 */}
-          <div className="flex flex-nowrap items-center justify-between gap-3 border-b border-zinc-100 pb-4">
-            <div>
-              <h2 className="text-2xl font-black tracking-tighter">면접 목록</h2>
+    // ✅ MyPage 방식(해결 1): 문서(body) 자체가 넓어지도록 min-w 고정
+    // ✅ 스타일은 CompanyJobManagementPage 톤(큰 글씨/컬러/카드 느낌)으로 맞춤
+    <div className="bg-pure-white text-midnight-ink min-h-screen min-w-350 pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
+        {/* ✅ 헤더(큰 타이틀) */}
+        <header className="border-point-blue mb-12 border-l-4 pl-6">
+          <h1 className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase">
+            Interview
+          </h1>
+          <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
+            예정/완료 면접을 한 번에 확인하고 바로 입장하세요.
+          </p>
+        </header>
+
+        {/* ✅ 섹션 타이틀 + 탭 */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-point-blue h-6 w-1.5 rounded-full" />
+              <h2 className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
+                면접 목록
+              </h2>
+              <span className="text-soft-pebble text-sm font-black tracking-widest whitespace-nowrap uppercase">
+                {isUpcoming ? 'UPCOMING' : 'DONE'}
+              </span>
             </div>
 
-            <div className="flex gap-2">
+            {/* ✅ 탭 버튼(글씨 크게/톤 맞춤) */}
+            <div className="flex gap-3">
               <Button
                 type="button"
                 variant="filter"
-                size="md"
+                size="lg"
                 isActive={tab === 'UPCOMING'}
-                className="rounded-2xl border-2"
+                className="rounded-2xl border-2 px-8 text-base font-black"
                 onClick={() => setTab('UPCOMING')}
               >
                 예정
@@ -83,9 +101,9 @@ export default function InterviewListPage() {
               <Button
                 type="button"
                 variant="filter"
-                size="md"
+                size="lg"
                 isActive={tab === 'DONE'}
-                className="rounded-2xl border-2"
+                className="rounded-2xl border-2 px-8 text-base font-black"
                 onClick={() => setTab('DONE')}
               >
                 완료
@@ -93,70 +111,109 @@ export default function InterviewListPage() {
             </div>
           </div>
 
+          {/* 로딩 */}
           {isLoading && <ListSkeleton />}
 
+          {/* 에러 */}
           {!isLoading && isError && (
-            <div className="rounded-4xl border border-zinc-100 bg-white p-8 shadow-sm">
-              <p className="text-lg font-black">데이터를 불러오지 못했어요</p>
-              <p className="mt-2 text-sm font-semibold text-zinc-500">{errorMessage}</p>
-              <div className="mt-6 flex justify-end">
-                <Button variant="blue" size="md" className="rounded-2xl" onClick={load}>
+            <div className="border-silver-mist bg-pure-white rounded-4xl border p-10 shadow-sm">
+              <p className="text-midnight-ink text-2xl font-black tracking-tight">
+                데이터를 불러오지 못했어요
+              </p>
+              <p className="text-slate-gray mt-3 text-base leading-relaxed font-bold opacity-60">
+                {errorMessage}
+              </p>
+              <div className="mt-8 flex justify-end">
+                <Button
+                  variant="blue"
+                  size="lg"
+                  className="rounded-2xl px-8 shadow-lg"
+                  onClick={load}
+                >
                   다시 시도
                 </Button>
               </div>
             </div>
           )}
 
+          {/* 성공 */}
           {!isLoading && !isError && (
-            <div className="space-y-4">
+            <div className="grid gap-6">
               {items.length === 0 ? (
-                <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
-                  <p className="text-lg font-black">표시할 면접이 없어요.</p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-500">
-                    면접 일정이 잡히면 여기로 쏙 들어옵니다.
+                <div className="border-silver-mist bg-pure-white rounded-[40px] border-2 border-dashed py-24 text-center">
+                  <div className="mb-4 text-6xl opacity-20">🗓️</div>
+                  <p className="text-soft-pebble text-xl font-black italic">
+                    표시할 면접이 없습니다.
+                  </p>
+                  <p className="text-slate-gray mt-3 text-base font-bold opacity-40">
+                    면접 일정이 잡히면 여기에 자동으로 나타나요.
                   </p>
                 </div>
               ) : (
                 items.map((s) => (
                   <div
                     key={s.interview_id}
-                    className={
-                      // ✅ 반응형 제거: md:flex-row 같은 거 금지 → 무조건 row 고정
-                      'group flex items-center justify-between gap-4 rounded-4xl border border-zinc-100 bg-white p-6 shadow-sm transition-all hover:border-zinc-200 hover:shadow-md'
-                    }
+                    className="border-silver-mist bg-pure-white flex min-w-full items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
                   >
+                    {/* LEFT */}
                     <div className="min-w-0">
-                      <p className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
-                        {s.companyName}
-                      </p>
-                      <p className="mt-2 truncate text-2xl font-black tracking-tighter">
+                      <div className="mb-4 flex items-center gap-3">
+                        <span
+                          className={[
+                            'shrink-0 rounded-full px-4 py-1 text-xs font-black tracking-tight',
+                            isUpcoming
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'bg-cloud-dancer text-slate-gray',
+                          ].join(' ')}
+                        >
+                          {isUpcoming ? '예정' : '완료'}
+                        </span>
+
+                        <span className="text-soft-pebble text-sm font-black tracking-widest whitespace-nowrap uppercase">
+                          {s.companyName}
+                        </span>
+                      </div>
+
+                      <h3 className="text-midnight-ink truncate text-2xl font-black tracking-tight">
                         {s.postingTitle}
-                      </p>
-                      {/* ✅ 반응형 제거: wrap은 유지해도 “배치 변경”은 아니라서 OK
-                          (좁아지면 줄바꿈은 생길 수 있음. 줄바꿈도 싫으면 flex-nowrap로 바꿔줘) */}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-600">
+                      </h3>
+
+                      <div className="mt-4 flex items-center gap-3">
+                        <span className="rounded-full bg-zinc-100 px-4 py-1 text-sm font-black text-zinc-700">
                           {formatDateTime(s.scheduledAt)}
                         </span>
-                        <span className="bg-cloud-dancer text-midnight-ink rounded-full px-3 py-1 text-xs font-black">
+                        <span className="bg-cloud-dancer text-midnight-ink rounded-full px-4 py-1 text-sm font-black">
                           ROOM ·{' '}
-                          <span className="font-semibold break-all text-zinc-600">{s.room_id}</span>
+                          <span className="text-slate-gray font-bold break-all opacity-70">
+                            {s.room_id}
+                          </span>
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 gap-2">
-                      {tab === 'UPCOMING' ? (
+                    {/* RIGHT */}
+                    <div className="flex shrink-0 items-center gap-3">
+                      {isUpcoming ? (
                         <Button
                           type="button"
-                          variant="blue"
-                          size="md"
-                          className="rounded-2xl"
+                          variant="dark"
+                          size="lg"
+                          className="rounded-2xl px-10 shadow-xl"
                           onClick={() => navigate(ROUTES.lobby(s.interview_id))}
                         >
-                          입장
+                          입장하기
                         </Button>
-                      ) : null}
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="light"
+                          size="lg"
+                          className="rounded-2xl px-10"
+                          onClick={() => navigate(ROUTES.list)}
+                        >
+                          확인
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))
@@ -171,24 +228,28 @@ export default function InterviewListPage() {
 
 function ListSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="grid gap-6">
       {Array.from({ length: 3 }).map((_, i) => (
         <div
           key={i}
-          className="animate-pulse rounded-4xl border border-zinc-100 bg-white p-6 shadow-sm"
+          className="border-silver-mist bg-pure-white animate-pulse rounded-4xl border p-8 shadow-sm"
         >
-          {/* ✅ 반응형 제거: md:flex-row 금지 → 무조건 row 고정 */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="h-3 w-24 rounded bg-zinc-200/70" />
-              <div className="mt-3 h-7 w-72 rounded bg-zinc-200/60" />
-              <div className="mt-3 h-4 w-48 rounded bg-zinc-200/50" />
+          <div className="flex items-center justify-between gap-8">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-20 rounded-full bg-zinc-200/60" />
+                <div className="h-4 w-28 rounded bg-zinc-200/50" />
+              </div>
+
+              <div className="mt-5 h-8 w-3/4 rounded bg-zinc-200/60" />
+
+              <div className="mt-5 flex items-center gap-3">
+                <div className="h-7 w-44 rounded-full bg-zinc-200/50" />
+                <div className="h-7 w-56 rounded-full bg-zinc-200/40" />
+              </div>
             </div>
 
-            <div className="flex shrink-0 gap-2">
-              <div className="h-10 w-20 rounded-2xl bg-zinc-200/60" />
-              <div className="h-10 w-20 rounded-2xl bg-zinc-200/70" />
-            </div>
+            <div className="h-12 w-32 rounded-2xl bg-zinc-200/60" />
           </div>
         </div>
       ))}

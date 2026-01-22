@@ -1,6 +1,7 @@
-// src/pages/CorporateInterviewListPage.tsx
+// src/pages/CompanyInterviewListPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import Button from '../components/Button/Button';
 import {
@@ -64,25 +65,10 @@ const ROUTES = {
   lobby: (id: number) => `/interviews/${id}/lobby`,
 } as const;
 
-/** ✅ “지원자: -” 방지용 더미 지원자명(실존 느낌 X) */
-const APPLICANT_POOL = [
-  '김싸피',
-  '이삼성',
-  '박코딩',
-  '최알고',
-  '정버그',
-  '오리액트',
-  '한타입',
-  '윤자바',
-  '신파이썬',
-  '강깃허브',
-  '문도커',
-  '배배포',
-] as const;
-
+// ✅ 실명 느낌 없이: “지원자 01~”
 function pickApplicantName(interviewId: number) {
-  const idx = Math.abs(interviewId) % APPLICANT_POOL.length;
-  return APPLICANT_POOL[idx];
+  const n = (Math.abs(interviewId) % 99) + 1;
+  return `지원자 ${String(n).padStart(2, '0')}`;
 }
 
 export default function CorporateInterviewListPage() {
@@ -172,7 +158,7 @@ export default function CorporateInterviewListPage() {
   const saveEdit = () => {
     if (!editTarget) return;
     if (!editValue) return;
-    if (editValue < minEditValue) return; // 안전장치
+    if (editValue < minEditValue) return;
 
     const nextIso = localInputToIso(editValue);
 
@@ -186,23 +172,50 @@ export default function CorporateInterviewListPage() {
     setEditTarget(null);
   };
 
+  const isUpcoming = tab === 'UPCOMING';
+
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
-        <section className="space-y-5">
-          {/* 헤더 */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 pb-4">
-            <div>
-              <h2 className="text-2xl font-black tracking-tighter">면접 관리</h2>
+    // ✅ 가로 스크롤/고정폭: CompanyJobManagementPage 톤 그대로
+    <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
+        {/* ✅ 헤더(왼쪽 파란 라인 + 큰 타이틀) */}
+        <header className="border-point-blue mb-12 border-l-4 pl-6">
+          <motion.h1
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
+          >
+            Interview Management
+          </motion.h1>
+          <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
+            면접 일정을 관리하고 바로 입장/수정까지 처리하세요.
+          </p>
+        </header>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          {/* ✅ 섹션 타이틀 + 탭 */}
+          <div className="mb-10 flex items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-point-blue h-6 w-1.5 rounded-full" />
+              <h2 className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
+                면접 목록
+              </h2>
+              <span className="text-soft-pebble text-sm font-black tracking-widest whitespace-nowrap uppercase">
+                {isUpcoming ? 'UPCOMING' : 'DONE'}
+              </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button
                 type="button"
                 variant="filter"
-                size="md"
+                size="lg"
                 isActive={tab === 'UPCOMING'}
-                className="rounded-2xl border-2"
+                className="rounded-2xl border-2 px-8 text-base font-black"
                 onClick={() => setTab('UPCOMING')}
               >
                 예정
@@ -210,9 +223,9 @@ export default function CorporateInterviewListPage() {
               <Button
                 type="button"
                 variant="filter"
-                size="md"
+                size="lg"
                 isActive={tab === 'DONE'}
-                className="rounded-2xl border-2"
+                className="rounded-2xl border-2 px-8 text-base font-black"
                 onClick={() => setTab('DONE')}
               >
                 완료
@@ -220,32 +233,37 @@ export default function CorporateInterviewListPage() {
             </div>
           </div>
 
-          {/* ✅ 상태 UI: 로딩 */}
+          {/* ✅ 로딩 */}
           {isLoading && <ListSkeleton />}
 
-          {/* ✅ 상태 UI: 에러 */}
+          {/* ✅ 에러 */}
           {!isLoading && isError && (
-            <div className="rounded-4xl border border-zinc-100 bg-white p-8 shadow-sm">
-              <p className="text-lg font-black">데이터를 불러오지 못했어요</p>
-              <p className="mt-2 text-sm font-semibold text-zinc-500">{errorMessage}</p>
-              <div className="mt-6 flex justify-end">
-                <Button variant="blue" size="md" className="rounded-2xl" onClick={load}>
+            <div className="border-silver-mist bg-pure-white rounded-[40px] border p-10 shadow-sm">
+              <p className="text-midnight-ink text-2xl font-black tracking-tight">
+                데이터를 불러오지 못했어요
+              </p>
+              <p className="text-slate-gray mt-3 text-base font-bold leading-relaxed opacity-60">
+                {errorMessage}
+              </p>
+              <div className="mt-8 flex justify-end">
+                <Button variant="blue" size="lg" className="rounded-2xl px-8 shadow-xl" onClick={load}>
                   다시 시도
                 </Button>
               </div>
             </div>
           )}
 
-          {/* ✅ 상태 UI: 성공 */}
+          {/* ✅ 성공 */}
           {!isLoading && !isError && (
-            <div className="space-y-4">
+            <div className="grid gap-6">
               {items.length === 0 ? (
-                <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
-                  <p className="text-lg font-black">표시할 면접이 없어요.</p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-500">
-                    {tab === 'UPCOMING'
-                      ? '예정된 면접이 생기면 여기에 쌓입니다.'
-                      : '완료된 면접이 아직 없어요.'}
+                <div className="border-silver-mist bg-pure-white rounded-[40px] border-2 border-dashed py-32 text-center">
+                  <div className="mb-4 text-6xl opacity-20">📅</div>
+                  <p className="text-soft-pebble text-xl font-black italic">
+                    {isUpcoming ? '예정된 면접이 없습니다.' : '완료된 면접이 없습니다.'}
+                  </p>
+                  <p className="text-slate-gray mt-3 text-base font-bold opacity-40">
+                    일정이 생성되면 여기에 자동으로 나타나요.
                   </p>
                 </div>
               ) : (
@@ -257,42 +275,52 @@ export default function CorporateInterviewListPage() {
                   return (
                     <div
                       key={s.interview_id}
-                      className="group flex flex-col gap-4 rounded-4xl border border-zinc-100 bg-white p-6 shadow-sm transition-all hover:border-zinc-200 hover:shadow-md md:flex-row md:items-center md:justify-between"
+                      className="border-silver-mist bg-pure-white flex min-w-full items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
                     >
+                      {/* LEFT */}
                       <div className="min-w-0">
-                        <p className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
-                          {s.postingTitle}
-                        </p>
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={[
+                              'shrink-0 rounded-full px-4 py-1 text-xs font-black tracking-tight',
+                              isUpcoming ? 'bg-emerald-50 text-emerald-600' : 'bg-cloud-dancer text-slate-gray',
+                            ].join(' ')}
+                          >
+                            {isUpcoming ? '예정' : '완료'}
+                          </span>
 
-                        <p className="mt-2 truncate text-2xl font-black tracking-tighter">
+                          <span className="text-soft-pebble text-sm font-black tracking-widest whitespace-nowrap uppercase">
+                            {s.postingTitle}
+                          </span>
+                        </div>
+
+                        <h3 className="text-midnight-ink mt-4 truncate text-2xl font-black tracking-tight">
                           지원자: {applicantName}
-                        </p>
+                        </h3>
 
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-600">
+                        <div className="mt-4 flex items-center gap-3">
+                          <span className="bg-zinc-100 text-zinc-700 rounded-full px-4 py-1 text-sm font-black">
                             {formatDateTime(s.scheduledAt)}
                           </span>
-                          <span className="bg-cloud-dancer text-midnight-ink rounded-full px-3 py-1 text-xs font-black">
+
+                          <span className="bg-cloud-dancer text-midnight-ink rounded-full px-4 py-1 text-sm font-black">
                             ROOM ·{' '}
-                            <span className="font-semibold break-all text-zinc-600">
+                            <span className="text-slate-gray break-all font-bold opacity-70">
                               {s.room_id}
                             </span>
                           </span>
                         </div>
                       </div>
 
-                      {/* ✅ 버튼 UX:
-                          - UPCOMING: 수정(모달) + 입장
-                          - DONE: 기록만
-                       */}
-                      <div className="flex shrink-0 gap-2">
-                        {tab === 'UPCOMING' ? (
+                      {/* RIGHT */}
+                      <div className="flex shrink-0 items-center gap-3">
+                        {isUpcoming ? (
                           <>
                             <Button
                               type="button"
-                              variant="outline"
+                              variant="light"
                               size="md"
-                              className="rounded-2xl"
+                              className="rounded-xl px-6"
                               onClick={() => openEditModal(s)}
                             >
                               수정
@@ -300,15 +328,25 @@ export default function CorporateInterviewListPage() {
 
                             <Button
                               type="button"
-                              variant="blue"
-                              size="md"
-                              className="rounded-2xl"
+                              variant="dark"
+                              size="lg"
+                              className="rounded-2xl px-10 shadow-xl"
                               onClick={() => navigate(ROUTES.lobby(s.interview_id))}
                             >
-                              입장
+                              입장하기
                             </Button>
                           </>
-                        ) : null}
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="light"
+                            size="lg"
+                            className="rounded-2xl px-10"
+                            onClick={() => navigate(ROUTES.list)}
+                          >
+                            확인
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -316,119 +354,138 @@ export default function CorporateInterviewListPage() {
               )}
             </div>
           )}
-        </section>
-      </div>
+        </motion.div>
 
-      {/* ✅ 면접 시간 수정 모달 */}
-      {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="bg-midnight-ink/60 absolute inset-0"
-            onClick={() => setEditOpen(false)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') setEditOpen(false);
-            }}
-            aria-label="닫기"
-          />
-
-          <div
-            className="relative w-full max-w-lg rounded-4xl border border-zinc-100 bg-white p-6 shadow-lg"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="edit-modal-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-xs font-black tracking-[0.35em] text-zinc-400 uppercase">
-                  schedule edit
-                </p>
-                <h2 id="edit-modal-title" className="mt-2 text-xl font-black tracking-tight">
-                  {modalTitle}
-                </h2>
-              </div>
-            </div>
-
-            <div className="mt-6 rounded-3xl border border-zinc-100 bg-zinc-50 p-5">
-              <label className="block text-sm font-black" htmlFor="scheduledAt">
-                면접 시간
-              </label>
-              <p className="mt-1 text-xs font-semibold text-zinc-500">
-                현재: {editTarget ? formatDateTime(editTarget.scheduledAt) : '-'}
-              </p>
-
-              <div className="mt-4">
-                <input
-                  id="scheduledAt"
-                  type="datetime-local"
-                  value={editValue}
-                  min={minEditValue} // ✅ 과거 선택 불가
-                  onChange={(e) => setEditValue(e.target.value)}
-                  className={[
-                    'w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3',
-                    'text-sm font-semibold text-zinc-700',
-                    'focus:ring-midnight-ink outline-none focus:ring-2',
-                  ].join(' ')}
-                />
-
-                {isPastSelected ? (
-                  <p className="mt-3 text-xs font-semibold text-red-500">
-                    과거 시간은 선택할 수 없어요. 현재 이후로 설정해 주세요.
-                  </p>
-                ) : (
-                  <p mt-3 text-xs font-semibold text-red-500></p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="md"
-                className="rounded-2xl"
+        {/* ✅ 면접 시간 수정 모달 (CompanyJobManagementPage 톤) */}
+        <AnimatePresence>
+          {editOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 onClick={() => setEditOpen(false)}
+                className="bg-midnight-ink/60 fixed inset-0 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-pure-white relative w-full max-w-md overflow-hidden rounded-[40px] p-10 text-center shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
               >
-                취소
-              </Button>
-              <Button
-                type="button"
-                variant="blue"
-                size="md"
-                className="rounded-2xl"
-                onClick={saveEdit}
-                disabled={!editValue || isPastSelected} // ✅ 과거면 저장도 막기
-              >
-                저장
-              </Button>
+                <div className="text-point-blue mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v6l3 2" />
+                  </svg>
+                </div>
+
+                <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight">
+                  {modalTitle}
+                </h3>
+
+                <p className="text-slate-gray mb-8 leading-relaxed font-bold opacity-60">
+                  현재: <span className="font-black">{editTarget ? formatDateTime(editTarget.scheduledAt) : '-'}</span>
+                  <br />
+                  변경할 시간을 선택하세요. (과거는 선택 불가)
+                </p>
+
+                <div className="text-left">
+                  <label className="text-midnight-ink mb-2 block text-sm font-black" htmlFor="scheduledAt">
+                    면접 시간
+                  </label>
+
+                  <input
+                    id="scheduledAt"
+                    type="datetime-local"
+                    value={editValue}
+                    min={minEditValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    className={[
+                      'w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3',
+                      'text-base font-bold text-zinc-700',
+                      'outline-none focus:ring-2 focus:ring-midnight-ink',
+                    ].join(' ')}
+                  />
+
+                  {isPastSelected ? (
+                    <p className="mt-3 text-sm font-bold text-red-500">
+                      과거 시간은 선택할 수 없어요. 현재 이후로 설정해 주세요.
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-sm font-bold text-zinc-400 opacity-60">
+                      저장하면 즉시 목록에 반영됩니다.
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-10 flex gap-4">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="flex-1 rounded-2xl"
+                    onClick={() => setEditOpen(false)}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    variant="blue"
+                    size="lg"
+                    className="flex-1 rounded-2xl shadow-lg"
+                    onClick={saveEdit}
+                    disabled={!editValue || isPastSelected}
+                  >
+                    저장하기
+                  </Button>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
 
 function ListSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="grid gap-6">
       {Array.from({ length: 3 }).map((_, i) => (
         <div
           key={i}
-          className="animate-pulse rounded-4xl border border-zinc-100 bg-white p-6 shadow-sm"
+          className="border-silver-mist bg-pure-white animate-pulse rounded-4xl border p-8 shadow-sm"
         >
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="min-w-0">
-              <div className="h-3 w-28 rounded bg-zinc-200/70" />
-              <div className="mt-3 h-7 w-72 rounded bg-zinc-200/60" />
-              <div className="mt-3 h-4 w-52 rounded bg-zinc-200/50" />
+          <div className="flex items-center justify-between gap-10">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-20 rounded-full bg-zinc-200/60" />
+                <div className="h-4 w-40 rounded bg-zinc-200/50" />
+              </div>
+
+              <div className="mt-5 h-8 w-3/4 rounded bg-zinc-200/60" />
+
+              <div className="mt-5 flex items-center gap-3">
+                <div className="h-7 w-44 rounded-full bg-zinc-200/50" />
+                <div className="h-7 w-56 rounded-full bg-zinc-200/40" />
+              </div>
             </div>
 
-            <div className="flex shrink-0 gap-2">
-              <div className="h-10 w-20 rounded-2xl bg-zinc-200/60" />
-              <div className="h-10 w-20 rounded-2xl bg-zinc-200/70" />
+            <div className="flex shrink-0 items-center gap-3">
+              <div className="h-10 w-20 rounded-xl bg-zinc-200/60" />
+              <div className="h-12 w-32 rounded-2xl bg-zinc-200/70" />
             </div>
           </div>
         </div>

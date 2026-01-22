@@ -70,7 +70,6 @@ function loadResumesFromLocalStorage(): ResumeLite[] {
     }
   }
 
-  // ✅ 로컬스토리지에 아직 저장이 없어도 "선택"은 가능하게 기본값 제공
   return [
     { id: 'frontend', title: '프론트엔드 이력서' },
     { id: 'backend', title: '백엔드 이력서' },
@@ -128,7 +127,6 @@ export default function JobApplyPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // ✅ JobPostDetailPage랑 통일: id는 number로 사용
   const jobPostId = Number(id);
 
   const [status, setStatus] = useState<PageStatus>('loading');
@@ -232,38 +230,45 @@ export default function JobApplyPage() {
     setDoneModalOpen(true);
   };
 
+  // ✅ 가로 스크롤: body 자체가 넓어지도록 root/min-w + container/w 고정
+  const Root = ({ children }: { children: React.ReactNode }) => (
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      <div className="mx-auto w-[1280px] px-6">{children}</div>
+    </div>
+  );
+
   if (status === 'loading') {
     return (
-      <div className="text-midnight-ink min-h-screen bg-white pb-20 pt-32">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mb-6 flex items-center justify-between">
-            <div className="space-y-1">
-              <h2 className="text-midnight-ink text-2xl font-black tracking-tighter">지원서 작성</h2>
-              <p className="text-sm font-medium text-zinc-500">이력서를 선택하고 지원서를 제출해요.</p>
-            </div>
-            <Button type="button" variant="outline" size="md" onClick={() => navigate(-1)}>
-              뒤로
-            </Button>
+      <Root>
+        <div className="mb-6 flex items-center justify-between">
+          <div className="space-y-1">
+            <h2 className="text-midnight-ink text-2xl font-black tracking-tighter">지원서 작성</h2>
+            <p className="text-sm font-medium text-zinc-500">
+              이력서를 선택하고 지원서를 제출해요.
+            </p>
           </div>
+          <Button type="button" variant="outline" size="md" onClick={() => navigate(-1)}>
+            뒤로
+          </Button>
+        </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="space-y-4 lg:col-span-2">
-              <CardSkeleton />
-              <CardSkeleton />
-            </div>
-            <div className="lg:col-span-1">
-              <CardSkeleton />
-            </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-2">
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+          <div className="lg:col-span-1">
+            <CardSkeleton />
           </div>
         </div>
-      </div>
+      </Root>
     );
   }
 
   if (status === 'error') {
     return (
-      <div className="text-midnight-ink min-h-screen bg-white pb-20 pt-32">
-        <div className="mx-auto max-w-3xl px-6">
+      <Root>
+        <div className="mx-auto max-w-3xl">
           <div className="rounded-[24px] border border-zinc-100 bg-white p-10 text-center shadow-sm">
             <p className="text-xl font-black">지원 정보를 불러오지 못했어요</p>
             <p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage}</p>
@@ -277,17 +282,19 @@ export default function JobApplyPage() {
             </div>
           </div>
         </div>
-      </div>
+      </Root>
     );
   }
 
   if (status === 'notfound' || !data) {
     return (
-      <div className="text-midnight-ink min-h-screen bg-white pb-20 pt-32">
-        <div className="mx-auto max-w-3xl px-6">
+      <Root>
+        <div className="mx-auto max-w-3xl">
           <div className="rounded-[24px] border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
             <p className="text-xl font-black">공고를 찾을 수 없어요</p>
-            <p className="mt-2 text-sm font-medium text-zinc-500">상세 페이지에서 다시 시도해 주세요.</p>
+            <p className="mt-2 text-sm font-medium text-zinc-500">
+              상세 페이지에서 다시 시도해 주세요.
+            </p>
             <div className="mt-6 flex justify-center">
               <Button type="button" variant="dark" size="md" onClick={() => navigate(-1)}>
                 뒤로
@@ -295,7 +302,7 @@ export default function JobApplyPage() {
             </div>
           </div>
         </div>
-      </div>
+      </Root>
     );
   }
 
@@ -303,8 +310,8 @@ export default function JobApplyPage() {
   const dday = calcDday(jobPost.deadline);
 
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pb-20 pt-26">
-      <div className="mx-auto max-w-6xl px-6">
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-26 pb-20">
+      <div className="mx-auto w-[1280px] px-6">
         {/* 상단 */}
         <div className="mb-6 flex items-center justify-between">
           <div className="space-y-1">
@@ -317,7 +324,9 @@ export default function JobApplyPage() {
           <p className="text-xs font-black tracking-[0.2em] text-zinc-400 uppercase">JOB</p>
           <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0">
-              <p className="text-midnight-ink text-2xl font-black tracking-tighter">{jobPost.title}</p>
+              <p className="text-midnight-ink text-2xl font-black tracking-tighter">
+                {jobPost.title}
+              </p>
               <button
                 type="button"
                 onClick={() => navigate(`/companies/${company.id}`)}
@@ -331,7 +340,12 @@ export default function JobApplyPage() {
               <span className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-black text-zinc-700">
                 {dday} · 마감 {formatYmdDot(jobPost.deadline)}
               </span>
-              <Button type="button" variant="outline" size="md" onClick={() => navigate(`/job-posts/${jobPost.id}`)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={() => navigate(`/job-posts/${jobPost.id}`)}
+              >
                 공고로 돌아가기
               </Button>
             </div>
@@ -344,7 +358,9 @@ export default function JobApplyPage() {
           <div className="lg:col-span-2">
             <section className="rounded-[20px] border border-zinc-100 bg-white p-8 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-midnight-ink text-xl font-black tracking-tighter">이력서 선택</h3>
+                <h3 className="text-midnight-ink text-xl font-black tracking-tighter">
+                  이력서 선택
+                </h3>
                 <Button type="button" variant="outline" size="md" onClick={refreshResumes}>
                   목록 새로고침
                 </Button>
@@ -353,9 +369,16 @@ export default function JobApplyPage() {
               {resumes.length === 0 ? (
                 <div className="mt-6 rounded-xl bg-zinc-50 p-10 text-center">
                   <p className="text-lg font-black">선택할 이력서가 없어요.</p>
-                  <p className="mt-2 text-sm font-medium text-zinc-500">이력서를 먼저 만들고 돌아와 주세요!</p>
+                  <p className="mt-2 text-sm font-medium text-zinc-500">
+                    이력서를 먼저 만들고 돌아와 주세요!
+                  </p>
                   <div className="mt-6 flex justify-center">
-                    <Button type="button" variant="dark" size="md" onClick={() => navigate('/resumes/frontend')}>
+                    <Button
+                      type="button"
+                      variant="dark"
+                      size="md"
+                      onClick={() => navigate('/resumes/frontend')}
+                    >
                       이력서 작성/수정
                     </Button>
                   </div>
@@ -369,24 +392,28 @@ export default function JobApplyPage() {
                         key={r.id}
                         type="button"
                         onClick={() => setSelectedResumeId(r.id)}
-                        className={`w-full rounded-2xl border p-5 text-left transition
-                          ${
-                            selected
-                              ? 'border-point-blue/40 bg-point-blue/5 shadow-sm'
-                              : 'border-zinc-100 bg-white hover:border-zinc-200 hover:shadow-sm'
-                          }`}
+                        className={`w-full rounded-2xl border p-5 text-left transition ${
+                          selected
+                            ? 'border-point-blue/40 bg-point-blue/5 shadow-sm'
+                            : 'border-zinc-100 bg-white hover:border-zinc-200 hover:shadow-sm'
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
                             <div className="flex items-center gap-3">
                               <span
-                                className={`grid h-6 w-6 place-items-center rounded-full border text-xs font-black
-                                  ${selected ? 'border-point-blue bg-point-blue text-white' : 'border-zinc-300 bg-white text-zinc-600'}`}
+                                className={`grid h-6 w-6 place-items-center rounded-full border text-xs font-black ${
+                                  selected
+                                    ? 'border-point-blue bg-point-blue text-white'
+                                    : 'border-zinc-300 bg-white text-zinc-600'
+                                }`}
                                 aria-hidden
                               >
                                 ✓
                               </span>
-                              <p className="text-midnight-ink truncate text-base font-black">{r.title}</p>
+                              <p className="text-midnight-ink truncate text-base font-black">
+                                {r.title}
+                              </p>
                             </div>
 
                             <div className="mt-3 flex flex-wrap gap-2">
@@ -433,12 +460,16 @@ export default function JobApplyPage() {
               <div className="mt-4 space-y-3">
                 <div className="rounded-xl bg-zinc-50 px-4 py-3">
                   <p className="text-xs font-black text-zinc-400">선택한 이력서</p>
-                  <p className="mt-1 text-sm font-black text-zinc-800">{selectedResumeId ?? '선택 없음'}</p>
+                  <p className="mt-1 text-sm font-black text-zinc-800">
+                    {selectedResumeId ?? '선택 없음'}
+                  </p>
                 </div>
 
                 <div className="rounded-xl bg-zinc-50 px-4 py-3">
                   <p className="text-xs font-black text-zinc-400">지원 가능 여부</p>
-                  <p className={`mt-1 text-sm font-black ${canApply ? 'text-zinc-800' : 'text-zinc-500'}`}>
+                  <p
+                    className={`mt-1 text-sm font-black ${canApply ? 'text-zinc-800' : 'text-zinc-500'}`}
+                  >
                     {canApply ? '가능' : '불가(마감/상태 확인)'}
                   </p>
                 </div>

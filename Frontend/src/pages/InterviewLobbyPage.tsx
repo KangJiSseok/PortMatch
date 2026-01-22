@@ -37,7 +37,6 @@ function LobbyHeader({ subtitle, onBack }: { subtitle: string; onBack: () => voi
           <p className="mt-4 truncate text-lg font-bold text-zinc-600 sm:text-xl">{subtitle}</p>
         </div>
 
-        {/* ✅ 헤더 버튼은 딱 1개: 목록 */}
         <div className="flex shrink-0">
           <Button
             type="button"
@@ -70,7 +69,6 @@ function ToggleRow({
         <p className="mt-1 text-xs font-semibold text-zinc-500">현재: {value ? 'ON' : 'OFF'}</p>
       </div>
 
-      {/* ✅ M부터: md 사용 */}
       <Button
         type="button"
         variant="filter"
@@ -91,7 +89,6 @@ export default function InterviewLobbyPage() {
 
   const interviewId = Number(id);
 
-  // ✅ role 분기 (MyPageGate랑 동일하게 localStorage 기준)
   const role = ((localStorage.getItem('userRole') ?? 'guest') as UserRole) || 'guest';
   const isCorporate = role === 'corporate';
 
@@ -139,7 +136,6 @@ export default function InterviewLobbyPage() {
     navigate(ROUTES.room(session.interview_id), { state: { micOn, camOn } });
   };
 
-  // ✅ 기업 전용: 초대 링크 (같은 URL 유지)
   const inviteLink = useMemo(() => {
     if (!session) return '';
     return `${window.location.origin}${ROUTES.lobby(session.interview_id)}`;
@@ -152,7 +148,6 @@ export default function InterviewLobbyPage() {
       await navigator.clipboard.writeText(inviteLink);
       alert('초대 링크 복사 완료!');
     } catch {
-      // fallback (보안/권한/HTTPS 이슈)
       try {
         const ta = document.createElement('textarea');
         ta.value = inviteLink;
@@ -172,16 +167,16 @@ export default function InterviewLobbyPage() {
   if (status === 'notfound' || !session) return <NotFoundBox onBack={goList} />;
 
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      {/* ✅ InterviewListPage랑 컨테이너/여백 통일 */}
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
+    // ✅ 가로 스크롤: body가 넓어지도록 root에 min-w 고정
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      {/* ✅ 컨테이너도 고정 폭으로 */}
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
         <LobbyHeader
           subtitle={`${session.companyName} · ${session.postingTitle}`}
           onBack={goList}
         />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* 좌측: 세션/설정/입장 */}
           <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-1">
             <p className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
               {session.companyName}
@@ -198,11 +193,10 @@ export default function InterviewLobbyPage() {
               </span>
             </div>
 
-            {/* ✅ 기업 전용: 초대 링크 카드 (형태는 유지, 블럭만 추가) */}
             {isCorporate && (
               <div className="mt-6 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
                 <p className="text-sm font-black">지원자 초대 링크</p>
-                <p className="mt-2 break-all text-xs font-semibold text-zinc-500">{inviteLink}</p>
+                <p className="mt-2 text-xs font-semibold break-all text-zinc-500">{inviteLink}</p>
                 <div className="mt-4">
                   <Button
                     type="button"
@@ -222,7 +216,6 @@ export default function InterviewLobbyPage() {
               <ToggleRow label="카메라" value={camOn} onToggle={() => setCamOn((v) => !v)} />
             </div>
 
-            {/* ✅ 버튼은 딱 1개만: role 따라 텍스트만 변경 */}
             <div className="mt-8">
               <Button
                 type="button"
@@ -242,7 +235,6 @@ export default function InterviewLobbyPage() {
             </div>
           </section>
 
-          {/* 우측: 미리보기 */}
           <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-2">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
@@ -283,8 +275,8 @@ export default function InterviewLobbyPage() {
 
 function NotFoundBox({ onBack }: { onBack: () => void }) {
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
         <LobbyHeader subtitle="입장 전 대기실" onBack={onBack} />
 
         <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
@@ -311,8 +303,8 @@ function ErrorBox({
   onBack: () => void;
 }) {
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
         <LobbyHeader subtitle="세션 정보를 불러오지 못했어요." onBack={onBack} />
 
         <div className="rounded-4xl border border-zinc-100 bg-white p-10 text-center shadow-sm">
@@ -347,8 +339,8 @@ function ErrorBox({
 
 function LobbySkeleton({ onBack }: { onBack: () => void }) {
   return (
-    <div className="text-midnight-ink min-h-screen bg-white pt-32 pb-20">
-      <div className="mx-auto max-w-6xl space-y-10 px-6">
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
+      <div className="mx-auto w-[1280px] space-y-10 px-6">
         <LobbyHeader subtitle="입장 전 대기실" onBack={onBack} />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
