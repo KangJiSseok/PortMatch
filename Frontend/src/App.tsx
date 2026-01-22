@@ -22,7 +22,7 @@ import RecommendCompanyPage from './pages/RecommendCompanyPage';
 import CompanyDetailsPage from './pages/CompanyDetailsPage';
 import ResumeDetailPage from './pages/ResumeDetailPage';
 import JobPostingsPage from '@/pages/JobPostingsPage';
-import { ProtectedRoute, PublicRoute } from './routes/RouteGuard';
+import { ProtectedRoute, PublicRoute, CompanyRoute } from './routes/RouteGuard';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
 import JobPostDetailPage from './pages/JobPostDetailPage';
 import MypageGate from './routes/MyPageGate';
@@ -30,6 +30,7 @@ import CompanyJobManagementPage from './pages/CompanyJobManagementPage';
 import JobApplicationManagementPage from './pages/JobApplicationManagementPage';
 import JobPostFormPage from './pages/JobPostFormPage';
 import InterviewListGate from './routes/InterviewListGate';
+import { useAuthStore } from './store/authStore';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -55,6 +56,11 @@ const RootLayout = () => {
   );
 };
 
+const IndexRoute = () => {
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  return <Navigate to={isLoggedIn ? '/main' : '/intro'} replace />;
+};
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -62,16 +68,7 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: (
-          <Navigate
-            to={
-              localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken')
-                ? '/main'
-                : '/intro'
-            }
-            replace
-          />
-        ),
+        element: <IndexRoute />,
       },
       {
         path: 'intro',
@@ -172,33 +169,33 @@ const router = createBrowserRouter([
       {
         path: 'company/jobs',
         element: (
-          <ProtectedRoute>
+          <CompanyRoute>
             <CompanyJobManagementPage />
-          </ProtectedRoute>
+          </CompanyRoute>
         ),
       },
       {
         path: 'company/jobs/new',
         element: (
-          <ProtectedRoute>
+          <CompanyRoute>
             <JobPostFormPage />
-          </ProtectedRoute>
+          </CompanyRoute>
         ),
       },
       {
         path: 'company/jobs/edit/:id',
         element: (
-          <ProtectedRoute>
+          <CompanyRoute>
             <JobPostFormPage />
-          </ProtectedRoute>
+          </CompanyRoute>
         ),
       },
       {
         path: 'company/jobs/:id/applicants',
         element: (
-          <ProtectedRoute>
+          <CompanyRoute>
             <JobApplicationManagementPage />
-          </ProtectedRoute>
+          </CompanyRoute>
         ),
       },
       {

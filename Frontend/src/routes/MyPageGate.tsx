@@ -1,24 +1,21 @@
-// src/routes/MyPageGate.tsx
 import { Navigate } from 'react-router-dom';
 import MyPage from '../pages/MyPage';
 import CorporateMyPage from '../pages/CompanyMyPage';
-
-type UserRole = 'guest' | 'individual' | 'corporate';
+import { useAuthStore } from '@/store/authStore';
 
 export default function MyPageGate() {
-  const token = localStorage.getItem('accessToken');
-  const role = (localStorage.getItem('userRole') as UserRole) ?? 'guest';
+  const { isLoggedIn, user } = useAuthStore();
 
-  // 로그인 안 했으면 마이페이지 못 들어가게
-  if (!token || role === 'guest') {
+  // 1. 로그인 여부 확인
+  if (!isLoggedIn || !user) {
     return <Navigate to="/login" replace />;
   }
 
-  // 기업이면 기업 마이페이지
-  if (role === 'corporate') {
+  // 2. 기업 회원이면 기업 전용 마이페이지로 이동
+  if (user.role === 'COMPANY') {
     return <CorporateMyPage />;
   }
 
-  // 개인이면 기존 MyPage
+  // 3. 그 외(개인 회원)는 일반 마이페이지로 이동
   return <MyPage />;
 }

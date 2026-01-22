@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
-type UserState = 'guest' | 'individual' | 'corporate';
+import { useAuthStore } from '@/store/authStore';
+import { useLogout } from '@/hooks/useAuth';
 
 interface NavActionProps {
   to?: string;
@@ -46,42 +46,31 @@ const NavAction = ({ to, onClick, children, isError, mobile }: NavActionProps) =
 
 function Navbar() {
   const navigate = useNavigate();
-
-  const [userState, setUserState] = useState<UserState>(() => {
-    const role = localStorage.getItem('userRole') as UserState;
-    const token = localStorage.getItem('accessToken');
-
-    if (token && (role === 'individual' || role === 'corporate')) {
-      return role;
-    }
-    return 'guest';
-  });
+  const { user, isLoggedIn, setAuth, clearAuth } = useAuthStore();
+  const { mutate: performLogout } = useLogout();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // 검색어 state 추가
   const [searchKeyword, setSearchKeyword] = useState('');
 
-  const handleStateChange = (state: UserState) => {
-    if (state === 'guest') {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('userRole');
-      setUserState('guest');
-      navigate('/main');
+  const handleLogout = () => {
+    performLogout();
+    setIsMenuOpen(false);
+  };
+
+  const handleDevRoleSwitch = (role: 'GUEST' | 'APPLICANT' | 'COMPANY') => {
+    if (role === 'GUEST') {
+      clearAuth();
     } else {
-      localStorage.setItem('accessToken', `mock-token-${state}`);
-      localStorage.setItem('userRole', state);
-      setUserState(state);
+      setAuth({
+        userId: 999,
+        email: 'test@portmatch.com',
+        name: role === 'APPLICANT' ? '테스트개인' : '테스트기업',
+        role: role,
+      });
     }
-    window.location.reload();
+    setIsMenuOpen(false);
   };
 
-  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    navigate('/main');
-  };
-
-  // 검색 처리 함수 추가
   const handleSearch = () => {
     const trimmed = searchKeyword.trim();
     if (trimmed) {
@@ -108,9 +97,8 @@ function Navbar() {
 
       <div className="relative mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
         <div className="z-10 flex items-center gap-8 xl:gap-12">
-          <a
-            href="/main"
-            onClick={handleLogoClick}
+          <Link
+            to="/main"
             className="text-midnight-ink flex shrink-0 items-center text-2xl font-black tracking-tighter"
           >
             <span className="flex">
@@ -141,12 +129,12 @@ function Navbar() {
                 </span>
               ))}
             </span>
-          </a>
+          </Link>
 
           <div className="hidden items-center gap-6 lg:flex xl:gap-8">
             <NavAction to="/main">홈</NavAction>
-            {userState === 'individual' && <NavAction to="/resumes/me">이력서 관리</NavAction>}
-            {userState === 'corporate' && <NavAction to="/company/jobs">공고 관리</NavAction>}
+            {user?.role === 'APPLICANT' && <NavAction to="/resumes/me">이력서 관리</NavAction>}
+            {user?.role === 'COMPANY' && <NavAction to="/company/jobs">공고 관리</NavAction>}
           </div>
         </div>
 
@@ -157,7 +145,7 @@ function Navbar() {
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder={userState === 'corporate' ? '인재 검색' : '공고 검색'}
+            placeholder={user?.role === 'COMPANY' ? '인재 검색' : '공고 검색'}
             className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"
           />
           <button
@@ -182,7 +170,7 @@ function Navbar() {
 
         <div className="z-10 flex items-center gap-6 xl:gap-10">
           <div className="hidden items-center gap-6 lg:flex xl:gap-10">
-            {userState === 'guest' ? (
+            {!isLoggedIn ? (
               <>
                 <NavAction to="/login" isError>
                   로그인
@@ -191,7 +179,7 @@ function Navbar() {
               </>
             ) : (
               <>
-                <NavAction onClick={() => handleStateChange('guest')} isError>
+                <NavAction onClick={handleLogout} isError>
                   로그아웃
                 </NavAction>
                 <NavAction to="/mypage">마이페이지</NavAction>
@@ -226,28 +214,21 @@ function Navbar() {
       {isMenuOpen && (
         <div className="bg-pure-white border-soft-pebble absolute top-20 left-0 w-full border-b p-6 shadow-xl lg:hidden">
           <div className="flex flex-col gap-4">
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder={userState === 'corporate' ? '인재 검색' : '공고 검색'}
-                className="bg-cloud-dancer/50 border-soft-pebble text-midnight-ink w-full rounded-xl border px-4 py-2 text-sm outline-none"
-              />
-            </div>
             <NavAction to="/main" mobile onClick={() => setIsMenuOpen(false)}>
               홈
             </NavAction>
-            {userState === 'individual' && (
-              <NavAction to="/resume" mobile onClick={() => setIsMenuOpen(false)}>
+            {user?.role === 'APPLICANT' && (
+              <NavAction to="/resumes/me" mobile onClick={() => setIsMenuOpen(false)}>
                 이력서 관리
               </NavAction>
             )}
-            {userState === 'corporate' && (
+            {user?.role === 'COMPANY' && (
               <NavAction to="/company/jobs" mobile onClick={() => setIsMenuOpen(false)}>
                 공고 관리
               </NavAction>
             )}
             <hr className="border-soft-pebble my-2" />
-            {userState === 'guest' ? (
+            {!isLoggedIn ? (
               <>
                 <NavAction to="/login" isError mobile onClick={() => setIsMenuOpen(false)}>
                   로그인
@@ -258,14 +239,7 @@ function Navbar() {
               </>
             ) : (
               <>
-                <NavAction
-                  onClick={() => {
-                    handleStateChange('guest');
-                    setIsMenuOpen(false);
-                  }}
-                  isError
-                  mobile
-                >
+                <NavAction onClick={handleLogout} isError mobile>
                   로그아웃
                 </NavAction>
                 <NavAction to="/mypage" mobile onClick={() => setIsMenuOpen(false)}>
@@ -277,25 +251,28 @@ function Navbar() {
         </div>
       )}
 
-      <div className="bg-midnight-ink/90 absolute top-20 left-6 flex gap-1 rounded-b-md border border-white/10 p-1 shadow-lg backdrop-blur-md">
+      <div className="bg-midnight-ink/90 absolute top-20 left-6 flex items-center gap-1 rounded-b-md border border-white/10 p-1 shadow-lg backdrop-blur-md">
         <button
-          onClick={() => handleStateChange('guest')}
-          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${userState === 'guest' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
+          onClick={() => handleDevRoleSwitch('GUEST')}
+          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${!isLoggedIn ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
         >
           GUEST
         </button>
         <button
-          onClick={() => handleStateChange('individual')}
-          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${userState === 'individual' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
+          onClick={() => handleDevRoleSwitch('APPLICANT')}
+          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${user?.role === 'APPLICANT' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
         >
           INDIVIDUAL
         </button>
         <button
-          onClick={() => handleStateChange('corporate')}
-          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${userState === 'corporate' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
+          onClick={() => handleDevRoleSwitch('COMPANY')}
+          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${user?.role === 'COMPANY' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
         >
           CORPORATE
         </button>
+        {isLoggedIn && (
+          <span className="ml-2 text-[10px] font-bold text-white/80">{user?.name}</span>
+        )}
       </div>
     </nav>
   );
