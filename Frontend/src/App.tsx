@@ -31,6 +31,7 @@ import JobApplicationManagementPage from './pages/JobApplicationManagementPage';
 import JobPostFormPage from './pages/JobPostFormPage';
 import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
+import JobApplyPage from './pages/JobApplyPage';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -165,6 +166,14 @@ const router = createBrowserRouter([
       {
         path: 'job-posts/:id',
         element: <JobPostDetailPage />,
+      },
+      {
+        path: 'job-posts/:id/apply',
+        element: (
+          <ProtectedRoute>
+            <JobApplyPage />
+          </ProtectedRoute>
+        )
       },
       {
         path: 'company/jobs',
