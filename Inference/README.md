@@ -39,7 +39,7 @@ python main.py "(주)틸론"
 FastAPI 서버 실행:
 
 ```powershell
-uvicorn web.api.app:app --reload
+uvicorn web.api.app:app --reload --host 0.0.0.0 --port 8001
 ```
 
 요청:
