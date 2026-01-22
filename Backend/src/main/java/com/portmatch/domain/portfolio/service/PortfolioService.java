@@ -123,6 +123,18 @@ public class PortfolioService {
         Portfolio portfolio = portfolioRepository.findById(portfolioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
 
+        return buildPresignedUrl(portfolio, minutes);
+    }
+
+    @Transactional(readOnly = true)
+    public PresignedUrlResponse getPresignedUrlForUser(Long userId, Long portfolioId, int minutes) {
+        Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
+
+        return buildPresignedUrl(portfolio, minutes);
+    }
+
+    private PresignedUrlResponse buildPresignedUrl(Portfolio portfolio, int minutes) {
         int expiresInMinutes = Math.max(1, minutes);
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(awsS3Properties.getBucket())
