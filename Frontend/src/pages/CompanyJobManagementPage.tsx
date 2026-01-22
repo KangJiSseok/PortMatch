@@ -75,8 +75,8 @@ const CompanyJobManagementPage = () => {
   };
 
   return (
-    <div className="bg-pure-white min-h-screen pt-32 pb-32">
-      <div className="mx-auto max-w-5xl px-6">
+    <div className="bg-pure-white min-h-screen min-w-5xl pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
         <AnimatePresence>
           {modal.isOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -142,11 +142,11 @@ const CompanyJobManagementPage = () => {
           <motion.h1
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-midnight-ink text-4xl font-black tracking-tighter uppercase"
+            className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
           >
             Job Management
           </motion.h1>
-          <p className="text-slate-gray mt-2 text-lg font-bold italic opacity-40">
+          <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
             등록된 공고를 관리하고 인재 채용 현황을 실시간으로 확인하세요.
           </p>
         </header>
@@ -159,12 +159,14 @@ const CompanyJobManagementPage = () => {
           <div className="mb-10 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-point-blue h-6 w-1.5 rounded-full" />
-              <h2 className="text-midnight-ink text-2xl font-black tracking-tight">공고 목록</h2>
+              <h2 className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
+                공고 목록
+              </h2>
             </div>
             <Button
               variant="dark"
               size="lg"
-              className="rounded-2xl px-8 shadow-xl"
+              className="shrink-0 rounded-2xl px-8 shadow-xl"
               onClick={() => navigate('/company/jobs/new')}
             >
               <span className="mr-2 text-xl">+</span> 새 공고 등록하기
@@ -176,12 +178,12 @@ const CompanyJobManagementPage = () => {
               jobs.map((job) => (
                 <div
                   key={job.id}
-                  className="border-silver-mist bg-pure-white flex items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
+                  className="border-silver-mist bg-pure-white flex min-w-full items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
                 >
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-3">
                       <span
-                        className={`rounded-full px-4 py-1 text-xs font-black tracking-tight ${
+                        className={`shrink-0 rounded-full px-4 py-1 text-xs font-black tracking-tight ${
                           job.status === '모집중'
                             ? 'bg-emerald-50 text-emerald-600'
                             : 'bg-cloud-dancer text-slate-gray'
@@ -189,24 +191,24 @@ const CompanyJobManagementPage = () => {
                       >
                         {job.status}
                       </span>
-                      <span className="text-soft-pebble text-sm font-black tracking-widest uppercase">
+                      <span className="text-soft-pebble text-sm font-black tracking-widest whitespace-nowrap uppercase">
                         {job.category}
                       </span>
                     </div>
                     <div>
                       <h3
                         onClick={() => navigate(`/company/jobs/${job.id}/applicants`)}
-                        className="text-midnight-ink hover:text-point-blue cursor-pointer text-2xl font-black tracking-tight transition-colors"
+                        className="text-midnight-ink hover:text-point-blue cursor-pointer text-2xl font-black tracking-tight whitespace-nowrap transition-colors"
                       >
                         {job.title}
                       </h3>
-                      <p className="text-slate-gray mt-1.5 text-sm font-bold opacity-40">
+                      <p className="text-slate-gray mt-1.5 text-sm font-bold whitespace-nowrap opacity-40">
                         {job.createdAt} 등록됨
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-10">
+                  <div className="flex shrink-0 items-center gap-10">
                     <div
                       onClick={() => navigate(`/company/jobs/${job.id}/applicants`)}
                       className="group flex cursor-pointer flex-col items-center gap-1"

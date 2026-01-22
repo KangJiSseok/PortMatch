@@ -12,21 +12,22 @@ function DesignSystemPage() {
   ];
 
   return (
-    <div className="bg-pure-white min-h-screen pt-20 pb-20">
-      <main className="mx-auto max-w-7xl space-y-12 px-10">
+    <div className="bg-pure-white min-h-screen min-w-5xl pt-20 pb-20">
+      <main className="mx-auto w-5xl space-y-12 px-10">
         <header className="border-soft-pebble border-b pb-8">
-          <h1 className="text-midnight-ink text-5xl font-black tracking-tighter uppercase">
+          <h1 className="text-midnight-ink text-5xl font-black tracking-tighter whitespace-nowrap uppercase">
             Unified Design System
           </h1>
-          <p className="text-slate-gray mt-2 text-lg font-bold">
+          <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap">
             PORTMATCH 공통 UI 컴포넌트 라이브러리
           </p>
         </header>
 
-        {/* 1. Button System 카드 - 제목 배경 포인트 (cloud-dancer) */}
         <section className="bg-pure-white border-soft-pebble/30 overflow-hidden rounded-4xl border shadow-sm">
           <div className="bg-cloud-dancer border-soft-pebble/30 border-b p-6">
-            <h2 className="text-midnight-ink text-2xl font-black uppercase">1. Button System</h2>
+            <h2 className="text-midnight-ink text-2xl font-black whitespace-nowrap uppercase">
+              1. Button System
+            </h2>
           </div>
           <div className="space-y-10 p-10">
             <div>
@@ -63,7 +64,6 @@ function DesignSystemPage() {
                   Extra Large
                 </Button>
                 <div className="border-soft-pebble flex items-center gap-3 border-l pl-6">
-                  {/* X 버튼 복사용 컴포넌트 */}
                   <Button variant="close" size="sm" />
                   <Button variant="close" size="md" />
                   <Button variant="close" size="lg" />
@@ -73,11 +73,10 @@ function DesignSystemPage() {
           </div>
         </section>
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-          {/* 2. Light Theme Components 카드 - 제목 배경 포인트 (cloud-dancer) */}
+        <div className="grid grid-cols-2 gap-10">
           <section className="bg-pure-white border-soft-pebble/30 overflow-hidden rounded-4xl border shadow-sm">
             <div className="bg-cloud-dancer border-soft-pebble/30 border-b p-6">
-              <h2 className="text-midnight-ink flex items-center gap-3 text-xl font-black uppercase">
+              <h2 className="text-midnight-ink flex items-center gap-3 text-xl font-black whitespace-nowrap uppercase">
                 <span className="bg-pure-white flex h-8 w-8 items-center justify-center rounded-lg text-sm shadow-sm">
                   L
                 </span>
@@ -103,10 +102,9 @@ function DesignSystemPage() {
             </div>
           </section>
 
-          {/* 3. Dark Theme Components 카드 - 제목 배경 포인트 (slate-gray) */}
           <section className="bg-midnight-ink border-slate-gray/30 overflow-hidden rounded-4xl border shadow-xl">
             <div className="bg-slate-gray border-slate-gray/50 text-pure-white border-b p-6">
-              <h2 className="flex items-center gap-3 text-xl font-black uppercase">
+              <h2 className="flex items-center gap-3 text-xl font-black whitespace-nowrap uppercase">
                 <span className="bg-midnight-ink text-pure-white border-slate-gray flex h-8 w-8 items-center justify-center rounded-lg border text-sm shadow-sm">
                   D
                 </span>

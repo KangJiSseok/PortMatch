@@ -44,27 +44,27 @@ const JobApplicationManagementPage = () => {
   };
 
   return (
-    <div className="bg-pure-white min-h-screen pt-32 pb-32">
-      <div className="mx-auto max-w-5xl px-6">
+    <div className="bg-pure-white min-h-screen min-w-5xl pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
         <button
           onClick={() => navigate(-1)}
-          className="text-soft-pebble hover:text-slate-gray text-md mb-4 flex items-center gap-2 font-black transition-colors"
+          className="text-soft-pebble hover:text-slate-gray text-md mb-4 flex items-center gap-2 font-black whitespace-nowrap transition-colors"
         >
           ← 뒤로가기
         </button>
         <header className="border-point-blue mb-12 border-l-4 pl-6">
           <div className="flex flex-col gap-1">
-            <span className="text-point-blue text-xs font-black tracking-[0.2em] uppercase">
+            <span className="text-point-blue text-xs font-black tracking-[0.2em] whitespace-nowrap uppercase">
               Applicant Tracking
             </span>
             <motion.h1
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="text-midnight-ink text-4xl font-black tracking-tighter"
+              className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap"
             >
               시니어 프론트엔드 개발자 채용
             </motion.h1>
-            <p className="text-slate-gray mt-2 text-lg font-bold italic opacity-40">
+            <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
               {applications.length > 0
                 ? `총 ${applications.length}명의 지원자가 합류를 기다리고 있습니다.`
                 : '아직 접수된 지원서가 없습니다.'}
@@ -80,13 +80,15 @@ const JobApplicationManagementPage = () => {
           <div className="mb-10 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-point-blue h-6 w-1.5 rounded-full" />
-              <h2 className="text-midnight-ink text-2xl font-black tracking-tight">지원자 현황</h2>
+              <h2 className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
+                지원자 현황
+              </h2>
             </div>
             {applications.length > 0 && (
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as '최신순' | '경력순' | '이름순')}
-                className="border-silver-mist text-slate-gray focus:border-point-blue bg-pure-white cursor-pointer rounded-xl border px-5 py-2.5 text-sm font-black shadow-sm transition-all focus:outline-none"
+                className="border-silver-mist text-slate-gray focus:border-point-blue bg-pure-white shrink-0 cursor-pointer rounded-xl border px-5 py-2.5 text-sm font-black shadow-sm transition-all focus:outline-none"
               >
                 <option value="최신순">최신순 정렬</option>
                 <option value="경력순">경력순 정렬</option>
@@ -112,7 +114,7 @@ const JobApplicationManagementPage = () => {
                             e.stopPropagation();
                             toggleScrap(app.id);
                           }}
-                          className={`text-3xl transition-colors ${
+                          className={`shrink-0 text-3xl transition-colors ${
                             app.isScrapped
                               ? 'text-yellow-400'
                               : 'text-cloud-dancer group-hover:text-silver-mist'
@@ -123,11 +125,11 @@ const JobApplicationManagementPage = () => {
 
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-4">
-                            <span className="text-midnight-ink text-2xl font-black tracking-tight">
+                            <span className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
                               {app.applicantName}
                             </span>
                             <span
-                              className={`rounded-full px-4 py-1 text-[11px] font-black tracking-widest uppercase ${
+                              className={`shrink-0 rounded-full px-4 py-1 text-[11px] font-black tracking-widest uppercase ${
                                 app.status === '미열람'
                                   ? 'text-point-blue bg-blue-50'
                                   : app.status === '합격'
@@ -140,7 +142,7 @@ const JobApplicationManagementPage = () => {
                               {app.status}
                             </span>
                           </div>
-                          <div className="text-slate-gray flex items-center gap-3 text-[15px] font-bold opacity-40">
+                          <div className="text-slate-gray flex items-center gap-3 text-[15px] font-bold whitespace-nowrap opacity-40">
                             <span>{app.experience}</span>
                             <span className="bg-cloud-dancer h-1.5 w-1.5 rounded-full"></span>
                             <span>지원일: {app.appliedDate}</span>
@@ -148,7 +150,7 @@ const JobApplicationManagementPage = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4">
+                      <div className="flex shrink-0 items-center gap-4">
                         <Button
                           variant="light"
                           size="md"
@@ -174,8 +176,10 @@ const JobApplicationManagementPage = () => {
                 <div className="bg-cloud-dancer mb-6 flex h-24 w-24 items-center justify-center rounded-3xl text-5xl">
                   👥
                 </div>
-                <h3 className="text-midnight-ink mb-2 text-2xl font-black">지원자가 없습니다</h3>
-                <p className="text-soft-pebble text-lg font-bold italic">
+                <h3 className="text-midnight-ink mb-2 text-2xl font-black whitespace-nowrap">
+                  지원자가 없습니다
+                </h3>
+                <p className="text-soft-pebble text-lg font-bold whitespace-nowrap italic">
                   아직 이 공고에 지원한 인재가 없습니다.
                   <br />
                   공고 홍보를 통해 더 많은 지원자를 모집해보세요.

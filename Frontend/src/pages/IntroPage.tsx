@@ -52,14 +52,14 @@ function IntroPage() {
   };
 
   return (
-    <div ref={containerRef} className="bg-midnight-ink relative h-[450vh]">
+    <div ref={containerRef} className="bg-midnight-ink relative h-[450vh] min-w-5xl">
       <motion.button
         onClick={() => handleScrollToSection(2)}
         animate={{ y: [0, 10, 0] }}
         transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
         className="group fixed bottom-10 left-1/2 z-100 flex -translate-x-1/2 flex-col items-center gap-2 text-white mix-blend-difference outline-none"
       >
-        <span className="text-[15px] font-bold tracking-[0.3em] uppercase opacity-60 group-hover:opacity-100">
+        <span className="text-[15px] font-bold tracking-[0.3em] whitespace-nowrap uppercase opacity-60 group-hover:opacity-100">
           Scroll Down
         </span>
         <svg
@@ -112,10 +112,10 @@ function IntroPage() {
               <div className="bg-midnight-ink/85 absolute inset-0"></div>
             </div>
             <div className="relative z-10 text-center">
-              <h2 className="text-cloud-dancer mb-4 text-sm font-bold tracking-[0.3em] uppercase">
+              <h2 className="text-cloud-dancer mb-4 text-sm font-bold tracking-[0.3em] whitespace-nowrap uppercase">
                 Individual
               </h2>
-              <p className="text-pure-white text-3xl leading-tight font-bold md:text-5xl">
+              <p className="text-pure-white text-5xl leading-tight font-bold whitespace-nowrap">
                 내 강점을 증명할 방법이
                 <br />
                 막막하신가요?
@@ -133,10 +133,10 @@ function IntroPage() {
               <div className="bg-pure-white/90 absolute inset-0"></div>
             </div>
             <div className="relative z-10 text-center">
-              <h2 className="text-slate-gray mb-4 text-sm font-bold tracking-[0.3em] uppercase">
+              <h2 className="text-slate-gray mb-4 text-sm font-bold tracking-[0.3em] whitespace-nowrap uppercase">
                 Company
               </h2>
-              <p className="text-midnight-ink text-3xl leading-tight font-bold md:text-5xl">
+              <p className="text-midnight-ink text-5xl leading-tight font-bold whitespace-nowrap">
                 수많은 포트폴리오 속에서
                 <br />
                 원하는 인재를 찾기 힘드신가요?
@@ -156,15 +156,15 @@ function IntroPage() {
             <div className="bg-midnight-ink/90 absolute inset-0"></div>
           </div>
           <div className="relative z-20">
-            <span className="text-cloud-dancer mb-8 block text-xs font-bold tracking-[0.4em] uppercase">
+            <span className="text-cloud-dancer mb-8 block text-xs font-bold tracking-[0.4em] whitespace-nowrap uppercase">
               The AI Solution
             </span>
-            <h2 className="text-pure-white mb-10 text-4xl leading-tight font-bold md:text-7xl">
+            <h2 className="text-pure-white mb-10 text-7xl leading-tight font-bold whitespace-nowrap">
               Portmatch
               <br />
               입체 역량 분석
             </h2>
-            <p className="text-silver-mist mx-auto max-w-3xl text-lg leading-relaxed md:text-2xl">
+            <p className="text-silver-mist mx-auto max-w-3xl text-2xl leading-relaxed whitespace-nowrap">
               데이터 뒤에 숨겨진 당신의 진짜 가치를
               <br />
               AI가 정교하게 찾아내어 최적의 기회와 연결합니다.
@@ -174,10 +174,10 @@ function IntroPage() {
 
         <motion.section
           style={{ opacity: section3Opacity }}
-          className={`absolute inset-0 flex flex-col overflow-hidden transition-all duration-300 md:flex-row ${activeSection === 2 ? 'pointer-events-auto z-40' : 'pointer-events-none z-0'}`}
+          className={`absolute inset-0 flex flex-row overflow-hidden transition-all duration-300 ${activeSection === 2 ? 'pointer-events-auto z-40' : 'pointer-events-none z-0'}`}
         >
           <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center text-white mix-blend-difference select-none">
-            <h2 className="text-[12vw] leading-none font-black tracking-tighter whitespace-nowrap uppercase opacity-5 md:text-[10rem]">
+            <h2 className="text-[10rem] leading-none font-black tracking-tighter whitespace-nowrap uppercase opacity-5">
               PORTMATCH
             </h2>
           </div>
@@ -199,10 +199,10 @@ function IntroPage() {
               <div className="absolute inset-0 bg-black/60"></div>
             </div>
             <div className="relative z-30 flex h-full flex-col items-center justify-center p-12 text-center">
-              <h2 className="text-pure-white mb-6 text-4xl font-black transition-transform group-hover:-translate-y-2 md:text-5xl">
+              <h2 className="text-pure-white mb-6 text-5xl font-black transition-transform group-hover:-translate-y-2">
                 개인
               </h2>
-              <p className="text-cloud-dancer text-lg font-medium opacity-40 transition-all group-hover:opacity-100 md:text-xl">
+              <p className="text-cloud-dancer text-xl font-medium whitespace-nowrap opacity-40 transition-all group-hover:opacity-100">
                 나만의 분석 레포트를 받고
                 <br />
                 맞춤형 공고에 지원하세요.
@@ -227,10 +227,10 @@ function IntroPage() {
               <div className="absolute inset-0 bg-white/60"></div>
             </div>
             <div className="text-midnight-ink relative z-30 flex h-full flex-col items-center justify-center p-12 text-center">
-              <h2 className="mb-6 text-4xl font-black transition-transform group-hover:-translate-y-2 md:text-5xl">
+              <h2 className="mb-6 text-5xl font-black transition-transform group-hover:-translate-y-2">
                 기업
               </h2>
-              <p className="text-slate-gray text-lg font-medium opacity-60 transition-all group-hover:opacity-100 md:text-xl">
+              <p className="text-slate-gray text-xl font-medium whitespace-nowrap opacity-60 transition-all group-hover:opacity-100">
                 AI가 필터링한 검증된 인재를
                 <br />
                 가장 먼저 만나보세요.
