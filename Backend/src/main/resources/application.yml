@@ -1,3 +1,6 @@
+server:
+  port: 8080
+
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL}
@@ -36,6 +39,10 @@ portfolio-analysis:
 
 company-project-analysis:
   base-url: ${COMPANY_PROJECT_ANALYSIS_URL:http://localhost:8001}
+
+company-embedding:
+  base-url: ${COMPANY_PROJECT_ANALYSIS_URL:http://localhost:8001}
+  model: text-embedding-3-small
 
 springdoc:
   override-with-generic-response: false
