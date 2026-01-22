@@ -44,5 +44,9 @@ company-embedding:
   base-url: ${COMPANY_PROJECT_ANALYSIS_URL:http://localhost:8001}
   model: text-embedding-3-small
 
+portfolio-embedding:
+  base-url: ${PORTFOLIO_ANALYSIS_URL:http://localhost:8000}
+  model: text-embedding-3-small
+
 springdoc:
   override-with-generic-response: false
