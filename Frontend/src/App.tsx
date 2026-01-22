@@ -21,6 +21,9 @@ import InterviewListPage from './pages/InterviewListPage';
 import InterviewLobbyPage from './pages/InterviewLobbyPage';
 import JobPostDetailPage from './pages/JobPostDetailPage';
 import MypageGate from './routes/MyPageGate';
+import CompanyJobManagementPage from './pages/CompanyJobManagementPage';
+import JobApplicationManagementPage from './pages/JobApplicationManagementPage';
+import JobPostFormPage from './pages/JobPostFormPage';
 
 function AppContent() {
   const location = useLocation();
@@ -76,10 +79,12 @@ function AppContent() {
           />
 
           <Route path="/main" element={<MainPage />} />
-          <Route path="/mypage" element={
-            <ProtectedRoute>
-              <MypageGate />
-            </ProtectedRoute>
+          <Route
+            path="/mypage"
+            element={
+              <ProtectedRoute>
+                <MypageGate />
+              </ProtectedRoute>
             }
           />
 
@@ -136,17 +141,43 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          <Route path="/job-postings" element={<JobPostingsPage />} />
+
+          <Route path="/job-posts/:id" element={<JobPostDetailPage />} />
+
           <Route
-            path="/job-postings"
+            path="/company/jobs"
             element={
-              <JobPostingsPage />
+              <ProtectedRoute>
+                <CompanyJobManagementPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
-            path="job-posts/:id"
+            path="/company/jobs/new"
             element={
-              <JobPostDetailPage />
+              <ProtectedRoute>
+                <JobPostFormPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/company/jobs/edit/:id"
+            element={
+              <ProtectedRoute>
+                <JobPostFormPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/company/jobs/:id/applicants"
+            element={
+              <ProtectedRoute>
+                <JobApplicationManagementPage />
+              </ProtectedRoute>
             }
           />
 

@@ -229,7 +229,7 @@ function PortfoliosPage() {
   const selectedPortfolio = savedPortfolios.find((p) => p.id === selectedPortfolioId);
 
   return (
-    <div className="bg-pure-white text-midnight-ink min-h-screen pt-28 pb-20">
+    <div className="min-h-screen bg-gray-50 pt-32 pb-32">
       <div className="mx-auto max-w-5xl px-6">
         <AnimatePresence>
           {modal.isOpen && (
@@ -283,7 +283,7 @@ function PortfoliosPage() {
                 <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight">
                   {modal.title}
                 </h3>
-                <p className="text-slate-gray mb-10 leading-relaxed font-bold opacity-60">
+                <p className="text-slate-gray mb-10 leading-relaxed font-bold whitespace-pre-wrap opacity-60">
                   {modal.message}
                 </p>
                 <div className="flex gap-4">
@@ -322,13 +322,30 @@ function PortfoliosPage() {
           )}
         </AnimatePresence>
 
-        <header className="border-point-blue mb-10 border-l-4 pl-6 text-left">
-          <h1 className="mb-2 text-4xl leading-none font-black tracking-tighter uppercase">
-            Portfolio Analysis
-          </h1>
-          <p className="text-slate-gray text-lg font-bold italic opacity-40">
-            데이터로 증명하는 당신의 커리어 가치
-          </p>
+        <header className="border-point-blue mb-12 flex items-start justify-between border-l-4 pl-6">
+          <div className="flex flex-col gap-1">
+            <span className="text-point-blue text-xs font-black tracking-[0.2em] uppercase">
+              Career Analysis
+            </span>
+            <motion.h1
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-midnight-ink text-4xl font-black tracking-tighter uppercase"
+            >
+              Portfolio Analysis
+            </motion.h1>
+            <p className="text-slate-gray mt-2 text-lg font-bold italic opacity-40">
+              데이터로 증명하는 당신의 커리어 가치
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="md"
+            className="border-soft-pebble text-soft-pebble hover:border-midnight-ink hover:text-midnight-ink rounded-xl"
+            onClick={() => navigate(-1)}
+          >
+            ← 뒤로가기
+          </Button>
         </header>
 
         <main className="relative overflow-hidden">
@@ -336,10 +353,10 @@ function PortfoliosPage() {
             {step === 'upload' && (
               <motion.div
                 key="upload"
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className="border-silver-mist rounded-[40px] border bg-white p-12 shadow-xl"
+                className="border-silver-mist rounded-[40px] border bg-white p-12 shadow-xl shadow-gray-200/50"
               >
                 <div className="space-y-8 text-center">
                   <div className="flex flex-col gap-4">
@@ -460,7 +477,7 @@ function PortfoliosPage() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      className={`group relative cursor-pointer rounded-4xl border-2 border-dashed py-12 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-[1.01] shadow-inner' : 'border-soft-pebble hover:border-point-blue/40 hover:bg-cloud-dancer/20'}`}
+                      className={`group relative cursor-pointer rounded-4xl border-2 border-dashed py-16 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-[1.01] shadow-inner' : 'border-silver-mist hover:border-point-blue/40 hover:bg-point-blue/5'}`}
                     >
                       <input
                         type="file"
@@ -473,11 +490,11 @@ function PortfoliosPage() {
                         <motion.div
                           animate={isDragging ? { y: [0, -10, 0] } : {}}
                           transition={{ repeat: Infinity, duration: 1 }}
-                          className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm transition-all duration-300 ${isDragging ? 'bg-point-blue text-white' : 'bg-silver-mist text-slate-gray group-hover:bg-point-blue group-hover:text-white'}`}
+                          className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm transition-all duration-300 ${isDragging ? 'bg-point-blue text-white' : 'bg-silver-mist text-slate-gray group-hover:bg-point-blue group-hover:text-white'}`}
                         >
                           <svg
-                            width="28"
-                            height="28"
+                            width="32"
+                            height="32"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -491,7 +508,7 @@ function PortfoliosPage() {
                           </svg>
                         </motion.div>
                         <div className="space-y-1">
-                          <h3 className="text-xl font-black tracking-tight">
+                          <h3 className="text-2xl font-black tracking-tight">
                             {isDragging ? '여기에 놓으세요!' : '새 포트폴리오 업로드'}
                           </h3>
                           <p className="text-slate-gray text-[14px] font-bold tracking-widest uppercase opacity-40">
@@ -520,7 +537,6 @@ function PortfoliosPage() {
                           </motion.div>
                         )}
                       </AnimatePresence>
-
                       <div className="min-h-18 w-full">
                         <AnimatePresence mode="wait">
                           {selectedPortfolio?.hasAnalysis ? (
@@ -534,7 +550,7 @@ function PortfoliosPage() {
                               <Button
                                 variant="blue"
                                 size="xl"
-                                className="flex-2 rounded-2xl py-6! text-xl! font-black break-keep shadow-xl"
+                                className="shadow-point-blue/20 flex-2 rounded-[20px] py-6! text-xl! font-black shadow-xl"
                                 onClick={handleViewResults}
                               >
                                 결과 바로보기
@@ -542,7 +558,7 @@ function PortfoliosPage() {
                               <Button
                                 variant="outline"
                                 size="xl"
-                                className="flex-1 rounded-2xl py-6! text-xl! font-black break-keep"
+                                className="flex-1 rounded-[20px] py-6! text-xl! font-black"
                                 onClick={handleAnalysis}
                               >
                                 다시 분석하기
@@ -560,7 +576,7 @@ function PortfoliosPage() {
                                 variant="blue"
                                 size="xl"
                                 disabled={!selectedPortfolioId}
-                                className="disabled:bg-silver-mist disabled:text-slate-gray w-full rounded-2xl py-6! text-2xl! font-black break-keep shadow-xl disabled:cursor-not-allowed"
+                                className="disabled:bg-silver-mist disabled:text-slate-gray shadow-point-blue/20 w-full rounded-[20px] py-6! text-2xl! font-black shadow-xl disabled:cursor-not-allowed"
                                 onClick={handleAnalysis}
                               >
                                 분석 시작하기
@@ -581,7 +597,7 @@ function PortfoliosPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="border-silver-mist rounded-[40px] border bg-white p-12 shadow-xl"
+                className="border-silver-mist rounded-[40px] border bg-white p-12 shadow-xl shadow-gray-200/50"
               >
                 <div className="space-y-12 py-10 text-center">
                   <div className="relative mx-auto h-52 w-52">
@@ -595,7 +611,7 @@ function PortfoliosPage() {
                       viewBox="0 0 100 100"
                     >
                       <circle
-                        className="text-soft-pebble stroke-current"
+                        className="text-cloud-dancer stroke-current"
                         strokeWidth="4"
                         cx="50"
                         cy="50"
@@ -660,11 +676,11 @@ function PortfoliosPage() {
                                 />
                               )}
                               <div
-                                className={`relative h-4 w-4 rounded-full transition-all duration-500 ${progress >= stage.threshold ? 'bg-point-blue scale-125 shadow-[0_0_10px_rgba(81,81,231,0.6)]' : 'bg-soft-pebble'}`}
+                                className={`relative h-4 w-4 rounded-full transition-all duration-500 ${progress >= stage.threshold ? 'bg-point-blue scale-125 shadow-[0_0_10px_rgba(81,81,231,0.6)]' : 'bg-silver-mist'}`}
                               />
                             </div>
                             <span
-                              className={`text-xs font-black transition-colors duration-500 ${progress >= stage.threshold ? 'text-point-blue' : 'text-soft-pebble'}`}
+                              className={`text-xs font-black transition-colors duration-500 ${progress >= stage.threshold ? 'text-point-blue' : 'text-slate-gray opacity-30'}`}
                             >
                               {stage.label}
                             </span>
@@ -680,39 +696,43 @@ function PortfoliosPage() {
             {step === 'result' && analysisData && (
               <motion.div
                 key="result"
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mx-auto max-w-4xl space-y-8"
               >
-                <div className="flex items-end justify-between border-b-2 border-slate-200 pb-4">
+                <div className="border-cloud-dancer flex items-end justify-between border-b-2 pb-6">
                   <div>
                     <p className="text-point-blue mb-1 text-xs font-black tracking-[0.2em] uppercase">
                       Analysis Complete
                     </p>
-                    <h2 className="text-3xl font-black tracking-tighter">분석 리포트</h2>
+                    <h2 className="text-midnight-ink text-4xl font-black tracking-tighter">
+                      분석 리포트
+                    </h2>
                   </div>
-                  <div className="max-w-70 truncate rounded-lg bg-slate-100 px-3 py-1 text-sm font-bold text-slate-500">
+                  <div className="bg-cloud-dancer text-slate-gray max-w-70 truncate rounded-xl px-4 py-2 text-sm font-black">
                     {selectedPortfolio?.name}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                  <section className="border-silver-mist bg-pure-white rounded-3xl border p-7 shadow-sm md:col-span-2">
-                    <div className="mb-6 flex items-center gap-2">
-                      <div className="bg-point-blue h-5 w-1 rounded-full" />
-                      <h3 className="text-lg font-black tracking-tight">핵심 역량</h3>
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                  <section className="border-silver-mist rounded-4xl border bg-white p-8 shadow-sm md:col-span-2">
+                    <div className="mb-8 flex items-center gap-3">
+                      <div className="bg-point-blue h-6 w-1.5 rounded-full" />
+                      <h3 className="text-midnight-ink text-xl font-black tracking-tight">
+                        핵심 역량
+                      </h3>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {analysisData.strengths.map((text, idx) => (
                         <div
                           key={idx}
-                          className="bg-cloud-dancer/40 hover:bg-cloud-dancer/60 rounded-2xl p-4 transition-colors"
+                          className="hover:bg-point-blue/5 hover:border-point-blue/10 rounded-2xl border border-transparent bg-gray-50 p-5 transition-colors"
                         >
-                          <div className="flex items-start gap-3">
+                          <div className="flex items-start gap-4">
                             <span className="text-point-blue mt-0.5 text-sm font-black">
                               0{idx + 1}
                             </span>
-                            <p className="text-midnight-ink text-[15px] leading-relaxed font-bold break-keep">
+                            <p className="text-midnight-ink text-[16px] leading-relaxed font-bold break-keep">
                               {text}
                             </p>
                           </div>
@@ -721,16 +741,18 @@ function PortfoliosPage() {
                     </div>
                   </section>
 
-                  <section className="border-silver-mist bg-pure-white rounded-3xl border p-7 shadow-sm">
-                    <div className="mb-6 flex items-center gap-2">
-                      <div className="bg-point-blue h-5 w-1 rounded-full" />
-                      <h3 className="text-lg font-black tracking-tight">기술 스택</h3>
+                  <section className="border-silver-mist rounded-4xl border bg-white p-8 shadow-sm">
+                    <div className="mb-8 flex items-center gap-3">
+                      <div className="bg-point-blue h-6 w-1.5 rounded-full" />
+                      <h3 className="text-midnight-ink text-xl font-black tracking-tight">
+                        기술 스택
+                      </h3>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2.5">
                       {analysisData.techStacks.map((tech) => (
                         <span
                           key={tech}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-black text-slate-600 shadow-xs transition-transform hover:-translate-y-0.5"
+                          className="border-silver-mist text-slate-gray rounded-xl border bg-white px-4 py-2 text-sm font-black shadow-sm transition-transform hover:-translate-y-1"
                         >
                           {tech}
                         </span>
@@ -739,19 +761,19 @@ function PortfoliosPage() {
                   </section>
                 </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="flex flex-col gap-4 pt-8 sm:flex-row">
                   <Button
                     variant="blue"
-                    size="lg"
-                    className="flex-2 rounded-xl py-4 font-black break-keep shadow-lg"
+                    size="xl"
+                    className="shadow-point-blue/20 flex-2 rounded-[20px] py-6! text-xl! font-black shadow-xl"
                     onClick={() => navigate('/recommend/companies')}
                   >
                     맞춤 공고 확인하기
                   </Button>
                   <Button
                     variant="outline"
-                    size="lg"
-                    className="flex-1 rounded-xl py-4 font-black break-keep"
+                    size="xl"
+                    className="flex-1 rounded-[20px] py-6! text-xl! font-black"
                     onClick={() => {
                       setFile(null);
                       setSelectedPortfolioId(null);
