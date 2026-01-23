@@ -2,6 +2,7 @@ package com.portmatch.domain.companyproject.controller;
 
 import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisRequest;
 import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisResponse;
+import com.portmatch.domain.companyproject.dto.CompanyProjectApiResponses;
 import com.portmatch.domain.companyproject.service.CompanyProjectAnalysisService;
 import com.portmatch.global.api.BaseApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +34,7 @@ public class CompanyProjectAnalysisController {
     @ApiResponse(
             responseCode = "200",
             description = "분석 성공",
-            content = @Content(schema = @Schema(implementation = BaseApiResponse.class))
+            content = @Content(schema = @Schema(implementation = CompanyProjectApiResponses.CompanyProjectAnalysisApiResponse.class))
     )
     @PostMapping("/analysis")
     public BaseApiResponse<CompanyProjectAnalysisResponse> analyze(@Valid @RequestBody CompanyProjectAnalysisRequest request) {
