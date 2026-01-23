@@ -229,7 +229,7 @@ function PortfoliosPage() {
   const selectedPortfolio = savedPortfolios.find((p) => p.id === selectedPortfolioId);
 
   return (
-    <div className="min-h-screen min-w-5xl bg-gray-50 pt-32 pb-32">
+    <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
       <div className="mx-auto w-5xl px-6">
         <AnimatePresence>
           {modal.isOpen && (
@@ -245,7 +245,7 @@ function PortfoliosPage() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="relative w-full max-w-md overflow-hidden rounded-[40px] bg-white p-10 text-center shadow-2xl"
+                className="bg-pure-white relative w-full max-w-md overflow-hidden rounded-[40px] p-10 text-center shadow-2xl"
               >
                 <div className="bg-point-blue/10 text-point-blue mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl">
                   {modal.type === 'confirm' ? (
@@ -322,7 +322,7 @@ function PortfoliosPage() {
           )}
         </AnimatePresence>
 
-        <header className="border-point-blue mb-8 flex items-start justify-between border-l-4 pl-6">
+        <header className="border-point-blue mb-12 border-l-4 pl-6">
           <div className="flex flex-col gap-1">
             <span className="text-point-blue text-xs font-black tracking-[0.2em] whitespace-nowrap uppercase">
               Career Analysis
@@ -334,12 +334,9 @@ function PortfoliosPage() {
             >
               Portfolio Analysis
             </motion.h1>
-            <p className="text-slate-gray mt-1 text-lg font-bold whitespace-nowrap italic opacity-40">
+            <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
               데이터로 증명하는 당신의 커리어 가치
             </p>
-          </div>
-          <div className="mb-6">
-            <Button isBack variant="outline" size="md" />
           </div>
         </header>
 
@@ -351,18 +348,18 @@ function PortfoliosPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className="border-silver-mist rounded-[40px] border bg-white p-8 shadow-xl shadow-gray-200/50"
+                className="border-silver-mist bg-pure-white rounded-[40px] border p-8 shadow-xl shadow-gray-200/50"
               >
                 <div className="space-y-6 text-center">
                   <div className="flex flex-col gap-4">
                     <div className="relative">
                       <button
                         onClick={() => setIsListOpen(!isListOpen)}
-                        className={`border-silver-mist hover:bg-cloud-dancer/30 flex w-full items-center justify-between rounded-2xl border bg-white px-8 py-4 transition-all ${selectedPortfolioId ? 'border-point-blue ring-point-blue ring-1 ring-offset-0' : ''}`}
+                        className={`border-silver-mist hover:bg-cloud-dancer/30 bg-pure-white flex w-full items-center justify-between rounded-2xl border px-8 py-4 transition-all ${selectedPortfolioId ? 'border-point-blue ring-point-blue ring-1 ring-offset-0' : ''}`}
                       >
                         <div className="flex items-center gap-4">
                           <div
-                            className={`flex h-8 w-8 items-center justify-center rounded-lg ${selectedPortfolioId ? 'bg-point-blue text-white' : 'bg-silver-mist text-slate-gray'}`}
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg ${selectedPortfolioId ? 'bg-point-blue text-pure-white' : 'bg-silver-mist text-slate-gray'}`}
                           >
                             <svg
                               width="16"
@@ -405,7 +402,7 @@ function PortfoliosPage() {
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="border-silver-mist absolute z-20 mt-3 max-h-64 w-full overflow-y-auto rounded-3xl border bg-white p-2 shadow-2xl"
+                            className="border-silver-mist bg-pure-white absolute z-20 mt-3 max-h-64 w-full overflow-y-auto rounded-3xl border p-2 shadow-2xl"
                           >
                             {savedPortfolios.length > 0 ? (
                               savedPortfolios.map((p) => (
@@ -487,7 +484,7 @@ function PortfoliosPage() {
                         <motion.div
                           animate={isDragging ? { y: [0, -10, 0] } : {}}
                           transition={{ repeat: Infinity, duration: 1 }}
-                          className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm transition-all duration-300 ${isDragging ? 'bg-point-blue text-white' : 'bg-silver-mist text-slate-gray group-hover:bg-point-blue group-hover:text-white'}`}
+                          className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm transition-all duration-300 ${isDragging ? 'bg-point-blue text-pure-white' : 'bg-silver-mist text-slate-gray group-hover:bg-point-blue group-hover:text-pure-white'}`}
                         >
                           <svg
                             width="32"
@@ -527,7 +524,7 @@ function PortfoliosPage() {
                             initial={{ opacity: 0, y: 10, x: '-50%' }}
                             animate={{ opacity: 1, y: -10, x: '-50%' }}
                             exit={{ opacity: 0, y: 10, x: '-50%' }}
-                            className="bg-midnight-ink pointer-events-none absolute bottom-full left-1/2 mb-4 w-max rounded-xl px-6 py-3 text-sm font-black text-white shadow-2xl"
+                            className="bg-midnight-ink text-pure-white pointer-events-none absolute bottom-full left-1/2 mb-4 w-max rounded-xl px-6 py-3 text-sm font-black shadow-2xl"
                           >
                             포트폴리오를 선택하거나 업로드해주세요!
                             <div className="bg-midnight-ink absolute top-full left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45" />
@@ -594,7 +591,7 @@ function PortfoliosPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="border-silver-mist rounded-[40px] border bg-white p-8 shadow-xl shadow-gray-200/50"
+                className="border-silver-mist bg-pure-white rounded-[40px] border p-8 shadow-xl shadow-gray-200/50"
               >
                 <div className="space-y-8 py-4 text-center">
                   <div className="relative mx-auto h-40 w-40">
@@ -712,7 +709,7 @@ function PortfoliosPage() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-6">
-                  <section className="border-silver-mist col-span-2 rounded-4xl border bg-white p-6 shadow-sm">
+                  <section className="border-silver-mist bg-pure-white col-span-2 rounded-4xl border p-6 shadow-sm">
                     <div className="mb-6 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
                       <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
@@ -738,7 +735,7 @@ function PortfoliosPage() {
                     </div>
                   </section>
 
-                  <section className="border-silver-mist rounded-4xl border bg-white p-6 shadow-sm">
+                  <section className="border-silver-mist bg-pure-white rounded-4xl border p-6 shadow-sm">
                     <div className="mb-6 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
                       <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
@@ -749,7 +746,7 @@ function PortfoliosPage() {
                       {analysisData.techStacks.map((tech) => (
                         <span
                           key={tech}
-                          className="border-silver-mist text-slate-gray rounded-xl border bg-white px-4 py-2 text-sm font-black whitespace-nowrap shadow-sm transition-transform hover:-translate-y-1"
+                          className="border-silver-mist text-slate-gray bg-pure-white rounded-xl border px-4 py-2 text-sm font-black whitespace-nowrap shadow-sm transition-transform hover:-translate-y-1"
                         >
                           {tech}
                         </span>
