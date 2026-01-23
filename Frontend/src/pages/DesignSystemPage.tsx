@@ -48,6 +48,15 @@ function DesignSystemPage() {
 
             <div>
               <h3 className="text-slate-gray mb-6 text-sm font-black tracking-widest uppercase opacity-60">
+                Back Navigation
+              </h3>
+              <div className="flex flex-wrap items-center gap-4">
+                <Button isBack variant="outline" />
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-slate-gray mb-6 text-sm font-black tracking-widest uppercase opacity-60">
                 Sizes & Special
               </h3>
               <div className="flex flex-wrap items-end gap-6">

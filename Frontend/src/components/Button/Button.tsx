@@ -1,10 +1,20 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'light' | 'dark' | 'outline' | 'blue' | 'red' | 'destructive' | 'close' | 'filter' | 'filter-chip';
+  variant?:
+    | 'light'
+    | 'dark'
+    | 'outline'
+    | 'blue'
+    | 'red'
+    | 'destructive'
+    | 'close'
+    | 'filter'
+    | 'filter-chip';
   colorTheme?: 'light' | 'dark';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   isActive?: boolean;
+  isBack?: boolean;
   icon?: React.ReactNode;
   badge?: number | string;
   fullWidth?: boolean;
@@ -15,16 +25,17 @@ function Button({
   colorTheme = 'light',
   size = 'md',
   isActive = false,
+  isBack = false,
   icon,
   badge,
   fullWidth = false,
   className = '',
   children,
+  onClick,
   ...props
 }: ButtonProps) {
   const baseStyles =
-    'inline-flex items-center justify-center font-bold transition-all duration-300 border outline-none';
-
+    'inline-flex items-center justify-center font-bold transition-all duration-300 border outline-none relative group';
 
   const sizes = {
     sm: variant === 'close' ? 'w-8 h-8' : 'px-4 py-1.5 text-xs rounded-md',
@@ -52,11 +63,44 @@ function Button({
     'filter-chip': isActive
       ? 'bg-point-blue text-white shadow-sm border-transparent'
       : 'bg-zinc-50 text-zinc-600 border-zinc-200 hover:border-point-blue/30',
+  };
 
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (onClick) {
+      onClick(e);
+    } else if (isBack) {
+      window.history.back();
+    }
+  };
+
+  const renderIcon = () => {
+    if (icon) return <span className="mr-2">{icon}</span>;
+    if (isBack) {
+      return (
+        <svg
+          className="mr-2 transform transition-transform duration-300 group-hover:-translate-x-1"
+          width="1.2em"
+          height="1.2em"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      );
+    }
+    return null;
   };
 
   return (
-    <button className={`${baseStyles} ${sizes[size]} ${variants[variant]} ${className}`} {...props}>
+    <button
+      className={`${baseStyles} ${sizes[size]} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
+      onClick={handleClick}
+      {...props}
+    >
       {variant === 'close' && !children ? (
         <svg
           width="50%"
@@ -73,10 +117,10 @@ function Button({
         </svg>
       ) : (
         <>
-          {icon && <span className="mr-2">{icon}</span>}
-          {children}
+          {renderIcon()}
+          {children || (isBack ? '뒤로가기' : '')}
           {badge !== undefined && (
-            <span className="absolute -top-1 -right-1 bg-white text-point-blue rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-black">
+            <span className="text-point-blue absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-black shadow-sm">
               {badge}
             </span>
           )}
