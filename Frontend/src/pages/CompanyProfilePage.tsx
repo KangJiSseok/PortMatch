@@ -126,33 +126,6 @@ function CompanyProfilePage() {
     ];
   }, [company]);
 
-  const handleShare = async () => {
-    if (!company) return;
-
-    const shareData = {
-      title: company.name,
-      text: `${company.name} 기업 프로필을 확인해보세요!`,
-      url: window.location.href,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (e) {
-        console.error(e);
-      }
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      showToastMessage('링크가 클립보드에 복사되었습니다.');
-    } catch (e) {
-      console.error(e);
-      showToastMessage('복사에 실패했어요. 브라우저 권한을 확인해 주세요.');
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="bg-pure-white flex min-h-screen items-center justify-center">
@@ -328,7 +301,7 @@ function CompanyProfilePage() {
                   )}
                 </div>
               </section>
-              
+
               <section>
                <div className="mt-4">
                   <p className="text-slate-gray text-sm font-medium opacity-70">
