@@ -10,6 +10,7 @@ import com.portmatch.domain.auth.repository.UserRepository;
 import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class AuthSignUpService {
     public void signUpApplicant(ApplicantSignUpRequest req) {
 
         if (userRepository.existsByEmail(req.getEmail())) {
-            throw new BusinessException("DUPLICATE_EMAIL", "email", "이미 사용 중인 이메일입니다.");
+            throw new BusinessException(ResponseCode.DUPLICATE_EMAIL, "email", "이미 사용 중인 이메일입니다.");
         }
 
         String phone = requirePhone(req.getPhone(), "phone", "연락처는 필수입니다.");
@@ -62,7 +63,7 @@ public class AuthSignUpService {
     public void signUpCompany(CompanySignUpRequest req) {
 
         if (userRepository.existsByEmail(req.getEmail())) {
-            throw new BusinessException("DUPLICATE_EMAIL", "email", "이미 사용 중인 이메일입니다.");
+            throw new BusinessException(ResponseCode.DUPLICATE_EMAIL, "email", "이미 사용 중인 이메일입니다.");
         }
 
         String username = generateUniqueUsername(req.getEmail());
@@ -111,7 +112,7 @@ public class AuthSignUpService {
 
     private String requirePhone(String phone, String field, String message) {
         if (phone == null || phone.isBlank()) {
-            throw new BusinessException("VALIDATION_ERROR", field, message);
+            throw new BusinessException(ResponseCode.VALIDATION_ERROR, field, message);
         }
         return phone;
     }

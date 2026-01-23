@@ -7,6 +7,7 @@ import com.portmatch.domain.portfolio.service.PortfolioAnalysisService;
 import com.portmatch.domain.portfolio.service.PortfolioService;
 import com.portmatch.domain.auth.entity.User;
 import com.portmatch.global.api.BaseApiResponse;
+import com.portmatch.global.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -123,7 +124,6 @@ public class PortfolioController {
     )
 
 
-
     @ApiResponse(
             responseCode = "200",
             description = "분석 결과 조회 성공",
@@ -142,7 +142,7 @@ public class PortfolioController {
         } catch (ResponseStatusException exception) {
             if (exception.getStatusCode() == HttpStatus.NOT_FOUND
                     && "Portfolio analysis not found".equals(exception.getReason())) {
-                return ResponseEntity.ok(BaseApiResponse.error("ANALYSIS_NOT_FOUND", "분석 결과가 없습니다."));
+                return ResponseEntity.ok(BaseApiResponse.error(ResponseCode.ANALYSIS_NOT_FOUND));
             }
             throw exception;
         }
