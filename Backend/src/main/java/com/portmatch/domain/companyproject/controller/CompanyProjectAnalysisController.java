@@ -3,6 +3,7 @@ package com.portmatch.domain.companyproject.controller;
 import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisRequest;
 import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisResponse;
 import com.portmatch.domain.companyproject.service.CompanyProjectAnalysisService;
+import com.portmatch.global.api.BaseApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,7 +21,7 @@ public class CompanyProjectAnalysisController {
     }
 
     @PostMapping("/analysis")
-    public CompanyProjectAnalysisResponse analyze(@Valid @RequestBody CompanyProjectAnalysisRequest request) {
-        return companyProjectAnalysisService.analyze(request);
+    public BaseApiResponse<CompanyProjectAnalysisResponse> analyze(@Valid @RequestBody CompanyProjectAnalysisRequest request) {
+        return BaseApiResponse.ok(companyProjectAnalysisService.analyze(request));
     }
 }
