@@ -1,12 +1,13 @@
 package com.portmatch.domain.companyproject.recommendation.repository;
 
+import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectEmbedding;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
-public interface CompanyRecommendationRepository extends Repository<Object, Long> {
+public interface CompanyRecommendationRepository extends Repository<PortfolioProjectEmbedding, Long> {
 
     @Query(value = """
         SELECT
