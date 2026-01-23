@@ -51,7 +51,7 @@ public class JobPostingController {
     }
 
     // [추가] 기술 스택별 공고 필터링 조회
-   @GetMapping("/search")
+   @GetMapping("/search-stack")
     public ResponseEntity<List<JobPostingDto>> getJobsByStacks(@RequestParam("stackIds") List<Long> stackIds) {
         log.info("기술 스택 다중 필터링 조회 요청 - Stack IDs: {}", stackIds);
         List<JobPostingDto> jobs = jobPostingService.getJobsByStacks(stackIds);
@@ -73,5 +73,21 @@ public class JobPostingController {
         log.info("공고 삭제 요청 - ID: {}", id);
         jobPostingService.deleteJobPosting(id);
         return ResponseEntity.ok("공고가 삭제되었습니다.");
+    }
+
+    // 6. 기업 별 공고 조회
+    @GetMapping("/company/{cid}")
+    public ResponseEntity<List<JobPostingDto>> getJobsByCompany(@PathVariable("cid") String cid) {
+        log.info("기업 별 공고 조회 요청 - CID: {}", cid);
+        List<JobPostingDto> jobs = jobPostingService.getJobsByCompany(cid);
+        return ResponseEntity.ok(jobs);
+    }
+
+    // 7. 제목 키워드 검색 조회
+    @GetMapping("/search")
+    public ResponseEntity<List<JobPostingDto>> getJobsByTitle(@RequestParam("keyword") String keyword) {
+        log.info("제목 키워드 검색 요청 - Keyword: {}", keyword);
+        List<JobPostingDto> jobs = jobPostingService.getJobsByTitleKeyword(keyword);
+        return ResponseEntity.ok(jobs);
     }
 }

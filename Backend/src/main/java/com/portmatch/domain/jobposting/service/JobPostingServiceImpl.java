@@ -90,6 +90,20 @@ public class JobPostingServiceImpl implements JobPostingService {
     }
 
     @Override
+    public List<JobPostingDto> getJobsByCompany(String companyId) {
+        return jobPostingRepository.findByCompanyCid(companyId).stream()
+                .map(this::convertToDto)
+                .toList();
+    }
+
+    @Override
+    public List<JobPostingDto> getJobsByTitleKeyword(String keyword) {
+        return jobPostingRepository.findByTitleContaining(keyword).stream()
+                .map(this::convertToDto)
+                .toList();
+    }
+
+    @Override
     public List<JobPostingDto> getAllJobPostings() {
         return jobPostingRepository.findAll().stream()
                 .map(this::convertToDto)
