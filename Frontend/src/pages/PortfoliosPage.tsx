@@ -322,7 +322,7 @@ function PortfoliosPage() {
           )}
         </AnimatePresence>
 
-        <header className="border-point-blue mb-12 flex items-start justify-between border-l-4 pl-6">
+        <header className="border-point-blue mb-8 flex items-start justify-between border-l-4 pl-6">
           <div className="flex flex-col gap-1">
             <span className="text-point-blue text-xs font-black tracking-[0.2em] whitespace-nowrap uppercase">
               Career Analysis
@@ -334,7 +334,7 @@ function PortfoliosPage() {
             >
               Portfolio Analysis
             </motion.h1>
-            <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
+            <p className="text-slate-gray mt-1 text-lg font-bold whitespace-nowrap italic opacity-40">
               데이터로 증명하는 당신의 커리어 가치
             </p>
           </div>
@@ -356,14 +356,14 @@ function PortfoliosPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className="border-silver-mist rounded-[40px] border bg-white p-12 shadow-xl shadow-gray-200/50"
+                className="border-silver-mist rounded-[40px] border bg-white p-8 shadow-xl shadow-gray-200/50"
               >
-                <div className="space-y-8 text-center">
+                <div className="space-y-6 text-center">
                   <div className="flex flex-col gap-4">
                     <div className="relative">
                       <button
                         onClick={() => setIsListOpen(!isListOpen)}
-                        className={`border-silver-mist hover:bg-cloud-dancer/30 flex w-full items-center justify-between rounded-2xl border bg-white px-8 py-6 transition-all ${selectedPortfolioId ? 'border-point-blue ring-point-blue ring-1 ring-offset-0' : ''}`}
+                        className={`border-silver-mist hover:bg-cloud-dancer/30 flex w-full items-center justify-between rounded-2xl border bg-white px-8 py-4 transition-all ${selectedPortfolioId ? 'border-point-blue ring-point-blue ring-1 ring-offset-0' : ''}`}
                       >
                         <div className="flex items-center gap-4">
                           <div
@@ -479,7 +479,7 @@ function PortfoliosPage() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      className={`group relative cursor-pointer rounded-4xl border-2 border-dashed py-16 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-[1.01] shadow-inner' : 'border-silver-mist hover:border-point-blue/40 hover:bg-point-blue/5'}`}
+                      className={`group relative cursor-pointer rounded-4xl border-2 border-dashed py-10 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-[1.01] shadow-inner' : 'border-silver-mist hover:border-point-blue/40 hover:bg-point-blue/5'}`}
                     >
                       <input
                         type="file"
@@ -520,7 +520,7 @@ function PortfoliosPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-center gap-6 pt-4">
+                  <div className="flex flex-col items-center gap-6 pt-2">
                     <div
                       className="relative flex w-full justify-center"
                       onMouseEnter={() => !selectedPortfolioId && setShowTooltip(true)}
@@ -539,7 +539,7 @@ function PortfoliosPage() {
                           </motion.div>
                         )}
                       </AnimatePresence>
-                      <div className="min-h-18 w-full">
+                      <div className="min-h-16 w-full">
                         <AnimatePresence mode="wait">
                           {selectedPortfolio?.hasAnalysis ? (
                             <motion.div
@@ -552,7 +552,7 @@ function PortfoliosPage() {
                               <Button
                                 variant="blue"
                                 size="xl"
-                                className="shadow-point-blue/20 flex-2 rounded-[20px] py-6! text-xl! font-black shadow-xl"
+                                className="shadow-point-blue/20 flex-2 rounded-[20px] py-4! text-xl! font-black shadow-xl"
                                 onClick={handleViewResults}
                               >
                                 결과 바로보기
@@ -560,7 +560,7 @@ function PortfoliosPage() {
                               <Button
                                 variant="outline"
                                 size="xl"
-                                className="flex-1 rounded-[20px] py-6! text-xl! font-black"
+                                className="flex-1 rounded-[20px] py-4! text-xl! font-black"
                                 onClick={handleAnalysis}
                               >
                                 다시 분석하기
@@ -578,7 +578,7 @@ function PortfoliosPage() {
                                 variant="blue"
                                 size="xl"
                                 disabled={!selectedPortfolioId}
-                                className="disabled:bg-silver-mist disabled:text-slate-gray shadow-point-blue/20 w-full rounded-[20px] py-6! text-2xl! font-black shadow-xl disabled:cursor-not-allowed"
+                                className="disabled:bg-silver-mist disabled:text-slate-gray shadow-point-blue/20 w-full rounded-[20px] py-4! text-2xl! font-black shadow-xl disabled:cursor-not-allowed"
                                 onClick={handleAnalysis}
                               >
                                 분석 시작하기
@@ -599,10 +599,10 @@ function PortfoliosPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="border-silver-mist rounded-[40px] border bg-white p-12 shadow-xl shadow-gray-200/50"
+                className="border-silver-mist rounded-[40px] border bg-white p-8 shadow-xl shadow-gray-200/50"
               >
-                <div className="space-y-12 py-10 text-center">
-                  <div className="relative mx-auto h-52 w-52">
+                <div className="space-y-8 py-4 text-center">
+                  <div className="relative mx-auto h-40 w-40">
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
@@ -634,7 +634,7 @@ function PortfoliosPage() {
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-point-blue text-5xl font-black tracking-tighter whitespace-nowrap tabular-nums">
+                      <span className="text-point-blue text-4xl font-black tracking-tighter whitespace-nowrap tabular-nums">
                         {progress}%
                       </span>
                       <span className="text-slate-gray mt-1 text-[10px] font-black tracking-widest whitespace-nowrap uppercase opacity-50">
@@ -642,8 +642,8 @@ function PortfoliosPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="space-y-8">
-                    <div className="min-h-20 space-y-2">
+                  <div className="space-y-6">
+                    <div className="min-h-16 space-y-1">
                       <motion.h3
                         key={activeStage}
                         initial={{ opacity: 0, y: 10 }}
@@ -661,13 +661,13 @@ function PortfoliosPage() {
                         {stages[activeStage].description}
                       </motion.p>
                     </div>
-                    <div className="flex items-center justify-center gap-12">
+                    <div className="flex items-center justify-center gap-8">
                       {stages.map((stage) => {
                         const isActive =
                           activeStage === stage.id &&
                           progress < (stages[stage.id + 1]?.threshold ?? 100);
                         return (
-                          <div key={stage.id} className="relative flex flex-col items-center gap-3">
+                          <div key={stage.id} className="relative flex flex-col items-center gap-2">
                             <div className="relative">
                               {isActive && (
                                 <motion.div
@@ -700,9 +700,9 @@ function PortfoliosPage() {
                 key="result"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-8"
+                className="space-y-6"
               >
-                <div className="border-cloud-dancer flex items-end justify-between border-b-2 pb-6">
+                <div className="border-cloud-dancer flex items-end justify-between border-b-2 pb-4">
                   <div>
                     <p className="text-point-blue mb-1 text-xs font-black tracking-[0.2em] whitespace-nowrap uppercase">
                       Analysis Complete
@@ -716,19 +716,19 @@ function PortfoliosPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-8">
-                  <section className="border-silver-mist col-span-2 rounded-4xl border bg-white p-8 shadow-sm">
-                    <div className="mb-8 flex items-center gap-3">
+                <div className="grid grid-cols-3 gap-6">
+                  <section className="border-silver-mist col-span-2 rounded-4xl border bg-white p-6 shadow-sm">
+                    <div className="mb-6 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
                       <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
                         핵심 역량
                       </h3>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {analysisData.strengths.map((text, idx) => (
                         <div
                           key={idx}
-                          className="hover:bg-point-blue/5 hover:border-point-blue/10 rounded-2xl border border-transparent bg-gray-50 p-5 transition-colors"
+                          className="hover:bg-point-blue/5 hover:border-point-blue/10 rounded-2xl border border-transparent bg-gray-50 p-4 transition-colors"
                         >
                           <div className="flex items-start gap-4">
                             <span className="text-point-blue mt-0.5 shrink-0 text-sm font-black">
@@ -743,8 +743,8 @@ function PortfoliosPage() {
                     </div>
                   </section>
 
-                  <section className="border-silver-mist rounded-4xl border bg-white p-8 shadow-sm">
-                    <div className="mb-8 flex items-center gap-3">
+                  <section className="border-silver-mist rounded-4xl border bg-white p-6 shadow-sm">
+                    <div className="mb-6 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
                       <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
                         기술 스택
@@ -763,11 +763,11 @@ function PortfoliosPage() {
                   </section>
                 </div>
 
-                <div className="flex flex-row gap-4 pt-8">
+                <div className="flex flex-row gap-4 pt-4">
                   <Button
                     variant="blue"
                     size="xl"
-                    className="shadow-point-blue/20 flex-2 rounded-[20px] py-6! text-xl! font-black shadow-xl"
+                    className="shadow-point-blue/20 flex-2 rounded-[20px] py-4! text-xl! font-black shadow-xl"
                     onClick={() => navigate('/recommend/companies')}
                   >
                     맞춤 공고 확인하기
@@ -775,7 +775,7 @@ function PortfoliosPage() {
                   <Button
                     variant="outline"
                     size="xl"
-                    className="flex-1 rounded-[20px] py-6! text-xl! font-black"
+                    className="flex-1 rounded-[20px] py-4! text-xl! font-black"
                     onClick={() => {
                       setFile(null);
                       setSelectedPortfolioId(null);
