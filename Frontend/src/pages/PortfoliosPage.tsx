@@ -338,14 +338,9 @@ function PortfoliosPage() {
               데이터로 증명하는 당신의 커리어 가치
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="md"
-            className="border-soft-pebble text-soft-pebble hover:border-midnight-ink hover:text-midnight-ink shrink-0 rounded-xl"
-            onClick={() => navigate(-1)}
-          >
-            ← 뒤로가기
-          </Button>
+          <div className="mb-6">
+            <Button isBack variant="outline" size="md" />
+          </div>
         </header>
 
         <main className="relative">
