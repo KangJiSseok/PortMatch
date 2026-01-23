@@ -32,6 +32,8 @@ import JobPostFormPage from './pages/JobPostFormPage';
 import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
 import JobApplyPage from './pages/JobApplyPage';
+import CompanyProfilePage from './pages/CompanyProfilePage';
+import CompanyProfileEditPage from './pages/CompanyProfileEditPage';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -206,6 +208,22 @@ const router = createBrowserRouter([
             <JobApplicationManagementPage />
           </CompanyRoute>
         ),
+      },
+      {
+        path: 'company/profile',
+        element: (
+          <CompanyRoute>
+            <CompanyProfilePage />
+          </CompanyRoute>
+        )
+      },
+      {
+        path: 'company/profile/edit',
+        element: (
+          <CompanyRoute>
+            <CompanyProfileEditPage />
+          </CompanyRoute>
+        )
       },
       {
         path: 'design',
