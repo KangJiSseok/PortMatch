@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useLogout } from '@/hooks/useAuth';
 
@@ -46,15 +46,30 @@ const NavAction = ({ to, onClick, children, isError, mobile }: NavActionProps) =
 
 function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isLoggedIn, setAuth, clearAuth } = useAuthStore();
   const { mutate: performLogout } = useLogout();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [logoKey, setLogoKey] = useState(0);
+
+  const [prevPath, setPrevPath] = useState(location.pathname + location.search);
+  const currentPath = location.pathname + location.search;
+
+  if (prevPath !== currentPath) {
+    setPrevPath(currentPath);
+    setSearchKeyword('');
+    setIsMenuOpen(false);
+  }
 
   const handleLogout = () => {
     performLogout();
     setIsMenuOpen(false);
+  };
+
+  const handleLogoClick = () => {
+    setLogoKey((prev) => prev + 1);
   };
 
   const handleDevRoleSwitch = (role: 'GUEST' | 'APPLICANT' | 'COMPANY') => {
@@ -83,6 +98,9 @@ function Navbar() {
   const charDuration = 0.05;
   const groupPause = 0.4;
 
+  const searchPlaceholder = user?.role === 'COMPANY' ? '인재 검색' : '공고 검색';
+  const isSearchActive = searchKeyword.trim().length > 0;
+
   return (
     <nav
       id="app-navbar"
@@ -93,46 +111,56 @@ function Navbar() {
           from { opacity: 0; transform: translateY(10px); filter: blur(4px); }
           to { opacity: 1; transform: translateY(0); filter: blur(0); }
         }
+        @keyframes search-pulse {
+          0% { transform: translateY(-50%) scale(1); }
+          50% { transform: translateY(-50%) scale(1.15); }
+          100% { transform: translateY(-50%) scale(1.1); }
+        }
+        .animate-search-active {
+          animation: search-pulse 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
       `}</style>
 
       <div className="relative mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
         <div className="z-10 flex items-center gap-8 xl:gap-12">
           <Link
             to="/main"
+            onClick={handleLogoClick}
             className="text-midnight-ink flex shrink-0 items-center text-2xl font-black tracking-tighter"
           >
-            <span className="flex">
-              {logoPart1.map((char, idx) => (
-                <span
-                  key={`p1-${idx}`}
-                  style={{
-                    opacity: 0,
-                    animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
-                    animationDelay: `${idx * charDuration}s`,
-                  }}
-                >
-                  {char}
-                </span>
-              ))}
-            </span>
-            <span className="flex">
-              {logoPart2.map((char, idx) => (
-                <span
-                  key={`p2-${idx}`}
-                  style={{
-                    opacity: 0,
-                    animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
-                    animationDelay: `${logoPart1.length * charDuration + groupPause + idx * charDuration}s`,
-                  }}
-                >
-                  {char}
-                </span>
-              ))}
-            </span>
+            <div key={logoKey} className="flex">
+              <span className="flex">
+                {logoPart1.map((char, idx) => (
+                  <span
+                    key={`p1-${idx}`}
+                    style={{
+                      opacity: 0,
+                      animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
+                      animationDelay: `${idx * charDuration}s`,
+                    }}
+                  >
+                    {char}
+                  </span>
+                ))}
+              </span>
+              <span className="flex">
+                {logoPart2.map((char, idx) => (
+                  <span
+                    key={`p2-${idx}`}
+                    style={{
+                      opacity: 0,
+                      animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
+                      animationDelay: `${logoPart1.length * charDuration + groupPause + idx * charDuration}s`,
+                    }}
+                  >
+                    {char}
+                  </span>
+                ))}
+              </span>
+            </div>
           </Link>
 
           <div className="hidden items-center gap-6 lg:flex xl:gap-8">
-            <NavAction to="/main">홈</NavAction>
             {user?.role === 'APPLICANT' && <NavAction to="/resumes/me">이력서 관리</NavAction>}
             {user?.role === 'COMPANY' && <NavAction to="/company/jobs">공고 관리</NavAction>}
           </div>
@@ -145,12 +173,16 @@ function Navbar() {
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder={user?.role === 'COMPANY' ? '인재 검색' : '공고 검색'}
+            placeholder={searchPlaceholder}
             className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"
           />
           <button
             onClick={handleSearch}
-            className="text-slate-gray absolute top-1/2 right-5 -translate-y-1/2"
+            className={`absolute top-1/2 right-5 transition-colors duration-300 ${
+              isSearchActive
+                ? 'text-point-blue animate-search-active'
+                : 'text-slate-gray -translate-y-1/2'
+            }`}
           >
             <svg
               width="20"
@@ -214,26 +246,56 @@ function Navbar() {
       {isMenuOpen && (
         <div className="bg-pure-white border-soft-pebble absolute top-20 left-0 w-full border-b p-6 shadow-xl lg:hidden">
           <div className="flex flex-col gap-4">
-            <NavAction to="/main" mobile onClick={() => setIsMenuOpen(false)}>
-              홈
-            </NavAction>
+            <div className="relative mb-2">
+              <input
+                type="text"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder={searchPlaceholder}
+                className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"
+              />
+              <button
+                onClick={handleSearch}
+                className={`absolute top-1/2 right-5 transition-colors duration-300 ${
+                  isSearchActive
+                    ? 'text-point-blue animate-search-active'
+                    : 'text-slate-gray -translate-y-1/2'
+                }`}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </button>
+            </div>
+
             {user?.role === 'APPLICANT' && (
-              <NavAction to="/resumes/me" mobile onClick={() => setIsMenuOpen(false)}>
+              <NavAction to="/resumes/me" mobile>
                 이력서 관리
               </NavAction>
             )}
             {user?.role === 'COMPANY' && (
-              <NavAction to="/company/jobs" mobile onClick={() => setIsMenuOpen(false)}>
+              <NavAction to="/company/jobs" mobile>
                 공고 관리
               </NavAction>
             )}
             <hr className="border-soft-pebble my-2" />
             {!isLoggedIn ? (
               <>
-                <NavAction to="/login" isError mobile onClick={() => setIsMenuOpen(false)}>
+                <NavAction to="/login" isError mobile>
                   로그인
                 </NavAction>
-                <NavAction to="/signup" mobile onClick={() => setIsMenuOpen(false)}>
+                <NavAction to="/signup" mobile>
                   회원가입
                 </NavAction>
               </>
@@ -242,7 +304,7 @@ function Navbar() {
                 <NavAction onClick={handleLogout} isError mobile>
                   로그아웃
                 </NavAction>
-                <NavAction to="/mypage" mobile onClick={() => setIsMenuOpen(false)}>
+                <NavAction to="/mypage" mobile>
                   마이페이지
                 </NavAction>
               </>
