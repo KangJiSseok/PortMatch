@@ -1,54 +1,121 @@
 package com.portmatch.global.exception;
 
 import com.portmatch.global.api.BaseApiResponse;
+import com.portmatch.global.response.ResponseCode;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<BaseApiResponse<ErrorResponse>> handleValidation(MethodArgumentNotValidException ex) {
-
-        List<ErrorResponse.FieldError> errors = ex.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .map(this::toFieldError)
-                .toList();
-
-        ErrorResponse body = ErrorResponse.validation(errors);
-
-        // wrapper를 씌워두면 나중에 프론트 합의에 따라 형태 변경이 쉬움
-        return ResponseEntity.badRequest().body(
-                new BaseApiResponse<>("VALIDATION_ERROR", "입력값이 올바르지 않습니다.", body)
-        );
-    }
-
-    private ErrorResponse.FieldError toFieldError(FieldError e) {
-        return new ErrorResponse.FieldError(e.getField(), e.getDefaultMessage());
-    }
-
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<BaseApiResponse<ErrorResponse>> handleBusiness(BusinessException ex) {
+    public ResponseEntity<BaseApiResponse<?>> handleBusiness(BusinessException ex) {
+        ResponseCode code = ex.getResponseCode();
+        HttpStatus status = mapToHttpStatus(code.getCode());
 
-        // field가 있으면 validation 형태로 내려서 프론트가 처리하기 쉽게
-        ErrorResponse body;
         if (ex.getField() != null) {
-            body = ErrorResponse.validation(
-                    List.of(new ErrorResponse.FieldError(ex.getField(), ex.getMessage()))
+            List<ErrorField> errors = List.of(new ErrorField(ex.getField(), ex.getMessage()));
+            return ResponseEntity.status(status).body(
+                    new BaseApiResponse<>(code.getCode(), code.getMessage(), errors)
             );
-        } else {
-            body = new ErrorResponse(ex.getCode(), ex.getMessage(), null);
         }
 
-        return ResponseEntity.badRequest().body(
-                BaseApiResponse.error(body.getCode(), body.getMessage())
-        );
+        return ResponseEntity.status(status).body(BaseApiResponse.error(code));
     }
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<BaseApiResponse<?>> handleValidation(MethodArgumentNotValidException ex) {
+        List<ErrorField> errors = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(this::toErrorField)
+                .toList();
+
+        ResponseCode code = ResponseCode.VALIDATION_ERROR;
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new BaseApiResponse<>(code.getCode(), code.getMessage(), errors));
+    }
+
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<BaseApiResponse<?>> handleBindException(BindException ex) {
+        List<ErrorField> errors = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(this::toErrorField)
+                .toList();
+
+        ResponseCode code = ResponseCode.VALIDATION_ERROR;
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new BaseApiResponse<>(code.getCode(), code.getMessage(), errors));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<BaseApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        ResponseCode code = ResponseCode.INVALID_PARAMETER;
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(BaseApiResponse.error(code));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<BaseApiResponse<?>> handleMissingParam(MissingServletRequestParameterException e) {
+        ResponseCode code = ResponseCode.INVALID_PARAMETER;
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(BaseApiResponse.error(code));
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<BaseApiResponse<?>> handleNotFound(NoHandlerFoundException e) {
+        ResponseCode code = ResponseCode.NOT_FOUND;
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(BaseApiResponse.error(code));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<BaseApiResponse<?>> handleException(Exception e) {
+        ResponseCode code = ResponseCode.INTERNAL_SERVER_ERROR;
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(BaseApiResponse.error(code));
+    }
+
+    private ErrorField toErrorField(FieldError e) {
+        return new ErrorField(e.getField(), e.getDefaultMessage());
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class ErrorField {
+        private String field;
+        private String message;
+    }
+
+    private HttpStatus mapToHttpStatus(int code) {
+        if (code >= 1000 && code < 2000) return HttpStatus.OK;
+        if (code >= 2000 && code < 3000) return HttpStatus.BAD_REQUEST;
+        if (code >= 3000 && code < 4000) return HttpStatus.UNPROCESSABLE_ENTITY;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
 }

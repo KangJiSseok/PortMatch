@@ -3,6 +3,7 @@ package com.portmatch.domain.auth.service;
 import com.portmatch.domain.auth.enums.Role;
 import com.portmatch.domain.auth.security.UserPrincipal;
 import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +46,7 @@ public class AuthSessionService {
             if (expectedRole != null && principal.getUser().getRole() != expectedRole) {
                 SecurityContextHolder.clearContext();
                 throw new BusinessException(
-                        "ROLE_MISMATCH",
+                        ResponseCode.ROLE_MISMATCH,
                         "expectedRole",
                         "선택한 로그인 유형과 계정 유형이 일치하지 않습니다."
                 );
@@ -58,7 +59,7 @@ public class AuthSessionService {
 
         } catch (BadCredentialsException e) {
             throw new BusinessException(
-                    "INVALID_CREDENTIALS",
+                    ResponseCode.INVALID_CREDENTIALS,
                     "email",
                     "이메일 또는 비밀번호가 올바르지 않습니다."
             );

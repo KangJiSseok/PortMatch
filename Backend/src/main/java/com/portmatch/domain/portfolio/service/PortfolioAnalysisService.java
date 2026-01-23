@@ -10,6 +10,8 @@ import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProject;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectTech;
 import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -24,7 +26,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -66,7 +67,7 @@ public class PortfolioAnalysisService {
 
     public Object analyze(Long userId, Long portfolioId) {
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
+                .orElseThrow(() -> new BusinessException(ResponseCode.PORTFOLIO_NOT_FOUND));
         PresignedUrlResponse presigned = portfolioService.getPresignedUrlForUser(userId, portfolioId, 10);
         String endpoint = normalizeBaseUrl(portfolioAnalysisBaseUrl) + "/api/parse";
         HttpHeaders headers = new HttpHeaders();
@@ -77,11 +78,7 @@ public class PortfolioAnalysisService {
             payloadJson = objectMapper.writeValueAsString(Map.of("s3_url", presigned.getUrl()));
         } catch (JsonProcessingException exception) {
             log.error("Failed to prepare portfolio analysis request payload", exception);
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to prepare analysis request",
-                    exception
-            );
+            throw new BusinessException(ResponseCode.PORTFOLIO_ANALYSIS_PAYLOAD_FAILED);
         }
 
         byte[] payloadBytes = payloadJson.getBytes(StandardCharsets.UTF_8);
@@ -94,20 +91,16 @@ public class PortfolioAnalysisService {
             return body;
         } catch (RestClientException exception) {
             log.error("Portfolio analysis request failed. endpoint={}", endpoint, exception);
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Portfolio analysis service unavailable",
-                    exception
-            );
+            throw new BusinessException(ResponseCode.PORTFOLIO_ANALYSIS_SERVICE_UNAVAILABLE);
         }
     }
 
     @Transactional(readOnly = true)
     public PortfolioAnalysisResponse getAnalysis(Long userId, Long portfolioId) {
         portfolioRepository.findByIdAndUserId(portfolioId, userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
+                .orElseThrow(() -> new BusinessException(ResponseCode.PORTFOLIO_NOT_FOUND));
         PortfolioAnalysis analysis = portfolioAnalysisRepository.findWithProjectsByPortfolioId(portfolioId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
+                .orElseThrow(() -> new BusinessException(ResponseCode.ANALYSIS_NOT_FOUND));
 
         List<PortfolioAnalysisResponse.Project> projects = analysis.getProjects().stream()
                 .map(project -> new PortfolioAnalysisResponse.Project(
@@ -125,7 +118,7 @@ public class PortfolioAnalysisService {
 
     private void persistResult(Portfolio portfolio, Object body) {
         if (body == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Portfolio analysis returned empty body");
+            throw new BusinessException(ResponseCode.PORTFOLIO_ANALYSIS_EMPTY);
         }
 
         PortfolioAnalysisResponse result = objectMapper.convertValue(body, PortfolioAnalysisResponse.class);
@@ -166,10 +159,7 @@ public class PortfolioAnalysisService {
 
     private String normalizeBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Portfolio analysis base URL is not configured"
-            );
+            throw new BusinessException(ResponseCode.PORTFOLIO_ANALYSIS_BASE_URL_NOT_CONFIGURED);
         }
         return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }

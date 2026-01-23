@@ -1,6 +1,7 @@
 package com.portmatch.domain.portfolio.controller;
 
 import com.portmatch.domain.portfolio.dto.PortfolioAnalysisResponse;
+import com.portmatch.domain.portfolio.dto.PortfolioApiResponses;
 import com.portmatch.domain.portfolio.dto.PortfolioResponse;
 import com.portmatch.domain.portfolio.dto.PresignedUrlResponse;
 import com.portmatch.domain.portfolio.service.PortfolioAnalysisService;
@@ -10,18 +11,14 @@ import com.portmatch.global.api.BaseApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 
 import java.util.List;
@@ -52,16 +49,16 @@ public class PortfolioController {
     @ApiResponse(
             responseCode = "200",
             description = "업로드 성공",
-            content = @Content(schema = @Schema(implementation = PortfolioResponse.class))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PortfolioUploadApiResponse.class))
     )
     @PostMapping(path = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public PortfolioResponse upload(
+    public BaseApiResponse<PortfolioResponse> upload(
             @Parameter(hidden = true)
             @AuthenticationPrincipal(expression = "user") User user,
             @Parameter(description = "포트폴리오 파일", required = true)
             @RequestPart("file") MultipartFile file
     ) {
-        return portfolioService.upload(user.getId(), file);
+        return BaseApiResponse.ok(portfolioService.upload(user.getId(), file));
     }
 
     @Operation(
@@ -71,14 +68,14 @@ public class PortfolioController {
     @ApiResponse(
             responseCode = "200",
             description = "목록 조회 성공",
-            content = @Content(array = @ArraySchema(schema = @Schema(implementation = PortfolioResponse.class)))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PortfolioListApiResponse.class))
     )
     @GetMapping("/me")
-    public List<PortfolioResponse> getByUser(
+    public BaseApiResponse<List<PortfolioResponse>> getByUser(
             @Parameter(hidden = true)
             @AuthenticationPrincipal(expression = "user") User user
     ) {
-        return portfolioService.getByUserId(user.getId());
+        return BaseApiResponse.ok(portfolioService.getByUserId(user.getId()));
     }
 
     @Operation(
@@ -88,14 +85,14 @@ public class PortfolioController {
     @ApiResponse(
             responseCode = "200",
             description = "프리사인드 URL 조회 성공",
-            content = @Content(schema = @Schema(implementation = PresignedUrlResponse.class))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PresignedUrlApiResponse.class))
     )
     @GetMapping("/{portfolioId}/presigned-url")
-    public PresignedUrlResponse getPresignedUrl(
+    public BaseApiResponse<PresignedUrlResponse> getPresignedUrl(
             @Parameter(description = "포트폴리오 ID", required = true)
             @PathVariable Long portfolioId
     ) {
-        return portfolioService.getPresignedUrl(portfolioId, 10);
+        return BaseApiResponse.ok(portfolioService.getPresignedUrl(portfolioId, 10));
     }
 
     @Operation(
@@ -105,16 +102,16 @@ public class PortfolioController {
     @ApiResponse(
             responseCode = "200",
             description = "분석 요청 성공",
-            content = @Content(schema = @Schema(implementation = Object.class))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PortfolioAnalysisApiResponse.class))
     )
     @PostMapping("/me/{portfolioId}/analysis")
-    public Object analyzePortfolio(
+    public BaseApiResponse<Object> analyzePortfolio(
             @Parameter(hidden = true)
             @AuthenticationPrincipal(expression = "user") User user,
             @Parameter(description = "포트폴리오 ID", required = true)
             @PathVariable Long portfolioId
     ) {
-        return portfolioAnalysisService.analyze(user.getId(), portfolioId);
+        return BaseApiResponse.ok(portfolioAnalysisService.analyze(user.getId(), portfolioId));
     }
 
     @Operation(
@@ -123,28 +120,18 @@ public class PortfolioController {
     )
 
 
-
     @ApiResponse(
             responseCode = "200",
             description = "분석 결과 조회 성공",
-            content = @Content(schema = @Schema(implementation = BaseApiResponse.class))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PortfolioAnalysisResultApiResponse.class))
     )
     @GetMapping("/me/{portfolioId}/analysis")
-    public ResponseEntity<BaseApiResponse<PortfolioAnalysisResponse>> getAnalysis(
+    public BaseApiResponse<PortfolioAnalysisResponse> getAnalysis(
             @Parameter(hidden = true)
             @AuthenticationPrincipal(expression = "user") User user,
             @Parameter(description = "포트폴리오 ID", required = true)
             @PathVariable Long portfolioId
     ) {
-        try {
-            PortfolioAnalysisResponse response = portfolioAnalysisService.getAnalysis(user.getId(), portfolioId);
-            return ResponseEntity.ok(BaseApiResponse.ok(response));
-        } catch (ResponseStatusException exception) {
-            if (exception.getStatusCode() == HttpStatus.NOT_FOUND
-                    && "Portfolio analysis not found".equals(exception.getReason())) {
-                return ResponseEntity.ok(BaseApiResponse.error("ANALYSIS_NOT_FOUND", "분석 결과가 없습니다."));
-            }
-            throw exception;
-        }
+        return BaseApiResponse.ok(portfolioAnalysisService.getAnalysis(user.getId(), portfolioId));
     }
 }
