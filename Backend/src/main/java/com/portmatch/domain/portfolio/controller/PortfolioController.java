@@ -1,6 +1,7 @@
 package com.portmatch.domain.portfolio.controller;
 
 import com.portmatch.domain.portfolio.dto.PortfolioAnalysisResponse;
+import com.portmatch.domain.portfolio.dto.PortfolioApiResponses;
 import com.portmatch.domain.portfolio.dto.PortfolioResponse;
 import com.portmatch.domain.portfolio.dto.PresignedUrlResponse;
 import com.portmatch.domain.portfolio.service.PortfolioAnalysisService;
@@ -10,7 +11,6 @@ import com.portmatch.global.api.BaseApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,7 +49,7 @@ public class PortfolioController {
     @ApiResponse(
             responseCode = "200",
             description = "업로드 성공",
-            content = @Content(schema = @Schema(implementation = PortfolioResponse.class))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PortfolioUploadApiResponse.class))
     )
     @PostMapping(path = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public BaseApiResponse<PortfolioResponse> upload(
@@ -68,7 +68,7 @@ public class PortfolioController {
     @ApiResponse(
             responseCode = "200",
             description = "목록 조회 성공",
-            content = @Content(array = @ArraySchema(schema = @Schema(implementation = PortfolioResponse.class)))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PortfolioListApiResponse.class))
     )
     @GetMapping("/me")
     public BaseApiResponse<List<PortfolioResponse>> getByUser(
@@ -85,7 +85,7 @@ public class PortfolioController {
     @ApiResponse(
             responseCode = "200",
             description = "프리사인드 URL 조회 성공",
-            content = @Content(schema = @Schema(implementation = PresignedUrlResponse.class))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PresignedUrlApiResponse.class))
     )
     @GetMapping("/{portfolioId}/presigned-url")
     public BaseApiResponse<PresignedUrlResponse> getPresignedUrl(
@@ -102,7 +102,7 @@ public class PortfolioController {
     @ApiResponse(
             responseCode = "200",
             description = "분석 요청 성공",
-            content = @Content(schema = @Schema(implementation = Object.class))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PortfolioAnalysisApiResponse.class))
     )
     @PostMapping("/me/{portfolioId}/analysis")
     public BaseApiResponse<Object> analyzePortfolio(
@@ -123,7 +123,7 @@ public class PortfolioController {
     @ApiResponse(
             responseCode = "200",
             description = "분석 결과 조회 성공",
-            content = @Content(schema = @Schema(implementation = BaseApiResponse.class))
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PortfolioAnalysisResultApiResponse.class))
     )
     @GetMapping("/me/{portfolioId}/analysis")
     public BaseApiResponse<PortfolioAnalysisResponse> getAnalysis(
