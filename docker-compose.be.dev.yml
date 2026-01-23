@@ -1,0 +1,72 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: portmatch-db2-v2
+    ports:
+      - "5433:5432"
+    env_file:
+      - .env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  mineru-api:
+    image: mineru:latest
+    container_name: mineru-api-v2
+    restart: always
+    ports:
+      - 18001:8000
+    environment:
+      MINERU_MODEL_SOURCE: local
+    entrypoint: mineru-api
+    command:
+      --host 0.0.0.0
+      --port 8000
+      # parameters for vllm-engine
+      # --data-parallel-size 2  # If using multiple GPUs, increase throughput using vllm's multi-GPU parallel mode
+      # --gpu-memory-utilization 0.5  # If running on a single GPU and encountering VRAM shortage, reduce the KV cache size by this parameter, if VRAM issues persist, try lowering it further to `0.4` or below.
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]  # Modify for multiple GPUs: ["0", "1"]
+              capabilities: [gpu]
+
+  portfolio-analysis:
+    image: python:3.12-slim
+    container_name: portmatch-portfolio-analysis-v2
+    working_dir: /app/Portfolio-Analysis
+    volumes:
+      - ./Portfolio-Analysis:/app/Portfolio-Analysis
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - mineru-api
+    command: ["bash", "-lc", "pip install -r requirements.txt && uvicorn web.api.app:app --host 0.0.0.0 --port 8000"]
+
+  inference:
+    image: python:3.12-slim
+    container_name: portmatch-inference-v2
+    working_dir: /app/Inference
+    volumes:
+      - ./Inference:/app/Inference
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
+    depends_on:
+      - postgres
+      - mineru-api
+    command: ["bash", "-lc", "pip install -r requirements.txt && uvicorn web.api.app:app --host 0.0.0.0 --port 8001"]
+
+volumes:
+  postgres-data:
