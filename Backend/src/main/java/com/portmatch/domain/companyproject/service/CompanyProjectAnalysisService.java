@@ -11,6 +11,8 @@ import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisResult;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysis;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysisProject;
 import com.portmatch.domain.companyproject.repository.CompanyProjectAnalysisRepository;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +53,13 @@ public class CompanyProjectAnalysisService {
                 Object response = companyProjectAnalysisClient.analyzeCompanyProject(companyName);
                 persistResult(company, response);
                 results.add(new CompanyProjectAnalysisResult(companyName, true, response, null));
+            } catch (BusinessException exception) {
+                results.add(new CompanyProjectAnalysisResult(
+                        companyName,
+                        false,
+                        null,
+                        exception.getMessage()
+                ));
             } catch (ResponseStatusException exception) {
                 results.add(new CompanyProjectAnalysisResult(
                         companyName,
@@ -73,10 +82,7 @@ public class CompanyProjectAnalysisService {
 
     private void persistResult(Company company, Object body) {
         if (body == null) {
-            throw new ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_GATEWAY,
-                    "Company project analysis returned empty body"
-            );
+            throw new BusinessException(ResponseCode.COMPANY_PROJECT_ANALYSIS_EMPTY);
         }
 
         CompanyProjectAnalysisPayload payload = objectMapper.convertValue(body, CompanyProjectAnalysisPayload.class);

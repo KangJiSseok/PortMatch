@@ -19,6 +19,7 @@ public enum ResponseCode {
     INVALID_CREDENTIALS(false, 2100, "이메일 또는 비밀번호가 올바르지 않습니다."),
     ROLE_MISMATCH(false, 2101, "선택한 로그인 유형과 계정 유형이 일치하지 않습니다."),
     ANALYSIS_NOT_FOUND(false, 2401, "분석 결과가 없습니다."),
+    COMPANY_PROJECT_ANALYSIS_EMPTY(false, 2402, "회사 프로젝트 분석 결과가 비어있습니다."),
 
     // 4000: domain error
     DUPLICATE_EMAIL(false, 4100, "이미 사용 중인 이메일입니다."),
