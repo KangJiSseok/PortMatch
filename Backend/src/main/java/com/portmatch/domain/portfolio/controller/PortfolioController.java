@@ -7,7 +7,6 @@ import com.portmatch.domain.portfolio.service.PortfolioAnalysisService;
 import com.portmatch.domain.portfolio.service.PortfolioService;
 import com.portmatch.domain.auth.entity.User;
 import com.portmatch.global.api.BaseApiResponse;
-import com.portmatch.global.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,13 +15,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 
 import java.util.List;
@@ -56,13 +52,13 @@ public class PortfolioController {
             content = @Content(schema = @Schema(implementation = PortfolioResponse.class))
     )
     @PostMapping(path = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public PortfolioResponse upload(
+    public BaseApiResponse<PortfolioResponse> upload(
             @Parameter(hidden = true)
             @AuthenticationPrincipal(expression = "user") User user,
             @Parameter(description = "포트폴리오 파일", required = true)
             @RequestPart("file") MultipartFile file
     ) {
-        return portfolioService.upload(user.getId(), file);
+        return BaseApiResponse.ok(portfolioService.upload(user.getId(), file));
     }
 
     @Operation(
@@ -75,11 +71,11 @@ public class PortfolioController {
             content = @Content(array = @ArraySchema(schema = @Schema(implementation = PortfolioResponse.class)))
     )
     @GetMapping("/me")
-    public List<PortfolioResponse> getByUser(
+    public BaseApiResponse<List<PortfolioResponse>> getByUser(
             @Parameter(hidden = true)
             @AuthenticationPrincipal(expression = "user") User user
     ) {
-        return portfolioService.getByUserId(user.getId());
+        return BaseApiResponse.ok(portfolioService.getByUserId(user.getId()));
     }
 
     @Operation(
@@ -92,11 +88,11 @@ public class PortfolioController {
             content = @Content(schema = @Schema(implementation = PresignedUrlResponse.class))
     )
     @GetMapping("/{portfolioId}/presigned-url")
-    public PresignedUrlResponse getPresignedUrl(
+    public BaseApiResponse<PresignedUrlResponse> getPresignedUrl(
             @Parameter(description = "포트폴리오 ID", required = true)
             @PathVariable Long portfolioId
     ) {
-        return portfolioService.getPresignedUrl(portfolioId, 10);
+        return BaseApiResponse.ok(portfolioService.getPresignedUrl(portfolioId, 10));
     }
 
     @Operation(
@@ -109,13 +105,13 @@ public class PortfolioController {
             content = @Content(schema = @Schema(implementation = Object.class))
     )
     @PostMapping("/me/{portfolioId}/analysis")
-    public Object analyzePortfolio(
+    public BaseApiResponse<Object> analyzePortfolio(
             @Parameter(hidden = true)
             @AuthenticationPrincipal(expression = "user") User user,
             @Parameter(description = "포트폴리오 ID", required = true)
             @PathVariable Long portfolioId
     ) {
-        return portfolioAnalysisService.analyze(user.getId(), portfolioId);
+        return BaseApiResponse.ok(portfolioAnalysisService.analyze(user.getId(), portfolioId));
     }
 
     @Operation(
@@ -130,21 +126,12 @@ public class PortfolioController {
             content = @Content(schema = @Schema(implementation = BaseApiResponse.class))
     )
     @GetMapping("/me/{portfolioId}/analysis")
-    public ResponseEntity<BaseApiResponse<PortfolioAnalysisResponse>> getAnalysis(
+    public BaseApiResponse<PortfolioAnalysisResponse> getAnalysis(
             @Parameter(hidden = true)
             @AuthenticationPrincipal(expression = "user") User user,
             @Parameter(description = "포트폴리오 ID", required = true)
             @PathVariable Long portfolioId
     ) {
-        try {
-            PortfolioAnalysisResponse response = portfolioAnalysisService.getAnalysis(user.getId(), portfolioId);
-            return ResponseEntity.ok(BaseApiResponse.ok(response));
-        } catch (ResponseStatusException exception) {
-            if (exception.getStatusCode() == HttpStatus.NOT_FOUND
-                    && "Portfolio analysis not found".equals(exception.getReason())) {
-                return ResponseEntity.ok(BaseApiResponse.error(ResponseCode.ANALYSIS_NOT_FOUND));
-            }
-            throw exception;
-        }
+        return BaseApiResponse.ok(portfolioAnalysisService.getAnalysis(user.getId(), portfolioId));
     }
 }
