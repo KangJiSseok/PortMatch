@@ -74,7 +74,7 @@ const DUMMY_COMPANY: CompanyDetails = {
     },
   ],
 };
-
+                                                           
 function CompanyDetailsPage() {
   const { companyId } = useParams();
   const navigate = useNavigate();

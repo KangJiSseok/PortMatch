@@ -13,7 +13,7 @@ const ROUTES = {
   // ✅ 공고 상세 라우트(프로젝트에 맞게 변경)
   jobPostDetail: (jobPostId: number) => `/job-posts/${jobPostId}`,
   // ⚠️ 원본 코드 유지 (필요하면 함수로 바꿔서 회사ID 넣어주세요)
-  companyEdit: '/companies/${companyId}',
+  companyEdit: '/company/profile',
 } as const;
 
 /** ------------------ types ------------------ */
