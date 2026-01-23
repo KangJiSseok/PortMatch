@@ -118,7 +118,7 @@ function RecommendCompanyPage() {
 
   return (
     <div className="min-h-screen bg-white pt-24 pb-20">
-      <div className="mx-auto max-w-6xl px-6">
+      <div className="mx-auto w-[1200px] px-6">
         <header className="mb-16">
           <div className="mb-6 flex items-center gap-3">
             <div className="bg-point-blue/30 h-1 w-8 rounded-full"></div>
@@ -156,8 +156,8 @@ function RecommendCompanyPage() {
                 onClick={() => setSortBy('score')}
                 className={`!rounded-xl !px-4 !py-2 !text-xs ${
                   sortBy === 'score'
-                    ? '!bg-white !text-midnight-ink !shadow-sm !border-transparent'
-                    : '!bg-transparent !text-zinc-400 hover:!text-zinc-600 !border-transparent'
+                    ? '!text-midnight-ink !border-transparent !bg-white !shadow-sm'
+                    : '!border-transparent !bg-transparent !text-zinc-400 hover:!text-zinc-600'
                 }`}
               >
                 추천 점수 순
@@ -168,8 +168,8 @@ function RecommendCompanyPage() {
                 onClick={() => setSortBy('hiring')}
                 className={`!rounded-xl !px-4 !py-2 !text-xs ${
                   sortBy === 'hiring'
-                    ? '!bg-white !text-midnight-ink !shadow-sm !border-transparent'
-                    : '!bg-transparent !text-zinc-400 hover:!text-zinc-600 !border-transparent'
+                    ? '!text-midnight-ink !border-transparent !bg-white !shadow-sm'
+                    : '!border-transparent !bg-transparent !text-zinc-400 hover:!text-zinc-600'
                 }`}
               >
                 공고 많은 순
