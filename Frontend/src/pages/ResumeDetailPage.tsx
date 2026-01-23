@@ -431,7 +431,7 @@ function ResumeDetailPage() {
             exit={{ opacity: 0, y: 50, x: '-50%' }}
             className={`${
               toastMessage.startsWith('✅') ? 'bg-blue-600' : 'bg-red-500'
-            } fixed bottom-24 left-1/2 z-[2000] flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
+            } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
           >
             {toastMessage}
           </motion.div>
@@ -445,9 +445,7 @@ function ResumeDetailPage() {
               onClick={() => setShowResumeList(!showResumeList)}
               className="flex items-center gap-3 text-left text-4xl font-black tracking-tighter text-slate-900 uppercase transition-opacity hover:opacity-70"
             >
-              <span className="inline-block max-w-[800px] truncate">
-                {resume.title || 'My Resume'}
-              </span>
+              <span className="inline-block max-w-200 truncate">{resume.title || 'My Resume'}</span>
               <span className="shrink-0 text-2xl text-blue-600">▾</span>
             </button>
             <AnimatePresence>
@@ -458,7 +456,7 @@ function ResumeDetailPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="absolute top-full left-0 z-50 mt-4 max-w-full min-w-[300px] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl"
+                    className="absolute top-full left-0 z-50 mt-4 max-w-full min-w-75 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl"
                   >
                     {Object.values(allResumes).map((r) => (
                       <div
@@ -708,7 +706,7 @@ function ResumeDetailPage() {
                   <Button
                     variant="blue"
                     size="md"
-                    className="min-w-[80px] rounded-xl font-black"
+                    className="min-w-20 rounded-xl font-black"
                     onClick={() => {
                       if (type === 'experience') {
                         updateCurrentResume({
@@ -975,14 +973,14 @@ function ResumeDetailPage() {
                     {showPortfolioList && isEditing && (
                       <>
                         <div
-                          className="fixed inset-0 z-[60]"
+                          className="fixed inset-0 z-60"
                           onClick={() => setShowPortfolioList(false)}
                         />
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0 }}
-                          className="absolute top-full left-0 z-[70] mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
+                          className="absolute top-full left-0 z-70 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
                         >
                           {portfolios.map((p) => (
                             <div
@@ -1054,7 +1052,7 @@ function ResumeDetailPage() {
                       <Button
                         variant="blue"
                         size="md"
-                        className="min-w-[80px] rounded-xl font-black"
+                        className="min-w-20 rounded-xl font-black"
                         onClick={() => {
                           const newIntro = { id: `si-${Date.now()}`, title: '', content: '' };
                           setSelfIntros((prev) => [...prev, newIntro]);
@@ -1184,14 +1182,14 @@ function ResumeDetailPage() {
                   {showSelfIntroList && !innerEditingIntro && isEditing && (
                     <>
                       <div
-                        className="fixed inset-0 z-[100]"
+                        className="fixed inset-0 z-100"
                         onClick={() => setShowSelfIntroList(false)}
                       />
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="absolute top-full left-0 z-[110] mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
+                        className="absolute top-full left-0 z-110 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
                       >
                         {selfIntros.map((s) => (
                           <div
@@ -1225,7 +1223,7 @@ function ResumeDetailPage() {
               >
                 {innerEditingIntro ? (
                   <textarea
-                    className="min-h-[300px] w-full resize-none bg-transparent text-lg leading-relaxed font-bold outline-none"
+                    className="min-h-75 w-full resize-none bg-transparent text-lg leading-relaxed font-bold outline-none"
                     placeholder="내용을 입력하세요."
                     value={currentSelfIntro?.content || ''}
                     onChange={(e) =>
@@ -1239,7 +1237,7 @@ function ResumeDetailPage() {
                     }
                   />
                 ) : (
-                  <p className="min-h-[100px] text-lg leading-relaxed font-bold break-all whitespace-pre-wrap text-slate-700">
+                  <p className="min-h-25 text-lg leading-relaxed font-bold break-all whitespace-pre-wrap text-slate-700">
                     {currentSelfIntro?.content || '자기소개를 선택해주세요.'}
                   </p>
                 )}
@@ -1252,7 +1250,7 @@ function ResumeDetailPage() {
               <Button
                 variant="blue"
                 size="xl"
-                className="w-full min-w-[280px] rounded-[20px] px-10 py-5 font-black shadow-lg shadow-blue-600/20 sm:w-auto"
+                className="w-full min-w-70 rounded-[20px] px-10 py-5 font-black shadow-lg shadow-blue-600/20 sm:w-auto"
                 onClick={toggleEditMode}
               >
                 이력서 수정하기
@@ -1262,7 +1260,7 @@ function ResumeDetailPage() {
                 <Button
                   variant="outline"
                   size="xl"
-                  className="w-full min-w-[200px] rounded-[20px] px-10 py-5 font-black sm:w-auto"
+                  className="w-full min-w-50 rounded-[20px] px-10 py-5 font-black sm:w-auto"
                   onClick={handleCancelEdit}
                 >
                   취소
@@ -1270,7 +1268,7 @@ function ResumeDetailPage() {
                 <Button
                   variant="blue"
                   size="xl"
-                  className="w-full min-w-[280px] rounded-[20px] px-10 py-5 font-black shadow-lg shadow-blue-600/20 sm:w-auto"
+                  className="w-full min-w-70 rounded-[20px] px-10 py-5 font-black shadow-lg shadow-blue-600/20 sm:w-auto"
                   onClick={validateAndSave}
                 >
                   저장 및 완료
@@ -1283,7 +1281,7 @@ function ResumeDetailPage() {
 
       <AnimatePresence>
         {(deleteConfirm || blocker.state === 'blocked') && (
-          <div className="fixed inset-0 z-[3000] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-3000 flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
