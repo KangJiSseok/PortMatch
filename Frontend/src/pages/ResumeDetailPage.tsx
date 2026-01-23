@@ -58,6 +58,7 @@ const MAX_LENGTHS = {
   ROLE: 50,
   SCHOOL: 50,
   MAJOR: 50,
+  CONTACT: 13,
 };
 
 const INITIAL_RESUMES: Record<string, ResumeData> = {
@@ -553,89 +554,146 @@ function ResumeDetailPage() {
                 />
               </div>
 
-              <div className="w-full min-w-0 flex-1 space-y-6">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <div className="min-w-0">
-                    <label className={labelClass}>
-                      이력서 제목 {isEditing && <span className="text-red-500">*</span>}
-                    </label>
-                    {isEditing ? (
-                      <input
-                        className={inputClass('title')}
-                        value={resume.title || ''}
-                        maxLength={MAX_LENGTHS.TITLE}
-                        placeholder="예) 프론트엔드 개발자 이력서"
-                        onChange={(e) => updateCurrentResume({ title: e.target.value })}
-                      />
-                    ) : (
-                      <p className="px-1 text-2xl font-black break-all text-slate-900">
-                        {resume.title}
-                      </p>
-                    )}
+              <div className="w-full min-w-0 flex-1">
+                {!isEditing ? (
+                  <div className="space-y-8">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <span className="rounded-lg bg-slate-900 px-3 py-1 text-[10px] font-black tracking-widest text-white uppercase shadow-sm">
+                          Name
+                        </span>
+                        <h1 className="text-5xl leading-tight font-black tracking-tight break-all text-slate-900">
+                          {resume.name}
+                        </h1>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="rounded-lg bg-blue-600 px-3 py-1 text-[10px] font-black tracking-widest text-white uppercase shadow-sm">
+                          Resume Title
+                        </span>
+                        <p className="text-2xl font-bold break-all text-blue-600">{resume.title}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-5">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
+                          📞
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-black tracking-widest text-slate-400 uppercase">
+                            Contact
+                          </p>
+                          <p className="text-lg font-bold break-all text-slate-700">
+                            {resume.contact || '미입력'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-5">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
+                          ✉️
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-black tracking-widest text-slate-400 uppercase">
+                            Email
+                          </p>
+                          <p className="text-lg font-bold break-all text-slate-700">
+                            {resume.email || '미입력'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="col-span-1 flex items-center gap-4 rounded-2xl bg-slate-50 p-5 md:col-span-2">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
+                          📍
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-black tracking-widest text-slate-400 uppercase">
+                            Address
+                          </p>
+                          <p className="text-lg font-bold break-all text-slate-700">
+                            {resume.address || '미입력'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <label className={labelClass}>
-                      성함 {isEditing && <span className="text-red-500">*</span>}
-                    </label>
-                    {isEditing ? (
-                      <input
-                        className={inputClass('name')}
-                        value={resume.name || ''}
-                        maxLength={MAX_LENGTHS.NAME}
-                        placeholder="이름을 입력하세요"
-                        onChange={(e) => updateCurrentResume({ name: e.target.value })}
-                      />
-                    ) : (
-                      <p className="px-1 text-2xl font-black break-all text-blue-600">
-                        {resume.name}
-                      </p>
-                    )}
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      <div className="relative">
+                        <label className={labelClass}>
+                          이력서 제목 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          className={inputClass('title')}
+                          value={resume.title || ''}
+                          maxLength={MAX_LENGTHS.TITLE}
+                          placeholder="예) 프론트엔드 개발자 이력서"
+                          onChange={(e) => updateCurrentResume({ title: e.target.value })}
+                        />
+                        <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                          {(resume.title || '').length}/{MAX_LENGTHS.TITLE}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <label className={labelClass}>
+                          성함 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          className={inputClass('name')}
+                          value={resume.name || ''}
+                          maxLength={MAX_LENGTHS.NAME}
+                          placeholder="이름을 입력하세요"
+                          onChange={(e) => updateCurrentResume({ name: e.target.value })}
+                        />
+                        <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                          {(resume.name || '').length}/{MAX_LENGTHS.NAME}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      <div className="relative">
+                        <label className={labelClass}>연락처</label>
+                        <input
+                          className={inputClass()}
+                          value={resume.contact || ''}
+                          maxLength={MAX_LENGTHS.CONTACT}
+                          placeholder="010-0000-0000"
+                          onChange={(e) =>
+                            updateCurrentResume({ contact: formatPhoneNumber(e.target.value) })
+                          }
+                        />
+                        <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                          {(resume.contact || '').length}/{MAX_LENGTHS.CONTACT}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <label className={labelClass}>이메일</label>
+                        <input
+                          className={inputClass()}
+                          value={resume.email || ''}
+                          maxLength={MAX_LENGTHS.EMAIL}
+                          placeholder="example@mail.com"
+                          onChange={(e) => updateCurrentResume({ email: e.target.value })}
+                        />
+                        <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                          {(resume.email || '').length}/{MAX_LENGTHS.EMAIL}
+                        </span>
+                      </div>
+                      <div className="relative col-span-1 md:col-span-2">
+                        <label className={labelClass}>주소</label>
+                        <input
+                          className={inputClass()}
+                          value={resume.address || ''}
+                          maxLength={MAX_LENGTHS.ADDRESS}
+                          placeholder="주소를 입력하세요"
+                          onChange={(e) => updateCurrentResume({ address: e.target.value })}
+                        />
+                        <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                          {(resume.address || '').length}/{MAX_LENGTHS.ADDRESS}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 border-t border-slate-50 pt-4 md:grid-cols-2">
-                  <div className="min-w-0">
-                    <label className={labelClass}>연락처</label>
-                    {isEditing ? (
-                      <input
-                        className={inputClass()}
-                        value={resume.contact || ''}
-                        placeholder="010-0000-0000"
-                        onChange={(e) =>
-                          updateCurrentResume({ contact: formatPhoneNumber(e.target.value) })
-                        }
-                      />
-                    ) : (
-                      <p className="px-1 font-bold break-all text-slate-700">📞 {resume.contact}</p>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <label className={labelClass}>이메일</label>
-                    {isEditing ? (
-                      <input
-                        className={inputClass()}
-                        value={resume.email || ''}
-                        placeholder="example@mail.com"
-                        onChange={(e) => updateCurrentResume({ email: e.target.value })}
-                      />
-                    ) : (
-                      <p className="px-1 font-bold break-all text-slate-700">✉️ {resume.email}</p>
-                    )}
-                  </div>
-                  <div className="col-span-1 min-w-0 md:col-span-2">
-                    <label className={labelClass}>주소</label>
-                    {isEditing ? (
-                      <input
-                        className={inputClass()}
-                        value={resume.address || ''}
-                        placeholder="주소를 입력하세요"
-                        onChange={(e) => updateCurrentResume({ address: e.target.value })}
-                      />
-                    ) : (
-                      <p className="px-1 font-bold break-all text-slate-700">📍 {resume.address}</p>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </section>
@@ -679,10 +737,10 @@ function ResumeDetailPage() {
                   resume[type].map((item, i) => (
                     <div
                       key={i}
-                      className={`group relative rounded-2xl border p-6 transition-all ${
+                      className={`group relative rounded-2xl border transition-all ${
                         isEditing
-                          ? 'border-blue-100 bg-slate-50/50'
-                          : 'border-slate-50 bg-white shadow-sm'
+                          ? 'border-blue-100 bg-slate-50/50 p-6 pt-10'
+                          : 'border-slate-50 bg-white p-6 shadow-sm hover:border-blue-100 hover:shadow-md'
                       }`}
                     >
                       {isEditing && (
@@ -694,13 +752,47 @@ function ResumeDetailPage() {
                           />
                         </div>
                       )}
-                      <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-12">
-                        <div className="col-span-1 min-w-0 md:col-span-4">
-                          <label className={labelClass}>
-                            {type === 'experience' ? '회사명' : '학교명'}
-                            {isEditing && <span className="ml-1 text-red-500">*</span>}
-                          </label>
-                          {isEditing ? (
+
+                      {!isEditing ? (
+                        <div className="flex w-full flex-wrap items-center">
+                          <div className="flex min-w-0 flex-1 items-center pr-6">
+                            <span className="mr-3 shrink-0 rounded bg-slate-100 px-2 py-1 text-sm font-black tracking-tighter text-slate-400 uppercase">
+                              소속
+                            </span>
+                            <span className="truncate text-xl font-black break-all text-slate-900">
+                              {type === 'experience'
+                                ? (item as Experience).company
+                                : (item as Education).school}
+                            </span>
+                          </div>
+                          <div className="hidden h-8 w-px bg-slate-200 md:block" />
+                          <div className="flex min-w-0 flex-1 items-center px-6">
+                            <span className="mr-3 shrink-0 rounded bg-slate-100 px-2 py-1 text-sm font-black tracking-tighter text-slate-400 uppercase">
+                              {type === 'experience' ? '역할' : '전공'}
+                            </span>
+                            <span className="truncate text-lg font-bold break-all text-slate-600">
+                              {type === 'experience'
+                                ? (item as Experience).role
+                                : (item as Education).major}
+                            </span>
+                          </div>
+                          <div className="hidden h-8 w-px bg-slate-200 md:block" />
+                          <div className="flex items-center pl-6">
+                            <span className="mr-3 shrink-0 rounded bg-slate-100 px-2 py-1 text-sm font-black tracking-tighter text-slate-400 uppercase">
+                              기간
+                            </span>
+                            <span className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-base font-black whitespace-nowrap text-blue-600">
+                              {item.period}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-12">
+                          <div className="relative col-span-1 md:col-span-4">
+                            <label className={labelClass}>
+                              {type === 'experience' ? '회사명' : '학교명'}{' '}
+                              <span className="ml-1 text-red-500">*</span>
+                            </label>
                             <input
                               className={inputClass(
                                 type === 'experience' ? `exp_company_${i}` : `edu_school_${i}`,
@@ -709,6 +801,9 @@ function ResumeDetailPage() {
                                 type === 'experience'
                                   ? (item as Experience).company
                                   : (item as Education).school
+                              }
+                              maxLength={
+                                type === 'experience' ? MAX_LENGTHS.COMPANY : MAX_LENGTHS.SCHOOL
                               }
                               placeholder={
                                 type === 'experience'
@@ -727,20 +822,21 @@ function ResumeDetailPage() {
                                 }
                               }}
                             />
-                          ) : (
-                            <p className="text-lg font-black break-all text-slate-900">
-                              {type === 'experience'
-                                ? (item as Experience).company
-                                : (item as Education).school}
-                            </p>
-                          )}
-                        </div>
-                        <div className="col-span-1 min-w-0 md:col-span-3">
-                          <label className={labelClass}>
-                            {type === 'experience' ? '직무' : '전공/상태'}
-                            {isEditing && <span className="ml-1 text-red-500">*</span>}
-                          </label>
-                          {isEditing ? (
+                            <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                              {
+                                (type === 'experience'
+                                  ? (item as Experience).company
+                                  : (item as Education).school
+                                ).length
+                              }
+                              /{type === 'experience' ? MAX_LENGTHS.COMPANY : MAX_LENGTHS.SCHOOL}
+                            </span>
+                          </div>
+                          <div className="relative col-span-1 md:col-span-3">
+                            <label className={labelClass}>
+                              {type === 'experience' ? '직무' : '전공/상태'}{' '}
+                              <span className="ml-1 text-red-500">*</span>
+                            </label>
                             <input
                               className={inputClass(
                                 type === 'experience' ? `exp_role_${i}` : `edu_major_${i}`,
@@ -749,6 +845,9 @@ function ResumeDetailPage() {
                                 type === 'experience'
                                   ? (item as Experience).role
                                   : (item as Education).major
+                              }
+                              maxLength={
+                                type === 'experience' ? MAX_LENGTHS.ROLE : MAX_LENGTHS.MAJOR
                               }
                               placeholder={
                                 type === 'experience' ? '직무를 입력하세요' : '전공을 입력하세요'
@@ -765,17 +864,18 @@ function ResumeDetailPage() {
                                 }
                               }}
                             />
-                          ) : (
-                            <p className="font-bold break-all text-slate-600">
-                              {type === 'experience'
-                                ? (item as Experience).role
-                                : (item as Education).major}
-                            </p>
-                          )}
-                        </div>
-                        <div className="col-span-1 md:col-span-5">
-                          <label className={labelClass}>기간</label>
-                          {isEditing ? (
+                            <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                              {
+                                (type === 'experience'
+                                  ? (item as Experience).role
+                                  : (item as Education).major
+                                ).length
+                              }
+                              /{type === 'experience' ? MAX_LENGTHS.ROLE : MAX_LENGTHS.MAJOR}
+                            </span>
+                          </div>
+                          <div className="col-span-1 md:col-span-5">
+                            <label className={labelClass}>기간</label>
                             <div className="flex flex-wrap items-center gap-1 sm:flex-nowrap sm:gap-2">
                               <select
                                 className={selectClass}
@@ -831,13 +931,9 @@ function ResumeDetailPage() {
                                 ))}
                               </select>
                             </div>
-                          ) : (
-                            <div className="inline-block rounded-lg bg-slate-50 px-4 py-1.5 text-sm font-black whitespace-nowrap text-blue-600">
-                              {item.period}
-                            </div>
-                          )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -942,11 +1038,6 @@ function ResumeDetailPage() {
                   <p className="px-2 text-sm font-bold text-slate-500 italic">
                     * PDF 형식의 파일만 업로드 가능합니다.
                   </p>
-                  <div className="rounded-2xl border-2 border-dashed border-slate-100 bg-slate-50/50 py-6 text-center">
-                    <p className="text-sm font-bold text-slate-400">
-                      파일을 여기에 끌어다 놓아서 업로드할 수도 있습니다.
-                    </p>
-                  </div>
                 </div>
               )}
             </div>
@@ -959,7 +1050,7 @@ function ResumeDetailPage() {
               isEditing && (
                 <div className="flex items-center gap-2">
                   {!innerEditingIntro ? (
-                    <>
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="blue"
                         size="md"
@@ -998,9 +1089,9 @@ function ResumeDetailPage() {
                       >
                         내용 수정
                       </Button>
-                    </>
+                    </div>
                   ) : (
-                    <>
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
                         size="md"
@@ -1032,7 +1123,7 @@ function ResumeDetailPage() {
                       >
                         내용 저장
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
               )
@@ -1053,13 +1144,12 @@ function ResumeDetailPage() {
                       : 'border-slate-100 bg-slate-50'
                   }`}
                 >
-                  <span
-                    className={`truncate text-lg font-black ${currentSelfIntro ? 'text-blue-600' : 'text-slate-400'}`}
-                  >
+                  <div className="mr-4 flex min-w-0 flex-1 items-center">
                     {innerEditingIntro ? (
                       <input
-                        className="w-full bg-transparent text-blue-600 outline-none"
+                        className="w-full bg-transparent text-xl font-black text-blue-600 outline-none"
                         value={currentSelfIntro?.title || ''}
+                        maxLength={MAX_LENGTHS.TITLE}
                         placeholder="자기소개 제목을 입력하세요"
                         autoFocus
                         onChange={(e) =>
@@ -1073,25 +1163,35 @@ function ResumeDetailPage() {
                         }
                       />
                     ) : (
-                      currentSelfIntro?.title || '자기소개를 선택하거나 새로 작성하세요.'
+                      <span
+                        className={`truncate text-xl font-black ${currentSelfIntro ? 'text-blue-600' : 'text-slate-400'}`}
+                      >
+                        {currentSelfIntro?.title || '자기소개를 선택하거나 새로 작성하세요.'}
+                      </span>
                     )}
-                  </span>
+                  </div>
                   {isEditing && !innerEditingIntro && (
                     <span className="ml-2 shrink-0 text-blue-600">▾</span>
                   )}
+                  {innerEditingIntro && (
+                    <span className="text-[10px] font-black whitespace-nowrap text-blue-300">
+                      {(currentSelfIntro?.title || '').length}/{MAX_LENGTHS.TITLE}
+                    </span>
+                  )}
                 </div>
+
                 <AnimatePresence>
-                  {showSelfIntroList && isEditing && !innerEditingIntro && (
+                  {showSelfIntroList && !innerEditingIntro && isEditing && (
                     <>
                       <div
-                        className="fixed inset-0 z-[60]"
+                        className="fixed inset-0 z-[100]"
                         onClick={() => setShowSelfIntroList(false)}
                       />
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="absolute top-full left-0 z-[70] mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
+                        className="absolute top-full left-0 z-[110] mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
                       >
                         {selfIntros.map((s) => (
                           <div
@@ -1103,7 +1203,7 @@ function ResumeDetailPage() {
                             }}
                           >
                             <span className="mr-4 truncate font-bold text-slate-700">
-                              {s.title}
+                              {s.title || '(제목 없음)'}
                             </span>
                             <Button
                               variant="close"
@@ -1120,22 +1220,9 @@ function ResumeDetailPage() {
                   )}
                 </AnimatePresence>
               </div>
-
               <div
-                className={`relative overflow-hidden rounded-2xl border p-8 transition-all ${
-                  innerEditingIntro
-                    ? 'border-blue-600 bg-white ring-4 ring-blue-600/5'
-                    : 'border-slate-50 bg-slate-50/30 shadow-inner'
-                }`}
+                className={`relative overflow-hidden rounded-2xl border p-8 transition-all ${innerEditingIntro ? 'border-blue-600 bg-white ring-4 ring-blue-600/5' : 'border-slate-50 bg-slate-50/30 shadow-inner'}`}
               >
-                {innerEditingIntro && (
-                  <div className="absolute top-4 right-6 z-10 flex items-center gap-2 rounded-full bg-blue-600 px-4 py-1.5 shadow-md">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                    <span className="text-[10px] font-black tracking-widest whitespace-nowrap text-white uppercase">
-                      수정 중 (Editing)
-                    </span>
-                  </div>
-                )}
                 {innerEditingIntro ? (
                   <textarea
                     className="min-h-[300px] w-full resize-none bg-transparent text-lg leading-relaxed font-bold outline-none"
@@ -1213,22 +1300,6 @@ function ResumeDetailPage() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative w-full max-w-md rounded-[40px] bg-white p-10 text-center shadow-2xl"
             >
-              <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-                <svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-              </div>
               <h3 className="mb-2 text-2xl font-black text-slate-900">
                 {deleteConfirm ? '정말 삭제할까요?' : '수정 사항을 취소할까요?'}
               </h3>
@@ -1241,7 +1312,7 @@ function ResumeDetailPage() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="flex-1 rounded-2xl px-4 whitespace-nowrap"
+                  className="flex-1 rounded-2xl"
                   onClick={() => {
                     setDeleteConfirm(null);
                     blocker.reset?.();
@@ -1252,7 +1323,7 @@ function ResumeDetailPage() {
                 <Button
                   variant="red"
                   size="lg"
-                  className="flex-1 rounded-2xl px-4 whitespace-nowrap shadow-lg"
+                  className="flex-1 rounded-2xl"
                   onClick={() => {
                     if (deleteConfirm) confirmDeleteAction();
                     else blocker.proceed?.();
