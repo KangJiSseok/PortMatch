@@ -186,14 +186,14 @@ export default function InterviewPage() {
     };
   }, [isCorporate]);
 
-  if (status === 'loading') return <RoomSkeleton onBackToLobby={goLobby} onExit={goList} />;
+  if (status === 'loading') return <RoomSkeleton onExit={goList} />;
   if (status === 'error') {
     return (
-      <ErrorBox message={errorMessage} onRetry={load} onBackToLobby={goLobby} onList={goList} />
+      <ErrorBox message={errorMessage} onRetry={load} onList={goList} />
     );
   }
   if (status === 'notfound' || !session)
-    return <NotFoundBox onList={goList} onBackToLobby={goLobby} />;
+    return <NotFoundBox onList={goList} />;
 
   return (
     // ✅ 가로 스크롤: body가 넓어지도록 root에 min-w 고정
@@ -372,9 +372,6 @@ function ErrorBox({ message, onRetry, onList }: { message: string; onRetry: () =
           <p className="mt-2 text-sm font-semibold text-zinc-500">{message}</p>
 
           <div className="mt-6 flex justify-center gap-3">
-            <Button variant="outline" size="md" className="rounded-2xl" onClick={onBackToLobby}>
-              로비로
-            </Button>
             <Button variant="outline" size="md" className="rounded-2xl" onClick={onList}>
               목록
             </Button>
@@ -388,13 +385,7 @@ function ErrorBox({ message, onRetry, onList }: { message: string; onRetry: () =
   );
 }
 
-function RoomSkeleton({
-  onBackToLobby,
-  onExit,
-}: {
-  onBackToLobby: () => void;
-  onExit: () => void;
-}) {
+function RoomSkeleton({ onExit }: { onExit: () => void }) {
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
