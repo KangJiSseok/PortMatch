@@ -1,0 +1,13 @@
+stages:
+  - deploy
+
+deploy:
+  stage: deploy
+  tags:
+    - deploy
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "infra-feat/CICD"'
+  script:
+    - set -e
+    - cd $CI_PROJECT_DIR
+    - docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
