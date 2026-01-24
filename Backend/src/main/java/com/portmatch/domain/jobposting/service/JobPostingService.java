@@ -15,7 +15,7 @@ public interface JobPostingService {
     List<JobPostingDto> getAllJobPostings();
 
     // 3. [Read] 특정 공고 상세 조회 (기존 getJobDetail 활용)
-    JobPostingDto getJobDetail(String id) throws Exception;
+    JobPostingDto getJobDetail(String id);
 
     // 4. [Delete] 특정 공고 삭제
     void deleteJobPosting(String id);

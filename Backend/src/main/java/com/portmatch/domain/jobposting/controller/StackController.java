@@ -1,53 +1,66 @@
 package com.portmatch.domain.jobposting.controller;
 
 import com.portmatch.domain.jobposting.dto.TechStackDto;
-import com.portmatch.domain.jobposting.entity.PostingStackEntity;
 import com.portmatch.domain.jobposting.service.StackService;
+import com.portmatch.global.api.BaseApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "기술 스택", description = "기술 스택 조회 및 관리 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/stacks")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*") // 프론트엔드 연결을 위한 설정
+@CrossOrigin(origins = "*")
 public class StackController {
 
     private final StackService stackService;
 
-    // 1. 전체 기술 스택 목록 조회
+    @Operation(summary = "전체 기술 스택 목록 조회", description = "데이터베이스에 등록된 모든 기술 스택(Java, Spring 등)을 조회합니다.")
     @GetMapping
-    public ResponseEntity<List<TechStackDto>> getAllStacks() {
+    public BaseApiResponse<List<TechStackDto>> getAllStacks() {
         log.info("전체 기술 스택 목록 조회 요청");
         List<TechStackDto> stacks = stackService.getAllTechStacks();
-        return ResponseEntity.ok(stacks);
+        return BaseApiResponse.ok(stacks);
     }
 
-    // 2. 특정 공고에 포함된 스택 리스트 조회
+    @Operation(summary = "공고별 스택 리스트 조회", description = "특정 채용 공고에 요구사항으로 등록된 기술 스택들을 조회합니다.")
     @GetMapping("/posting/{postingId}")
-    public ResponseEntity<List<TechStackDto>> getStacksByPosting(@PathVariable String postingId) {
+    public BaseApiResponse<List<TechStackDto>> getStacksByPosting(
+            @Parameter(description = "공고 ID", example = "job_001") @PathVariable String postingId) {
         log.info("공고별 스택 조회 요청 - 공고 ID: {}", postingId);
         List<TechStackDto> stacks = stackService.getPostingStacks(postingId);
-        return ResponseEntity.ok(stacks);
+        return BaseApiResponse.ok(stacks);
     }
 
-    // 3. 마스터 기술 스택 새롭게 등록 (관리자용)
+    @Operation(summary = "마스터 기술 스택 등록", description = "새로운 기술 스택 이름을 시스템에 등록합니다.")
+    @ApiResponse(responseCode = "200", description = "등록 성공")
     @PostMapping
-    public ResponseEntity<String> createStack(@RequestParam String stackName) {
+    public BaseApiResponse<String> createStack(
+            @Parameter(description = "등록할 스택 이름", example = "Kotlin") @RequestParam String stackName) {
         log.info("새로운 기술 스택 등록 요청: {}", stackName);
         stackService.createStack(stackName);
-        return ResponseEntity.status(HttpStatus.CREATED).body("기술 스택이 등록되었습니다.");
+        return BaseApiResponse.ok("기술 스택이 성공적으로 등록되었습니다.");
     }
 
+    @Operation(summary = "스택 상세 조회", description = "스택 고유 ID(Long)를 통해 특정 스택 정보를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "2001", description = "존재하지 않는 스택 ID")
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<TechStackDto> getStackById(@PathVariable Long id) {
-        log.info("stack id로 기술 스택 조회");
+    public BaseApiResponse<TechStackDto> getStackById(
+            @Parameter(description = "스택 고유 ID", example = "1") @PathVariable Long id) {
+        log.info("stack id로 기술 스택 조회 요청 - ID: {}", id);
         TechStackDto stack = stackService.getTechStackById(id);
-        return ResponseEntity.ok(stack);
+        return BaseApiResponse.ok(stack);
     }
 }
