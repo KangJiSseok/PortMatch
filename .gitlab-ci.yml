@@ -10,4 +10,39 @@ deploy:
   script:
     - set -e
     - cd $CI_PROJECT_DIR
+
+    # ---- .env.prod 생성 ----
+    - echo "POSTGRES_DB=$POSTGRES_DB" > .env.prod
+    - echo "POSTGRES_USER=$POSTGRES_USER" >> .env.prod
+    - echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env.prod
+
+    - echo "DB_URL=$DB_URL" >> .env.prod
+    - echo "DB_USERNAME=$DB_USERNAME" >> .env.prod
+    - echo "DB_PASSWORD=$DB_PASSWORD" >> .env.prod
+
+    - echo "AWS_S3_BUCKET=$AWS_S3_BUCKET" >> .env.prod
+    - echo "AWS_REGION=$AWS_REGION" >> .env.prod
+    - echo "AWS_ACCESS_KEY=$AWS_ACCESS_KEY" >> .env.prod
+    - echo "AWS_SECRET_KEY=$AWS_SECRET_KEY" >> .env.prod
+
+    - echo "PORTFOLIO_ANALYSIS_URL=$PORTFOLIO_ANALYSIS_URL" >> .env.prod
+    - echo "COMPANY_PROJECT_ANALYSIS_URL=$COMPANY_PROJECT_ANALYSIS_URL" >> .env.prod
+    - echo "MINERU_ENDPOINT=$MINERU_ENDPOINT" >> .env.prod
+
+    - echo "LANGCHAIN_TRACING_V2=$LANGCHAIN_TRACING_V2" >> .env.prod
+    - echo "LANGCHAIN_API_KEY=$LANGCHAIN_API_KEY" >> .env.prod
+    - echo "LANGCHAIN_PROJECT=$LANGCHAIN_PROJECT" >> .env.prod
+    - echo "LANGCHAIN_ENDPOINT=$LANGCHAIN_ENDPOINT" >> .env.prod
+
+    - echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env.prod
+    - echo "OPENAI_MODEL=$OPENAI_MODEL" >> .env.prod
+
+    - echo "PPLX_MODEL=$PPLX_MODEL" >> .env.prod
+    - echo "PPLX_API_KEY=$PPLX_API_KEY" >> .env.prod
+    - echo "PPLX_BASE_URL=$PPLX_BASE_URL" >> .env.prod
+
+    - echo "VITE_API_BASE_URL=$VITE_API_BASE_URL" >> .env.prod
+    - echo "VITE_SERVICE_NAME=$VITE_SERVICE_NAME" >> .env.prod
+
+    # ---- 배포 ----
     - docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
