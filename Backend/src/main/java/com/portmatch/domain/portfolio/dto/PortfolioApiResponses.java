@@ -40,4 +40,11 @@ public class PortfolioApiResponses {
         public String message;
         public PortfolioAnalysisResponse data;
     }
+
+    @Schema(name = "PortfolioDeleteApiResponse")
+    public static class PortfolioDeleteApiResponse {
+        public int code;
+        public String message;
+        public Object data;
+    }
 }

@@ -5,6 +5,7 @@ import com.portmatch.domain.auth.repository.UserRepository;
 import com.portmatch.domain.portfolio.dto.PortfolioResponse;
 import com.portmatch.domain.portfolio.dto.PresignedUrlResponse;
 import com.portmatch.domain.portfolio.entity.Portfolio;
+import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.global.config.AwsS3Properties;
 import com.portmatch.global.exception.BusinessException;
@@ -18,6 +19,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
@@ -33,6 +35,7 @@ import java.util.UUID;
 public class PortfolioService {
 
     private final PortfolioRepository portfolioRepository;
+    private final PortfolioAnalysisRepository portfolioAnalysisRepository;
     private final UserRepository userRepository;
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -40,12 +43,14 @@ public class PortfolioService {
 
     public PortfolioService(
             PortfolioRepository portfolioRepository,
+            PortfolioAnalysisRepository portfolioAnalysisRepository,
             UserRepository userRepository,
             S3Client s3Client,
             S3Presigner s3Presigner,
             AwsS3Properties awsS3Properties
     ) {
         this.portfolioRepository = portfolioRepository;
+        this.portfolioAnalysisRepository = portfolioAnalysisRepository;
         this.userRepository = userRepository;
         this.s3Client = s3Client;
         this.s3Presigner = s3Presigner;
@@ -132,6 +137,26 @@ public class PortfolioService {
                 .orElseThrow(() -> new BusinessException(ResponseCode.PORTFOLIO_NOT_FOUND));
 
         return buildPresignedUrl(portfolio, minutes);
+    }
+
+    public void deleteForUser(Long userId, Long portfolioId) {
+        Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.PORTFOLIO_NOT_FOUND));
+
+        DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                .bucket(awsS3Properties.getBucket())
+                .key(portfolio.getS3Key())
+                .build();
+        try {
+            s3Client.deleteObject(deleteObjectRequest);
+        } catch (Exception exception) {
+            throw new BusinessException(ResponseCode.PORTFOLIO_S3_DELETE_FAILED);
+        }
+
+        portfolioAnalysisRepository.findByPortfolioId(portfolio.getId())
+                .ifPresent(portfolioAnalysisRepository::delete);
+
+        portfolioRepository.delete(portfolio);
     }
 
     private PresignedUrlResponse buildPresignedUrl(Portfolio portfolio, int minutes) {
