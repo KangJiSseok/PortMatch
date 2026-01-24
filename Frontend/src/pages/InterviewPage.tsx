@@ -341,7 +341,7 @@ export default function InterviewPage() {
 
 /* ---------- 상태 UI ---------- */
 
-function NotFoundBox({ onList, onBackToLobby }: { onList: () => void; onBackToLobby: () => void }) {
+function NotFoundBox({ onList }: { onList: () => void }) {
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
@@ -361,17 +361,7 @@ function NotFoundBox({ onList, onBackToLobby }: { onList: () => void; onBackToLo
   );
 }
 
-function ErrorBox({
-  message,
-  onRetry,
-  onBackToLobby,
-  onList,
-}: {
-  message: string;
-  onRetry: () => void;
-  onBackToLobby: () => void;
-  onList: () => void;
-}) {
+function ErrorBox({ message, onRetry, onList }: { message: string; onRetry: () => void; onList: () => void }) {
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
