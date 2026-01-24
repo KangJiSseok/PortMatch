@@ -57,7 +57,7 @@ public class PortfolioAnalysisService {
         this.portfolioAnalysisRepository = portfolioAnalysisRepository;
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
-        requestFactory.setReadTimeout((int) Duration.ofMinutes(2).toMillis());
+        requestFactory.setReadTimeout((int) Duration.ofMinutes(10).toMillis());
         this.restTemplate = restTemplateBuilder
                 .requestFactory(() -> requestFactory)
                 .build();

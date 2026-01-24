@@ -53,4 +53,19 @@ public class ApplicantSignUpRequest {
     @Min(value = 0, message = "총 경력 연차는 0 이상이어야 합니다.")
     //@Max(value = 50, message = "총 경력 연차는 50 이하로 입력해주세요.")
     private Integer totalExperienceYears;
+
+
+    @Override
+    public String toString() {
+        return "ApplicantSignUpRequest{" +
+                "name='" + name + '\'' +
+                ", email='" + email + '\'' +
+                ", password='" + password + '\'' +
+                ", gender=" + gender +
+                ", birthDate=" + birthDate +
+                ", phone='" + phone + '\'' +
+                ", address='" + address + '\'' +
+                ", totalExperienceYears=" + totalExperienceYears +
+                '}';
+    }
 }
