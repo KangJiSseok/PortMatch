@@ -168,7 +168,6 @@ export default function InterviewPage() {
     };
   }, [exitOpen]);
 
-  const goLobby = () => navigate(ROUTES.lobby(Number(id)));
   const goList = () => navigate(ROUTES.list);
 
   const mainVideo = useMemo(() => {
