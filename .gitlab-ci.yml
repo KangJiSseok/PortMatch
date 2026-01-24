@@ -10,4 +10,4 @@ deploy:
   script:
     - set -e
     - cd $CI_PROJECT_DIR
-    - docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+    - docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
