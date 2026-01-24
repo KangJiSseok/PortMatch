@@ -134,4 +134,24 @@ public class PortfolioController {
     ) {
         return BaseApiResponse.ok(portfolioAnalysisService.getAnalysis(user.getId(), portfolioId));
     }
+
+    @Operation(
+            summary = "내 포트폴리오 삭제",
+            description = "로그인한 사용자의 포트폴리오를 삭제합니다. (S3 + DB)"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "삭제 성공",
+            content = @Content(schema = @Schema(implementation = PortfolioApiResponses.PortfolioDeleteApiResponse.class))
+    )
+    @DeleteMapping("/me/{portfolioId}")
+    public BaseApiResponse<Void> deletePortfolio(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal(expression = "user") User user,
+            @Parameter(description = "포트폴리오 ID", required = true)
+            @PathVariable Long portfolioId
+    ) {
+        portfolioService.deleteForUser(user.getId(), portfolioId);
+        return BaseApiResponse.ok(null);
+    }
 }

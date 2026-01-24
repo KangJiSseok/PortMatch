@@ -24,10 +24,11 @@ public enum ResponseCode {
     PORTFOLIO_NOT_FOUND(false, 2404, "포트폴리오를 찾을 수 없습니다."),
     PORTFOLIO_FILE_REQUIRED(false, 2405, "포트폴리오 파일은 필수입니다."),
     PORTFOLIO_S3_UPLOAD_FAILED(false, 2406, "포트폴리오 업로드에 실패했습니다."),
-    PORTFOLIO_ANALYSIS_SERVICE_UNAVAILABLE(false, 2407, "포트폴리오 분석 서비스가 응답하지 않습니다."),
-    PORTFOLIO_ANALYSIS_PAYLOAD_FAILED(false, 2408, "포트폴리오 분석 요청 생성에 실패했습니다."),
-    PORTFOLIO_ANALYSIS_EMPTY(false, 2409, "포트폴리오 분석 결과가 비어있습니다."),
-    PORTFOLIO_ANALYSIS_BASE_URL_NOT_CONFIGURED(false, 2410, "포트폴리오 분석 URL 설정이 없습니다."),
+    PORTFOLIO_S3_DELETE_FAILED(false, 2407, "포트폴리오 삭제에 실패했습니다."),
+    PORTFOLIO_ANALYSIS_SERVICE_UNAVAILABLE(false, 2408, "포트폴리오 분석 서비스가 응답하지 않습니다."),
+    PORTFOLIO_ANALYSIS_PAYLOAD_FAILED(false, 2409, "포트폴리오 분석 요청 생성에 실패했습니다."),
+    PORTFOLIO_ANALYSIS_EMPTY(false, 2410, "포트폴리오 분석 결과가 비어있습니다."),
+    PORTFOLIO_ANALYSIS_BASE_URL_NOT_CONFIGURED(false, 2411, "포트폴리오 분석 URL 설정이 없습니다."),
 
     // 4000: domain error
     DUPLICATE_EMAIL(false, 4100, "이미 사용 중인 이메일입니다."),
