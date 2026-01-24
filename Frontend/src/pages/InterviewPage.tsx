@@ -31,12 +31,10 @@ const ROUTES = {
 function RoomHeader({
   subtitle,
   tags,
-  onBackToLobby,
   onExit,
 }: {
   subtitle: string;
   tags?: React.ReactNode;
-  onBackToLobby: () => void;
   onExit: () => void;
 }) {
   return (
@@ -204,7 +202,6 @@ export default function InterviewPage() {
       <div className="mx-auto w-[1280px] space-y-10 px-6">
         <RoomHeader
           subtitle={`${session.companyName} · ${session.postingTitle}`}
-          onBackToLobby={goLobby}
           onExit={() => setExitOpen(true)}
           tags={
             <>
@@ -348,11 +345,7 @@ function NotFoundBox({ onList, onBackToLobby }: { onList: () => void; onBackToLo
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        <RoomHeader
-          subtitle="세션을 찾을 수 없어요."
-          onBackToLobby={onBackToLobby}
-          onExit={onList}
-        />
+        <RoomHeader subtitle="세션을 찾을 수 없어요." onExit={onList} />
 
         <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
           <p className="text-lg font-black">유효하지 않은 면접 세션이에요.</p>
@@ -382,11 +375,7 @@ function ErrorBox({
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        <RoomHeader
-          subtitle="연결 준비 중 문제가 발생했어요."
-          onBackToLobby={onBackToLobby}
-          onExit={onList}
-        />
+        <RoomHeader subtitle="연결 준비 중 문제가 발생했어요." onExit={onList} />
 
         <div className="rounded-4xl border border-zinc-100 bg-white p-10 text-center shadow-sm">
           <p className="text-lg font-black">데이터를 불러오지 못했어요</p>
@@ -419,7 +408,7 @@ function RoomSkeleton({
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        <RoomHeader subtitle="방에 연결하는 중..." onBackToLobby={onBackToLobby} onExit={onExit} />
+        <RoomHeader subtitle="방에 연결하는 중..." onExit={onExit} />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-2">

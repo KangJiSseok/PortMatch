@@ -36,6 +36,9 @@ interface FetchJobPostingsParams {
 
 export async function fetchJobPostings(params: FetchJobPostingsParams): Promise<JobPostingListResponse> {
   const { companyId, page, size, sort } = params;
+  void page;
+  void size;
+  void sort;
 
   // ✅ 나중에 백엔드 붙을 때 여기만 교체하면 됨
   // const qs = new URLSearchParams({

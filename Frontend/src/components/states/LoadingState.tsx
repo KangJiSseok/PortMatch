@@ -1,5 +1,3 @@
-import React from 'react';
-
 type LoadingStateProps = {
   title?: string;
   description?: string;
