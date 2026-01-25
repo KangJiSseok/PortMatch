@@ -31,12 +31,10 @@ const ROUTES = {
 function RoomHeader({
   subtitle,
   tags,
-  onBackToLobby,
   onExit,
 }: {
   subtitle: string;
   tags?: React.ReactNode;
-  onBackToLobby: () => void;
   onExit: () => void;
 }) {
   return (
@@ -170,7 +168,6 @@ export default function InterviewPage() {
     };
   }, [exitOpen]);
 
-  const goLobby = () => navigate(ROUTES.lobby(Number(id)));
   const goList = () => navigate(ROUTES.list);
 
   const mainVideo = useMemo(() => {
@@ -188,14 +185,14 @@ export default function InterviewPage() {
     };
   }, [isCorporate]);
 
-  if (status === 'loading') return <RoomSkeleton onBackToLobby={goLobby} onExit={goList} />;
+  if (status === 'loading') return <RoomSkeleton onExit={goList} />;
   if (status === 'error') {
     return (
-      <ErrorBox message={errorMessage} onRetry={load} onBackToLobby={goLobby} onList={goList} />
+      <ErrorBox message={errorMessage} onRetry={load} onList={goList} />
     );
   }
   if (status === 'notfound' || !session)
-    return <NotFoundBox onList={goList} onBackToLobby={goLobby} />;
+    return <NotFoundBox onList={goList} />;
 
   return (
     // ✅ 가로 스크롤: body가 넓어지도록 root에 min-w 고정
@@ -204,7 +201,6 @@ export default function InterviewPage() {
       <div className="mx-auto w-[1280px] space-y-10 px-6">
         <RoomHeader
           subtitle={`${session.companyName} · ${session.postingTitle}`}
-          onBackToLobby={goLobby}
           onExit={() => setExitOpen(true)}
           tags={
             <>
@@ -344,15 +340,11 @@ export default function InterviewPage() {
 
 /* ---------- 상태 UI ---------- */
 
-function NotFoundBox({ onList, onBackToLobby }: { onList: () => void; onBackToLobby: () => void }) {
+function NotFoundBox({ onList }: { onList: () => void }) {
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        <RoomHeader
-          subtitle="세션을 찾을 수 없어요."
-          onBackToLobby={onBackToLobby}
-          onExit={onList}
-        />
+        <RoomHeader subtitle="세션을 찾을 수 없어요." onExit={onList} />
 
         <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
           <p className="text-lg font-black">유효하지 않은 면접 세션이에요.</p>
@@ -368,34 +360,17 @@ function NotFoundBox({ onList, onBackToLobby }: { onList: () => void; onBackToLo
   );
 }
 
-function ErrorBox({
-  message,
-  onRetry,
-  onBackToLobby,
-  onList,
-}: {
-  message: string;
-  onRetry: () => void;
-  onBackToLobby: () => void;
-  onList: () => void;
-}) {
+function ErrorBox({ message, onRetry, onList }: { message: string; onRetry: () => void; onList: () => void }) {
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        <RoomHeader
-          subtitle="연결 준비 중 문제가 발생했어요."
-          onBackToLobby={onBackToLobby}
-          onExit={onList}
-        />
+        <RoomHeader subtitle="연결 준비 중 문제가 발생했어요." onExit={onList} />
 
         <div className="rounded-4xl border border-zinc-100 bg-white p-10 text-center shadow-sm">
           <p className="text-lg font-black">데이터를 불러오지 못했어요</p>
           <p className="mt-2 text-sm font-semibold text-zinc-500">{message}</p>
 
           <div className="mt-6 flex justify-center gap-3">
-            <Button variant="outline" size="md" className="rounded-2xl" onClick={onBackToLobby}>
-              로비로
-            </Button>
             <Button variant="outline" size="md" className="rounded-2xl" onClick={onList}>
               목록
             </Button>
@@ -409,17 +384,11 @@ function ErrorBox({
   );
 }
 
-function RoomSkeleton({
-  onBackToLobby,
-  onExit,
-}: {
-  onBackToLobby: () => void;
-  onExit: () => void;
-}) {
+function RoomSkeleton({ onExit }: { onExit: () => void }) {
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        <RoomHeader subtitle="방에 연결하는 중..." onBackToLobby={onBackToLobby} onExit={onExit} />
+        <RoomHeader subtitle="방에 연결하는 중..." onExit={onExit} />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-2">

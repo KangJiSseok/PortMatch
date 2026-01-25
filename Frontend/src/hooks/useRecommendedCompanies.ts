@@ -1,7 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchRecommendedCompanies } from '@/api/recommend';
-import type { RecommendedCompany } from '@/types/recommend';
-
 /**
  * 추천 기업 목록 조회 Hook
  *

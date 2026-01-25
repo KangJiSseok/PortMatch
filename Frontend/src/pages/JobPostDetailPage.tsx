@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'r
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../components/Button/Button';
-import { fetchJobPostDetail, toggleJobPostScrap, toggleJobPostScrapAsync } from '../api/jobPosts';
+import { fetchJobPostDetail, toggleJobPostScrapAsync } from '../api/jobPosts';
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
 type ApiResult = Awaited<ReturnType<typeof fetchJobPostDetail>>;
