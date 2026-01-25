@@ -31,12 +31,6 @@ public class CompanyProjectEmbedding {
     @Column(name = "project_id", nullable = false)
     private Long projectId;
 
-    @Column(nullable = false)
-    private String model;
-
-    @Column(nullable = false)
-    private Integer dim;
-
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
@@ -53,16 +47,12 @@ public class CompanyProjectEmbedding {
             Long companyId,
             Long analysisId,
             Long projectId,
-            String model,
-            Integer dim,
             String content,
             String embedding
     ) {
         this.companyId = companyId;
         this.analysisId = analysisId;
         this.projectId = projectId;
-        this.model = model;
-        this.dim = dim;
         this.content = content;
         this.embedding = embedding;
     }
@@ -79,9 +69,7 @@ public class CompanyProjectEmbedding {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void update(String model, Integer dim, String content, String embedding) {
-        this.model = model;
-        this.dim = dim;
+    public void update(String content, String embedding) {
         this.content = content;
         this.embedding = embedding;
     }

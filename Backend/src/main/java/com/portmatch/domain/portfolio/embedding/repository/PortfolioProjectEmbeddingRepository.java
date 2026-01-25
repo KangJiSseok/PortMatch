@@ -14,15 +14,13 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
     @Modifying
     @Query(value = """
         INSERT INTO portfolio_project_embeddings
-            (portfolio_id, analysis_id, project_id, model, dim, content, content_hash, embedding, created_at, updated_at)
+            (portfolio_id, analysis_id, project_id, content, content_hash, embedding, created_at, updated_at)
         VALUES
-            (:portfolioId, :analysisId, :projectId, :model, :dim, :content, :contentHash, CAST(:embedding AS vector), NOW(), NOW())
+            (:portfolioId, :analysisId, :projectId, :content, :contentHash, CAST(:embedding AS vector), NOW(), NOW())
         ON CONFLICT (project_id)
         DO UPDATE SET
             portfolio_id = EXCLUDED.portfolio_id,
             analysis_id = EXCLUDED.analysis_id,
-            model = EXCLUDED.model,
-            dim = EXCLUDED.dim,
             content = EXCLUDED.content,
             content_hash = EXCLUDED.content_hash,
             embedding = EXCLUDED.embedding,
@@ -32,8 +30,6 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
             Long portfolioId,
             Long analysisId,
             Long projectId,
-            String model,
-            Integer dim,
             String content,
             String contentHash,
             String embedding

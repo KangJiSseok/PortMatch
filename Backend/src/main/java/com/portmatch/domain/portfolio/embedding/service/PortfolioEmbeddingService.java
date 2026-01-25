@@ -66,7 +66,6 @@ public class PortfolioEmbeddingService {
             return new PortfolioEmbeddingUpsertResult(
                     portfolioId,
                     analysis.getId(),
-                    embeddingModel,
                     0, 0, 0, 0,
                     List.of()
             );
@@ -130,8 +129,6 @@ public class PortfolioEmbeddingService {
                         portfolioId,
                         analysis.getId(),
                         projectId,
-                        resp.model(),
-                        resp.dim(),
                         content,
                         contentHash,
                         toVectorString(resp.vectors().get(i))
@@ -144,8 +141,6 @@ public class PortfolioEmbeddingService {
                         portfolioId,
                         analysis.getId(),
                         projectId,
-                        resp.model(),
-                        resp.dim(),
                         content,
                         contentHash,
                         toVectorString(resp.vectors().get(i))
@@ -158,7 +153,6 @@ public class PortfolioEmbeddingService {
         return new PortfolioEmbeddingUpsertResult(
                 portfolioId,
                 analysis.getId(),
-                resp.model(),
                 projectIds.size(),
                 inserted,
                 updated,

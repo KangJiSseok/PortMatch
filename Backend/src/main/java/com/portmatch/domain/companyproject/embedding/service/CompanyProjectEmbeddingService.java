@@ -101,8 +101,6 @@ public class CompanyProjectEmbeddingService {
                     companyId,
                     analysisId,
                     projectId,
-                    resp.model(),
-                    resp.dim(),
                     content,
                     vectorStr
             );

@@ -31,12 +31,6 @@ public class PortfolioProjectEmbedding {
     @Column(name = "project_id", nullable = false)
     private Long projectId;
 
-    @Column(nullable = false, length = 128)
-    private String model;
-
-    @Column(nullable = false)
-    private Integer dim;
-
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
@@ -56,8 +50,6 @@ public class PortfolioProjectEmbedding {
             Long portfolioId,
             Long analysisId,
             Long projectId,
-            String model,
-            Integer dim,
             String content,
             String contentHash,
             String embedding
@@ -65,8 +57,6 @@ public class PortfolioProjectEmbedding {
         this.portfolioId = portfolioId;
         this.analysisId = analysisId;
         this.projectId = projectId;
-        this.model = model;
-        this.dim = dim;
         this.content = content;
         this.contentHash = contentHash;
         this.embedding = embedding;

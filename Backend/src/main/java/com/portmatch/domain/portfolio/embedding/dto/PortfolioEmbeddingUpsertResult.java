@@ -5,7 +5,6 @@ import java.util.List;
 public record PortfolioEmbeddingUpsertResult(
         Long portfolioId,
         Long analysisId,
-        String model,
         int total,
         int insertedCount,
         int updatedCount,

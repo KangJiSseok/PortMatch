@@ -17,14 +17,12 @@ public interface CompanyProjectEmbeddingRepository extends JpaRepository<Company
     @Transactional
     @Query(value = """
         INSERT INTO company_project_embeddings
-            (company_id, analysis_id, project_id, model, dim, content, embedding, created_at, updated_at)
+            (company_id, analysis_id, project_id, content, embedding, created_at, updated_at)
         VALUES
-            (:companyId, :analysisId, :projectId, :model, :dim, :content, CAST(:embedding AS vector), now(), now())
+            (:companyId, :analysisId, :projectId, :content, CAST(:embedding AS vector), now(), now())
         ON CONFLICT (project_id) DO UPDATE SET
             company_id = EXCLUDED.company_id,
             analysis_id = EXCLUDED.analysis_id,
-            model = EXCLUDED.model,
-            dim = EXCLUDED.dim,
             content = EXCLUDED.content,
             embedding = EXCLUDED.embedding,
             updated_at = now()
@@ -33,8 +31,6 @@ public interface CompanyProjectEmbeddingRepository extends JpaRepository<Company
             @Param("companyId") Long companyId,
             @Param("analysisId") Long analysisId,
             @Param("projectId") Long projectId,
-            @Param("model") String model,
-            @Param("dim") Integer dim,
             @Param("content") String content,
             @Param("embedding") String embedding
     );
