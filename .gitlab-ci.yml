@@ -36,63 +36,66 @@ build:
 
 deploy:
   stage: deploy
-  image: alpine:3.19
   tags:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "infra-feat/CICD"'
+
   before_script:
     - mkdir -p ~/.ssh
-    - echo "$EC2_SSH_KEY_B64" | base64 -d > ~/.ssh/id_ed25519
-    - chmod 600 ~/.ssh/id_ed25519
+    - echo "$EC2_SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
     - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
   script:
+    - scp -i ~/.ssh/id_rsa docker-compose.prod.yml \
+        "$EC2_USER@$EC2_HOST:/home/ubuntu/deploy/docker-compose.prod.yml"
+
     - |
-      scp -i ~/.ssh/id_ed25519 docker-compose.prod.yml "$EC2_USER@$EC2_HOST:/home/ubuntu/deploy/docker-compose.prod.yml"
-      ssh "$EC2_USER@$EC2_HOST" << EOF
+      ssh -i ~/.ssh/id_rsa "$EC2_USER@$EC2_HOST" << 'EOF'
       set -e
       cd /home/ubuntu/deploy
 
-      cat > .env.prod << ENV
+      cat > .env.prod << 'ENV'
       # ---------- ENV ----------
       APP_ENV=prod
       SPRING_PROFILES_ACTIVE=prod
 
       # ---------- DB ----------
-      POSTGRES_DB=$POSTGRES_DB
-      POSTGRES_USER=$POSTGRES_USER
-      POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      POSTGRES_DB=${POSTGRES_DB}
+      POSTGRES_USER=${POSTGRES_USER}
+      POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
-      SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL
-      SPRING_DATASOURCE_USERNAME=$SPRING_DATASOURCE_USERNAME
-      SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD
+      SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
 
       # ---------- AWS ----------
-      AWS_S3_BUCKET=$AWS_S3_BUCKET
-      AWS_REGION=$AWS_REGION
-      AWS_ACCESS_KEY=$AWS_ACCESS_KEY
-      AWS_SECRET_KEY=$AWS_SECRET_KEY
+      AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      AWS_REGION=${AWS_REGION}
+      AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY=${AWS_SECRET_KEY}
 
       # ---------- AI ----------
-      OPENAI_API_KEY=$OPENAI_API_KEY
-      OPENAI_MODEL=$OPENAI_MODEL
+      OPENAI_API_KEY=${OPENAI_API_KEY}
+      OPENAI_MODEL=${OPENAI_MODEL}
 
-      LANGCHAIN_TRACING_V2=$LANGCHAIN_TRACING_V2
-      LANGCHAIN_API_KEY=$LANGCHAIN_API_KEY
-      LANGCHAIN_PROJECT=$LANGCHAIN_PROJECT
-      LANGCHAIN_ENDPOINT=$LANGCHAIN_ENDPOINT
+      LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2}
+      LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT}
+      LANGCHAIN_ENDPOINT=${LANGCHAIN_ENDPOINT}
 
-      PPLX_API_KEY=$PPLX_API_KEY
-      PPLX_MODEL=$PPLX_MODEL
-      PPLX_BASE_URL=$PPLX_BASE_URL
+      PPLX_API_KEY=${PPLX_API_KEY}
+      PPLX_MODEL=${PPLX_MODEL}
+      PPLX_BASE_URL=${PPLX_BASE_URL}
 
       # ---------- Internal Services ----------
-      PORTFOLIO_ANALYSIS_URL=$PORTFOLIO_ANALYSIS_URL
-      COMPANY_PROJECT_ANALYSIS_URL=$COMPANY_PROJECT_ANALYSIS_URL
-      MINERU_ENDPOINT=$MINERU_ENDPOINT
+      PORTFOLIO_ANALYSIS_URL=${PORTFOLIO_ANALYSIS_URL}
+      COMPANY_PROJECT_ANALYSIS_URL=${COMPANY_PROJECT_ANALYSIS_URL}
+      MINERU_ENDPOINT=${MINERU_ENDPOINT}
       ENV
 
-      docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
+      docker login -u "${DOCKERHUB_USERNAME}" -p "${DOCKERHUB_TOKEN}"
       docker compose -f docker-compose.prod.yml pull
       docker compose -f docker-compose.prod.yml up -d --remove-orphans
       EOF
