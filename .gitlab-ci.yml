@@ -56,7 +56,7 @@ deploy:
       set -e
       cd /home/ubuntu/deploy
 
-      cat > .env.prod << 'ENV'
+      cat > .env.prod << ENV
       # ---------- ENV ----------
       APP_ENV=prod
       SPRING_PROFILES_ACTIVE=prod
@@ -93,6 +93,10 @@ deploy:
       PORTFOLIO_ANALYSIS_URL=${PORTFOLIO_ANALYSIS_URL}
       COMPANY_PROJECT_ANALYSIS_URL=${COMPANY_PROJECT_ANALYSIS_URL}
       MINERU_ENDPOINT=${MINERU_ENDPOINT}
+
+      # ---------- Frontend ----------
+      VITE_API_BASE_URL=${VITE_API_BASE_URL}
+      VITE_SERVICE_NAME=${VITE_SERVICE_NAME}
       ENV
 
       docker login -u "${DOCKERHUB_USERNAME}" -p "${DOCKERHUB_TOKEN}"
