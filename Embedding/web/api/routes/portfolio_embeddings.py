@@ -70,8 +70,6 @@ async def embed_portfolio_projects(request: Request):
         raise HTTPException(status_code=502, detail="embedding service returned invalid result")
 
     return {
-        "model": model,
-        "dim": len(vectors[0]) if vectors else None,
         "embeddings": [
             {"index": i, "content_hash": hashes[i], "embedding": vectors[i]}
             for i in range(len(vectors))

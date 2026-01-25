@@ -15,8 +15,6 @@ class EmbeddingsRequest(BaseModel):
 
 
 class EmbeddingsResponse(BaseModel):
-    model: str
-    dim: int
     vectors: List[List[float]]
 
 
@@ -40,4 +38,4 @@ def embeddings(payload: EmbeddingsRequest) -> EmbeddingsResponse:
     if not vectors or not vectors[0]:
         raise HTTPException(status_code=502, detail="embedding failed: empty vectors")
 
-    return EmbeddingsResponse(model=model, dim=len(vectors[0]), vectors=vectors)
+    return EmbeddingsResponse(vectors=vectors)
