@@ -42,8 +42,6 @@ deploy:
   rules:
     - if: '$CI_COMMIT_BRANCH == "infra-feat/CICD"'
   before_script:
-    - sudo apt-get update
-    - sudo apt-get install -y openssh-client
     - mkdir -p ~/.ssh
     - echo "$EC2_SSH_KEY_B64" | base64 -d > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
