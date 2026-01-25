@@ -39,7 +39,8 @@ function RoomHeader({
 }) {
   return (
     <header className="border-b border-zinc-100 pb-6">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+      {/* ✅ 반응형 제거: 항상 같은 배치(요소 안움직임) */}
+      <div className="flex items-end justify-between gap-5">
         <div className="min-w-0">
           <div className="mb-4 flex items-center gap-3">
             <p className="text-xs font-black tracking-[0.35em] text-zinc-400 uppercase">
@@ -186,18 +187,12 @@ export default function InterviewPage() {
   }, [isCorporate]);
 
   if (status === 'loading') return <RoomSkeleton onExit={goList} />;
-  if (status === 'error') {
-    return (
-      <ErrorBox message={errorMessage} onRetry={load} onList={goList} />
-    );
-  }
-  if (status === 'notfound' || !session)
-    return <NotFoundBox onList={goList} />;
+  if (status === 'error') return <ErrorBox message={errorMessage} onRetry={load} onList={goList} />;
+  if (status === 'notfound' || !session) return <NotFoundBox onList={goList} />;
 
   return (
-    // ✅ 가로 스크롤: body가 넓어지도록 root에 min-w 고정
+    // ✅ MyPage 방식: 윈도우(브라우저) 가로 스크롤이 생기게 root에 min-w 고정
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
-      {/* ✅ 컨테이너도 고정 폭 */}
       <div className="mx-auto w-[1280px] space-y-10 px-6">
         <RoomHeader
           subtitle={`${session.companyName} · ${session.postingTitle}`}
@@ -208,15 +203,15 @@ export default function InterviewPage() {
                 {formatDateTime(session.scheduledAt)}
               </span>
               <span className="bg-cloud-dancer text-midnight-ink rounded-full px-3 py-1 text-xs font-black">
-                ROOM ·{' '}
-                <span className="font-semibold break-all text-zinc-600">{session.room_id}</span>
+                ROOM · <span className="font-semibold break-all text-zinc-600">{session.room_id}</span>
               </span>
             </>
           }
         />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+        {/* ✅ 반응형 제거: 항상 3컬럼 고정 */}
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-2">
             <VideoPanel
               title={mainVideo.title}
               desc={mainVideo.desc}
@@ -225,7 +220,7 @@ export default function InterviewPage() {
             />
           </div>
 
-          <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-1">
+          <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm col-span-1">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-lg font-black tracking-tight">내 화면</h2>
@@ -262,9 +257,7 @@ export default function InterviewPage() {
               <div className="flex items-center justify-between border-b border-zinc-100 bg-white px-6 py-4">
                 <div className="flex items-center gap-2">
                   <span className="bg-point-blue/60 inline-flex h-2 w-2 rounded-full" />
-                  <p className="text-sm font-black text-zinc-600">
-                    {camOn ? 'MY VIDEO' : 'CAM OFF'}
-                  </p>
+                  <p className="text-sm font-black text-zinc-600">{camOn ? 'MY VIDEO' : 'CAM OFF'}</p>
                 </div>
                 <span className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
                   preview
@@ -360,7 +353,15 @@ function NotFoundBox({ onList }: { onList: () => void }) {
   );
 }
 
-function ErrorBox({ message, onRetry, onList }: { message: string; onRetry: () => void; onList: () => void }) {
+function ErrorBox({
+  message,
+  onRetry,
+  onList,
+}: {
+  message: string;
+  onRetry: () => void;
+  onList: () => void;
+}) {
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
@@ -390,13 +391,14 @@ function RoomSkeleton({ onExit }: { onExit: () => void }) {
       <div className="mx-auto w-[1280px] space-y-10 px-6">
         <RoomHeader subtitle="방에 연결하는 중..." onExit={onExit} />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-2">
+        {/* ✅ 반응형 제거: 항상 3컬럼 고정 */}
+        <div className="grid grid-cols-3 gap-6">
+          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm col-span-2">
             <div className="h-4 w-36 rounded bg-zinc-200/70" />
             <div className="bg-midnight-ink/70 mt-6 h-[520px] rounded-4xl" />
           </div>
 
-          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-1">
+          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm col-span-1">
             <div className="h-4 w-24 rounded bg-zinc-200/70" />
             <div className="mt-3 h-4 w-48 rounded bg-zinc-200/60" />
             <div className="bg-midnight-ink/70 mt-6 h-[260px] rounded-4xl" />
