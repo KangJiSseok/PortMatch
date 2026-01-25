@@ -1,4 +1,5 @@
 import json
+import os
 import hashlib
 from typing import Any, Dict, List
 
@@ -43,7 +44,7 @@ async def embed_portfolio_projects(request: Request):
         raise HTTPException(status_code=400, detail="invalid JSON body") from exc
 
     projects = data.get("projects")
-    model = (data.get("model") or "text-embedding-3-small").strip()
+    model = (data.get("model") or os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")).strip()
 
     if not isinstance(projects, list) or not projects:
         raise HTTPException(status_code=400, detail="projects(array) is required")
