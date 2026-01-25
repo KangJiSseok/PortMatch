@@ -1,3 +1,6 @@
+server:
+  port: 8080
+
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL}
@@ -11,7 +14,7 @@ spring:
       mode: never
 
   jpa:
-    defer-datasource-initialization: true
+    defer-datasource-initialization: false
     hibernate:
       ddl-auto: update
     properties:
@@ -19,6 +22,9 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true
+
+  flyway:
+    baseline-on-migrate: true
   servlet:
     multipart:
       max-file-size: 50MB
@@ -36,6 +42,14 @@ portfolio-analysis:
 
 company-project-analysis:
   base-url: ${COMPANY_PROJECT_ANALYSIS_URL:http://localhost:8001}
+
+company-embedding:
+  base-url: ${EMBEDDING_URL:http://localhost:8002}
+  model: text-embedding-3-small
+
+portfolio-embedding:
+  base-url: ${EMBEDDING_URL:http://localhost:8002}
+  model: text-embedding-3-small
 
 springdoc:
   override-with-generic-response: false

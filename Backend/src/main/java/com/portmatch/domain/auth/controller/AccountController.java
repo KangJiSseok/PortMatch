@@ -6,10 +6,12 @@ import com.portmatch.domain.auth.service.AuthSignUpService;
 import com.portmatch.global.api.BaseApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/accounts")
@@ -21,6 +23,7 @@ public class AccountController {
     public ResponseEntity<BaseApiResponse<Void>> signUpApplicant(
             @Valid @RequestBody ApplicantSignUpRequest req
     ) {
+        log.info("req = {}", req.toString());
         authSignUpService.signUpApplicant(req);
         return ResponseEntity.status(HttpStatus.CREATED).body(BaseApiResponse.ok(null));
     }
