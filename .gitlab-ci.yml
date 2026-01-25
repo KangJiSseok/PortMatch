@@ -45,11 +45,11 @@ deploy:
     - mkdir -p ~/.ssh
     - echo "$EC2_SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
+    - file ~/.ssh/id_rsa
     - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
   script:
-    - scp -i ~/.ssh/id_rsa docker-compose.prod.yml \
-        "$EC2_USER@$EC2_HOST:/home/ubuntu/deploy/docker-compose.prod.yml"
+    - scp -i ~/.ssh/id_rsa docker-compose.prod.yml "$EC2_USER@$EC2_HOST:/home/ubuntu/deploy/docker-compose.prod.yml"
 
     - |
       ssh -i ~/.ssh/id_rsa "$EC2_USER@$EC2_HOST" << 'EOF'
