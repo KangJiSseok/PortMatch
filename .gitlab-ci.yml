@@ -105,5 +105,6 @@ deploy:
 
       docker login -u "${DOCKERHUB_USERNAME}" -p "${DOCKERHUB_TOKEN}"
       docker compose -f docker-compose.prod.yml pull
+      docker compose -f docker-compose.prod.yml down
       docker compose -f docker-compose.prod.yml up -d --remove-orphans
       EOF
