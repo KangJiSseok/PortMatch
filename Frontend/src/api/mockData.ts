@@ -213,7 +213,7 @@ export const INTERVIEWS: InterviewRow[] = [
     id: 9000,
     application_id: 7001,
     room_id: 'room_frontend_intern_9000',
-    scheduled_at: '2026-01-20T17:00:00',
+    scheduled_at: '2026-01-26T17:00:00',
     status: 'SCHEDULED',
   },
   {

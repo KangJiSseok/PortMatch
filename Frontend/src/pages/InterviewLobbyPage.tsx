@@ -27,7 +27,8 @@ const ROUTES = {
 function LobbyHeader({ subtitle, onBack }: { subtitle: string; onBack: () => void }) {
   return (
     <header className="border-b border-zinc-100 pb-6">
-      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+      {/* ✅ 반응형 제거: 항상 같은 배치 */}
+      <div className="flex items-end justify-between gap-5">
         <div className="min-w-0">
           <div className="mb-4 flex items-center gap-3">
             <p className="text-xs font-black tracking-[0.35em] text-zinc-400 uppercase">
@@ -131,6 +132,7 @@ export default function InterviewLobbyPage() {
   }, [id]);
 
   const goList = () => navigate(ROUTES.list);
+
   const goRoom = () => {
     if (!session) return;
     navigate(ROUTES.room(session.interview_id), { state: { micOn, camOn } });
@@ -167,17 +169,18 @@ export default function InterviewLobbyPage() {
   if (status === 'notfound' || !session) return <NotFoundBox onBack={goList} />;
 
   return (
-    // ✅ 가로 스크롤: body가 넓어지도록 root에 min-w 고정
+    // ✅ MyPage 방식: body 자체가 넓어지도록 root에 min-w 고정
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
-      {/* ✅ 컨테이너도 고정 폭으로 */}
+      {/* ✅ 컨테이너도 고정 폭 */}
       <div className="mx-auto w-[1280px] space-y-10 px-6">
         <LobbyHeader
           subtitle={`${session.companyName} · ${session.postingTitle}`}
           onBack={goList}
         />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-1">
+        {/* ✅ 반응형 제거: 항상 3컬럼 고정 */}
+        <div className="grid grid-cols-3 gap-6">
+          <section className="col-span-1 rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
             <p className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
               {session.companyName}
             </p>
@@ -235,7 +238,7 @@ export default function InterviewLobbyPage() {
             </div>
           </section>
 
-          <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-2">
+          <section className="col-span-2 rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-lg font-black tracking-tighter">내 화면 미리보기</p>
@@ -343,8 +346,9 @@ function LobbySkeleton({ onBack }: { onBack: () => void }) {
       <div className="mx-auto w-[1280px] space-y-10 px-6">
         <LobbyHeader subtitle="입장 전 대기실" onBack={onBack} />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-1">
+        {/* ✅ 반응형 제거: 항상 3컬럼 고정 */}
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-1 animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
             <div className="h-3 w-24 rounded bg-zinc-200/70" />
             <div className="mt-3 h-7 w-64 rounded bg-zinc-200/60" />
             <div className="mt-4 h-4 w-40 rounded bg-zinc-200/50" />
@@ -357,7 +361,7 @@ function LobbySkeleton({ onBack }: { onBack: () => void }) {
             <div className="mt-8 h-11 w-full rounded-2xl bg-zinc-200/60" />
           </div>
 
-          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm lg:col-span-2">
+          <div className="col-span-2 animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
             <div className="h-5 w-48 rounded bg-zinc-200/60" />
             <div className="mt-3 h-4 w-56 rounded bg-zinc-200/50" />
 
