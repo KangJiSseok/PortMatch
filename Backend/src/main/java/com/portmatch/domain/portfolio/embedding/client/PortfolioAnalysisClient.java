@@ -23,7 +23,7 @@ public class PortfolioAnalysisClient {
 
     public PortfolioAnalysisClient(
             RestTemplateBuilder builder,
-            @Value("${portfolio-analysis.base-url}") String baseUrl
+            @Value("${portfolio-embedding.base-url}") String baseUrl
     ) {
         SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
         rf.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
@@ -34,7 +34,7 @@ public class PortfolioAnalysisClient {
     }
 
     public PortfolioEmbeddingResponse embed(PortfolioEmbeddingRequest request) {
-        String endpoint = baseUrl + "/api/embeddings/portfolio";
+        String endpoint = baseUrl + "/embeddings";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -47,18 +47,18 @@ public class PortfolioAnalysisClient {
                     PortfolioEmbeddingResponse.class
             );
             if (res.getBody() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Portfolio-Analysis returned empty body");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service returned empty body");
             }
             return res.getBody();
         } catch (RestClientException e) {
-            log.error("Portfolio-Analysis embed failed. endpoint={}", endpoint, e);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Portfolio-Analysis unavailable", e);
+            log.error("Embedding request failed. endpoint={}", endpoint, e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service unavailable", e);
         }
     }
 
     private String normalize(String url) {
         if (url == null || url.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "ai.portfolio-analysis.base-url is not configured");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "portfolio-embedding.base-url is not configured");
         }
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }

@@ -68,5 +68,20 @@ services:
       - mineru-api
     command: ["bash", "-lc", "pip install -r requirements.txt && uvicorn web.api.app:app --host 0.0.0.0 --port 8001"]
 
+  embedding:
+    image: python:3.12-slim
+    container_name: portmatch-embedding-v2
+    working_dir: /app/Embedding
+    volumes:
+      - ./Embedding:/app/Embedding
+    env_file:
+      - .env
+    ports:
+      - "8002:8002"
+    depends_on:
+      - postgres
+      - mineru-api
+    command: ["bash", "-lc", "pip install -r requirements.txt && uvicorn web.api.app:app --host 0.0.0.0 --port 8002"]
+
 volumes:
   postgres-data:
