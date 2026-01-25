@@ -13,7 +13,6 @@ import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProject;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectTech;
 import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,20 +35,16 @@ public class PortfolioEmbeddingService {
     private final PortfolioProjectEmbeddingRepository embeddingRepository;
     private final PortfolioAnalysisClient embeddingClient;
 
-    private final String embeddingModel;
-
     public PortfolioEmbeddingService(
             PortfolioRepository portfolioRepository,
             PortfolioAnalysisRepository analysisRepository,
             PortfolioProjectEmbeddingRepository embeddingRepository,
-            PortfolioAnalysisClient embeddingClient,
-            @Value("${portfolio-embedding.model:text-embedding-3-small}") String embeddingModel
+            PortfolioAnalysisClient embeddingClient
     ) {
         this.portfolioRepository = portfolioRepository;
         this.analysisRepository = analysisRepository;
         this.embeddingRepository = embeddingRepository;
         this.embeddingClient = embeddingClient;
-        this.embeddingModel = embeddingModel;
     }
 
     public PortfolioEmbeddingUpsertResult buildForMyPortfolio(Long userId, Long portfolioId) {
@@ -98,7 +93,7 @@ public class PortfolioEmbeddingService {
 
         // 4) Portfolio-Analysis로 배치 임베딩 요청
         PortfolioEmbeddingResponse resp = embeddingClient.embed(
-                new PortfolioEmbeddingRequest(contents, embeddingModel)
+                new PortfolioEmbeddingRequest(contents)
         );
 
         if (resp.vectors() == null || resp.vectors().size() != contents.size()) {

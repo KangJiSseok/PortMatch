@@ -9,7 +9,6 @@ import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysis;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysisProject;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysisProjectTech;
 import com.portmatch.domain.companyproject.repository.CompanyProjectAnalysisRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,20 +27,16 @@ public class CompanyProjectEmbeddingService {
     private final CompanyEmbeddingClient embeddingClient;
     private final ObjectMapper objectMapper;
 
-    private final String embeddingModel;
-
     public CompanyProjectEmbeddingService(
             CompanyProjectAnalysisRepository analysisRepository,
             CompanyProjectEmbeddingRepository embeddingRepository,
             CompanyEmbeddingClient embeddingClient,
-            ObjectMapper objectMapper,
-            @Value("${company-embedding.model:text-embedding-3-small}") String embeddingModel
+            ObjectMapper objectMapper
     ) {
         this.analysisRepository = analysisRepository;
         this.embeddingRepository = embeddingRepository;
         this.embeddingClient = embeddingClient;
         this.objectMapper = objectMapper;
-        this.embeddingModel = embeddingModel;
     }
 
     public int embedAndSaveByAnalysisId(Long analysisId) {
@@ -82,7 +77,7 @@ public class CompanyProjectEmbeddingService {
 
         // 2) inference로 배치 임베딩 요청
         CompanyEmbeddingResponse resp = embeddingClient.embed(
-                new CompanyEmbeddingRequest(contents, embeddingModel)
+                new CompanyEmbeddingRequest(contents)
         );
 
         if (resp.vectors() == null || resp.vectors().size() != contents.size()) {
