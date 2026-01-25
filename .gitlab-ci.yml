@@ -1,48 +1,97 @@
 stages:
+  - build
   - deploy
+
+variables:
+  IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+  DOCKER_DRIVER: overlay2
+  BACKEND_IMAGE: "$DOCKERHUB_USERNAME/portmatch-backend"
+  INFERENCE_IMAGE: "$DOCKERHUB_USERNAME/portmatch-inference"
+  PORTFOLIO_IMAGE: "$DOCKERHUB_USERNAME/portmatch-portfolio-analysis"
+  FRONTEND_IMAGE: "$DOCKERHUB_USERNAME/portmatch-frontend"
+
+build:
+  stage: build
+  image: docker:25.0
+  services:
+    - docker:25.0-dind
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "infra-feat/CICD"'
+  script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - docker build -f Backend/Dockerfile -t "$BACKEND_IMAGE:$IMAGE_TAG" -t "$BACKEND_IMAGE:latest" Backend
+    - docker push "$BACKEND_IMAGE:$IMAGE_TAG"
+    - docker push "$BACKEND_IMAGE:latest"
+    - docker build -f Inference/Dockerfile -t "$INFERENCE_IMAGE:$IMAGE_TAG" -t "$INFERENCE_IMAGE:latest" Inference
+    - docker push "$INFERENCE_IMAGE:$IMAGE_TAG"
+    - docker push "$INFERENCE_IMAGE:latest"
+    - docker build -f Portfolio-Analysis/Dockerfile -t "$PORTFOLIO_IMAGE:$IMAGE_TAG" -t "$PORTFOLIO_IMAGE:latest" Portfolio-Analysis
+    - docker push "$PORTFOLIO_IMAGE:$IMAGE_TAG"
+    - docker push "$PORTFOLIO_IMAGE:latest"
+    - docker build -f Frontend/Dockerfile -t "$FRONTEND_IMAGE:$IMAGE_TAG" -t "$FRONTEND_IMAGE:latest" Frontend
+    - docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
+    - docker push "$FRONTEND_IMAGE:latest"
 
 deploy:
   stage: deploy
+  image: alpine:3.19
   tags:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "infra-feat/CICD"'
+  before_script:
+    - apk add --no-cache openssh-client
+    - mkdir -p ~/.ssh
+    - echo "$EC2_SSH_KEY_B64" | base64 -d > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
   script:
-    - set -e
-    - cd $CI_PROJECT_DIR
+    - |
+      scp -i ~/.ssh/id_ed25519 docker-compose.prod.yml "$EC2_USER@$EC2_HOST:/home/ubuntu/deploy/docker-compose.prod.yml"
+      ssh "$EC2_USER@$EC2_HOST" << EOF
+      set -e
+      cd /home/ubuntu/deploy
 
-    # ---- .env.prod 생성 ----
-    - echo "POSTGRES_DB=$POSTGRES_DB" > .env.prod
-    - echo "POSTGRES_USER=$POSTGRES_USER" >> .env.prod
-    - echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env.prod
+      cat > .env.prod << ENV
+      # ---------- ENV ----------
+      APP_ENV=prod
+      SPRING_PROFILES_ACTIVE=prod
 
-    - echo "DB_URL=$DB_URL" >> .env.prod
-    - echo "DB_USERNAME=$DB_USERNAME" >> .env.prod
-    - echo "DB_PASSWORD=$DB_PASSWORD" >> .env.prod
+      # ---------- DB ----------
+      POSTGRES_DB=$POSTGRES_DB
+      POSTGRES_USER=$POSTGRES_USER
+      POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 
-    - echo "AWS_S3_BUCKET=$AWS_S3_BUCKET" >> .env.prod
-    - echo "AWS_REGION=$AWS_REGION" >> .env.prod
-    - echo "AWS_ACCESS_KEY=$AWS_ACCESS_KEY" >> .env.prod
-    - echo "AWS_SECRET_KEY=$AWS_SECRET_KEY" >> .env.prod
+      SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL
+      SPRING_DATASOURCE_USERNAME=$SPRING_DATASOURCE_USERNAME
+      SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD
 
-    - echo "PORTFOLIO_ANALYSIS_URL=$PORTFOLIO_ANALYSIS_URL" >> .env.prod
-    - echo "COMPANY_PROJECT_ANALYSIS_URL=$COMPANY_PROJECT_ANALYSIS_URL" >> .env.prod
-    - echo "MINERU_ENDPOINT=$MINERU_ENDPOINT" >> .env.prod
+      # ---------- AWS ----------
+      AWS_S3_BUCKET=$AWS_S3_BUCKET
+      AWS_REGION=$AWS_REGION
+      AWS_ACCESS_KEY=$AWS_ACCESS_KEY
+      AWS_SECRET_KEY=$AWS_SECRET_KEY
 
-    - echo "LANGCHAIN_TRACING_V2=$LANGCHAIN_TRACING_V2" >> .env.prod
-    - echo "LANGCHAIN_API_KEY=$LANGCHAIN_API_KEY" >> .env.prod
-    - echo "LANGCHAIN_PROJECT=$LANGCHAIN_PROJECT" >> .env.prod
-    - echo "LANGCHAIN_ENDPOINT=$LANGCHAIN_ENDPOINT" >> .env.prod
+      # ---------- AI ----------
+      OPENAI_API_KEY=$OPENAI_API_KEY
+      OPENAI_MODEL=$OPENAI_MODEL
 
-    - echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env.prod
-    - echo "OPENAI_MODEL=$OPENAI_MODEL" >> .env.prod
+      LANGCHAIN_TRACING_V2=$LANGCHAIN_TRACING_V2
+      LANGCHAIN_API_KEY=$LANGCHAIN_API_KEY
+      LANGCHAIN_PROJECT=$LANGCHAIN_PROJECT
+      LANGCHAIN_ENDPOINT=$LANGCHAIN_ENDPOINT
 
-    - echo "PPLX_MODEL=$PPLX_MODEL" >> .env.prod
-    - echo "PPLX_API_KEY=$PPLX_API_KEY" >> .env.prod
-    - echo "PPLX_BASE_URL=$PPLX_BASE_URL" >> .env.prod
+      PPLX_API_KEY=$PPLX_API_KEY
+      PPLX_MODEL=$PPLX_MODEL
+      PPLX_BASE_URL=$PPLX_BASE_URL
 
-    - echo "VITE_API_BASE_URL=$VITE_API_BASE_URL" >> .env.prod
-    - echo "VITE_SERVICE_NAME=$VITE_SERVICE_NAME" >> .env.prod
+      # ---------- Internal Services ----------
+      PORTFOLIO_ANALYSIS_URL=$PORTFOLIO_ANALYSIS_URL
+      COMPANY_PROJECT_ANALYSIS_URL=$COMPANY_PROJECT_ANALYSIS_URL
+      MINERU_ENDPOINT=$MINERU_ENDPOINT
+      ENV
 
-    # ---- 배포 ----
-    - docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+      docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
+      docker compose -f docker-compose.prod.yml pull
+      docker compose -f docker-compose.prod.yml up -d --remove-orphans
+      EOF

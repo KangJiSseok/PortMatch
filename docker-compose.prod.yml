@@ -48,6 +48,8 @@ services:
       - ./Portfolio-Analysis:/app/Portfolio-Analysis
     env_file:
       - .env.prod
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8103:8000"
     command: ["bash", "-lc", "pip install -r requirements.txt && uvicorn web.api.app:app --host 0.0.0.0 --port 8000"]
