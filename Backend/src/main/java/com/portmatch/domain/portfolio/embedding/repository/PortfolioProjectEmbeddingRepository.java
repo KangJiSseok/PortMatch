@@ -16,7 +16,7 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
         INSERT INTO portfolio_project_embeddings
             (portfolio_id, analysis_id, project_id, model, dim, content, content_hash, embedding, created_at, updated_at)
         VALUES
-            (:portfolioId, :analysisId, :projectId, :model, :dim, :content, :contentHash, :embedding, NOW(), NOW())
+            (:portfolioId, :analysisId, :projectId, :model, :dim, :content, :contentHash, CAST(:embedding AS vector), NOW(), NOW())
         ON CONFLICT (project_id)
         DO UPDATE SET
             portfolio_id = EXCLUDED.portfolio_id,
