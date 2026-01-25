@@ -34,6 +34,7 @@ import { useAuthStore } from './store/authStore';
 import JobApplyPage from './pages/JobApplyPage';
 import CompanyProfilePage from './pages/CompanyProfilePage';
 import CompanyProfileEditPage from './pages/CompanyProfileEditPage';
+import RecommendCandidatesPage from './pages/RecommendCandidatesPage';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -175,7 +176,7 @@ const router = createBrowserRouter([
           <ProtectedRoute>
             <JobApplyPage />
           </ProtectedRoute>
-        )
+        ),
       },
       {
         path: 'company/jobs',
@@ -215,7 +216,7 @@ const router = createBrowserRouter([
           <CompanyRoute>
             <CompanyProfilePage />
           </CompanyRoute>
-        )
+        ),
       },
       {
         path: 'company/profile/edit',
@@ -223,7 +224,15 @@ const router = createBrowserRouter([
           <CompanyRoute>
             <CompanyProfileEditPage />
           </CompanyRoute>
-        )
+        ),
+      },
+      {
+        path: 'company/recommend/candidates',
+        element: (
+          <CompanyRoute>
+            <RecommendCandidatesPage />
+          </CompanyRoute>
+        ),
       },
       {
         path: 'design',

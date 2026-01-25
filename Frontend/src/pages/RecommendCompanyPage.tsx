@@ -6,7 +6,7 @@ import LoadingState from '@/components/states/LoadingState';
 import EmptyState from '@/components/states/EmptyState';
 import ErrorState from '@/components/states/ErrorState';
 import { useRecommendedCompanies } from '@/hooks/useRecommendedCompanies';
-import type { RecommendedCompany, SortBy } from '@/types/recommend';
+import type { RecommendedCompany, SortBy } from '@/types/recommendCompany';
 
 const MOCK_COMPANIES: RecommendedCompany[] = [
   {
