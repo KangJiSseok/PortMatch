@@ -89,8 +89,8 @@ public class SecurityConfig {
         // 개발 단계 임시 예시: 프론트 도메인 확정되면 정확히 입력 권장
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
-                "https://localhost:*"
-                // "https://your-frontend-domain.com"
+                "https://localhost:*",
+                "http://i14d205.p.ssafy.io:8101"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
