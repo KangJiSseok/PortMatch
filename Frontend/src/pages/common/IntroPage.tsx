@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { motion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { motion, useScroll, useTransform, useMotionValueEvent, useSpring } from 'framer-motion';
 
 import imgS1Top from '../../assets/images/intro/s1-top.avif';
 import imgS1Bottom from '../../assets/images/intro/s1-bottom.avif';
@@ -10,10 +11,17 @@ import imgS3Company from '../../assets/images/intro/s3-company.avif';
 function IntroPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState(0);
+  const navigate = useNavigate();
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ['start start', 'end end'],
+  });
+
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001,
   });
 
   useMotionValueEvent(scrollYProgress, 'change', (latest) => {
@@ -22,14 +30,14 @@ function IntroPage() {
     else setActiveSection(2);
   });
 
-  const section1Opacity = useTransform(scrollYProgress, [0.2, 0.3], [1, 0]);
-  const section1TopX = useTransform(scrollYProgress, [0, 0.2, 0.3], ['0%', '0%', '-100%']);
-  const section1BottomX = useTransform(scrollYProgress, [0, 0.2, 0.3], ['0%', '0%', '100%']);
+  const section1Opacity = useTransform(smoothProgress, [0.2, 0.3], [1, 0]);
+  const section1TopX = useTransform(smoothProgress, [0, 0.2, 0.3], ['0%', '0%', '-100%']);
+  const section1BottomX = useTransform(smoothProgress, [0, 0.2, 0.3], ['0%', '0%', '100%']);
 
-  const section2Opacity = useTransform(scrollYProgress, [0.3, 0.4, 0.65, 0.75], [0, 1, 1, 0]);
-  const section2Y = useTransform(scrollYProgress, [0.3, 0.4, 0.65, 0.75], [80, 0, 0, -80]);
+  const section2Opacity = useTransform(smoothProgress, [0.3, 0.4, 0.65, 0.75], [0, 1, 1, 0]);
+  const section2Y = useTransform(smoothProgress, [0.3, 0.4, 0.65, 0.75], [80, 0, 0, -80]);
 
-  const section3Opacity = useTransform(scrollYProgress, [0.75, 0.85], [0, 1]);
+  const section3Opacity = useTransform(smoothProgress, [0.75, 0.85], [0, 1]);
 
   const handleScrollToSection = (index: number) => {
     if (!containerRef.current) return;
@@ -40,19 +48,19 @@ function IntroPage() {
     window.scrollTo({ top: scrollableHeight * targets[index], behavior: 'smooth' });
   };
 
-  const handleLoginRedirect = (type: 'applicant' | 'company') => {
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userType', type);
-
-    if (type === 'applicant') {
-      window.location.href = '/main';
-    } else {
-      window.location.href = '/design';
-    }
+  const handleLoginRedirect = (type: 'APPLICANT' | 'COMPANY') => {
+    navigate('/login', { state: { userType: type } });
   };
 
   return (
-    <div ref={containerRef} className="bg-midnight-ink relative h-[450vh] min-w-5xl">
+    <div
+      ref={containerRef}
+      className="bg-midnight-ink relative h-[450vh] min-w-5xl snap-y snap-mandatory"
+    >
+      <div className="pointer-events-none absolute top-0 left-0 h-screen w-full snap-start" />
+      <div className="pointer-events-none absolute top-[175vh] left-0 h-screen w-full snap-center" />
+      <div className="pointer-events-none absolute bottom-0 left-0 h-screen w-full snap-end" />
+
       <motion.button
         onClick={() => handleScrollToSection(2)}
         animate={{ y: [0, 10, 0] }}
@@ -189,7 +197,7 @@ function IntroPage() {
             transition={{ type: 'spring', stiffness: 100, damping: 20, mass: 1 }}
             whileHover={{ flexGrow: 1.5 }}
             className="group relative z-20 h-full flex-1 cursor-pointer overflow-hidden border-r border-white/5 bg-[#111111]"
-            onClick={() => handleLoginRedirect('applicant')}
+            onClick={() => handleLoginRedirect('APPLICANT')}
           >
             <div className="absolute inset-0 flex items-center justify-center opacity-20 transition-opacity duration-500 group-hover:opacity-100">
               <div
@@ -217,7 +225,7 @@ function IntroPage() {
             transition={{ type: 'spring', stiffness: 100, damping: 20, mass: 1 }}
             whileHover={{ flexGrow: 1.5 }}
             className="group bg-pure-white relative z-20 h-full flex-1 cursor-pointer overflow-hidden"
-            onClick={() => handleLoginRedirect('company')}
+            onClick={() => handleLoginRedirect('COMPANY')}
           >
             <div className="absolute inset-0 flex items-center justify-center opacity-20 transition-opacity duration-500 group-hover:opacity-100">
               <div

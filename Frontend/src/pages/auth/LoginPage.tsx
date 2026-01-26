@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import Button from '../../components/Button/Button';
@@ -27,15 +27,23 @@ const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boo
 };
 
 function LoginPage() {
-  const [userType, setUserType] = useState<UserRole>('APPLICANT');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { mutate: loginMutate, isPending: isLoading } = useLogin();
+
+  const [userType, setUserType] = useState<UserRole>(
+    (location.state?.userType as UserRole) || 'APPLICANT',
+  );
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeField, setShakeField] = useState<string | null>(null);
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const navigate = useNavigate();
-  const { mutate: loginMutate, isPending: isLoading } = useLogin();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -93,7 +101,7 @@ function LoginPage() {
   };
 
   return (
-    <div className="bg-pure-white relative flex min-h-screen min-w-[1200px] flex-col items-center justify-center overflow-x-auto py-8">
+    <div className="bg-pure-white relative flex min-h-screen min-w-300 flex-col items-center justify-center overflow-x-auto py-8">
       <nav className="mb-8 flex shrink-0 items-center gap-10">
         <Link
           to="/main"
@@ -145,7 +153,7 @@ function LoginPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-pure-white w-[640px] shrink-0 rounded-[48px] border border-gray-100 px-20 py-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]"
+        className="bg-pure-white w-160 shrink-0 rounded-[48px] border border-gray-100 px-20 py-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]"
       >
         <div className="mb-10 text-center">
           <span className="text-point-blue text-[12px] font-black tracking-[0.4em] uppercase opacity-50">
