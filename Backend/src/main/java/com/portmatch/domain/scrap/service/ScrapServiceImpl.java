@@ -40,6 +40,11 @@ public class ScrapServiceImpl implements ScrapService {
                 });
     }
 
+    @Override
+    public boolean isScraped(Long uid, String pid) {
+        return scrapRepository.existsByUidAndPid(uid, pid);
+    }
+
     /**
      * 특정 유저의 스크랩 목록 조회
      */
