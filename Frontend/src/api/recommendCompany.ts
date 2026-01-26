@@ -1,4 +1,4 @@
-import type { RecommendedCompany } from '@/types/recommend';
+import type { RecommendedCompany } from '@/types/recommendCompany';
 
 /**
  * Mock 데이터 (개발용)
@@ -83,7 +83,9 @@ export async function fetchRecommendedCompanies(): Promise<RecommendedCompany[]>
  * const detail = await fetchCompanyRecommendDetail(1);
  * ```
  */
-export async function fetchCompanyRecommendDetail(companyId: number): Promise<RecommendedCompany | null> {
+export async function fetchCompanyRecommendDetail(
+  companyId: number,
+): Promise<RecommendedCompany | null> {
   // TODO: 실제 API 호출로 교체
   // const response = await fetch(`${API_BASE_URL}/recommend/companies/${companyId}`);
   // if (!response.ok) return null;
