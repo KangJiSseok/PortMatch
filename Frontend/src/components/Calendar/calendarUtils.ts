@@ -59,6 +59,6 @@ export function formatScheduleHint(startIso: string) {
     return `${h}시간 ${m}분 전`;
   }
 
-  if (dayDiff > 0) return `${dayDiff}일 후`;
+  if (dayDiff > 0) return `D-${dayDiff}`;
   return '곧 시작돼요.';
 }

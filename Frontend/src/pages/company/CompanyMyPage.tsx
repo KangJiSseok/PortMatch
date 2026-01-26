@@ -78,20 +78,30 @@ function ddayLabel(deadlineAt?: string) {
   return { text: `D-${left}`, tone: left <= 3 ? ('urgent' as const) : ('normal' as const), left };
 }
 
-/** ✅ 당일: “5시간 24분 전” / 이후: “D-N” */
+/** ✅ 당일: “5시간 24분 전” / 이후: “D-3” (지나면 표시 안 함 = null) */
 function formatScheduleHint(startIso: string) {
   const now = new Date();
   const start = new Date(startIso);
 
+  const nowMs = now.getTime();
+  const startMs = start.getTime();
+
+  // ✅ 시작 시간이 이미 지났으면 힌트 표시 안 함
+  if (startMs <= nowMs) return null;
+
   const todayYmd = toYmd(now);
   const startYmd = toYmd(start);
 
+  // 날짜 차이(캘린더 기준)
   const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const start0 = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
   const dayDiff = Math.round((start0 - today0) / (24 * 60 * 60 * 1000));
 
+  // ✅ 당일이면: 몇시간 몇분 "전" (즉, 시작까지 남은 시간)
   if (startYmd === todayYmd) {
-    const diffMin = Math.max(0, Math.ceil((start.getTime() - now.getTime()) / (60 * 1000)));
+    const diffMin = Math.ceil((startMs - nowMs) / (60 * 1000));
+    if (diffMin <= 0) return null; // 안전망
+
     const h = Math.floor(diffMin / 60);
     const m = diffMin % 60;
 
@@ -100,9 +110,13 @@ function formatScheduleHint(startIso: string) {
     return `${h}시간 ${m}분 전`;
   }
 
+  // ✅ 이후 날짜면: "D-3" 같은 스타일 (원래대로 하고 싶으면 여기만 바꾸면 됨)
   if (dayDiff > 0) return `D-${dayDiff}`;
-  return '곧 시작돼요.';
+
+  // ✅ '곧 시작돼요.' 같은 거 안 씀
+  return null;
 }
+
 
 /** ✅ React Query 느낌 미니 훅 */
 function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
