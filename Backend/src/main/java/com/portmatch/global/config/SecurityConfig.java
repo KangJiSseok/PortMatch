@@ -90,7 +90,7 @@ public class SecurityConfig {
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
                 "https://localhost:*",
-                "http://i14d205.p.ssafy.io:8101"
+                "https://i14d205.p.ssafy.io"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
