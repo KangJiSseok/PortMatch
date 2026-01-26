@@ -59,7 +59,7 @@ deploy:
 
     # ---------- .env.prod 생성 ----------
     - |
-      cat > .env.prod << 'ENV'
+      cat > .env.prod << ENV
       # ---------- ENV ----------
       APP_ENV=prod
       SPRING_PROFILES_ACTIVE=prod
