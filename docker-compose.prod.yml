@@ -49,6 +49,19 @@ services:
     depends_on:
       - db
 
+  embedding:
+    image: ${EMBEDDING_IMAGE:-kangjiseok/portmatch-embedding:latest}
+    container_name: portmatch-embedding-prod
+    restart: always
+    env_file:
+      - .env.prod
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8105:8002"
+    depends_on:
+      - db
+
   frontend:
     image: ${FRONTEND_IMAGE:-kangjiseok/portmatch-frontend:latest}
     container_name: portmatch-frontend-prod

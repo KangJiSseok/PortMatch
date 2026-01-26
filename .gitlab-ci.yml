@@ -9,6 +9,7 @@ variables:
   INFERENCE_IMAGE: "$DOCKERHUB_USERNAME/portmatch-inference"
   PORTFOLIO_IMAGE: "$DOCKERHUB_USERNAME/portmatch-portfolio-analysis"
   FRONTEND_IMAGE: "$DOCKERHUB_USERNAME/portmatch-frontend"
+  EMBEDDING_IMAGE: "$DOCKERHUB_USERNAME/portmatch-embedding"
 
 build:
   stage: build
@@ -19,6 +20,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
+
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
     - docker build -f Backend/Dockerfile -t "$BACKEND_IMAGE:$IMAGE_TAG" -t "$BACKEND_IMAGE:latest" Backend
@@ -33,6 +35,9 @@ build:
     - docker build -f Frontend/Dockerfile -t "$FRONTEND_IMAGE:$IMAGE_TAG" -t "$FRONTEND_IMAGE:latest" Frontend
     - docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
     - docker push "$FRONTEND_IMAGE:latest"
+    - docker build -f Embedding/Dockerfile -t "$EMBEDDING_IMAGE:$IMAGE_TAG" -t "$EMBEDDING_IMAGE:latest" Embedding
+    - docker push "$EMBEDDING_IMAGE:$IMAGE_TAG"
+    - docker push "$EMBEDDING_IMAGE:latest"
 
 deploy:
   stage: deploy
@@ -40,6 +45,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
+
 
   script:
     - set -e
@@ -76,6 +82,8 @@ deploy:
       # ---------- AI ----------
       OPENAI_API_KEY=${OPENAI_API_KEY}
       OPENAI_MODEL=${OPENAI_MODEL}
+      OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL}
 
       LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2}
       LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
