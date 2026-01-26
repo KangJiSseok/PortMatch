@@ -218,6 +218,36 @@ export default function MyPage() {
     }
   };
 
+  // ✅ ✅ ✅ 추가: 전체 읽음 / 전체 삭제
+  const hasNoti = notiItems.length > 0;
+  const hasUnread = unreadCount > 0;
+
+  const handleNotiReadAll = () => {
+    if (!hasNoti || !hasUnread) return;
+
+    setNotiPatchById((prev) => {
+      const next = { ...prev };
+      for (const n of notiItems) {
+        next[n.id] = { ...next[n.id], read: true };
+      }
+      return next;
+    });
+  };
+
+  const handleNotiDeleteAll = () => {
+    if (!hasNoti) return;
+
+    const ok = window.confirm('알림을 전부 삭제할까요?');
+    if (!ok) return;
+
+    setNotiPatchById((prev) => {
+      const next = { ...prev };
+      for (const n of notiItems) {
+        next[n.id] = { ...next[n.id], deleted: true };
+      }
+      return next;
+    });
+  };
 
   // ==========================
   // ✅ "현재 시간"은 렌더에서 만들지 말고 state로 관리 (purity lint 대응)
@@ -633,13 +663,13 @@ export default function MyPage() {
       {/* ✅ 알림 모달 */}
       <NotificationModal open={isNotiOpen} onClose={() => setIsNotiOpen(false)} title="알림">
         {notiQuery.isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-3 py-5">
             <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
             <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
             <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
           </div>
         ) : notiQuery.isError ? (
-          <div className="rounded-xl border border-zinc-100 bg-white p-4">
+          <div className="rounded-xl border border-zinc-100 bg-white p-4 py-5">
             <p className="text-midnight-ink text-sm font-black">알림을 불러오지 못했어요</p>
             <p className="mt-1 text-sm font-semibold text-zinc-500">
               {notiQuery.errorMessage ?? '잠시 후 다시 시도해 주세요.'}
@@ -651,57 +681,94 @@ export default function MyPage() {
             </div>
           </div>
         ) : (notiItems ?? []).length === 0 ? (
-          <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
+          <div className="bg-cloud-dancer/25 rounded-xl p-6 py-5 text-center">
             <p className="text-midnight-ink text-sm font-black">알림이 없어요</p>
             <p className="mt-1 text-sm font-semibold text-zinc-500">조용해서 좋다… 💤</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {(notiItems ?? []).map((n) => {
-              const route = resolveNotificationRoute(n);
-              return (
-                <div
-                  key={n.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleNotiClick(n)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') handleNotiClick(n);
-                  }}
-                  className="cursor-pointer rounded-xl border border-zinc-100 bg-white p-4 transition hover:bg-zinc-50"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
-                      <p className="mt-2 text-xs font-semibold text-zinc-500">
-                        {formatDateTime(n.createdAt)}
-                      </p>
-                      {route ? (
-                        <p className="mt-1 text-[11px] font-semibold text-zinc-400">
-                          클릭하면 관련 페이지로 이동
-                        </p>
-                      ) : null}
-                    </div>
+          <div className="space-y-4 py-5">
+            {/* ✅ 상단 액션바: 전체 읽음 / 전체 삭제 */}
+            <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-zinc-500">
+                    총 {notiItems.length}개 · 미읽음 {unreadCount}개
+                  </p>
+                </div>
 
-                    <div className="flex items-center gap-2">
-                      {!n.read && (
-                        <span className="bg-point-blue mt-1 h-2 w-2 shrink-0 rounded-full" />
-                      )}
-                      <Button
-                        type="button"
-                        variant="close"
-                        size="sm"
-                        aria-label="delete notification"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNotiDelete(n.id);
-                        }}
-                      />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={hasUnread ? 'dark' : 'outline'}
+                    className="rounded-xl"
+                    disabled={!hasUnread}
+                    onClick={handleNotiReadAll}
+                  >
+                    전체 읽음
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl"
+                    disabled={!hasNoti}
+                    onClick={handleNotiDeleteAll}
+                  >
+                    전체 삭제
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* ✅ 리스트 */}
+            <div className="space-y-3">
+              {notiItems.map((n) => {
+                const route = resolveNotificationRoute(n);
+                return (
+                  <div
+                    key={n.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleNotiClick(n)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') handleNotiClick(n);
+                    }}
+                    className="cursor-pointer rounded-xl border border-zinc-100 bg-white p-4 transition hover:bg-zinc-50"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
+                        <p className="mt-2 text-xs font-semibold text-zinc-500">
+                          {formatDateTime(n.createdAt)}
+                        </p>
+                        {route ? (
+                          <p className="mt-1 text-[11px] font-semibold text-zinc-400">
+                            클릭하면 관련 페이지로 이동
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {!n.read && (
+                          <span className="bg-point-blue mt-1 h-2 w-2 shrink-0 rounded-full" />
+                        )}
+                        <Button
+                          type="button"
+                          variant="close"
+                          size="sm"
+                          aria-label="delete notification"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNotiDelete(n.id);
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </NotificationModal>
@@ -821,11 +888,6 @@ export default function MyPage() {
  *  Manage Card Parts
  * ========================= */
 
-/**
- * ✅ 1안: 카드 전체 클릭
- * - hover/focus가 확실하게 보이도록 강화
- * - 헤더 버튼 제거(중첩 클릭 지옥 방지)
- */
 function HubCard({
   title,
   onClick,
@@ -860,7 +922,6 @@ function HubCard({
   );
 }
 
-/** ✅ 미리보기(면접/스크랩 카드)는 클릭 이동 없음(카드가 클릭이니까) */
 function ListRowStatic({
   title,
   subtitle,
@@ -888,7 +949,6 @@ function ListRowStatic({
   );
 }
 
-/** ✅ 빈 슬롯: 문구 없이 “빈칸 느낌”만 */
 function EmptySlotRow() {
   return <div aria-hidden className="h-[56px] w-full rounded-2xl" />;
 }
@@ -1005,10 +1065,10 @@ function NotificationModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+    <div className="fixed inset-0 z-[200] flex justify-center overflow-auto px-4 py-10">
       {/* ✅ 오버레이 */}
       <div
-        className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
+        className="fixed inset-0 bg-black/65 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
       />
@@ -1020,8 +1080,10 @@ function NotificationModal({
         className="relative z-10 w-[92vw] max-w-[560px]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="rounded-3xl border border-zinc-100 bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-zinc-100 px-6 py-4">
+        {/* ✅ 핵심: max-h + flex-col + min-h-0로 “바디 스크롤” 강제 */}
+        <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-2xl">
+          {/* ✅ 헤더 고정 */}
+          <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
             <p className="text-midnight-ink text-lg font-black">{title}</p>
 
             <Button
@@ -1035,8 +1097,27 @@ function NotificationModal({
             </Button>
           </div>
 
-          {/* ✅ 스크롤 영역 */}
-          <div className="max-h-[70vh] overflow-auto [overscroll-behavior:contain] px-6">
+          {/* ✅ 바디만 스크롤 (스크롤바 커스텀 포함) */}
+          <div
+            className={[
+              'min-h-0 flex-1 overflow-auto px-6',
+              '[overscroll-behavior:contain]',
+              // WebKit scrollbar styling
+              '[&::-webkit-scrollbar]:w-2',
+              '[&::-webkit-scrollbar-track]:rounded-full',
+              '[&::-webkit-scrollbar-track]:bg-cloud-dancer/60',
+              '[&::-webkit-scrollbar-thumb]:rounded-full',
+              '[&::-webkit-scrollbar-thumb]:bg-silver-mist/80',
+              'hover:[&::-webkit-scrollbar-thumb]:bg-silver-mist',
+              '[&::-webkit-scrollbar-thumb]:border-2',
+              '[&::-webkit-scrollbar-thumb]:border-transparent',
+              '[&::-webkit-scrollbar-thumb]:bg-clip-padding',
+            ].join(' ')}
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'var(--color-silver-mist) var(--color-cloud-dancer)',
+            }}
+          >
             {children}
           </div>
         </div>

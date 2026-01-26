@@ -455,43 +455,60 @@ export const INTERVIEWS: InterviewRow[] = [
   },
 ];
 
-// scraps: 개인이 공고를 스크랩한 기록 (MyPage용)
 export const SCRAPS: ScrapRow[] = [
   {
     id: 8001,
     applicant_id: CURRENT_APPLICANT_ID,
     job_post_id: 1002,
-    created_at: '2026-01-03T08:00:00',
-  },
-  {
-    id: 8005,
-    applicant_id: CURRENT_APPLICANT_ID,
-    job_post_id: 1002,
-    created_at: '2026-01-03T08:00:00',
+    created_at: '2026-01-03T08:03:12',
   },
   {
     id: 8002,
     applicant_id: CURRENT_APPLICANT_ID,
     job_post_id: 1001,
-    created_at: '2026-01-04T10:15:00',
+    created_at: '2026-01-03T21:44:05',
   },
   {
     id: 8003,
     applicant_id: CURRENT_APPLICANT_ID,
-    job_post_id: 1001,
+    job_post_id: 1003,
     created_at: '2026-01-04T10:15:00',
   },
   {
     id: 8004,
     applicant_id: CURRENT_APPLICANT_ID,
     job_post_id: 1001,
-    created_at: '2026-01-04T10:15:00',
+    created_at: '2026-01-05T13:27:48',
+  },
+  {
+    id: 8005,
+    applicant_id: CURRENT_APPLICANT_ID,
+    job_post_id: 1002,
+    created_at: '2026-01-06T09:11:33',
   },
   {
     id: 8006,
     applicant_id: CURRENT_APPLICANT_ID,
+    job_post_id: 1003,
+    created_at: '2026-01-08T19:02:10',
+  },
+  {
+    id: 8007,
+    applicant_id: CURRENT_APPLICANT_ID,
     job_post_id: 1001,
-    created_at: '2026-01-04T10:15:00',
+    created_at: '2026-01-12T07:58:41',
+  },
+  {
+    id: 8008,
+    applicant_id: CURRENT_APPLICANT_ID,
+    job_post_id: 1002,
+    created_at: '2026-01-15T16:39:22',
+  },
+  {
+    id: 8009,
+    applicant_id: CURRENT_APPLICANT_ID,
+    job_post_id: 1003,
+    created_at: '2026-01-21T23:14:09',
   },
 ];
 
@@ -526,7 +543,9 @@ function interviewStatusToListStatus(s: InterviewStatus): InterviewListStatus {
 
 // ===== 조인 유틸 (ERD 관계대로 묶어줌) =====
 
-export function buildMyInterviewViews(applicantId: number = CURRENT_APPLICANT_ID): InterviewSessionView[] {
+export function buildMyInterviewViews(
+  applicantId: number = CURRENT_APPLICANT_ID,
+): InterviewSessionView[] {
   const myApps = APPLICATIONS.filter((a) => a.applicant_id === applicantId);
 
   const views: InterviewSessionView[] = [];
@@ -627,7 +646,42 @@ export const PORTFOLIO_REPORT: PortfolioReport = {
 export const NOTIFICATIONS: NotificationItem[] = [
   { id: 1, message: '내일 면접 일정이 있어요.', createdAt: '2026-01-20T09:00:00', read: false },
   { id: 2, message: '이력서 완성도가 높아졌어요.', createdAt: '2026-01-19T12:10:00', read: true },
-  { id: 3, message: '포트폴리오 분석 리포트가 생성됐어요.', createdAt: '2026-01-18T22:06:00', read: true },
+  {
+    id: 3,
+    message: '포트폴리오 분석 리포트가 생성됐어요.',
+    createdAt: '2026-01-18T22:06:00',
+    read: true,
+  },
+  {
+    id: 4,
+    message: '포트폴리오 분석 리포트가 생성됐어요.',
+    createdAt: '2026-01-18T22:06:00',
+    read: true,
+  },
+  {
+    id: 5,
+    message: '포트폴리오 분석 리포트가 생성됐어요.',
+    createdAt: '2026-01-18T22:06:00',
+    read: true,
+  },
+  {
+    id: 6,
+    message: '포트폴리오 분석 리포트가 생성됐어요.',
+    createdAt: '2026-01-18T22:06:00',
+    read: true,
+  },
+  {
+    id: 7,
+    message: '포트폴리오 분석 리포트가 생성됐어요.',
+    createdAt: '2026-01-18T22:06:00',
+    read: true,
+  },
+  {
+    id: 8,
+    message: '포트폴리오 분석 리포트가 생성됐어요.',
+    createdAt: '2026-01-18T22:06:00',
+    read: true,
+  },
 ];
 
 type FetchOptions = {
@@ -655,7 +709,10 @@ export function fetchMyInterviewViews(options?: FetchOptions): Promise<Interview
   return mockFetch(buildMyInterviewViews(), options);
 }
 
-export function fetchMyUpcomingInterviewViews(limit = 2, options?: FetchOptions): Promise<InterviewSessionView[]> {
+export function fetchMyUpcomingInterviewViews(
+  limit = 2,
+  options?: FetchOptions,
+): Promise<InterviewSessionView[]> {
   return mockFetch(getMyUpcomingInterviewViews(limit), options);
 }
 
