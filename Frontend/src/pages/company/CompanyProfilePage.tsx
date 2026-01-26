@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 
-import Button from '../components/Button/Button';
+import Button from '../../components/Button/Button';
 
 type CompanyProfile = {
   id: number;
@@ -303,7 +303,7 @@ function CompanyProfilePage() {
               </section>
 
               <section>
-               <div className="mt-4">
+                <div className="mt-4">
                   <p className="text-slate-gray text-sm font-medium opacity-70">
                     공고 관리는{' '}
                     <Link to="/company/jobs" className="text-point-blue font-black underline">

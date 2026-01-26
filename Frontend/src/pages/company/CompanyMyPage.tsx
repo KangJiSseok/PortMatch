@@ -1,7 +1,7 @@
 // src/pages/CorporateMyPage.tsx
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Button from '../components/Button/Button';
+import Button from '../../components/Button/Button';
 
 /** ------------------ routes (프로젝트 라우트에 맞게 수정) ------------------ */
 const ROUTES = {

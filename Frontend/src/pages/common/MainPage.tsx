@@ -1,23 +1,31 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import Button from '../components/Button/Button';
-import heroBg from '../assets/images/main/HERO_BG.avif';
+import Button from '../../components/Button/Button';
+import heroBg from '../../assets/images/main/HERO_BG.avif';
 import { useAuthStore } from '@/store/authStore';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop';
-
 const FALLBACK_LOGO =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"%3E%3Crect fill="%23E5E7EB" width="64" height="64"/%3E%3Ctext fill="%236B7280" font-family="sans-serif" font-size="14" dy="5" font-weight="bold" x="50%" y="50%" text-anchor="middle"%3ELOGO%3C/text%3E%3C/svg%3E';
 
-const QUICK_MENUS = [
+const USER_QUICK_MENUS = [
   { id: 1, title: 'AI 매칭 리포트', icon: '📊', color: 'bg-blue-50' },
-  { id: 2, title: '합격 이력서 분석', icon: '📝', color: 'bg-purple-50' },
-  { id: 3, title: '연봉 계산기', icon: '💰', color: 'bg-emerald-50' },
+  { id: 2, title: '합격 이력서 분석', icon: '📝', color: 'bg-emerald-50' },
+  { id: 3, title: '연봉 계산기', icon: '💰', color: 'bg-indigo-50' },
   { id: 4, title: '맞춤형 이력서 첨삭', icon: '🎙️', color: 'bg-orange-50' },
-  { id: 5, title: '취준용 일정 관리', icon: '🤝', color: 'bg-pink-50' },
+  { id: 5, title: '취준용 일정 관리', icon: '📅', color: 'bg-pink-50' },
   { id: 6, title: '실시간 채용 알림', icon: '🔔', color: 'bg-amber-50' },
+];
+
+const COMPANY_QUICK_MENUS = [
+  { id: 1, title: 'AI 인재 매칭 리포트', icon: '🎯', color: 'bg-blue-50' },
+  { id: 2, title: 'AI 공고 자동 생성', icon: '📄', color: 'bg-emerald-50' },
+  { id: 3, title: '면접 평가지 템플릿', icon: '📋', color: 'bg-indigo-50' },
+  { id: 4, title: '맞춤형 면접 질문 생성', icon: '🎙️', color: 'bg-orange-50' },
+  { id: 5, title: '채용 전형 일정 관리', icon: '📅', color: 'bg-pink-50' },
+  { id: 6, title: '신규 인재 실시간 알림', icon: '🔔', color: 'bg-amber-50' },
 ];
 
 const RECOMMENDATION_SETS = [
@@ -172,6 +180,8 @@ function MainPage() {
     navigate(`/job-posts/${companyId}`);
   };
 
+  const quickMenus = user?.role === 'COMPANY' ? COMPANY_QUICK_MENUS : USER_QUICK_MENUS;
+
   const getHeroContent = () => {
     if (!isLoggedIn)
       return {
@@ -181,7 +191,6 @@ function MainPage() {
         button: '로그인 후 시작',
         link: '/login',
       };
-
     if (user?.role === 'COMPANY')
       return {
         line1: '기업을 위한 추천,',
@@ -190,7 +199,6 @@ function MainPage() {
         button: '인재 탐색하기',
         link: '/recommend/companies',
       };
-
     return {
       line1: '나만의 경쟁력,',
       highlight: 'AI 분석 리포트',
@@ -220,7 +228,7 @@ function MainPage() {
             </div>
             <div className="relative z-10 flex flex-col justify-center p-10">
               <h1 className="text-midnight-ink mb-6 text-3xl font-black tracking-tighter">
-                {heroContent.line1} <span className="text-point-blue">{heroContent.highlight}</span>
+                {heroContent.line1} <span className="text-point-blue">{heroContent.highlight}</span>{' '}
                 {heroContent.line2Suffix}
               </h1>
               <div className="flex">
@@ -280,8 +288,9 @@ function MainPage() {
           </div>
         </section>
 
+        {/* 역할에 따라 USER_QUICK_MENUS 또는 COMPANY_QUICK_MENUS 렌더링 */}
         <section className="mb-12 grid grid-cols-6 gap-4">
-          {QUICK_MENUS.map((menu) => (
+          {quickMenus.map((menu) => (
             <div
               key={menu.id}
               className={`group cursor-pointer rounded-2xl border border-transparent p-6 transition-all hover:border-zinc-100 hover:shadow-md ${menu.color}`}
@@ -308,9 +317,9 @@ function MainPage() {
           </div>
 
           <div className="mb-8 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-black tracking-tighter">최근 채용 공고</h2>
-            </div>
+            <h2 className="text-2xl font-black tracking-tighter">
+              {user?.role === 'COMPANY' ? '실시간 인재 리스트' : '최근 채용 공고'}
+            </h2>
             <button className="hover:text-midnight-ink flex items-center gap-1 text-sm font-black text-zinc-400">
               전체 보기{' '}
               <svg

@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import InterviewListPage from '../pages/InterviewListPage';
-import CorporateInterviewListPage from '../pages/CompanyInterviewListPage';
+import InterviewListPage from '../pages/interview/InterviewListPage';
+import CorporateInterviewListPage from '../pages/company/CompanyInterviewListPage';
 
 export default function InterviewListGate() {
   const { isLoggedIn, user } = useAuthStore();

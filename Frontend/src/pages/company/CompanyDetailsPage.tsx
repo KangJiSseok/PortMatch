@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import Button from '../components/Button/Button';
+import Button from '../../components/Button/Button';
 
 interface CompanyDetails {
   id: number;
@@ -74,7 +74,7 @@ const DUMMY_COMPANY: CompanyDetails = {
     },
   ],
 };
-                                                           
+
 function CompanyDetailsPage() {
   const { companyId } = useParams();
   const navigate = useNavigate();

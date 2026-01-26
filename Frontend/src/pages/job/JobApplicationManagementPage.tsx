@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import Button from '../components/Button/Button';
+import Button from '../../components/Button/Button';
 
 interface Application {
   id: string;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import Button from '../components/Button/Button';
+import Button from '../../components/Button/Button';
 
 interface JobPosting {
   id: string;

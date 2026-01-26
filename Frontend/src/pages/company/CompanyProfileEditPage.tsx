@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useBlocker } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import Button from '../components/Button/Button';
+import Button from '../../components/Button/Button';
 
 type CompanyProject = {
   id: number;

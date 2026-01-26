@@ -3,12 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import Button from '../components/Button/Button';
+import Button from '../../components/Button/Button';
 import {
   fetchMyInterviewViewsByStatus,
   type InterviewListStatus,
   type InterviewSessionView,
-} from '../api/mockData';
+} from '../../api/mockData';
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -242,11 +242,16 @@ export default function CorporateInterviewListPage() {
               <p className="text-midnight-ink text-2xl font-black tracking-tight">
                 데이터를 불러오지 못했어요
               </p>
-              <p className="text-slate-gray mt-3 text-base font-bold leading-relaxed opacity-60">
+              <p className="text-slate-gray mt-3 text-base leading-relaxed font-bold opacity-60">
                 {errorMessage}
               </p>
               <div className="mt-8 flex justify-end">
-                <Button variant="blue" size="lg" className="rounded-2xl px-8 shadow-xl" onClick={load}>
+                <Button
+                  variant="blue"
+                  size="lg"
+                  className="rounded-2xl px-8 shadow-xl"
+                  onClick={load}
+                >
                   다시 시도
                 </Button>
               </div>
@@ -283,7 +288,9 @@ export default function CorporateInterviewListPage() {
                           <span
                             className={[
                               'shrink-0 rounded-full px-4 py-1 text-xs font-black tracking-tight',
-                              isUpcoming ? 'bg-emerald-50 text-emerald-600' : 'bg-cloud-dancer text-slate-gray',
+                              isUpcoming
+                                ? 'bg-emerald-50 text-emerald-600'
+                                : 'bg-cloud-dancer text-slate-gray',
                             ].join(' ')}
                           >
                             {isUpcoming ? '예정' : '완료'}
@@ -299,13 +306,13 @@ export default function CorporateInterviewListPage() {
                         </h3>
 
                         <div className="mt-4 flex items-center gap-3">
-                          <span className="bg-zinc-100 text-zinc-700 rounded-full px-4 py-1 text-sm font-black">
+                          <span className="rounded-full bg-zinc-100 px-4 py-1 text-sm font-black text-zinc-700">
                             {formatDateTime(s.scheduledAt)}
                           </span>
 
                           <span className="bg-cloud-dancer text-midnight-ink rounded-full px-4 py-1 text-sm font-black">
                             ROOM ·{' '}
-                            <span className="text-slate-gray break-all font-bold opacity-70">
+                            <span className="text-slate-gray font-bold break-all opacity-70">
                               {s.room_id}
                             </span>
                           </span>
@@ -398,13 +405,19 @@ export default function CorporateInterviewListPage() {
                 </h3>
 
                 <p className="text-slate-gray mb-8 leading-relaxed font-bold opacity-60">
-                  현재: <span className="font-black">{editTarget ? formatDateTime(editTarget.scheduledAt) : '-'}</span>
+                  현재:{' '}
+                  <span className="font-black">
+                    {editTarget ? formatDateTime(editTarget.scheduledAt) : '-'}
+                  </span>
                   <br />
                   변경할 시간을 선택하세요. (과거는 선택 불가)
                 </p>
 
                 <div className="text-left">
-                  <label className="text-midnight-ink mb-2 block text-sm font-black" htmlFor="scheduledAt">
+                  <label
+                    className="text-midnight-ink mb-2 block text-sm font-black"
+                    htmlFor="scheduledAt"
+                  >
                     면접 시간
                   </label>
 
@@ -417,7 +430,7 @@ export default function CorporateInterviewListPage() {
                     className={[
                       'w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3',
                       'text-base font-bold text-zinc-700',
-                      'outline-none focus:ring-2 focus:ring-midnight-ink',
+                      'focus:ring-midnight-ink outline-none focus:ring-2',
                     ].join(' ')}
                   />
 
