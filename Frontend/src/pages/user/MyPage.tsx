@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
 
+import CalendarSkeleton from '../../components/Calendar/CalendarSkeleton';
 import CalendarPanel from '../../components/Calendar/CalendarPanel';
 import CalendarScheduleList from '../../components/Calendar/CalendarScheduleList';
 import {
@@ -178,20 +179,37 @@ export default function MyPage() {
   const scrapQuery = useQueryLike<ScrapView[]>(() => fetchMyScrapViews(), []);
   const notiQuery = useQueryLike<NotificationItem[]>(() => fetchMyNotifications(), []);
 
-  // ✅ 알림 삭제/읽음 로컬 처리
-  const [notiItems, setNotiItems] = useState<NotificationItem[]>([]);
-  useEffect(() => {
-    if (notiQuery.data) setNotiItems(notiQuery.data);
-  }, [notiQuery.data]);
+  // ✅ 알림: 원본은 notiQuery.data, 로컬 변경(읽음/삭제)만 패치로 관리
+  type NotiPatch = { read?: boolean; deleted?: boolean };
+  const [notiPatchById, setNotiPatchById] = useState<Record<number, NotiPatch>>({});
 
-  const unreadCount = (notiItems ?? []).filter((n) => !n.read).length;
+  const notiItems = useMemo(() => {
+    const base = notiQuery.data ?? [];
+
+    return base
+      .filter((n) => !notiPatchById[n.id]?.deleted)
+      .map((n) => {
+        const patch = notiPatchById[n.id];
+        if (!patch) return n;
+        if (patch.read === undefined) return n;
+        return { ...n, read: patch.read };
+      });
+  }, [notiQuery.data, notiPatchById]);
+
+  const unreadCount = notiItems.filter((n) => !n.read).length;
 
   const handleNotiDelete = (id: number) => {
-    setNotiItems((prev) => prev.filter((x) => x.id !== id));
+    setNotiPatchById((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], deleted: true },
+    }));
   };
 
   const handleNotiClick = (n: NotificationItem) => {
-    setNotiItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+    setNotiPatchById((prev) => ({
+      ...prev,
+      [n.id]: { ...prev[n.id], read: true },
+    }));
 
     const route = resolveNotificationRoute(n);
     if (route) {
@@ -199,6 +217,19 @@ export default function MyPage() {
       navigate(route);
     }
   };
+
+
+  // ==========================
+  // ✅ "현재 시간"은 렌더에서 만들지 말고 state로 관리 (purity lint 대응)
+  // ==========================
+  const [nowMs, setNowMs] = useState<number>(0);
+
+  useEffect(() => {
+    const tick = () => setNowMs(Date.now());
+    tick(); // 최초 1회 즉시 세팅
+    const id = window.setInterval(tick, 30_000); // 30초마다 갱신 (원하면 조절)
+    return () => window.clearInterval(id);
+  }, []);
 
   // ==========================
   // ✅ 캘린더 상태 (컴포넌트로 분리)
@@ -524,7 +555,7 @@ export default function MyPage() {
                   emptyText="이 날짜에는 면접 일정이 없어요."
                   renderItem={(e) => {
                     const startMs = new Date(e.scheduledAt).getTime();
-                    const nowMs = Date.now();
+                    const currentMs = nowMs; // ✅ 렌더에서 Date.now() 호출 금지
 
                     const JOIN_BEFORE_MIN = 30;
                     const JOIN_AFTER_HOURS = 2;
@@ -533,10 +564,12 @@ export default function MyPage() {
 
                     const joinable =
                       isToday &&
-                      nowMs >= startMs - JOIN_BEFORE_MIN * 60 * 1000 &&
-                      nowMs <= startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+                      currentMs > 0 &&
+                      currentMs >= startMs - JOIN_BEFORE_MIN * 60 * 1000 &&
+                      currentMs <= startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
 
-                    const isPast = nowMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
+                    const isPast =
+                      currentMs > 0 && currentMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
 
                     let btnText = '입장';
                     let helperText: string | null = null;
@@ -857,12 +890,7 @@ function ListRowStatic({
 
 /** ✅ 빈 슬롯: 문구 없이 “빈칸 느낌”만 */
 function EmptySlotRow() {
-  return (
-    <div
-      aria-hidden
-      className="h-[56px] w-full rounded-2xl border border-dashed border-zinc-200 bg-zinc-50"
-    />
-  );
+  return <div aria-hidden className="h-[56px] w-full rounded-2xl" />;
 }
 
 function ListSkeleton() {
@@ -896,41 +924,8 @@ function InlineError({ message, onRetry }: { message: string; onRetry: () => voi
 }
 
 /* =========================
- *  Calendar + Modal
+ *          Modal
  * ========================= */
-
-function CalendarSkeleton() {
-  return (
-    <div>
-      <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
-        {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-          <div key={d}>{d}</div>
-        ))}
-      </div>
-
-      <div className="mt-3 grid grid-cols-7 gap-3">
-        {Array.from({ length: 42 }).map((_, i) => (
-          <div
-            key={i}
-            className="min-h-[78px] animate-pulse rounded-2xl border border-zinc-200 bg-white/60 p-3"
-          >
-            <div className="h-4 w-8 rounded bg-zinc-200/70" />
-            <div className="mt-3 h-3 w-20 rounded bg-zinc-200/50" />
-            <div className="mt-2 h-3 w-16 rounded bg-zinc-200/40" />
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-8 rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
-        <div className="h-5 w-40 animate-pulse rounded bg-zinc-200/60" />
-        <div className="mt-4 space-y-2">
-          <div className="h-16 animate-pulse rounded-xl bg-zinc-200/30" />
-          <div className="h-16 animate-pulse rounded-xl bg-zinc-200/30" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ErrorBox({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
@@ -1011,7 +1006,7 @@ function NotificationModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      {/* ✅ 오버레이: Button 쓰지 말고 div로 깔아버리기 (100% 딤 보장) */}
+      {/* ✅ 오버레이 */}
       <div
         className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
         onClick={onClose}
@@ -1026,7 +1021,7 @@ function NotificationModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="rounded-3xl border border-zinc-100 bg-white shadow-2xl">
-          <div className="flex items-center justify-between  border-zinc-100 px-6 py-4">
+          <div className="flex items-center justify-between border-zinc-100 px-6 py-4">
             <p className="text-midnight-ink text-lg font-black">{title}</p>
 
             <Button
