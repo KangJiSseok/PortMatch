@@ -21,6 +21,8 @@ coverage.xml
 .venv/
 venv/
 .env
+.env.*
+!.env.example
 
 # Build artifacts
 build/
