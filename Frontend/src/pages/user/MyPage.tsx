@@ -46,6 +46,19 @@ type PreviewRow = {
   meta?: string;
 };
 
+type ScrapItem = {
+  key: string | number;
+  title: string;
+  subtitle: string; // 회사명
+  jobPostId: number | null;
+  onClick: () => void;
+};
+
+function getInitial(text: string) {
+  const t = (text ?? '').trim();
+  return t.length > 0 ? t[0] : '?';
+}
+
 /** ✅ React Query 느낌 미니 훅 */
 function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
   const [data, setData] = useState<T | null>(null);
@@ -247,7 +260,7 @@ export default function MyPage() {
   }, [scrapQuery.data]);
 
   // ✅ 스크랩 모달: 전체 목록은 상세로 이동
-  const scrapAllItems = useMemo(() => {
+  const scrapAllItems = useMemo<ScrapItem[]>(() => {
     const list = scrapQuery.data ?? [];
     return list.map((s, idx) => {
       const jobPostId = getJobPostIdFromScrap(s);
@@ -269,6 +282,46 @@ export default function MyPage() {
       };
     });
   }, [scrapQuery.data, navigate]);
+
+  // ==========================
+  // ✅ 스크랩 모달 UX: 회사별 그룹핑 + 회사내 더보기
+  // ==========================
+  const SCRAP_DEFAULT_OPEN_COMPANY = 3; // 기본 펼침 회사 수
+  const SCRAP_PREVIEW_LIMIT_PER_COMPANY = 4; // 회사당 기본 노출 공고 수
+
+  const [scrapOpenCompanies, setScrapOpenCompanies] = useState<Record<string, boolean>>({});
+  const [scrapExpandedCompanies, setScrapExpandedCompanies] = useState<Record<string, boolean>>({});
+
+  const scrapCompanyGroups = useMemo(() => {
+    const map = new Map<string, ScrapItem[]>();
+    const order: string[] = [];
+
+    for (const it of scrapAllItems) {
+      const company = it.subtitle || '기타';
+      if (!map.has(company)) {
+        map.set(company, []);
+        order.push(company);
+      }
+      map.get(company)!.push(it);
+    }
+
+    return order.map((companyName) => ({
+      companyName,
+      items: map.get(companyName)!,
+    }));
+  }, [scrapAllItems]);
+
+  const defaultOpenCompanySet = useMemo(() => {
+    const s = new Set<string>();
+    for (const g of scrapCompanyGroups.slice(0, SCRAP_DEFAULT_OPEN_COMPANY)) s.add(g.companyName);
+    return s;
+  }, [scrapCompanyGroups]);
+
+  useEffect(() => {
+    if (!isScrapOpen) return;
+    // 모달 열 때 “더보기 펼침”은 리셋(열 때마다 깔끔)
+    setScrapExpandedCompanies({});
+  }, [isScrapOpen]);
 
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
@@ -326,10 +379,10 @@ export default function MyPage() {
           </div>
 
           <div className="grid grid-cols-3 gap-5">
-            {/* ✅ 이력서 */}
-            <HubCard title="이력서" onHeaderClick={() => navigate(ROUTES.resume)}>
+            {/* ✅ 이력서 (카드 전체 클릭) */}
+            <HubCard title="이력서" onClick={() => navigate(ROUTES.resume)}>
               <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-6 py-10">
-                <div className="bg-cloud-dancer text-midnight-ink grid h-14 w-14 place-items-center rounded-2xl transition group-hover:scale-[1.03]">
+                <div className="bg-cloud-dancer text-midnight-ink grid h-14 w-14 place-items-center rounded-2xl transition group-hover:scale-[1.04]">
                   <IconUser />
                 </div>
 
@@ -338,21 +391,17 @@ export default function MyPage() {
                   <p className="mt-2 text-sm font-semibold text-zinc-500">{resumeLastEdited}</p>
                 </div>
 
+                {/* 시각적 CTA(버튼 아님): 카드 전체 클릭이라 “딱 봐도 눌러도 된다” 느낌만 */}
                 <div className="mt-6">
-                  <Button
-                    variant="dark"
-                    size="md"
-                    onClick={() => navigate(ROUTES.resume)}
-                    className="pointer-events-none translate-y-1 rounded-2xl opacity-0 transition group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100"
-                  >
-                    이력서 관리
-                  </Button>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
+                    자세히 보기 <span className="text-zinc-400">›</span>
+                  </span>
                 </div>
               </div>
             </HubCard>
 
-            {/* ✅ 면접: 미리보기 클릭 이동 제거 + 3슬롯 고정(빈칸은 그냥 빈칸) */}
-            <HubCard title="면접" onHeaderClick={() => navigate(ROUTES.interviewList)}>
+            {/* ✅ 면접 (카드 전체 클릭) */}
+            <HubCard title="면접" onClick={() => navigate(ROUTES.interviewList)}>
               <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
                 <div className="flex-1">
                   {upcomingQuery.isLoading ? (
@@ -383,13 +432,19 @@ export default function MyPage() {
                     </div>
                   )}
                 </div>
+
+                <div className="mt-4 flex justify-end">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
+                    전체 보기 <span className="text-zinc-400">›</span>
+                  </span>
+                </div>
               </div>
             </HubCard>
 
-            {/* ✅ 스크랩: 미리보기 클릭 이동 제거 + 3슬롯 고정 / 헤더는 모달 */}
+            {/* ✅ 스크랩한 공고 (카드 전체 클릭 → 모달 오픈) */}
             <HubCard
               title="스크랩한 공고"
-              onHeaderClick={() => {
+              onClick={() => {
                 if (scrapQuery.isError) scrapQuery.refetch();
                 setIsScrapOpen(true);
               }}
@@ -423,6 +478,12 @@ export default function MyPage() {
                       )}
                     </div>
                   )}
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
+                    전체 보기 <span className="text-zinc-400">›</span>
+                  </span>
                 </div>
               </div>
             </HubCard>
@@ -615,7 +676,7 @@ export default function MyPage() {
         )}
       </NotificationModal>
 
-      {/* ✅ 스크랩 전체 모달 */}
+      {/* ✅ 스크랩 전체 모달 (회사별 그룹핑 + 회사내 더보기) */}
       <NotificationModal
         open={isScrapOpen}
         onClose={() => setIsScrapOpen(false)}
@@ -647,21 +708,155 @@ export default function MyPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-end justify-between">
-              <p className="text-xs font-semibold text-zinc-500">총 {scrapAllItems.length}개</p>
+              <p className="text-xs font-semibold text-zinc-500">
+                총 {scrapAllItems.length}개 · {scrapCompanyGroups.length}개 회사
+              </p>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl"
+                  onClick={() => {
+                    const next: Record<string, boolean> = {};
+                    for (const g of scrapCompanyGroups) next[g.companyName] = true;
+                    setScrapOpenCompanies(next);
+                  }}
+                >
+                  모두 펼치기
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl"
+                  onClick={() => {
+                    const next: Record<string, boolean> = {};
+                    for (const g of scrapCompanyGroups) next[g.companyName] = false;
+                    setScrapOpenCompanies(next);
+                    setScrapExpandedCompanies({});
+                  }}
+                >
+                  모두 접기
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              {scrapAllItems.map((it) => (
-                <ListRow
-                  key={String(it.key)}
-                  title={it.title}
-                  subtitle={it.subtitle}
-                  meta={it.jobPostId ? '' : '상세 이동 불가'}
-                  onClick={it.onClick}
-                />
-              ))}
+            <div className="space-y-3">
+              {scrapCompanyGroups.map((g) => {
+                const isOpen =
+                  scrapOpenCompanies[g.companyName] ?? defaultOpenCompanySet.has(g.companyName);
+                const isExpanded = !!scrapExpandedCompanies[g.companyName];
+
+                const visibleItems = isExpanded
+                  ? g.items
+                  : g.items.slice(0, SCRAP_PREVIEW_LIMIT_PER_COMPANY);
+
+                const hasMore = g.items.length > SCRAP_PREVIEW_LIMIT_PER_COMPANY;
+
+                return (
+                  <div
+                    key={g.companyName}
+                    className="overflow-hidden rounded-2xl border border-zinc-100 bg-white"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScrapOpenCompanies((prev) => ({
+                          ...prev,
+                          [g.companyName]: !isOpen,
+                        }));
+                      }}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-zinc-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-9 w-9 place-items-center rounded-xl bg-zinc-100 text-sm font-black text-zinc-700">
+                          {getInitial(g.companyName)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-midnight-ink truncate text-sm font-black">
+                            {g.companyName}
+                          </p>
+                          <p className="text-xs font-semibold text-zinc-500">
+                            {g.items.length}개 공고
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-black text-zinc-700">
+                          {g.items.length}
+                        </span>
+                        <span
+                          className={[
+                            'text-zinc-300 transition-transform',
+                            isOpen ? 'rotate-180' : 'rotate-0',
+                          ].join(' ')}
+                        >
+                          ▾
+                        </span>
+                      </div>
+                    </button>
+
+                    {isOpen ? (
+                      <div className="border-t border-zinc-100 bg-zinc-50/40 px-3 py-3">
+                        <div className="space-y-2">
+                          {visibleItems.map((it) => (
+                            <div key={String(it.key)} className="rounded-xl bg-white">
+                              <ListRow
+                                title={it.title}
+                                subtitle={it.subtitle}
+                                meta={it.jobPostId ? '' : '상세 이동 불가'}
+                                onClick={it.onClick}
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        {hasMore ? (
+                          <div className="mt-3 flex justify-end">
+                            {!isExpanded ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="rounded-xl"
+                                onClick={() =>
+                                  setScrapExpandedCompanies((prev) => ({
+                                    ...prev,
+                                    [g.companyName]: true,
+                                  }))
+                                }
+                              >
+                                + 더 보기 ({g.items.length - SCRAP_PREVIEW_LIMIT_PER_COMPANY}개)
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="rounded-xl"
+                                onClick={() =>
+                                  setScrapExpandedCompanies((prev) => ({
+                                    ...prev,
+                                    [g.companyName]: false,
+                                  }))
+                                }
+                              >
+                                접기
+                              </Button>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -674,34 +869,46 @@ export default function MyPage() {
  *  Manage Card Parts
  * ========================= */
 
+/**
+ * ✅ 1안: 카드 전체 클릭
+ * - hover/focus가 확실하게 보이도록 강화
+ * - 헤더 버튼 제거(중첩 클릭 지옥 방지)
+ */
 function HubCard({
   title,
-  onHeaderClick,
+  onClick,
   children,
 }: {
   title: string;
-  onHeaderClick: () => void;
+  onClick: () => void;
   children: ReactNode;
 }) {
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onHeaderClick}
-        className="flex w-full items-center justify-between rounded-none border-x-0 border-t-0 border-b border-zinc-100 bg-transparent px-6 py-4 text-left text-base font-black hover:bg-zinc-50"
-      >
-        <p className="text-midnight-ink text-base font-black">{title}</p>
-        <span className="text-zinc-300">›</span>
-      </Button>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClick();
+      }}
+      className={[
+        'group flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition',
+        'hover:ring-midnight-ink/20 hover:-translate-y-0.5 hover:shadow-md hover:ring-2',
+        'focus:ring-midnight-ink/30 focus:ring-2 focus:outline-none',
+      ].join(' ')}
+    >
+      <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
+        <div className="min-w-0">
+          <p className="text-midnight-ink truncate text-base font-black">{title}</p>
+        </div>
+      </div>
 
       {children}
     </div>
   );
 }
 
-/** ✅ 미리보기(면접/스크랩 카드)는 클릭 이동 없음 */
+/** ✅ 미리보기(면접/스크랩 카드)는 클릭 이동 없음(카드가 클릭이니까) */
 function ListRowStatic({
   title,
   subtitle,
