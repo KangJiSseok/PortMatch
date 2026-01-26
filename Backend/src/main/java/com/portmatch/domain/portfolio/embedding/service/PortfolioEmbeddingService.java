@@ -3,8 +3,6 @@ package com.portmatch.domain.portfolio.embedding.service;
 import com.portmatch.domain.portfolio.embedding.client.PortfolioAnalysisClient;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingRequest;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingResponse;
-import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingUpsertResult;
-import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingUpsertResult.Action;
 import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectEmbedding;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectEmbeddingRepository;
 import com.portmatch.domain.portfolio.entity.Portfolio;
@@ -47,7 +45,7 @@ public class PortfolioEmbeddingService {
         this.embeddingClient = embeddingClient;
     }
 
-    public PortfolioEmbeddingUpsertResult buildForMyPortfolio(Long userId, Long portfolioId) {
+    public void buildForMyPortfolio(Long userId, Long portfolioId) {
         // 1) 소유권 체크
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
@@ -58,12 +56,7 @@ public class PortfolioEmbeddingService {
 
         List<PortfolioAnalysisProject> projects = analysis.getProjects();
         if (projects == null || projects.isEmpty()) {
-            return new PortfolioEmbeddingUpsertResult(
-                    portfolioId,
-                    analysis.getId(),
-                    0, 0, 0, 0,
-                    List.of()
-            );
+            return;
         }
 
         // 3) 프로젝트별 content 생성 + content_hash
@@ -101,9 +94,6 @@ public class PortfolioEmbeddingService {
         }
 
         // 5) upsert + 상세 결과 만들기
-        int inserted = 0, updated = 0, skipped = 0;
-        List<PortfolioEmbeddingUpsertResult.Detail> details = new ArrayList<>();
-
         for (int i = 0; i < projectIds.size(); i++) {
             Long projectId = projectIds.get(i);
             String content = contents.get(i);
@@ -114,8 +104,6 @@ public class PortfolioEmbeddingService {
             if (existingOpt.isPresent()) {
                 // 같은 hash면 스킵
                 if (contentHash.equals(existingOpt.get().getContentHash())) {
-                    skipped++;
-                    details.add(new PortfolioEmbeddingUpsertResult.Detail(projectId, Action.SKIPPED, "content_hash unchanged"));
                     continue;
                 }
 
@@ -128,8 +116,6 @@ public class PortfolioEmbeddingService {
                         contentHash,
                         toVectorString(resp.vectors().get(i))
                 );
-                updated++;
-                details.add(new PortfolioEmbeddingUpsertResult.Detail(projectId, Action.UPDATED, null));
             } else {
                 // 신규
                 embeddingRepository.upsertByProjectId(
@@ -140,20 +126,8 @@ public class PortfolioEmbeddingService {
                         contentHash,
                         toVectorString(resp.vectors().get(i))
                 );
-                inserted++;
-                details.add(new PortfolioEmbeddingUpsertResult.Detail(projectId, Action.INSERTED, null));
             }
         }
-
-        return new PortfolioEmbeddingUpsertResult(
-                portfolioId,
-                analysis.getId(),
-                projectIds.size(),
-                inserted,
-                updated,
-                skipped,
-                details
-        );
     }
 
     private String buildProjectEmbeddingText(
