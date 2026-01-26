@@ -8,7 +8,7 @@ import {
   fetchMyInterviewViewsByStatus,
   type InterviewListStatus,
   type InterviewSessionView,
-} from '../../api/mockData';
+} from '../../api/myPage';
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
