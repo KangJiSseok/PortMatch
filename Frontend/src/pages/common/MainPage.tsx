@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../../components/Button/Button';
@@ -10,21 +10,35 @@ const FALLBACK_IMAGE =
 const FALLBACK_LOGO =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"%3E%3Crect fill="%23E5E7EB" width="64" height="64"/%3E%3Ctext fill="%236B7280" font-family="sans-serif" font-size="14" dy="5" font-weight="bold" x="50%" y="50%" text-anchor="middle"%3ELOGO%3C/text%3E%3C/svg%3E';
 
-const USER_QUICK_MENUS = [
+interface QuickMenu {
+  id: number;
+  title: string;
+  icon: string;
+  color: string;
+  link?: string;
+}
+
+const USER_QUICK_MENUS: QuickMenu[] = [
   { id: 1, title: 'AI 매칭 리포트', icon: '📊', color: 'bg-blue-50' },
   { id: 2, title: '합격 이력서 분석', icon: '📝', color: 'bg-emerald-50' },
-  { id: 3, title: '연봉 계산기', icon: '💰', color: 'bg-indigo-50' },
+  { id: 3, title: '실수령액 계산기', icon: '💰', color: 'bg-indigo-50', link: '/support/salary' },
   { id: 4, title: '맞춤형 이력서 첨삭', icon: '🎙️', color: 'bg-orange-50' },
-  { id: 5, title: '취준용 일정 관리', icon: '📅', color: 'bg-pink-50' },
+  { id: 5, title: '취준용 일정 관리', icon: '📅', color: 'bg-pink-50', link: '/support/schedule' },
   { id: 6, title: '실시간 채용 알림', icon: '🔔', color: 'bg-amber-50' },
 ];
 
-const COMPANY_QUICK_MENUS = [
+const COMPANY_QUICK_MENUS: QuickMenu[] = [
   { id: 1, title: 'AI 인재 매칭 리포트', icon: '🎯', color: 'bg-blue-50' },
   { id: 2, title: 'AI 공고 자동 생성', icon: '📄', color: 'bg-emerald-50' },
   { id: 3, title: '면접 평가지 템플릿', icon: '📋', color: 'bg-indigo-50' },
   { id: 4, title: '맞춤형 면접 질문 생성', icon: '🎙️', color: 'bg-orange-50' },
-  { id: 5, title: '채용 전형 일정 관리', icon: '📅', color: 'bg-pink-50' },
+  {
+    id: 5,
+    title: '채용 전형 일정 관리',
+    icon: '📅',
+    color: 'bg-pink-50',
+    link: '/support/schedule',
+  },
   { id: 6, title: '신규 인재 실시간 알림', icon: '🔔', color: 'bg-amber-50' },
 ];
 
@@ -288,12 +302,12 @@ function MainPage() {
           </div>
         </section>
 
-        {/* 역할에 따라 USER_QUICK_MENUS 또는 COMPANY_QUICK_MENUS 렌더링 */}
         <section className="mb-12 grid grid-cols-6 gap-4">
           {quickMenus.map((menu) => (
             <div
               key={menu.id}
               className={`group cursor-pointer rounded-2xl border border-transparent p-6 transition-all hover:border-zinc-100 hover:shadow-md ${menu.color}`}
+              onClick={() => menu.link && navigate(menu.link)}
             >
               <div className="mb-3 text-3xl">{menu.icon}</div>
               <p className="group-hover:text-midnight-ink text-sm font-black text-zinc-700">

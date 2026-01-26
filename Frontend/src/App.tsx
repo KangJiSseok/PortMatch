@@ -38,6 +38,9 @@ import CompanyProfilePage from './pages/company/CompanyProfilePage';
 import CompanyProfileEditPage from './pages/company/CompanyProfileEditPage';
 import RecommendCandidatesPage from './pages/company/RecommendCandidatesPage';
 
+import SalaryCalculatorPage from './pages/support/SalaryCalculatorPage';
+import ScheduleManagementPage from './pages/support/ScheduleManagementPage';
+
 import { ProtectedRoute, PublicRoute, CompanyRoute } from './routes/RouteGuard';
 import MypageGate from './routes/MyPageGate';
 import InterviewListGate from './routes/InterviewListGate';
@@ -240,6 +243,14 @@ const router = createBrowserRouter([
             <RecommendCandidatesPage />
           </CompanyRoute>
         ),
+      },
+      {
+        path: 'support/salary',
+        element: <SalaryCalculatorPage />,
+      },
+      {
+        path: 'support/schedule',
+        element: <ScheduleManagementPage />,
       },
       {
         path: 'design',
