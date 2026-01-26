@@ -100,8 +100,9 @@ const CompanyJobManagementPage = () => {
                     취소
                   </Button>
                   <Button
+                    variant="red"
                     size="lg"
-                    className="flex-1 rounded-xl bg-[#E16B63] font-bold text-white transition-colors hover:bg-[#d95a52]"
+                    className="flex-1 rounded-xl font-bold text-white transition-colors"
                     onClick={confirmDelete}
                   >
                     삭제하기
