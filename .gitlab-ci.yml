@@ -20,7 +20,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "infra-feat/embedding"'
+
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
     - docker build -f Backend/Dockerfile -t "$BACKEND_IMAGE:$IMAGE_TAG" -t "$BACKEND_IMAGE:latest" Backend
@@ -45,7 +45,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "infra-feat/embedding"'
+
 
   script:
     - set -e
