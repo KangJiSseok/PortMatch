@@ -105,10 +105,15 @@ function PortfoliosPage() {
               prev.map((item) => (item.id === p.id ? { ...item, hasAnalysis: true } : item)),
             );
           }
-        } catch {}
+        } catch (error) {
+          console.error(error);
+        }
       });
-    } catch {
-      if (isMounted) setSavedPortfolios([]);
+    } catch (error) {
+      if (isMounted) {
+        setSavedPortfolios([]);
+        console.error(error);
+      }
     }
   }, []);
 
@@ -161,13 +166,14 @@ function PortfoliosPage() {
       setShowTooltip(false);
 
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch {
+    } catch (error) {
       setModal({
         isOpen: true,
         title: '업로드 실패',
         message: '파일 업로드 중 오류가 발생했습니다.',
         type: 'alert',
       });
+      console.error(error);
     }
   };
 
@@ -176,13 +182,14 @@ function PortfoliosPage() {
     try {
       const { url } = await portfolioApi.getPresignedUrl(id);
       window.open(url, '_blank');
-    } catch {
+    } catch (error) {
       setModal({
         isOpen: true,
         title: '파일 열기 실패',
         message: '파일을 불러올 수 없습니다.',
         type: 'alert',
       });
+      console.error(error);
     }
   };
 
@@ -201,13 +208,14 @@ function PortfoliosPage() {
             setSelectedPortfolioId(null);
           }
           closeModal();
-        } catch {
+        } catch (error) {
           setModal({
             isOpen: true,
             title: '삭제 실패',
             message: '삭제 처리 중 오류가 발생했습니다.',
             type: 'alert',
           });
+          console.error(error);
         }
       },
     });
@@ -237,13 +245,14 @@ function PortfoliosPage() {
       const result = await portfolioApi.getAnalysisResult(selectedPortfolioId);
       setAnalysisData(mapAnalysisData(result));
       setStep('result');
-    } catch {
+    } catch (error) {
       setModal({
         isOpen: true,
         title: '조회 실패',
         message: '분석 결과를 불러올 수 없습니다.',
         type: 'alert',
       });
+      console.error(error);
     }
   };
 
@@ -303,7 +312,7 @@ function PortfoliosPage() {
         );
         setStep('result');
       }, 1000);
-    } catch {
+    } catch (error) {
       clearInterval(progressInterval);
       setModal({
         isOpen: true,
@@ -312,6 +321,7 @@ function PortfoliosPage() {
         type: 'alert',
       });
       setStep('upload');
+      console.error(error);
     }
   };
 
@@ -320,8 +330,8 @@ function PortfoliosPage() {
   );
 
   return (
-    <div className="bg-pure-white min-h-screen min-w-350 pt-26 pb-32">
-      <div className="mx-auto w-5xl px-6">
+    <div className="bg-pure-white min-h-screen min-w-80 pt-26 pb-32">
+      <div className="mx-auto max-w-5xl px-6">
         <AnimatePresence>
           {modal.isOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -336,7 +346,7 @@ function PortfoliosPage() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-pure-white relative w-full max-w-md overflow-hidden rounded-[40px] p-10 text-center shadow-2xl"
+                className="bg-pure-white relative w-full max-w-md overflow-hidden rounded-3xl p-10 text-center shadow-2xl"
               >
                 <div className="bg-point-blue/10 text-point-blue mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl">
                   {modal.type === 'confirm' ? (
@@ -415,7 +425,7 @@ function PortfoliosPage() {
 
         <AnimatePresence>
           {selectedProject && (
-            <div className="fixed inset-0 z-60 flex items-center justify-center p-6">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -427,7 +437,7 @@ function PortfoliosPage() {
                 initial={{ opacity: 0, scale: 0.95, y: 30 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 30 }}
-                className="bg-pure-white relative mt-26 flex max-h-[75vh] w-full max-w-5xl flex-col rounded-[40px] shadow-2xl"
+                className="bg-pure-white relative mt-26 flex max-h-[75vh] w-full max-w-5xl flex-col rounded-3xl shadow-2xl"
               >
                 <div className="flex shrink-0 items-center justify-between p-12 pb-6">
                   <div>
@@ -498,7 +508,7 @@ function PortfoliosPage() {
                   <Button
                     variant="blue"
                     size="xl"
-                    className="shadow-point-blue/20 w-full rounded-[20px] font-black shadow-xl"
+                    className="shadow-point-blue/20 w-full rounded-2xl font-black shadow-xl"
                     onClick={() => setSelectedProject(null)}
                   >
                     닫기
@@ -535,14 +545,14 @@ function PortfoliosPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className="border-silver-mist bg-pure-white rounded-[40px] border p-8 shadow-xl shadow-gray-200/50"
+                className="border-silver-mist bg-pure-white rounded-3xl border p-8 shadow-xl shadow-gray-200/50"
               >
                 <div className="space-y-6 text-center">
                   <div className="flex flex-col gap-4">
                     <div className="relative">
                       <button
                         onClick={() => setIsListOpen(!isListOpen)}
-                        className={`border-silver-mist hover:bg-cloud-dancer/30 bg-pure-white flex w-full items-center justify-between rounded-2xl border px-8 py-4 transition-all ${selectedPortfolioId ? 'border-point-blue ring-point-blue ring-1 ring-offset-0' : ''}`}
+                        className={`border-silver-mist hover:bg-cloud-dancer/30 bg-pure-white flex w-full items-center justify-between rounded-2xl border px-8 py-4 transition-all ${selectedPortfolioId ? 'border-point-blue ring-point-blue ring-1' : ''}`}
                       >
                         <div className="flex items-center gap-4">
                           <div
@@ -645,7 +655,7 @@ function PortfoliosPage() {
                                 </div>
                               ))
                             ) : (
-                              <div className="text-slate-gray py-10 font-bold whitespace-nowrap opacity-40">
+                              <div className="text-slate-gray py-10 text-center font-bold whitespace-nowrap opacity-40">
                                 목록이 비어있습니다.
                               </div>
                             )}
@@ -658,7 +668,7 @@ function PortfoliosPage() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      className={`group relative cursor-pointer rounded-[40px] border-2 border-dashed py-10 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-[1.01] shadow-inner' : 'border-silver-mist hover:border-point-blue/40 hover:bg-point-blue/5'}`}
+                      className={`group relative cursor-pointer rounded-3xl border-2 border-dashed py-10 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-[1.01] shadow-inner' : 'border-silver-mist hover:border-point-blue/40 hover:bg-point-blue/5'}`}
                     >
                       <input
                         type="file"
@@ -689,7 +699,7 @@ function PortfoliosPage() {
                           </svg>
                         </motion.div>
                         <div className="space-y-1">
-                          <h3 className="text-2xl font-black tracking-tight whitespace-nowrap">
+                          <h3 className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
                             {isDragging ? '여기에 놓으세요!' : '새 포트폴리오 업로드'}
                           </h3>
                           <p className="text-slate-gray text-[14px] font-bold tracking-widest whitespace-nowrap uppercase opacity-40">
@@ -733,7 +743,7 @@ function PortfoliosPage() {
                                   <Button
                                     variant="blue"
                                     size="xl"
-                                    className="shadow-point-blue/20 flex-[2] rounded-[20px] py-4! text-xl! font-black shadow-xl"
+                                    className="shadow-point-blue/20 flex-2 rounded-2xl py-4! text-xl! font-black shadow-xl"
                                     onClick={handleViewResults}
                                   >
                                     결과 바로보기
@@ -741,7 +751,7 @@ function PortfoliosPage() {
                                   <Button
                                     variant="outline"
                                     size="xl"
-                                    className="flex-1 rounded-[20px] py-4! text-xl! font-black"
+                                    className="flex-1 rounded-2xl py-4! text-xl! font-black"
                                     onClick={handleAnalysis}
                                   >
                                     다시 분석하기
@@ -751,7 +761,7 @@ function PortfoliosPage() {
                                 <Button
                                   variant="blue"
                                   size="xl"
-                                  className="shadow-point-blue/20 w-full rounded-[20px] py-4! text-2xl! font-black shadow-xl"
+                                  className="shadow-point-blue/20 w-full rounded-2xl py-4! text-2xl! font-black shadow-xl"
                                   onClick={handleAnalysis}
                                 >
                                   분석 시작하기
@@ -764,7 +774,7 @@ function PortfoliosPage() {
                                 variant="blue"
                                 size="xl"
                                 disabled
-                                className="bg-silver-mist text-slate-gray w-full cursor-not-allowed rounded-[20px] py-4! text-2xl! font-black"
+                                className="bg-silver-mist text-slate-gray w-full cursor-not-allowed rounded-2xl py-4! text-2xl! font-black"
                               >
                                 파일을 선택해주세요
                               </Button>
@@ -783,7 +793,7 @@ function PortfoliosPage() {
                 key="analyzing"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="border-silver-mist bg-pure-white rounded-[40px] border p-8 shadow-xl shadow-gray-200/50"
+                className="border-silver-mist bg-pure-white rounded-3xl border p-8 shadow-xl shadow-gray-200/50"
               >
                 <div className="space-y-8 py-4 text-center">
                   <div className="relative mx-auto h-40 w-40">
@@ -903,7 +913,7 @@ function PortfoliosPage() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-6">
-                  <section className="border-silver-mist bg-pure-white w-full rounded-[40px] border p-10 shadow-sm">
+                  <section className="border-silver-mist bg-pure-white w-full rounded-3xl border p-10 shadow-sm">
                     <div className="mb-8 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
                       <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
@@ -949,7 +959,7 @@ function PortfoliosPage() {
                       )}
                     </div>
                   </section>
-                  <section className="border-silver-mist bg-pure-white w-full rounded-[40px] border p-10 shadow-sm">
+                  <section className="border-silver-mist bg-pure-white w-full rounded-3xl border p-10 shadow-sm">
                     <div className="mb-8 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
                       <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
@@ -978,7 +988,7 @@ function PortfoliosPage() {
                   <Button
                     variant="blue"
                     size="xl"
-                    className="shadow-point-blue/20 flex-[2] rounded-[20px] py-4! text-xl! font-black shadow-xl"
+                    className="shadow-point-blue/20 flex-2 rounded-2xl py-4! text-xl! font-black shadow-xl"
                     onClick={() => navigate('/recommend/companies')}
                   >
                     맞춤 공고 확인하기
@@ -986,7 +996,7 @@ function PortfoliosPage() {
                   <Button
                     variant="outline"
                     size="xl"
-                    className="flex-1 rounded-[20px] py-4! text-xl! font-black"
+                    className="flex-1 rounded-2xl py-4! text-xl! font-black"
                     onClick={() => {
                       setSelectedPortfolioId(null);
                       setStep('upload');

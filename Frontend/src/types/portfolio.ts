@@ -1,4 +1,5 @@
 export interface PortfolioResponse {
+  isAnalyzed: boolean;
   id: number;
   userId: number;
   originalFilename: string;
