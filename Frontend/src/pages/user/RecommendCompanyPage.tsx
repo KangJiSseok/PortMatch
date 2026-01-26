@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Button from '@/components/Button/Button';
 import LoadingState from '@/components/states/LoadingState';
-import EmptyState from '@/components/states/EmptyState';
 import ErrorState from '@/components/states/ErrorState';
 import { useRecommendedCompanies } from '@/hooks/useRecommendedCompanies';
 import type { RecommendedCompany, SortBy } from '@/types/recommendCompany';
@@ -162,7 +161,7 @@ function RecommendCompanyPage() {
               <div className="bg-point-blue h-6 w-1.5 rounded-full" />
               <div>
                 <h2 className="text-midnight-ink text-2xl font-black uppercase">
-                  Matched Companies
+                  추천 기업 목록
                 </h2>
                 <p className="text-slate-gray mt-1 text-sm font-bold italic opacity-40">
                   추천 점수와 공고 수 기준으로 정렬할 수 있어요.
