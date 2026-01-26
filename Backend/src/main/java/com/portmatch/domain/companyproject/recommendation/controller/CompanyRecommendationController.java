@@ -9,15 +9,15 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/recommendations")
+@RequestMapping("/api/portfolios")
 public class CompanyRecommendationController {
 
     private final CompanyRecommendationService service;
 
     // 기업 10개 추천
-    @GetMapping("/companies")
+    @GetMapping("/{portfolioId}/recommendations/companies")
     public List<CompanyRecommendationResponse> recommendCompanies(
-            @RequestParam Long portfolioId
+            @PathVariable Long portfolioId
     ) {
         return service.recommendTop10(portfolioId);
     }
