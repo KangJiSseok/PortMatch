@@ -5,6 +5,7 @@ import com.portmatch.domain.portfolio.dto.PortfolioApiResponses;
 import com.portmatch.domain.portfolio.dto.PortfolioResponse;
 import com.portmatch.domain.portfolio.dto.PresignedUrlResponse;
 import com.portmatch.domain.portfolio.service.PortfolioAnalysisService;
+import com.portmatch.domain.portfolio.embedding.service.PortfolioEmbeddingService;
 import com.portmatch.domain.portfolio.service.PortfolioService;
 import com.portmatch.domain.auth.entity.User;
 import com.portmatch.global.api.BaseApiResponse;
@@ -31,13 +32,16 @@ public class PortfolioController {
 
     private final PortfolioService portfolioService;
     private final PortfolioAnalysisService portfolioAnalysisService;
+    private final PortfolioEmbeddingService portfolioEmbeddingService;
 
     public PortfolioController(
             PortfolioService portfolioService,
-            PortfolioAnalysisService portfolioAnalysisService
+            PortfolioAnalysisService portfolioAnalysisService,
+            PortfolioEmbeddingService portfolioEmbeddingService
     ) {
         this.portfolioService = portfolioService;
         this.portfolioAnalysisService = portfolioAnalysisService;
+        this.portfolioEmbeddingService = portfolioEmbeddingService;
     }
 
     @Operation(
@@ -111,7 +115,9 @@ public class PortfolioController {
             @Parameter(description = "포트폴리오 ID", required = true)
             @PathVariable Long portfolioId
     ) {
-        return BaseApiResponse.ok(portfolioAnalysisService.analyze(user.getId(), portfolioId));
+        Object result = portfolioAnalysisService.analyze(user.getId(), portfolioId);
+        portfolioEmbeddingService.buildForMyPortfolio(user.getId(), portfolioId);
+        return BaseApiResponse.ok(result);
     }
 
     @Operation(
