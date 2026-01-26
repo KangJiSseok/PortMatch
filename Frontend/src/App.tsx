@@ -36,6 +36,7 @@ import CompanyDetailsPage from './pages/company/CompanyDetailsPage';
 import CompanyJobManagementPage from './pages/company/CompanyJobManagementPage';
 import CompanyProfilePage from './pages/company/CompanyProfilePage';
 import CompanyProfileEditPage from './pages/company/CompanyProfileEditPage';
+import RecommendCandidatesPage from './pages/company/RecommendCandidatesPage';
 
 import { ProtectedRoute, PublicRoute, CompanyRoute } from './routes/RouteGuard';
 import MypageGate from './routes/MyPageGate';
@@ -229,6 +230,14 @@ const router = createBrowserRouter([
         element: (
           <CompanyRoute>
             <CompanyProfileEditPage />
+          </CompanyRoute>
+        ),
+      },
+      {
+        path: 'company/recommend/candidates',
+        element: (
+          <CompanyRoute>
+            <RecommendCandidatesPage />
           </CompanyRoute>
         ),
       },

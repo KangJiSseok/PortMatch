@@ -41,22 +41,19 @@ deploy:
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
 
-  before_script:
-    - mkdir -p ~/.ssh
-    - echo "$EC2_SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - file ~/.ssh/id_rsa
-    - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
-
   script:
-    - scp -i ~/.ssh/id_rsa docker-compose.prod.yml "$EC2_USER@$EC2_HOST:/home/ubuntu/deploy/docker-compose.prod.yml"
+    - set -e
 
+    # ---------- 배포 디렉토리 ----------
+    - mkdir -p /home/gitlab-runner/deploy
+    - cd /home/gitlab-runner/deploy
+
+    # ---------- docker-compose 파일 복사 ----------
+    - cp $CI_PROJECT_DIR/docker-compose.prod.yml ./docker-compose.prod.yml
+
+    # ---------- .env.prod 생성 ----------
     - |
-      ssh -i ~/.ssh/id_rsa "$EC2_USER@$EC2_HOST" << EOF
-      set -e
-      cd /home/ubuntu/deploy
-
-      cat > .env.prod << ENV
+      cat > .env.prod << 'ENV'
       # ---------- ENV ----------
       APP_ENV=prod
       SPRING_PROFILES_ACTIVE=prod
@@ -99,8 +96,8 @@ deploy:
       VITE_SERVICE_NAME=${VITE_SERVICE_NAME}
       ENV
 
-      docker login -u "${DOCKERHUB_USERNAME}" -p "${DOCKERHUB_TOKEN}"
-      docker compose -f docker-compose.prod.yml pull
-      docker compose -f docker-compose.prod.yml down
-      docker compose -f docker-compose.prod.yml up -d --remove-orphans
-      EOF
+    # ---------- Docker 배포 ----------
+    - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
+    - docker compose -f docker-compose.prod.yml pull
+    - docker compose -f docker-compose.prod.yml down
+    - docker compose -f docker-compose.prod.yml up -d --remove-orphans
