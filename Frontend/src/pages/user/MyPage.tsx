@@ -46,18 +46,14 @@ type PreviewRow = {
   meta?: string;
 };
 
-type ScrapItem = {
+type ScrapModalItem = {
+  order: number; // ✅ 원본 순서(최근 느낌)
   key: string | number;
-  title: string;
-  subtitle: string; // 회사명
+  title: string; // postingTitle
+  subtitle: string; // companyName
   jobPostId: number | null;
   onClick: () => void;
 };
-
-function getInitial(text: string) {
-  const t = (text ?? '').trim();
-  return t.length > 0 ? t[0] : '?';
-}
 
 /** ✅ React Query 느낌 미니 훅 */
 function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
@@ -164,6 +160,10 @@ function resolveNotificationRoute(n: NotificationItem): string | null {
   return null;
 }
 
+function normalizeText(s: string) {
+  return s.trim().toLowerCase();
+}
+
 export default function MyPage() {
   const navigate = useNavigate();
 
@@ -259,12 +259,13 @@ export default function MyPage() {
     return padToFixedSlots(rows, 3);
   }, [scrapQuery.data]);
 
-  // ✅ 스크랩 모달: 전체 목록은 상세로 이동
-  const scrapAllItems = useMemo<ScrapItem[]>(() => {
+  // ✅ 스크랩 모달: 원본 아이템 + 클릭 이동
+  const scrapAllItems = useMemo<ScrapModalItem[]>(() => {
     const list = scrapQuery.data ?? [];
     return list.map((s, idx) => {
       const jobPostId = getJobPostIdFromScrap(s);
       return {
+        order: idx, // ✅ 원본(최근 느낌) 정렬용
         key:
           (s as unknown as { id?: number | string }).id ??
           `${s.companyName}-${s.postingTitle}-${idx}`,
@@ -284,44 +285,43 @@ export default function MyPage() {
   }, [scrapQuery.data, navigate]);
 
   // ==========================
-  // ✅ 스크랩 모달 UX: 회사별 그룹핑 + 회사내 더보기
+  // ✅ 스크랩 모달: 검색 + 정렬
   // ==========================
-  const SCRAP_DEFAULT_OPEN_COMPANY = 3; // 기본 펼침 회사 수
-  const SCRAP_PREVIEW_LIMIT_PER_COMPANY = 4; // 회사당 기본 노출 공고 수
+  const [scrapSort, setScrapSort] = useState<'recent' | 'company' | 'title'>('company');
+  const [scrapSearch, setScrapSearch] = useState('');
 
-  const [scrapOpenCompanies, setScrapOpenCompanies] = useState<Record<string, boolean>>({});
-  const [scrapExpandedCompanies, setScrapExpandedCompanies] = useState<Record<string, boolean>>({});
+  const filteredSortedScraps = useMemo(() => {
+    const q = normalizeText(scrapSearch);
+    const filtered = q
+      ? scrapAllItems.filter((it) => {
+          const a = normalizeText(it.title);
+          const b = normalizeText(it.subtitle);
+          return a.includes(q) || b.includes(q);
+        })
+      : scrapAllItems;
 
-  const scrapCompanyGroups = useMemo(() => {
-    const map = new Map<string, ScrapItem[]>();
-    const order: string[] = [];
+    const sorted = [...filtered].sort((a, b) => {
+      if (scrapSort === 'recent') return a.order - b.order;
 
-    for (const it of scrapAllItems) {
-      const company = it.subtitle || '기타';
-      if (!map.has(company)) {
-        map.set(company, []);
-        order.push(company);
+      if (scrapSort === 'title') {
+        const t = a.title.localeCompare(b.title, 'ko');
+        if (t !== 0) return t;
+        return a.subtitle.localeCompare(b.subtitle, 'ko');
       }
-      map.get(company)!.push(it);
-    }
 
-    return order.map((companyName) => ({
-      companyName,
-      items: map.get(companyName)!,
-    }));
-  }, [scrapAllItems]);
+      // company
+      const c = a.subtitle.localeCompare(b.subtitle, 'ko');
+      if (c !== 0) return c;
+      return a.title.localeCompare(b.title, 'ko');
+    });
 
-  const defaultOpenCompanySet = useMemo(() => {
-    const s = new Set<string>();
-    for (const g of scrapCompanyGroups.slice(0, SCRAP_DEFAULT_OPEN_COMPANY)) s.add(g.companyName);
-    return s;
-  }, [scrapCompanyGroups]);
+    return sorted;
+  }, [scrapAllItems, scrapSearch, scrapSort]);
 
-  useEffect(() => {
-    if (!isScrapOpen) return;
-    // 모달 열 때 “더보기 펼침”은 리셋(열 때마다 깔끔)
-    setScrapExpandedCompanies({});
-  }, [isScrapOpen]);
+  const companyCount = useMemo(() => {
+    const set = new Set(filteredSortedScraps.map((x) => x.subtitle));
+    return set.size;
+  }, [filteredSortedScraps]);
 
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
@@ -391,7 +391,6 @@ export default function MyPage() {
                   <p className="mt-2 text-sm font-semibold text-zinc-500">{resumeLastEdited}</p>
                 </div>
 
-                {/* 시각적 CTA(버튼 아님): 카드 전체 클릭이라 “딱 봐도 눌러도 된다” 느낌만 */}
                 <div className="mt-6">
                   <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
                     자세히 보기 <span className="text-zinc-400">›</span>
@@ -509,7 +508,6 @@ export default function MyPage() {
               />
             ) : (
               <div className="grid grid-cols-[1fr_380px] gap-8">
-                {/* LEFT: 달력 (컴포넌트) */}
                 <CalendarPanel
                   viewMonth={viewMonth}
                   selectedDate={selectedDate}
@@ -519,7 +517,6 @@ export default function MyPage() {
                   getEventCount={(ymd) => interviewEventMap.get(ymd)?.length ?? 0}
                 />
 
-                {/* RIGHT: 일정 리스트 (제네릭) */}
                 <CalendarScheduleList<InterviewSessionView>
                   title="선택한 날짜 일정"
                   subtitle={formatYmdToKorean(selectedDate)}
@@ -676,7 +673,7 @@ export default function MyPage() {
         )}
       </NotificationModal>
 
-      {/* ✅ 스크랩 전체 모달 (회사별 그룹핑 + 회사내 더보기) */}
+      {/* ✅ 스크랩 전체 모달 (그룹핑 X / 정렬+검색 O) */}
       <NotificationModal
         open={isScrapOpen}
         onClose={() => setIsScrapOpen(false)}
@@ -709,155 +706,77 @@ export default function MyPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-end justify-between">
-              <p className="text-xs font-semibold text-zinc-500">
-                총 {scrapAllItems.length}개 · {scrapCompanyGroups.length}개 회사
-              </p>
+            {/* ✅ 상단 툴바(정렬/검색) - 스크롤해도 위에 붙어있게 */}
+            <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-zinc-500">
+                    총 {filteredSortedScraps.length}개 · {companyCount}개 회사
+                  </p>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl"
-                  onClick={() => {
-                    const next: Record<string, boolean> = {};
-                    for (const g of scrapCompanyGroups) next[g.companyName] = true;
-                    setScrapOpenCompanies(next);
-                  }}
-                >
-                  모두 펼치기
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={scrapSort === 'recent' ? 'dark' : 'outline'}
+                    className="rounded-xl"
+                    onClick={() => setScrapSort('recent')}
+                  >
+                    최근
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={scrapSort === 'company' ? 'dark' : 'outline'}
+                    className="rounded-xl"
+                    onClick={() => setScrapSort('company')}
+                  >
+                    회사순
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={scrapSort === 'title' ? 'dark' : 'outline'}
+                    className="rounded-xl"
+                    onClick={() => setScrapSort('title')}
+                  >
+                    공고명
+                  </Button>
+                </div>
+              </div>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl"
-                  onClick={() => {
-                    const next: Record<string, boolean> = {};
-                    for (const g of scrapCompanyGroups) next[g.companyName] = false;
-                    setScrapOpenCompanies(next);
-                    setScrapExpandedCompanies({});
-                  }}
-                >
-                  모두 접기
-                </Button>
+              <div className="mt-3">
+                <input
+                  value={scrapSearch}
+                  onChange={(e) => setScrapSearch(e.target.value)}
+                  placeholder="회사/공고명 검색"
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-semibold text-zinc-700 transition outline-none placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-white"
+                />
               </div>
             </div>
 
-            <div className="space-y-3">
-              {scrapCompanyGroups.map((g) => {
-                const isOpen =
-                  scrapOpenCompanies[g.companyName] ?? defaultOpenCompanySet.has(g.companyName);
-                const isExpanded = !!scrapExpandedCompanies[g.companyName];
-
-                const visibleItems = isExpanded
-                  ? g.items
-                  : g.items.slice(0, SCRAP_PREVIEW_LIMIT_PER_COMPANY);
-
-                const hasMore = g.items.length > SCRAP_PREVIEW_LIMIT_PER_COMPANY;
-
-                return (
-                  <div
-                    key={g.companyName}
-                    className="overflow-hidden rounded-2xl border border-zinc-100 bg-white"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setScrapOpenCompanies((prev) => ({
-                          ...prev,
-                          [g.companyName]: !isOpen,
-                        }));
-                      }}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-zinc-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-9 w-9 place-items-center rounded-xl bg-zinc-100 text-sm font-black text-zinc-700">
-                          {getInitial(g.companyName)}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-midnight-ink truncate text-sm font-black">
-                            {g.companyName}
-                          </p>
-                          <p className="text-xs font-semibold text-zinc-500">
-                            {g.items.length}개 공고
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-black text-zinc-700">
-                          {g.items.length}
-                        </span>
-                        <span
-                          className={[
-                            'text-zinc-300 transition-transform',
-                            isOpen ? 'rotate-180' : 'rotate-0',
-                          ].join(' ')}
-                        >
-                          ▾
-                        </span>
-                      </div>
-                    </button>
-
-                    {isOpen ? (
-                      <div className="border-t border-zinc-100 bg-zinc-50/40 px-3 py-3">
-                        <div className="space-y-2">
-                          {visibleItems.map((it) => (
-                            <div key={String(it.key)} className="rounded-xl bg-white">
-                              <ListRow
-                                title={it.title}
-                                subtitle={it.subtitle}
-                                meta={it.jobPostId ? '' : '상세 이동 불가'}
-                                onClick={it.onClick}
-                              />
-                            </div>
-                          ))}
-                        </div>
-
-                        {hasMore ? (
-                          <div className="mt-3 flex justify-end">
-                            {!isExpanded ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="rounded-xl"
-                                onClick={() =>
-                                  setScrapExpandedCompanies((prev) => ({
-                                    ...prev,
-                                    [g.companyName]: true,
-                                  }))
-                                }
-                              >
-                                + 더 보기 ({g.items.length - SCRAP_PREVIEW_LIMIT_PER_COMPANY}개)
-                              </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="rounded-xl"
-                                onClick={() =>
-                                  setScrapExpandedCompanies((prev) => ({
-                                    ...prev,
-                                    [g.companyName]: false,
-                                  }))
-                                }
-                              >
-                                접기
-                              </Button>
-                            )}
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
+            {/* ✅ 리스트 */}
+            {filteredSortedScraps.length === 0 ? (
+              <div className="bg-cloud-dancer/25 rounded-2xl p-6 text-center">
+                <p className="text-midnight-ink text-sm font-black">검색 결과가 없어요</p>
+                <p className="mt-1 text-sm font-semibold text-zinc-500">
+                  다른 키워드로 다시 찾아보세요.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredSortedScraps.map((it) => (
+                  <ScrapListRow
+                    key={String(it.key)}
+                    title={it.title}
+                    company={it.subtitle}
+                    disabled={!it.jobPostId}
+                    onClick={it.onClick}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </NotificationModal>
@@ -943,43 +862,6 @@ function EmptySlotRow() {
       aria-hidden
       className="h-[56px] w-full rounded-2xl border border-dashed border-zinc-200 bg-zinc-50"
     />
-  );
-}
-
-function ListRow({
-  title,
-  subtitle,
-  meta,
-  onClick,
-}: {
-  title: string;
-  subtitle: string;
-  meta?: string;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={onClick}
-      className="group flex w-full items-center justify-start rounded-2xl border-0 bg-transparent p-3 text-left transition hover:bg-zinc-50"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="text-midnight-ink line-clamp-2 text-sm font-black">{title}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <p className="truncate text-xs font-semibold text-zinc-500">{subtitle}</p>
-          {meta ? (
-            <>
-              <span className="text-zinc-300">·</span>
-              <p className="truncate text-xs font-semibold text-zinc-500">{meta}</p>
-            </>
-          ) : null}
-        </div>
-      </div>
-
-      <span className="shrink-0 text-zinc-200 transition-colors group-hover:text-zinc-400">›</span>
-    </Button>
   );
 }
 
@@ -1082,39 +964,70 @@ function NotificationModal({
       if (e.key === 'Escape') onClose();
     };
 
+    const prev = {
+      bodyOverflow: document.body.style.overflow,
+      bodyPosition: document.body.style.position,
+      bodyTop: document.body.style.top,
+      bodyLeft: document.body.style.left,
+      bodyRight: document.body.style.right,
+      bodyWidth: document.body.style.width,
+      htmlOverflow: document.documentElement.style.overflow,
+      bodyPaddingRight: document.body.style.paddingRight,
+    };
+
+    const scrollY = window.scrollY;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
     document.addEventListener('keydown', onKeyDown);
+
+    document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
+
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
 
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = '';
+
+      document.body.style.overflow = prev.bodyOverflow;
+      document.body.style.position = prev.bodyPosition;
+      document.body.style.top = prev.bodyTop;
+      document.body.style.left = prev.bodyLeft;
+      document.body.style.right = prev.bodyRight;
+      document.body.style.width = prev.bodyWidth;
+      document.documentElement.style.overflow = prev.htmlOverflow;
+      document.body.style.paddingRight = prev.bodyPaddingRight;
+
+      window.scrollTo(0, scrollY);
     };
   }, [open, onClose]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[200]">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        aria-label="close modal"
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+      {/* ✅ 오버레이: Button 쓰지 말고 div로 깔아버리기 (100% 딤 보장) */}
+      <div
+        className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
         onClick={onClose}
-        className="bg-midnight-ink/40 absolute inset-0 h-full w-full rounded-none border-0 p-0 backdrop-blur-[2px]"
-      >
-        <span className="sr-only">close</span>
-      </Button>
+        aria-hidden
+      />
 
-      <div className="absolute top-1/2 left-1/2 w-[92vw] max-w-[560px] -translate-x-1/2 -translate-y-1/2">
+      {/* ✅ 모달 카드 */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative z-10 w-[92vw] max-w-[560px]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="rounded-3xl border border-zinc-100 bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
-            <div>
-              <p className="text-midnight-ink text-lg font-black">{title}</p>
-              <p className="mt-1 text-xs font-semibold text-zinc-500">
-                필요한 것만 빠르게 확인하세요.
-              </p>
-            </div>
+          <div className="flex items-center justify-between  border-zinc-100 px-6 py-4">
+            <p className="text-midnight-ink text-lg font-black">{title}</p>
 
             <Button
               type="button"
@@ -1127,10 +1040,58 @@ function NotificationModal({
             </Button>
           </div>
 
-          <div className="max-h-[70vh] overflow-auto px-6 py-5">{children}</div>
+          {/* ✅ 스크롤 영역 */}
+          <div className="max-h-[70vh] overflow-auto [overscroll-behavior:contain] px-6">
+            {children}
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/* =========================
+ *  Scrap Modal Row
+ * ========================= */
+
+function ScrapListRow({
+  title,
+  company,
+  disabled,
+  onClick,
+}: {
+  title: string;
+  company: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (disabled) return;
+        onClick();
+      }}
+      className={[
+        'w-full rounded-2xl border border-zinc-100 bg-white p-4 text-left shadow-sm transition',
+        disabled ? 'cursor-not-allowed opacity-60' : 'hover:-translate-y-[1px] hover:shadow-md',
+      ].join(' ')}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-midnight-ink line-clamp-2 text-sm font-black">{title}</p>
+          <p className="mt-2 text-xs font-semibold text-zinc-500">{company}</p>
+
+          {disabled ? (
+            <p className="mt-2 text-[11px] font-semibold text-zinc-400">상세 이동 불가</p>
+          ) : null}
+        </div>
+
+        <div className="shrink-0 pt-1">
+          <span className="text-zinc-300">›</span>
+        </div>
+      </div>
+    </button>
   );
 }
 

@@ -464,6 +464,12 @@ export const SCRAPS: ScrapRow[] = [
     created_at: '2026-01-03T08:00:00',
   },
   {
+    id: 8005,
+    applicant_id: CURRENT_APPLICANT_ID,
+    job_post_id: 1002,
+    created_at: '2026-01-03T08:00:00',
+  },
+  {
     id: 8002,
     applicant_id: CURRENT_APPLICANT_ID,
     job_post_id: 1001,
@@ -477,6 +483,12 @@ export const SCRAPS: ScrapRow[] = [
   },
   {
     id: 8004,
+    applicant_id: CURRENT_APPLICANT_ID,
+    job_post_id: 1001,
+    created_at: '2026-01-04T10:15:00',
+  },
+  {
+    id: 8006,
     applicant_id: CURRENT_APPLICANT_ID,
     job_post_id: 1001,
     created_at: '2026-01-04T10:15:00',

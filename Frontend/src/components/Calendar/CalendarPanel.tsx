@@ -122,7 +122,7 @@ export default function CalendarPanel({
                 )}
               </div>
 
-              <div className="mt-1 flex items-center gap-3">
+              <div className="mt-2 flex items-center gap-3">
                 {cnt > 0 ? (
                   <>
                     <span className="bg-point-blue mt-0.5 h-2 w-2 rounded-full" />
