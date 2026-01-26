@@ -243,7 +243,7 @@ function SignupPage() {
   };
 
   return (
-    <div className="bg-pure-white relative flex min-h-screen min-w-[1200px] flex-col items-center justify-center overflow-x-auto py-12">
+    <div className="bg-pure-white relative flex min-h-screen min-w-300 flex-col items-center justify-center overflow-x-auto py-12">
       <nav className="mb-10 flex shrink-0 items-center gap-10">
         <Link
           to="/main"
@@ -292,7 +292,7 @@ function SignupPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-pure-white w-[720px] shrink-0 rounded-[48px] border border-gray-100 px-16 py-14 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]"
+        className="bg-pure-white w-180 shrink-0 rounded-[48px] border border-gray-100 px-16 py-14 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]"
       >
         <div className="mb-12 text-center">
           <span className="text-point-blue text-[12px] font-black tracking-[0.4em] uppercase opacity-50">
