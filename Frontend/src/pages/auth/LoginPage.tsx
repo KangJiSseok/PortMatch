@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -11,16 +11,18 @@ import type { UserRole } from '../../types/auth';
 const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boolean }) => {
   if (!isVisible || !message) return null;
   return (
-    <div className="animate-in fade-in slide-in-from-top-1 absolute top-[calc(100%+4px)] left-0 z-60 duration-200">
+    <motion.div
+      initial={{ opacity: 0, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="absolute top-[calc(100%+4px)] left-4 z-50"
+    >
       <div className="flex flex-col items-start">
-        <svg width="10" height="5" viewBox="0 0 10 5" className="ml-4 fill-current text-red-500/50">
-          <path d="M5 0L10 5H0L5 0Z" />
-        </svg>
-        <div className="rounded-lg bg-red-500/50 px-3 py-1.5 text-[11px] font-bold whitespace-nowrap text-white shadow-lg backdrop-blur-md">
+        <div className="ml-4 h-0 w-0 border-x-[5px] border-b-[6px] border-x-transparent border-b-red-500/80" />
+        <div className="rounded-lg bg-red-500/80 px-3 py-1.5 text-[11px] font-bold text-white shadow-lg backdrop-blur-md">
           {message}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -32,7 +34,7 @@ function LoginPage() {
   const [shakeField, setShakeField] = useState<string | null>(null);
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
+  const navigate = useNavigate();
   const { mutate: loginMutate, isPending: isLoading } = useLogin();
 
   const handleInputChange = (field: string, value: string) => {
@@ -49,10 +51,10 @@ function LoginPage() {
 
     if (!formData.email) {
       newErrors.email = '이메일을 입력해주세요.';
-      if (!firstError) firstError = 'email';
+      firstError = 'email';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = '올바른 이메일 형식이 아닙니다.';
-      if (!firstError) firstError = 'email';
+      firstError = 'email';
     }
 
     if (!formData.password) {
@@ -64,32 +66,24 @@ function LoginPage() {
 
     if (firstError) {
       setShakeField(firstError);
-      const targetElement = fieldRefs.current[firstError];
-      if (targetElement) {
-        targetElement.querySelector('input')?.focus();
-      }
+      fieldRefs.current[firstError]?.querySelector('input')?.focus();
       setTimeout(() => setShakeField(null), 500);
       return;
     }
 
     loginMutate(
+      { email: formData.email, password: formData.password, expectedRole: userType },
       {
-        email: formData.email,
-        password: formData.password,
-        expectedRole: userType,
-      },
-      {
+        onSuccess: () => navigate('/main'),
         onError: (error: unknown) => {
           if (axios.isAxiosError(error)) {
             const serverMessage = error.response?.data?.message;
-
-            if (error.response?.status === 401) {
-              setErrors({ auth: '이메일 또는 비밀번호가 일치하지 않습니다.' });
-            } else if (serverMessage) {
-              setErrors({ auth: serverMessage });
-            } else {
-              setErrors({ auth: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.' });
-            }
+            setErrors({
+              auth:
+                error.response?.status === 401
+                  ? '이메일 또는 비밀번호가 일치하지 않습니다.'
+                  : serverMessage || '서버 연결에 실패했습니다.',
+            });
           } else {
             setErrors({ auth: '예상치 못한 오류가 발생했습니다.' });
           }
@@ -99,86 +93,105 @@ function LoginPage() {
   };
 
   return (
-    <div className="bg-cloud-dancer relative flex min-h-screen min-w-5xl flex-col items-center justify-center px-6 py-12">
-      <div className="mb-6 flex items-center gap-6">
+    <div className="bg-pure-white relative flex min-h-screen min-w-[1200px] flex-col items-center justify-center overflow-x-auto py-8">
+      <nav className="mb-8 flex shrink-0 items-center gap-10">
         <Link
           to="/main"
-          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold whitespace-nowrap transition-colors"
+          className="text-midnight-ink hover:text-point-blue group flex items-center gap-3 text-[14px] font-black transition-all"
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
+          <div className="bg-cloud-dancer group-hover:bg-point-blue/10 flex h-9 w-9 items-center justify-center rounded-xl transition-colors">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
           메인으로 이동
         </Link>
-        <div className="bg-soft-pebble h-3 w-px" />
+        <div className="h-4 w-[1.5px] bg-gray-200" />
         <Link
           to="/signup"
-          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold whitespace-nowrap transition-colors"
+          className="text-midnight-ink hover:text-point-blue group flex items-center gap-3 text-[14px] font-black transition-all"
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="8.5" cy="7" r="4" />
-            <line x1="20" y1="8" x2="20" y2="14" />
-            <line x1="23" y1="11" x2="17" y2="11" />
-          </svg>
-          회원가입 하러가기
+          <div className="bg-cloud-dancer group-hover:bg-point-blue/10 flex h-9 w-9 items-center justify-center rounded-xl transition-colors">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="8.5" cy="7" r="4" />
+              <line x1="20" y1="8" x2="20" y2="14" />
+              <line x1="23" y1="11" x2="17" y2="11" />
+            </svg>
+          </div>
+          회원가입
         </Link>
-      </div>
+      </nav>
 
-      <div className="bg-pure-white w-lg rounded-3xl p-10 shadow-xl">
-        <div className="text-midnight-ink decoration-soft-pebble mb-10 text-center text-3xl font-black tracking-tighter whitespace-nowrap uppercase underline underline-offset-8">
-          PORTMATCH
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-pure-white w-[640px] shrink-0 rounded-[48px] border border-gray-100 px-20 py-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]"
+      >
+        <div className="mb-10 text-center">
+          <span className="text-point-blue text-[12px] font-black tracking-[0.4em] uppercase opacity-50">
+            Identity Gateway
+          </span>
+          <h2 className="text-midnight-ink mt-3 text-4xl font-black tracking-tighter uppercase">
+            PORTMATCH
+          </h2>
+          <div className="bg-point-blue mx-auto mt-4 h-1.5 w-10 rounded-full" />
         </div>
 
-        <div className="bg-cloud-dancer mb-10 flex rounded-xl p-1">
+        <div className="mb-10 flex rounded-[20px] bg-gray-50 p-1.5">
           {(
             [
-              { id: 'APPLICANT', label: '개인 로그인' },
-              { id: 'COMPANY', label: '기업 로그인' },
+              { id: 'APPLICANT', label: '개인 회원' },
+              { id: 'COMPANY', label: '기업 회원' },
             ] as const
           ).map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setUserType(tab.id)}
-              className={`flex-1 rounded-lg py-2 text-sm font-bold whitespace-nowrap transition-all ${userType === tab.id ? 'bg-pure-white text-midnight-ink shadow-sm' : 'text-slate-gray'}`}
+              className={`relative flex-1 py-3.5 text-[15px] font-black transition-all ${userType === tab.id ? 'text-point-blue' : 'text-slate-gray hover:text-midnight-ink'}`}
             >
-              {tab.label}
+              {userType === tab.id && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="bg-pure-white absolute inset-0 rounded-[15px] shadow-sm"
+                />
+              )}
+              <span className="relative z-10">{tab.label}</span>
             </button>
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-12">
-          <div className="space-y-12">
+        <form onSubmit={handleSubmit} className="space-y-10">
+          <div className="space-y-8">
             <motion.div
               ref={(el) => {
                 fieldRefs.current.email = el;
               }}
               animate={shakeField === 'email' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-              transition={{ duration: 0.4 }}
               className="relative"
             >
               <Input
-                label="이메일 *"
+                label="이메일 주소"
                 type="email"
                 placeholder="example@portmatch.com"
                 value={formData.email}
@@ -195,11 +208,10 @@ function LoginPage() {
                 fieldRefs.current.password = el;
               }}
               animate={shakeField === 'password' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-              transition={{ duration: 0.4 }}
               className="relative"
             >
               <Input
-                label="비밀번호 *"
+                label="비밀번호"
                 type="password"
                 placeholder="비밀번호를 입력하세요"
                 value={formData.password}
@@ -212,7 +224,7 @@ function LoginPage() {
             </motion.div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-2">
             <Checkbox
               label="로그인 상태 유지"
               checked={rememberMe}
@@ -220,37 +232,39 @@ function LoginPage() {
             />
             <button
               type="button"
-              className="text-slate-gray text-sm font-medium whitespace-nowrap hover:underline"
+              className="text-slate-gray hover:text-point-blue text-sm font-bold transition-colors"
             >
               비밀번호 찾기
             </button>
           </div>
 
-          <div className="space-y-4">
-            {errors.auth && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-lg bg-red-50 px-2 py-3 text-center text-sm font-bold whitespace-nowrap text-red-500"
-              >
-                {errors.auth}
-              </motion.div>
-            )}
+          <div className="pt-2">
+            <AnimatePresence>
+              {errors.auth && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className="mb-6 rounded-2xl border border-red-100 bg-red-50 py-4 text-center text-sm font-black text-red-500"
+                >
+                  {errors.auth}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <Button
-              variant="dark"
+              variant="blue"
               type="submit"
               disabled={isLoading}
-              className={`shadow-midnight-ink/20 w-full shrink-0 py-5 text-xl font-black shadow-lg ${isLoading ? 'opacity-50' : ''}`}
+              className={`shadow-point-blue/20 w-full rounded-[20px] py-5 text-xl font-black shadow-2xl transition-all active:scale-[0.99] ${isLoading ? 'opacity-70' : ''}`}
             >
               {isLoading
-                ? '로그인 중...'
-                : userType === 'APPLICANT'
-                  ? '개인 로그인'
-                  : '기업 로그인'}
+                ? '인증 진행 중...'
+                : `${userType === 'APPLICANT' ? '개인' : '기업'} 로그인 시작하기`}
             </Button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

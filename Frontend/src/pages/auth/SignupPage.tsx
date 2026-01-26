@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -11,16 +11,18 @@ import type { UserRole } from '../../types/auth';
 const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boolean }) => {
   if (!isVisible || !message) return null;
   return (
-    <div className="animate-in fade-in slide-in-from-top-1 absolute top-[calc(100%+6px)] left-0 z-60 duration-200">
+    <motion.div
+      initial={{ opacity: 0, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="absolute top-[calc(100%+4px)] left-4 z-50"
+    >
       <div className="flex flex-col items-start">
-        <svg width="10" height="5" viewBox="0 0 10 5" className="ml-4 fill-current text-red-500/60">
-          <path d="M5 0L10 5H0L5 0Z" />
-        </svg>
-        <div className="rounded-lg bg-red-500/60 px-3 py-2 text-[11px] font-bold whitespace-nowrap text-white shadow-xl backdrop-blur-lg">
+        <div className="ml-4 h-0 w-0 border-x-[5px] border-b-[6px] border-x-transparent border-b-red-500/80" />
+        <div className="rounded-lg bg-red-500/80 px-3 py-1.5 text-[11px] font-bold text-white shadow-lg backdrop-blur-md">
           {message}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -241,74 +243,96 @@ function SignupPage() {
   };
 
   return (
-    <div className="bg-cloud-dancer relative flex min-h-screen min-w-18 flex-col items-center justify-center px-6 py-12">
-      <div className="mb-8 flex items-center gap-6">
+    <div className="bg-pure-white relative flex min-h-screen min-w-[1200px] flex-col items-center justify-center overflow-x-auto py-12">
+      <nav className="mb-10 flex shrink-0 items-center gap-10">
         <Link
           to="/main"
-          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold whitespace-nowrap transition-colors"
+          className="text-midnight-ink hover:text-point-blue group flex items-center gap-3 text-[14px] font-black transition-all"
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
+          <div className="bg-cloud-dancer group-hover:bg-point-blue/10 flex h-9 w-9 items-center justify-center rounded-xl transition-colors">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
           메인으로 이동
         </Link>
-        <div className="bg-soft-pebble h-3 w-px" />
+        <div className="h-4 w-[1.5px] bg-gray-200" />
         <Link
           to="/login"
-          className="text-midnight-ink hover:text-slate-gray flex items-center gap-2 text-sm font-bold whitespace-nowrap transition-colors"
+          className="text-midnight-ink hover:text-point-blue group flex items-center gap-3 text-[14px] font-black transition-all"
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3" />
-          </svg>
+          <div className="bg-cloud-dancer group-hover:bg-point-blue/10 flex h-9 w-9 items-center justify-center rounded-xl transition-colors">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13.8 12H3" />
+            </svg>
+          </div>
           로그인하러 가기
         </Link>
-      </div>
+      </nav>
 
-      <div className="bg-pure-white w-2xl rounded-[40px] p-12 shadow-2xl">
-        <div className="text-midnight-ink decoration-soft-pebble mb-12 text-center text-4xl font-black tracking-tighter whitespace-nowrap uppercase underline underline-offset-8">
-          PORTMATCH
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-pure-white w-[720px] shrink-0 rounded-[48px] border border-gray-100 px-16 py-14 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]"
+      >
+        <div className="mb-12 text-center">
+          <span className="text-point-blue text-[12px] font-black tracking-[0.4em] uppercase opacity-50">
+            Join the Network
+          </span>
+          <h2 className="text-midnight-ink mt-3 text-4xl font-black tracking-tighter uppercase">
+            PORTMATCH
+          </h2>
+          <div className="bg-point-blue mx-auto mt-4 h-1.5 w-10 rounded-full" />
         </div>
 
-        <div className="bg-cloud-dancer mb-12 flex rounded-2xl p-1.5 shadow-inner">
-          <button
-            type="button"
-            onClick={() => setUserType('APPLICANT')}
-            className={`flex-1 rounded-xl py-3 text-sm font-extrabold whitespace-nowrap transition-all duration-300 ${userType === 'APPLICANT' ? 'bg-pure-white text-midnight-ink scale-[1.02] shadow-md' : 'text-slate-gray hover:text-midnight-ink'}`}
-          >
-            개인 회원
-          </button>
-          <button
-            type="button"
-            onClick={() => setUserType('COMPANY')}
-            className={`flex-1 rounded-xl py-3 text-sm font-extrabold whitespace-nowrap transition-all duration-300 ${userType === 'COMPANY' ? 'bg-pure-white text-midnight-ink scale-[1.02] shadow-md' : 'text-slate-gray hover:text-midnight-ink'}`}
-          >
-            기업 회원
-          </button>
+        <div className="mb-12 flex rounded-[20px] bg-gray-50 p-1.5">
+          {(
+            [
+              { id: 'APPLICANT', label: '개인 회원' },
+              { id: 'COMPANY', label: '기업 회원' },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setUserType(tab.id)}
+              className={`relative flex-1 py-3.5 text-[15px] font-black transition-all ${userType === tab.id ? 'text-point-blue' : 'text-slate-gray hover:text-midnight-ink'}`}
+            >
+              {userType === tab.id && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="bg-pure-white absolute inset-0 rounded-[15px] shadow-sm"
+                />
+              )}
+              <span className="relative z-10">{tab.label}</span>
+            </button>
+          ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-10">
-          <section className="space-y-8">
-            <div className="border-soft-pebble border-b pb-2">
-              <h2 className="text-midnight-ink text-xl font-black whitespace-nowrap">기본 정보</h2>
+        <form onSubmit={handleSubmit} className="space-y-14">
+          <section className="space-y-10">
+            <div className="flex items-center gap-4">
+              <h3 className="text-midnight-ink text-lg font-black tracking-tight">기본 정보</h3>
+              <div className="h-px flex-1 bg-gray-100" />
             </div>
             <div className="grid grid-cols-2 gap-x-8 gap-y-10">
               {['email', 'password', 'passwordConfirm', 'name', 'phone'].map((field) => (
@@ -318,14 +342,13 @@ function SignupPage() {
                     fieldRefs.current[field] = el;
                   }}
                   animate={shakeField === field ? { x: [0, -10, 10, -10, 10, 0] } : {}}
-                  transition={{ duration: 0.4 }}
                   className={`relative ${field === 'email' ? 'col-span-2' : ''}`}
                 >
                   <Input
-                    label={`${field === 'email' ? '이메일' : field === 'password' ? '비밀번호' : field === 'passwordConfirm' ? '비밀번호 확인' : field === 'name' ? '성함 / 담당자명' : '연락처'} *`}
+                    label={`${field === 'email' ? '이메일 주소' : field === 'password' ? '비밀번호' : field === 'passwordConfirm' ? '비밀번호 확인' : field === 'name' ? '성함 / 담당자명' : '연락처'} *`}
                     placeholder={
                       field === 'email'
-                        ? 'example@example.com'
+                        ? 'example@portmatch.com'
                         : field === 'password'
                           ? '8~16자 영문, 숫자, 특수문자'
                           : field === 'passwordConfirm'
@@ -348,11 +371,12 @@ function SignupPage() {
             </div>
           </section>
 
-          <section className="space-y-8">
-            <div className="border-soft-pebble border-b pb-2">
-              <h2 className="text-midnight-ink text-xl font-black whitespace-nowrap">
+          <section className="space-y-10">
+            <div className="flex items-center gap-4">
+              <h3 className="text-midnight-ink text-lg font-black tracking-tight">
                 {userType === 'APPLICANT' ? '개인 상세 정보' : '기업 상세 정보'}
-              </h2>
+              </h3>
+              <div className="h-px flex-1 bg-gray-100" />
             </div>
             <div className="grid grid-cols-2 gap-x-8 gap-y-10">
               {userType === 'APPLICANT' ? (
@@ -510,27 +534,31 @@ function SignupPage() {
             </div>
           </section>
 
-          <div className="mt-10 space-y-4">
-            {errors.submit && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-red-100 bg-red-50 p-4 text-center text-sm font-bold whitespace-nowrap text-red-500"
-              >
-                {errors.submit}
-              </motion.div>
-            )}
+          <div className="pt-4">
+            <AnimatePresence>
+              {errors.submit && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className="mb-6 rounded-2xl border border-red-100 bg-red-50 py-4 text-center text-sm font-black text-red-500"
+                >
+                  {errors.submit}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <Button
-              variant="dark"
+              variant="blue"
               type="submit"
               disabled={isLoading}
-              className={`w-full py-5 text-xl font-black whitespace-nowrap shadow-lg transition-all active:scale-95 ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+              className={`shadow-point-blue/20 w-full rounded-[20px] py-5 text-xl font-black shadow-2xl transition-all active:scale-[0.99] ${isLoading ? 'opacity-70' : ''}`}
             >
-              {isLoading ? '가입 중...' : '회원가입 완료'}
+              {isLoading ? '계정 생성 중...' : '회원가입 완료하기'}
             </Button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }
