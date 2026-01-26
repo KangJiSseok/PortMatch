@@ -45,6 +45,7 @@ import { ProtectedRoute, PublicRoute, CompanyRoute } from './routes/RouteGuard';
 import MypageGate from './routes/MyPageGate';
 import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
+import ProfileEditPage from './pages/user/ProfileEditPage';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -106,6 +107,14 @@ const router = createBrowserRouter([
           <PublicRoute>
             <SignupPage />
           </PublicRoute>
+        ),
+      },
+      {
+        path: 'profile/edit',
+        element: (
+          <ProtectedRoute>
+            <ProfileEditPage/>
+          </ProtectedRoute>
         ),
       },
       {
