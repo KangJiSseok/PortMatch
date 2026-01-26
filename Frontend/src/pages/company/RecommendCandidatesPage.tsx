@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
+import Button from '@/components/Button/Button';
 import LoadingState from '@/components/states/LoadingState';
 import EmptyState from '@/components/states/EmptyState';
 import ErrorState from '@/components/states/ErrorState';
@@ -14,7 +15,8 @@ const MOCK_CANDIDATES: Candidate[] = [
   {
     id: 201,
     name: '김포트',
-    headline: 'React/TypeScript 기반 컴포넌트 설계 경험이 풍부하고 협업 커뮤니케이션이 강점입니다.',
+    headline:
+      'React/TypeScript 기반 컴포넌트 설계 경험이 풍부하고 협업 커뮤니케이션이 강점입니다.',
     matchScore: 96,
     stacks: ['React', 'TypeScript', 'Tailwind'],
     keywords: ['상태관리', '컴포넌트 설계', '협업'],
@@ -47,10 +49,10 @@ function CandidateCard({
   return (
     <motion.li
       whileHover={{ y: -4 }}
-      className="group flex flex-col gap-6 rounded-4xl border border-zinc-100 bg-white p-8 shadow-sm transition-all hover:border-zinc-200 hover:shadow-md md:flex-row md:items-center"
+      className="group border-silver-mist bg-pure-white flex min-w-full flex-col items-center justify-between gap-6 rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50 md:flex-row md:items-center"
     >
       {/* 좌측(메인 정보) */}
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <h3 className="text-midnight-ink text-2xl font-black tracking-tight">
             {candidate.name}
@@ -60,7 +62,7 @@ function CandidateCard({
             {candidate.stacks.map((stack) => (
               <span
                 key={stack}
-                className="rounded-lg border border-zinc-100 bg-zinc-50 px-2.5 py-1 text-[11px] font-bold text-zinc-500"
+                className="border-silver-mist bg-cloud-dancer text-slate-gray rounded-full border px-3 py-1 text-[11px] font-black tracking-tight"
               >
                 {stack}
               </span>
@@ -68,13 +70,15 @@ function CandidateCard({
           </div>
         </div>
 
-        <p className="text-base leading-relaxed text-zinc-600">{candidate.headline}</p>
+        <p className="text-slate-gray text-base leading-relaxed opacity-80 md:max-w-[90%]">
+          {candidate.headline}
+        </p>
 
         <div className="mt-5 flex flex-wrap gap-2">
           {candidate.keywords.map((k) => (
             <span
               key={k}
-              className="rounded-full border border-zinc-100 bg-white px-3 py-1 text-[11px] font-black text-zinc-400"
+              className="border-silver-mist bg-pure-white text-slate-gray rounded-full border px-3 py-1 text-[11px] font-black tracking-tight opacity-70"
             >
               #{k}
             </span>
@@ -82,23 +86,38 @@ function CandidateCard({
         </div>
       </div>
 
-      {/* 우측(매칭 점수 + 이력서 확인) - ✅ 세로 가운데 정렬 + 폰트 동일 + 배경 제거 */}
-      <div className="flex items-center gap-10">
-        <span className="text-midnight-ink text-xl font-black">
-          매칭 {candidate.matchScore}
-        </span>
+      {/* 우측(점수 + 버튼) */}
+      <div className="flex shrink-0 items-center gap-8">
+        {/* ✅ Match Score: 가운데 정렬 + 점수 크게 강조 */}
+        <div className="flex w-28 flex-col items-center justify-center text-center">
+          <span className="text-slate-gray text-[11px] font-black tracking-widest uppercase opacity-60">
+            MATCH SCORE
+          </span>
+          <span className="text-midnight-ink mt-1 text-4xl font-black tabular-nums leading-none">
+            {candidate.matchScore}
+          </span>
+        </div>
 
-        <button
+        {/* ✅ 버튼 크기 줄이기 + 고정(칸 줄여도 안 줄어들게) */}
+        <Button
+          variant="outline"
           onClick={onOpenResume}
-          className="flex min-w-[160px] flex-col items-center justify-center"
+          className={[
+            'group/btn no-title-hover shrink-0',
+            'h-20 w-32 rounded-2xl border-2 transition-all',
+            'text-midnight-ink hover:text-point-blue cursor-pointer hover:bg-slate-50',
+          ].join(' ')}
         >
-          <span className="mb-1 text-[11px] font-black tracking-[0.2em] text-zinc-400 uppercase group-hover:text-point-blue">
-            Resume
-          </span>
-          <span className="text-midnight-ink text-xl font-black group-hover:text-point-blue">
-            이력서 확인
-          </span>
-        </button>
+          <div className="flex h-full flex-col items-center justify-center gap-1">
+            <span className="text-[10px] font-black tracking-[0.2em] whitespace-nowrap uppercase opacity-60">
+              Resume
+            </span>
+            <span className="text-sm font-black">이력서 확인</span>
+          </div>
+        </Button>
+
+        {/* ✅ 구분선: shrink-0로 고정 */}
+        <div className="bg-cloud-dancer hidden h-12 w-px shrink-0 md:block" />
       </div>
     </motion.li>
   );
@@ -106,12 +125,16 @@ function CandidateCard({
 
 export default function RecommendCandidatesPage() {
   const navigate = useNavigate();
-  const devMode = import.meta.env.DEV;
 
-  // ✅ devMode에서는 API 호출 자체를 막음
-  const { data, isLoading, isError, refetch } = useRecommendedCandidates({}, !devMode);
+  // ✅ error까지 받아야 401만 예외처리 가능
+  const { data, isLoading, isError, error, refetch } = useRecommendedCandidates({});
 
-  const candidates = devMode ? MOCK_CANDIDATES : (data ?? []);
+  // ✅ API 데이터가 "배열 + 길이>0"이면 API 사용, 아니면 MOCK 사용
+  const candidates = Array.isArray(data) && data.length > 0 ? data : MOCK_CANDIDATES;
+
+  // ✅ 401(Unauthorized)면 ErrorState 대신 MOCK 화면 보여주기
+  const isUnauthorized =
+    error instanceof Error && (error.message.includes('401') || error.message === 'UNAUTHORIZED');
 
   // Navbar 검색어 초기화
   useEffect(() => {
@@ -119,48 +142,95 @@ export default function RecommendCandidatesPage() {
     if (input) input.value = '';
   }, []);
 
+  // ✅ 추천 점수 순 고정 정렬
   const sortedCandidates = useMemo(
     () => [...candidates].sort((a, b) => b.matchScore - a.matchScore),
     [candidates],
   );
 
+  /**
+   * ✅ 로딩 오래 걸릴 때 체감 개선:
+   * - API가 느리거나 401로 결국 MOCK 보여줄 거면, 로딩 UI를 너무 오래 붙잡지 않기
+   * - "데이터가 없으면 MOCK"이 이미 있으니, isLoading이어도 목록을 보여줄 수 있음
+   *
+   * 아래 showSkeleton을 true로 두면 로딩 UI 유지,
+   * false로 두면 로딩 중에도 MOCK 리스트가 바로 보임.
+   */
+  const showSkeleton = false;
+
   return (
-    <div className="min-h-screen bg-white pt-24 pb-20">
-      <div className="mx-auto w-[1200px] px-6">
-        <header className="mb-16">
-          <h1 className="text-midnight-ink mb-4 text-5xl font-black">
-            추천 후보자 리스트
-          </h1>
-          <p className="text-xl text-zinc-500">
-            기업에 최적화된 AI 기반 후보자 추천 결과입니다.
+    <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
+        <header className="border-point-blue mb-12 border-l-4 pl-6">
+          <motion.h1
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
+          >
+            Recommended Candidates
+          </motion.h1>
+
+          <p className="text-slate-gray mt-2 text-lg font-bold italic opacity-50">
+            기업에 최적화된 AI 기반 추천 결과입니다.
           </p>
         </header>
 
-        {/* ✅ devMode에서는 로딩/에러 UI 숨김 */}
-        {!devMode && isLoading && <LoadingState />}
-        {!devMode && isError && (
-          <ErrorState description="데이터를 불러오지 못했습니다." onAction={refetch} />
-        )}
+        <section className="space-y-8">
+          <div className="mb-10 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-point-blue h-6 w-1.5 rounded-full" />
+              <div>
+                <h2 className="text-midnight-ink text-2xl font-black uppercase">추천 지원자 목록</h2>
+                <p className="text-slate-gray mt-1 text-sm font-bold italic opacity-40">
+                  추천 점수 기준으로 높은 지원자부터 보여줘요.
+                </p>
+              </div>
+            </div>
+          </div>
 
-        {!devMode && !isLoading && !isError && sortedCandidates.length === 0 && (
-          <EmptyState title="추천 후보자가 없습니다" description="아직 매칭된 후보자가 없습니다." />
-        )}
+          {/* ✅ 로딩 오래 걸릴 때: showSkeleton=true면 로딩 표시, false면 바로 리스트 보이게 */}
+          {showSkeleton && isLoading && <LoadingState />}
 
-        {sortedCandidates.length > 0 && (
-          <motion.ul
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid gap-6"
-          >
-            {sortedCandidates.map((candidate) => (
-              <CandidateCard
-                key={candidate.id}
-                candidate={candidate}
-                onOpenResume={() => navigate(`/resumes/${candidate.id}`)} // TODO: 실제 라우트에 맞게 수정
-              />
-            ))}
-          </motion.ul>
-        )}
+          {/* ✅ 401이 아닐 때만 에러 UI */}
+          {isError && !isUnauthorized && (
+            <ErrorState description="데이터를 불러오지 못했습니다." onAction={refetch} />
+          )}
+
+          {/* ✅ 정상 or 401(개발 중)일 때 리스트/empty */}
+          {!showSkeleton && isLoading ? (
+            // 로딩 중에도 MOCK/기존 데이터 렌더
+            <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-6">
+              {sortedCandidates.map((candidate) => (
+                <CandidateCard
+                  key={candidate.id}
+                  candidate={candidate}
+                  onOpenResume={() => navigate(`/resumes/${candidate.id}`)}
+                />
+              ))}
+            </motion.ul>
+          ) : (
+            <>
+              {!isLoading && (!isError || isUnauthorized) && sortedCandidates.length === 0 && (
+                <EmptyState
+                  title="추천 후보자가 없습니다"
+                  description="아직 매칭된 후보자가 없습니다."
+                />
+              )}
+
+              {!isLoading && (!isError || isUnauthorized) && sortedCandidates.length > 0 && (
+                <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-6">
+                  {sortedCandidates.map((candidate) => (
+                    <CandidateCard
+                      key={candidate.id}
+                      candidate={candidate}
+                      onOpenResume={() => navigate(`/resumes/${candidate.id}`)}
+                    />
+                  ))}
+                </motion.ul>
+              )}
+            </>
+          )}
+        </section>
       </div>
     </div>
   );
