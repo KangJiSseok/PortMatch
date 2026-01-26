@@ -7,4 +7,5 @@ import java.util.List;
 public interface ScrapService {
     public List<ScrapDto> getMyScraps(Long uid);
     public boolean toggleScrap(Long uid, String pid);
+    boolean isScraped(Long uid, String pid);
 }

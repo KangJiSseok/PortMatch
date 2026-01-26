@@ -11,4 +11,7 @@ public interface ScrapRepository extends JpaRepository<ScrapEntity, Long> {
 
     // 마이페이지 등에서 내 스크랩 목록을 볼 때 사용
     List<ScrapEntity> findAllByUidOrderByCreatedAtDesc(Long uid);
+
+    // 존재 여부 확인 (isScraped용)
+    boolean existsByUidAndPid(Long uid, String pid);
 }
