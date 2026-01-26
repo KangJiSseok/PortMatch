@@ -9,14 +9,11 @@ interface JobPosting {
   createdAt: string;
   applicantCount: number;
   status: '모집중' | '마감';
-  category: string;
 }
 
 interface ModalConfig {
   isOpen: boolean;
   jobId: string | null;
-  title: string;
-  message: string;
 }
 
 const CompanyJobManagementPage = () => {
@@ -29,7 +26,6 @@ const CompanyJobManagementPage = () => {
       createdAt: '2024.03.20',
       applicantCount: 12,
       status: '모집중',
-      category: '개발',
     },
     {
       id: '2',
@@ -37,7 +33,6 @@ const CompanyJobManagementPage = () => {
       createdAt: '2024.03.18',
       applicantCount: 8,
       status: '모집중',
-      category: '디자인',
     },
     {
       id: '3',
@@ -45,23 +40,18 @@ const CompanyJobManagementPage = () => {
       createdAt: '2024.03.10',
       applicantCount: 24,
       status: '마감',
-      category: '기획',
     },
   ]);
 
   const [modal, setModal] = useState<ModalConfig>({
     isOpen: false,
     jobId: null,
-    title: '',
-    message: '',
   });
 
   const openDeleteModal = (job: JobPosting) => {
     setModal({
       isOpen: true,
       jobId: job.id,
-      title: '공고 삭제',
-      message: `[${job.title}] 공고를 삭제하시겠습니까?\n삭제된 공고는 복구할 수 없습니다.`,
     });
   };
 
@@ -88,38 +78,23 @@ const CompanyJobManagementPage = () => {
                 className="bg-midnight-ink/60 fixed inset-0 backdrop-blur-sm"
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-pure-white relative w-full max-w-md overflow-hidden rounded-[40px] p-10 text-center shadow-2xl"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="bg-pure-white relative w-full max-w-100 overflow-hidden rounded-4xl p-8 text-center shadow-xl"
               >
-                <div className="text-error mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50">
-                  <svg
-                    width="32"
-                    height="32"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M3 6h18" />
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                  </svg>
-                </div>
-                <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight">
-                  {modal.title}
+                <h3 className="text-midnight-ink mb-3 text-2xl font-bold tracking-tight">
+                  정말 삭제할까요?
                 </h3>
-                <p className="text-slate-gray mb-10 leading-relaxed font-bold whitespace-pre-wrap opacity-60">
-                  {modal.message}
+                <p className="text-slate-gray mb-8 text-base font-medium opacity-70">
+                  삭제된 데이터는 복구할 수 없습니다.
                 </p>
-                <div className="flex gap-4">
+                <div className="flex gap-3">
                   <Button
                     variant="outline"
                     size="lg"
-                    className="flex-1 rounded-2xl"
+                    className="border-slate-gray/30 text-slate-gray flex-1 rounded-xl font-bold hover:bg-gray-50"
                     onClick={closeModal}
                   >
                     취소
@@ -127,7 +102,7 @@ const CompanyJobManagementPage = () => {
                   <Button
                     variant="red"
                     size="lg"
-                    className="flex-1 rounded-2xl shadow-lg"
+                    className="flex-1 rounded-xl font-bold text-white transition-colors"
                     onClick={confirmDelete}
                   >
                     삭제하기
@@ -180,10 +155,10 @@ const CompanyJobManagementPage = () => {
                   key={job.id}
                   className="border-silver-mist bg-pure-white flex min-w-full items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
                 >
-                  <div className="flex flex-col gap-4">
+                  <div className="flex min-w-0 flex-col gap-4">
                     <div className="flex items-center gap-3">
                       <span
-                        className={`shrink-0 rounded-full px-4 py-1 text-xs font-black tracking-tight ${
+                        className={`shrink-0 rounded-full px-4 py-1 text-sm font-black tracking-tight ${
                           job.status === '모집중'
                             ? 'bg-emerald-50 text-emerald-600'
                             : 'bg-cloud-dancer text-slate-gray'
@@ -191,14 +166,12 @@ const CompanyJobManagementPage = () => {
                       >
                         {job.status}
                       </span>
-                      <span className="text-soft-pebble text-sm font-black tracking-widest whitespace-nowrap uppercase">
-                        {job.category}
-                      </span>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h3
                         onClick={() => navigate(`/company/jobs/${job.id}/applicants`)}
-                        className="text-midnight-ink hover:text-point-blue cursor-pointer text-2xl font-black tracking-tight whitespace-nowrap transition-colors"
+                        className="text-midnight-ink hover:text-point-blue cursor-pointer truncate text-2xl font-black tracking-tight transition-colors"
+                        title={job.title}
                       >
                         {job.title}
                       </h3>
@@ -209,16 +182,19 @@ const CompanyJobManagementPage = () => {
                   </div>
 
                   <div className="flex shrink-0 items-center gap-10">
-                    <div
-                      onClick={() => navigate(`/company/jobs/${job.id}/applicants`)}
-                      className="group flex cursor-pointer flex-col items-center gap-1"
-                    >
-                      <span className="text-soft-pebble group-hover:text-slate-gray text-xs font-black tracking-widest uppercase">
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-midnight-ink text-sm font-black tracking-widest uppercase">
                         지원자
                       </span>
-                      <span className="text-midnight-ink group-hover:text-point-blue text-3xl font-black tabular-nums">
-                        {job.applicantCount.toString().padStart(2, '0')}
-                      </span>
+                      <Button
+                        variant="outline"
+                        className="text-midnight-ink hover:text-point-blue min-w-20 rounded-2xl border-2 py-3 transition-all hover:bg-slate-50"
+                        onClick={() => navigate(`/company/jobs/${job.id}/applicants`)}
+                      >
+                        <span className="text-2xl font-black tabular-nums">
+                          {job.applicantCount.toString().padStart(2, '0')}
+                        </span>
+                      </Button>
                     </div>
 
                     <div className="bg-cloud-dancer h-12 w-px"></div>

@@ -26,14 +26,14 @@ import PortfoliosPage from './pages/user/PortfoliosPage';
 import ResumeDetailPage from './pages/user/ResumeDetailPage';
 import RecommendCompanyPage from './pages/user/RecommendCompanyPage';
 
-import JobPostingsPage from '@/pages/job/JobPostingsPage';
+import JobPostingsPage from './pages/job/JobPostingsPage';
+import CompanyJobManagementPage from './pages/job/CompanyJobManagementPage';
 import JobPostDetailPage from './pages/job/JobPostDetailPage';
 import JobPostFormPage from './pages/job/JobPostFormPage';
 import JobApplicationManagementPage from './pages/job/JobApplicationManagementPage';
 import JobApplyPage from './pages/job/JobApplyPage';
 
 import CompanyDetailsPage from './pages/company/CompanyDetailsPage';
-import CompanyJobManagementPage from './pages/company/CompanyJobManagementPage';
 import CompanyProfilePage from './pages/company/CompanyProfilePage';
 import CompanyProfileEditPage from './pages/company/CompanyProfileEditPage';
 import RecommendCandidatesPage from './pages/company/RecommendCandidatesPage';
