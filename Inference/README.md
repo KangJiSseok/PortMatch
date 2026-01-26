@@ -16,15 +16,27 @@ Tool2: 검증 및 상세 추출
 - `company_text`를 읽고 다음을 생성합니다:
   - `project_statement` (한국어 한 문장)
   - `problem` / `solution` / `tech`
-  - `evidence` (snippet + source)
-  - `support_type` (explicit/implicit/none)
-  - `evidence_summary`
   - `is_valid` (예비 판단)
 - 앵커(`name`)는 덮어쓰지 않습니다.
+
+Tool3: 유사/중복 제거
+- Tool2 결과 중 `is_valid=True` 항목을 비교해 유사 프로젝트를 제외합니다.
+- 중복으로 판단된 항목은 `is_valid=False`로 변경됩니다.
 
 Tool4: 구조화 출력
 - `is_valid=True`인 항목만 JSON으로 반환합니다.
 - 앵커는 사용자에게 노출하지 않습니다.
+
+## 그래프 구조
+
+```
+collect_text (Tool0)
+  -> discovery (Tool1)
+  -> validate (Tool2)
+  -> dedup (Tool3)
+  -> structure (Tool4)
+  -> END
+```
 
 ## 실행 방법
 

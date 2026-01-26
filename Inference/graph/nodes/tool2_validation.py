@@ -1,43 +1,44 @@
 import json
 import os
 import re
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, List
 
 from graph.state import CompanyGraphState
-
-
-def _has_sources(project: Dict[str, Any]) -> bool:
-    sources = project.get("sources", [])
-    if not isinstance(sources, Iterable) or isinstance(sources, (str, bytes, dict)):
-        return bool(sources)
-    return any(bool(item) for item in sources)
 
 
 def _build_prompt() -> "ChatPromptTemplate":
     from langchain_core.prompts import ChatPromptTemplate
 
     system_rules = (
-        "You validate candidate anchors against company text and extract evidence.\n"
+        "You validate candidate anchors against company text.\n"
         "Rules:\n"
         "- Candidate anchors are NOT real project names.\n"
         "- If company_text is empty, you MAY infer cautiously from the anchors.\n"
-        "- support_type must be one of: explicit, implicit, none.\n"
-        "- evidence.source must be one of: homepage, press, report, job_posting.\n"
+        "- Do NOT add new candidates that are not provided.\n"
+        "- Do NOT invent detailed functionality.\n"
+        "- Avoid near-duplicate outputs across candidates; do not reuse the same problem/solution text.\n"
+        "- If two candidates overlap heavily, make them distinct or mark the weaker one is_valid=false.\n"
+        "- If the candidate describes market expansion, partnerships, or general business strategy rather than a project,\n"
+        "  mark is_valid=false.\n"
         "- project_statement must be a single Korean sentence.\n"
-        "- problem/solution must be short Korean phrases.\n"
-        "- tech must be a list of short strings.\n"
-        "- If evidence is weak, use cautious wording like "
-        "\"...수행한 것으로 보입니다.\".\n"
+        "- problem must describe a real-world issue, limitation, or challenge faced by users or the domain.\n"
+        "- problem should focus on the situation or need, not on technical implementation details.\n"
+        "- solution must be a single Korean sentence describing how the problem was addressed.\n"
+        "- solution must explicitly mention the technologies used and what was implemented, "
+        "using patterns like \"~을 활용하여 ~ 구현/개발\".\n"
+        "- tech must be a list of short strings (technology names only).\n"
+        "- If support is weak, use cautious wording like \"...수행한 것으로 보입니다.\".\n"
+        "- Preserve the input order.\n"
         "Return JSON only. No prose.\n"
+        "Examples (for style only, do not copy verbatim):\n"
+        "problem: ALS 환자가 의사 표현을 하기 어려운 상황\n"
+        "solution: OpenCV와 Deep Learning을 활용하여 얼굴 인식 및 안구 마우스 기반 입력 시스템을 개발\n"
         "Output schema:\n"
         "[{{"
         "\"project_statement\": str,"
         "\"problem\": str,"
         "\"solution\": str,"
         "\"tech\": [str],"
-        "\"evidence\": [{{\"snippet\": str, \"source\": str}}],"
-        "\"support_type\": str,"
-        "\"evidence_summary\": str,"
         "\"is_valid\": bool"
         "}}]"
     )
@@ -48,6 +49,7 @@ def _build_prompt() -> "ChatPromptTemplate":
             ("human", "Company text:\n{company_text}\n\nCandidates:\n{candidates_json}"),
         ]
     )
+
 
 
 
@@ -103,18 +105,10 @@ def _parse_llm_output(text: str) -> List[Dict[str, Any]]:
     return [item for item in data if isinstance(item, dict)]
 
 
-def _default_statement(anchor_name: str, support_type: str) -> str:
+def _default_statement(anchor_name: str) -> str:
     if not anchor_name:
         return "프로젝트를 수행한 것으로 보입니다."
-    if support_type == "explicit":
-        return f"{anchor_name} 관련 프로젝트를 진행했었다."
     return f"{anchor_name} 관련 프로젝트를 수행한 것으로 보입니다."
-
-
-def _normalize_support_type(value: Any) -> str:
-    if value in {"explicit", "implicit", "none"}:
-        return value
-    return "none"
 
 def _normalize_tech(value: Any) -> List[str]:
     if not isinstance(value, list):
@@ -125,22 +119,6 @@ def _normalize_tech(value: Any) -> List[str]:
         if text:
             tech_list.append(text)
     return tech_list
-
-
-def _normalize_evidence(evidence: Any) -> List[Dict[str, str]]:
-    allowed_sources = {"homepage", "press", "report", "job_posting"}
-    if not isinstance(evidence, list):
-        return []
-    normalized: List[Dict[str, str]] = []
-    for item in evidence:
-        if not isinstance(item, dict):
-            continue
-        snippet = str(item.get("snippet", "")).strip()
-        source = str(item.get("source", "")).strip()
-        if not snippet or source not in allowed_sources:
-            continue
-        normalized.append({"snippet": snippet, "source": source})
-    return normalized
 
 
 def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
@@ -155,50 +133,29 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
     for idx, project in enumerate(project_candidates):
         # "name" is treated as a candidate anchor from Tool1.
         anchor_name = str(project.get("name", ""))
-        has_sources = _has_sources(project)
-
         llm_item = parsed[idx] if idx < len(parsed) else {}
-        support_type = _normalize_support_type(llm_item.get("support_type"))
-        evidence = _normalize_evidence(llm_item.get("evidence"))
         project_statement = str(llm_item.get("project_statement", "")).strip()
         problem = str(llm_item.get("problem", "")).strip()
         solution = str(llm_item.get("solution", "")).strip()
         tech = _normalize_tech(llm_item.get("tech"))
-        evidence_summary = str(llm_item.get("evidence_summary", "")).strip()
         is_valid = bool(llm_item.get("is_valid", False))
 
         if not company_text:
-            evidence = []
-            if support_type == "explicit":
-                support_type = "implicit"
-            if not evidence_summary:
-                evidence_summary = "company_text_empty_inferred"
             if project_statement:
                 is_valid = True
 
         if not project_statement:
-            project_statement = _default_statement(anchor_name, support_type)
-
-        if support_type == "none":
-            validation_reason = "no_evidence"
-        elif not has_sources:
-            validation_reason = "no_sources"
-        else:
-            validation_reason = "ok"
+            project_statement = _default_statement(anchor_name)
 
         opinion: Dict[str, Any] = dict(project)
         opinion.update(
             {
                 "is_valid": is_valid,
-                "validation_reason": validation_reason,
                 # Tool2 provides the real, human-readable statement.
                 "project_statement": project_statement,
                 "problem": problem,
                 "solution": solution,
                 "tech": tech,
-                "evidence": evidence,
-                "support_type": support_type,
-                "evidence_summary": evidence_summary,
             }
         )
         validation_opinions.append(opinion)

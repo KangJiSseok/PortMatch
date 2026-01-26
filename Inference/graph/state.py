@@ -6,4 +6,4 @@ class CompanyGraphState(TypedDict, total=False):
     company_text: str
     project_candidates: List[Dict[str, Any]]
     validation_opinions: List[Dict[str, Any]]
-    structured_projects: str
+    structured_projects: List[Dict[str, Any]]
