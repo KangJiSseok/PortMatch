@@ -3,6 +3,15 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/Button/Button';
 
+import CalendarPanel from '../../components/Calendar/CalendarPanel';
+import CalendarScheduleList from '../../components/Calendar/CalendarScheduleList';
+import {
+  formatDateTime,
+  formatYmdToKorean,
+  toYmd,
+  toYmdFromIso,
+} from '../../components/Calendar/calendarUtils';
+
 /** ------------------ routes (프로젝트 라우트에 맞게 수정) ------------------ */
 const ROUTES = {
   jobPostNew: '/jobposts/new',
@@ -50,44 +59,6 @@ type InterviewEvent = {
 };
 
 /** ------------------ utils ------------------ */
-function toYmd(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function toYmdFromIso(iso: string) {
-  return iso.slice(0, 10);
-}
-
-function formatDateTime(iso: string) {
-  const d = new Date(iso);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
-}
-
-function formatYmdToKorean(ymd: string) {
-  const [y, m, d] = ymd.split('-');
-  return `${y}.${m}.${d}`;
-}
-
-function buildMonthCells(year: number, monthIndex0: number) {
-  const first = new Date(year, monthIndex0, 1);
-  const startDay = first.getDay(); // 0=일
-  const start = new Date(year, monthIndex0, 1 - startDay);
-
-  const cells: Date[] = [];
-  for (let i = 0; i < 42; i++) {
-    cells.push(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
-  }
-  return cells;
-}
-
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
@@ -105,6 +76,32 @@ function ddayLabel(deadlineAt?: string) {
   if (left < 0) return { text: '마감', tone: 'closed' as const, left };
   if (left === 0) return { text: 'D-DAY', tone: 'urgent' as const, left };
   return { text: `D-${left}`, tone: left <= 3 ? ('urgent' as const) : ('normal' as const), left };
+}
+
+/** ✅ 당일: “5시간 24분 전” / 이후: “D-N” */
+function formatScheduleHint(startIso: string) {
+  const now = new Date();
+  const start = new Date(startIso);
+
+  const todayYmd = toYmd(now);
+  const startYmd = toYmd(start);
+
+  const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const start0 = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+  const dayDiff = Math.round((start0 - today0) / (24 * 60 * 60 * 1000));
+
+  if (startYmd === todayYmd) {
+    const diffMin = Math.max(0, Math.ceil((start.getTime() - now.getTime()) / (60 * 1000)));
+    const h = Math.floor(diffMin / 60);
+    const m = diffMin % 60;
+
+    if (h <= 0) return `${m}분 전`;
+    if (m === 0) return `${h}시간 전`;
+    return `${h}시간 ${m}분 전`;
+  }
+
+  if (dayDiff > 0) return `D-${dayDiff}`;
+  return '곧 시작돼요.';
 }
 
 /** ✅ React Query 느낌 미니 훅 */
@@ -194,37 +191,57 @@ async function fetchCompanyJobPosts(): Promise<JobPostView[]> {
 
 async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
   await new Promise((r) => setTimeout(r, 360));
+
   const now = new Date();
+  const year = now.getFullYear();
+  const month0 = now.getMonth(); // 0-based
 
-  const mk = (
-    days: number,
-    h: number,
-    m: number,
-    id: number,
-    candidateName: string,
-    title: string,
-    applicantId: number,
-    position?: string,
-  ) => {
-    const d = new Date(now);
-    d.setDate(now.getDate() + days);
-    d.setHours(h, m, 0, 0);
-    return {
-      id,
-      candidateName,
-      title,
-      scheduledAt: d.toISOString(),
-      applicantId,
-      position,
-    };
-  };
+  // ✅ 오늘 00:00
+  const start = new Date(year, month0, now.getDate(), 0, 0, 0, 0);
+  // ✅ 이번 달 마지막날 23:59:59
+  const end = new Date(year, month0 + 1, 0, 23, 59, 59, 999);
 
-  return [
-    mk(0, 14, 0, 201, '지원자 A', '1차 면접', 101, 'Frontend'),
-    mk(0, 16, 0, 202, '지원자 B', '1차 면접', 102, 'Backend'),
-    mk(3, 10, 30, 203, '지원자 C', '2차 면접', 103, 'Backend'),
-    mk(8, 11, 0, 204, '지원자 D', '컬처핏 인터뷰', 104, 'Frontend'),
-  ];
+  // 하루에 5개씩 생성할 “시간표”
+  const slots = [
+    { h: 9, m: 0, title: '1차 면접' },
+    { h: 10, m: 30, title: '실무 면접' },
+    { h: 13, m: 0, title: '2차 면접' },
+    { h: 15, m: 30, title: '컬처핏 인터뷰' },
+    { h: 17, m: 0, title: '최종 면접' },
+  ] as const;
+
+  const candidateBase = ['지원자 A', '지원자 B', '지원자 C', '지원자 D', '지원자 E'] as const;
+  const positions = ['Frontend', 'Backend', 'Data', 'DevOps', 'AI'] as const;
+
+  let id = 201;
+  let applicantId = 101;
+
+  const out: InterviewEvent[] = [];
+
+  // ✅ 날짜를 하루씩 증가시키면서 이번 달 끝까지 생성
+  for (
+    let d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    d.getTime() <= end.getTime();
+    d.setDate(d.getDate() + 1)
+  ) {
+    for (let i = 0; i < slots.length; i++) {
+      const s = slots[i];
+
+      // 로컬 시간 기준으로 생성 → toISOString()으로 저장
+      const when = new Date(d.getFullYear(), d.getMonth(), d.getDate(), s.h, s.m, 0, 0);
+
+      out.push({
+        id: id++,
+        title: s.title,
+        scheduledAt: when.toISOString(),
+        applicantId: applicantId++,
+        candidateName: `${candidateBase[i]} (${String(d.getDate()).padStart(2, '0')}-${i + 1})`,
+        position: positions[(d.getDate() + i) % positions.length],
+      });
+    }
+  }
+
+  return out;
 }
 
 /** ------------------ page ------------------ */
@@ -326,7 +343,7 @@ export default function CorporateMyPage() {
   }, [interviewQuery.data, interviewFilter, navigate, companyName]);
 
   // ==========================
-  // ✅ 캘린더 (고정 레이아웃: 데스크탑 버전만 유지)
+  // ✅ 캘린더 (컴포넌트 사용)
   // ==========================
   const todayYmd = toYmd(new Date());
 
@@ -335,38 +352,9 @@ export default function CorporateMyPage() {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
 
-  const year = viewMonth.getFullYear();
-  const month0 = viewMonth.getMonth();
-  const thisMonthLabel = `${year}.${String(month0 + 1).padStart(2, '0')}`;
-  const cells = useMemo(() => buildMonthCells(year, month0), [year, month0]);
-
   const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
 
-  const goPrevMonth = () => {
-    const next = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
-    setViewMonth(next);
-    setSelectedDate(toYmd(next));
-  };
-
-  const goNextMonth = () => {
-    const next = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
-    setViewMonth(next);
-    setSelectedDate(toYmd(next));
-  };
-
-  const goToday = () => {
-    const now = new Date();
-    setViewMonth(new Date(now.getFullYear(), now.getMonth(), 1));
-    setSelectedDate(toYmd(now));
-  };
-
-  useEffect(() => {
-    const sd = new Date(`${selectedDate}T00:00:00`);
-    if (sd.getFullYear() !== year || sd.getMonth() !== month0) {
-      setSelectedDate(toYmd(new Date(year, month0, 1)));
-    }
-  }, [year, month0, selectedDate]);
-
+  // ✅ 날짜별 이벤트 맵
   const interviewEvents = interviewQuery.data ?? [];
   const interviewEventMap = useMemo(() => {
     const m = new Map<string, InterviewEvent[]>();
@@ -389,9 +377,7 @@ export default function CorporateMyPage() {
   );
 
   return (
-    // ✅ [해결 1 방식] 문서(body) 자체가 넓어지도록 root에 min-w 고정
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
-      {/* ✅ 캔버스 고정 폭 */}
       <div
         className={[
           'mx-auto w-[1280px] space-y-10 px-6 transition-all duration-200',
@@ -402,7 +388,6 @@ export default function CorporateMyPage() {
         <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
           <div className="relative p-10">
             <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
-            {/* ✅ 반응형 제거: wrap 금지 */}
             <div className="relative flex flex-nowrap items-start justify-between gap-5">
               <div>
                 <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
@@ -438,12 +423,10 @@ export default function CorporateMyPage() {
             </div>
           </div>
 
-          {/* ✅ 반응형 제거: 무조건 2열 고정 */}
           <div className="grid grid-cols-2 gap-5">
             {/* ✅ 공고 */}
             <HubCard title="공고" onHeaderClick={() => navigate(ROUTES.jobPostManage)}>
               <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
-                {/* ✅ 퀵 필터 */}
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Button
@@ -585,7 +568,7 @@ export default function CorporateMyPage() {
           </div>
         </section>
 
-        {/* ✅ 캘린더 (고정 레이아웃) */}
+        {/* ✅ 캘린더 (오른쪽 일정에 “몇시간몇분전 / 며칠후” 포함) */}
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
             <div>
@@ -595,24 +578,6 @@ export default function CorporateMyPage() {
           </div>
 
           <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-8 shadow-sm">
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-lg font-black">{thisMonthLabel}</p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={goPrevMonth}>
-                  ◀
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={goNextMonth}>
-                  ▶
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={goToday}>
-                  오늘
-                </Button>
-              </div>
-            </div>
-
             {interviewQuery.isLoading ? (
               <CalendarSkeleton />
             ) : interviewQuery.isError ? (
@@ -622,125 +587,55 @@ export default function CorporateMyPage() {
               />
             ) : (
               <div className="grid grid-cols-[1fr_380px] gap-8">
-                {/* LEFT: 달력 */}
-                <div>
-                  <div className="grid grid-cols-7 gap-3 text-center text-sm font-bold text-zinc-500">
-                    {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-                      <div key={d}>{d}</div>
-                    ))}
-                  </div>
+                <CalendarPanel
+                  viewMonth={viewMonth}
+                  selectedDate={selectedDate}
+                  todayYmd={todayYmd}
+                  onSelectDate={setSelectedDate}
+                  onChangeViewMonth={setViewMonth}
+                  getEventCount={(ymd) => interviewEventMap.get(ymd)?.length ?? 0}
+                />
 
-                  <div className="mt-3 grid grid-cols-7 gap-3">
-                    {cells.map((d, idx) => {
-                      const ymd = toYmd(d);
-                      const inThisMonth = d.getMonth() === month0;
-                      const isToday = ymd === todayYmd;
-                      const isSelected = ymd === selectedDate;
+                <CalendarScheduleList<InterviewEvent>
+                  title="선택한 날짜 일정"
+                  subtitle={formatYmdToKorean(selectedDate)}
+                  items={selectedEvents}
+                  emptyText="이 날짜에는 면접 일정이 없어요."
+                  renderItem={(e) => {
+                    const hint = formatScheduleHint(e.scheduledAt);
+                    return (
+                      <div key={e.id} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+                        <p className="text-midnight-ink text-sm font-black">
+                          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-black text-zinc-700">
+                            {e.title}
+                          </span>
+                          <span className="ml-2">{e.candidateName}</span>
+                        </p>
 
-                      const ev = interviewEventMap.get(ymd) ?? [];
-                      const cnt = ev.length;
+                        {/* ✅ 날짜 + 상대 시간 표시 */}
+                        <p className="mt-2 text-xs font-semibold text-zinc-500">
+                          {formatDateTime(e.scheduledAt)} <span className="text-zinc-300">·</span>{' '}
+                          {hint}
+                        </p>
 
-                      return (
-                        <Button
-                          key={`${ymd}-${idx}`}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDate(ymd);
-                            if (!inThisMonth)
-                              setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-                          }}
-                          className={[
-                            'flex w-full flex-col items-stretch justify-start text-left',
-                            'min-h-[90px] cursor-pointer rounded-2xl border p-3 transition',
-                            inThisMonth
-                              ? 'border-zinc-200 bg-white'
-                              : 'border-zinc-200/60 bg-zinc-50',
-                            'hover:bg-zinc-100/60',
-                            isSelected ? 'ring-midnight-ink ring-2' : '',
-                          ].join(' ')}
-                        >
-                          <div className="flex items-start justify-between">
-                            <span
-                              className={
-                                inThisMonth
-                                  ? 'text-midnight-ink font-extrabold'
-                                  : 'font-extrabold text-zinc-400'
-                              }
-                            >
-                              {d.getDate()}
-                            </span>
-                            {isToday && (
-                              <span className="bg-midnight-ink rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
-                                TODAY
-                              </span>
-                            )}
-                          </div>
+                        {e.position ? (
+                          <p className="mt-1 text-xs font-semibold text-zinc-500">{e.position}</p>
+                        ) : null}
 
-                          <div className="mt-3 flex items-center justify-between">
-                            {cnt > 0 ? (
-                              <>
-                                <span className="bg-point-blue mt-0.5 h-2 w-2 rounded-full" />
-                                <span className="text-xs font-black text-zinc-600">{cnt}건</span>
-                              </>
-                            ) : (
-                              <span className="text-xs font-semibold text-zinc-400"></span>
-                            )}
-                          </div>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* RIGHT: 선택한 날짜 일정 */}
-                <div className="rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-lg font-black">선택한 날짜 일정</p>
-                      <p className="mt-1 text-sm font-semibold text-zinc-500">
-                        {formatYmdToKorean(selectedDate)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 max-h-[520px] space-y-2 overflow-auto pr-1">
-                    {selectedEvents.length === 0 ? (
-                      <p className="text-sm font-semibold text-zinc-500">
-                        이 날짜에는 면접 일정이 없어요.
-                      </p>
-                    ) : (
-                      selectedEvents.map((e) => (
-                        <div
-                          key={e.id}
-                          className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
-                        >
-                          <p className="text-midnight-ink text-sm font-black">
-                            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-black text-zinc-700">
-                              {e.title}
-                            </span>
-                            <span className="ml-2">{e.candidateName}</span>
-                          </p>
-                          <p className="mt-2 text-xs font-semibold text-zinc-500">
-                            {formatDateTime(e.scheduledAt)}
-                          </p>
-
-                          <div className="mt-3 flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(ROUTES.resumeView(e.applicantId))}
-                            >
-                              이력서 보기
-                            </Button>
-                          </div>
+                        <div className="mt-3 flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(ROUTES.resumeView(e.applicantId))}
+                          >
+                            이력서 보기
+                          </Button>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+                      </div>
+                    );
+                  }}
+                />
               </div>
             )}
           </div>
@@ -781,10 +676,6 @@ function HubCard({
   );
 }
 
-/**
- * ✅ 공고 Row
- * - 마감임박 배지 지원
- */
 function ListRowNoThumb({
   title,
   subtitle,
@@ -828,10 +719,6 @@ function ListRowNoThumb({
   );
 }
 
-/**
- * ✅ 면접 Row
- * - "몇 차 면접" 강조
- */
 function ListRowInterviewWithResume({
   candidateName,
   stageTitle,
@@ -931,9 +818,6 @@ function InlineError({ message, onRetry }: { message: string; onRetry: () => voi
   );
 }
 
-/**
- * ✅ 캘린더 스켈레톤 (고정 레이아웃: 데스크탑 버전만)
- */
 function CalendarSkeleton() {
   return (
     <div>
