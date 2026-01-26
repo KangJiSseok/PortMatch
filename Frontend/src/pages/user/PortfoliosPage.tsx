@@ -20,6 +20,15 @@ interface ModalConfig {
   onConfirm?: () => void;
 }
 
+interface ApiError {
+  response?: {
+    data?: {
+      code?: number;
+      message?: string;
+    };
+  };
+}
+
 function PortfoliosPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState<AnalysisStep>('upload');
@@ -75,18 +84,29 @@ function PortfoliosPage() {
 
   const loadPortfolios = useCallback(async (isMounted: boolean) => {
     try {
-      const data = await portfolioApi.fetchMyPortfolios();
-      if (isMounted) {
-        const portfolioList = Array.isArray(data) ? data : [];
-        setSavedPortfolios(
-          portfolioList.map((p) => ({
-            id: p.id,
-            name: p.originalFilename,
-            hasAnalysis: false,
-            isLocal: false,
-          })),
-        );
-      }
+      const response = await portfolioApi.fetchMyPortfolios();
+      if (!isMounted) return;
+
+      const portfolioList = Array.isArray(response) ? response : [];
+
+      const initialPortfolios: SavedPortfolio[] = portfolioList.map((p) => ({
+        id: p.id,
+        name: p.originalFilename,
+        hasAnalysis: false,
+        isLocal: false,
+      }));
+      setSavedPortfolios(initialPortfolios);
+
+      portfolioList.forEach(async (p) => {
+        try {
+          const analysisResult = await portfolioApi.getAnalysisResult(p.id);
+          if (analysisResult && isMounted) {
+            setSavedPortfolios((prev) =>
+              prev.map((item) => (item.id === p.id ? { ...item, hasAnalysis: true } : item)),
+            );
+          }
+        } catch {}
+      });
     } catch {
       if (isMounted) setSavedPortfolios([]);
     }
@@ -94,10 +114,10 @@ function PortfoliosPage() {
 
   useEffect(() => {
     let isMounted = true;
-    const initialize = async () => {
+    const init = async () => {
       await loadPortfolios(isMounted);
     };
-    initialize();
+    init();
     return () => {
       isMounted = false;
     };
@@ -127,16 +147,16 @@ function PortfoliosPage() {
     }
 
     try {
-      const result = await portfolioApi.uploadPortfolio(uploadedFile);
+      const response = await portfolioApi.uploadPortfolio(uploadedFile);
       const newEntry: SavedPortfolio = {
-        id: result.id,
-        name: result.originalFilename,
+        id: response.id,
+        name: response.originalFilename,
         hasAnalysis: false,
         isLocal: true,
       };
 
       setSavedPortfolios((prev) => [newEntry, ...(prev || [])]);
-      setSelectedPortfolioId(result.id);
+      setSelectedPortfolioId(response.id);
       setIsListOpen(false);
       setShowTooltip(false);
 
@@ -235,37 +255,60 @@ function PortfoliosPage() {
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 95) return 95;
-        const nextProgress = prev + 1;
+        if (prev >= 98) return 98;
+        const diff = 100 - prev;
+        const increment = Math.max(0.1, diff * 0.01);
+        const nextProgress = prev + increment;
+
         const currentStage = [...stages].reverse().find((s) => nextProgress >= s.threshold);
-        if (currentStage) setActiveStage(currentStage.id);
+        if (currentStage && currentStage.id !== activeStage) {
+          setActiveStage(currentStage.id);
+        }
         return nextProgress;
       });
-    }, 100);
+    }, 50);
 
     try {
       await portfolioApi.requestAnalysis(selectedPortfolioId);
-      const result = await portfolioApi.getAnalysisResult(selectedPortfolioId);
 
-      setAnalysisData(mapAnalysisData(result));
+      const pollResult = async (retries = 10): Promise<AnalysisResponse> => {
+        try {
+          const res = await portfolioApi.getAnalysisResult(selectedPortfolioId);
+          if (res && res.data) return res;
+          throw new Error('Not Ready');
+        } catch (error) {
+          const apiErr = error as ApiError;
+          if (retries > 0 && (apiErr.response?.data?.code === 2401 || !apiErr.response)) {
+            await new Promise((res) => setTimeout(res, 2000));
+            return pollResult(retries - 1);
+          }
+          throw error;
+        }
+      };
+
+      const result = await pollResult();
+
       clearInterval(progressInterval);
       setProgress(100);
       setActiveStage(2);
+      setAnalysisData(mapAnalysisData(result));
 
       setTimeout(() => {
         setSavedPortfolios((prev) =>
           prev.map((p) =>
-            String(p.id) === String(selectedPortfolioId) ? { ...p, hasAnalysis: true } : p,
+            String(p.id) === String(selectedPortfolioId)
+              ? { ...p, hasAnalysis: true, isLocal: false }
+              : p,
           ),
         );
         setStep('result');
-      }, 800);
+      }, 1000);
     } catch {
       clearInterval(progressInterval);
       setModal({
         isOpen: true,
         title: '분석 오류',
-        message: '분석 중 오류가 발생했습니다.',
+        message: '분석 처리 중 오류가 발생했거나 시간이 초과되었습니다.',
         type: 'alert',
       });
       setStep('upload');
@@ -615,7 +658,7 @@ function PortfoliosPage() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      className={`group relative cursor-pointer rounded-4xl border-2 border-dashed py-10 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-[1.01] shadow-inner' : 'border-silver-mist hover:border-point-blue/40 hover:bg-point-blue/5'}`}
+                      className={`group relative cursor-pointer rounded-[40px] border-2 border-dashed py-10 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-[1.01] shadow-inner' : 'border-silver-mist hover:border-point-blue/40 hover:bg-point-blue/5'}`}
                     >
                       <input
                         type="file"
@@ -690,7 +733,7 @@ function PortfoliosPage() {
                                   <Button
                                     variant="blue"
                                     size="xl"
-                                    className="shadow-point-blue/20 flex-2 rounded-[20px] py-4! text-xl! font-black shadow-xl"
+                                    className="shadow-point-blue/20 flex-[2] rounded-[20px] py-4! text-xl! font-black shadow-xl"
                                     onClick={handleViewResults}
                                   >
                                     결과 바로보기
@@ -738,14 +781,16 @@ function PortfoliosPage() {
             {step === 'analyzing' && (
               <motion.div
                 key="analyzing"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
                 className="border-silver-mist bg-pure-white rounded-[40px] border p-8 shadow-xl shadow-gray-200/50"
               >
                 <div className="space-y-8 py-4 text-center">
                   <div className="relative mx-auto h-40 w-40">
                     <motion.div
                       animate={{ rotate: 360 }}
-                      transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
-                      className="border-point-blue/20 absolute inset-0 rounded-full border-t-2 border-b-2"
+                      transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                      className="border-point-blue/10 absolute inset-0 rounded-full border-t-2 border-b-2"
                     />
                     <svg
                       className="absolute inset-0 h-full w-full -rotate-90"
@@ -769,12 +814,12 @@ function PortfoliosPage() {
                         fill="transparent"
                         strokeDasharray="289"
                         animate={{ strokeDashoffset: 289 - (289 * progress) / 100 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-point-blue text-4xl font-black tracking-tighter whitespace-nowrap tabular-nums">
-                        {progress}%
+                        {Math.floor(progress)}%
                       </span>
                       <span className="text-slate-gray mt-1 text-[10px] font-black tracking-widest uppercase opacity-50">
                         Analyzing
@@ -802,26 +847,29 @@ function PortfoliosPage() {
                     </div>
                     <div className="flex items-center justify-center gap-8">
                       {stages.map((stage) => {
-                        const isActive =
-                          activeStage === stage.id &&
-                          progress < (stages[stage.id + 1]?.threshold ?? 100);
+                        const isReached = progress >= stage.threshold;
+                        const isActive = activeStage === stage.id && progress < 100;
+
                         return (
                           <div key={stage.id} className="relative flex flex-col items-center gap-2">
                             <div className="relative">
-                              {isActive && (
-                                <motion.div
-                                  layoutId="active-ping"
-                                  className="bg-point-blue absolute inset-0 rounded-full"
-                                  animate={{ scale: [1, 2.5], opacity: [0.5, 0] }}
-                                  transition={{ duration: 1.5, repeat: Infinity }}
-                                />
-                              )}
+                              <AnimatePresence>
+                                {isActive && (
+                                  <motion.div
+                                    initial={{ scale: 1, opacity: 0.5 }}
+                                    animate={{ scale: 2.2, opacity: 0 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 1.2, repeat: Infinity }}
+                                    className="bg-point-blue absolute inset-0 rounded-full"
+                                  />
+                                )}
+                              </AnimatePresence>
                               <div
-                                className={`relative h-4 w-4 rounded-full transition-all duration-500 ${progress >= stage.threshold ? 'bg-point-blue scale-125 shadow-[0_0_10px_rgba(81,81,231,0.6)]' : 'bg-silver-mist'}`}
+                                className={`relative h-4 w-4 rounded-full transition-all duration-700 ${isReached ? 'bg-point-blue scale-110 shadow-lg' : 'bg-silver-mist'}`}
                               />
                             </div>
                             <span
-                              className={`text-xs font-black whitespace-nowrap transition-colors duration-500 ${progress >= stage.threshold ? 'text-point-blue' : 'text-slate-gray opacity-30'}`}
+                              className={`text-xs font-black whitespace-nowrap transition-colors duration-500 ${isReached ? 'text-point-blue' : 'text-slate-gray opacity-30'}`}
                             >
                               {stage.label}
                             </span>
@@ -855,7 +903,7 @@ function PortfoliosPage() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-6">
-                  <section className="border-silver-mist bg-pure-white w-full rounded-4xl border p-10 shadow-sm">
+                  <section className="border-silver-mist bg-pure-white w-full rounded-[40px] border p-10 shadow-sm">
                     <div className="mb-8 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
                       <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
@@ -901,7 +949,7 @@ function PortfoliosPage() {
                       )}
                     </div>
                   </section>
-                  <section className="border-silver-mist bg-pure-white w-full rounded-4xl border p-10 shadow-sm">
+                  <section className="border-silver-mist bg-pure-white w-full rounded-[40px] border p-10 shadow-sm">
                     <div className="mb-8 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
                       <h3 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap">
@@ -930,7 +978,7 @@ function PortfoliosPage() {
                   <Button
                     variant="blue"
                     size="xl"
-                    className="shadow-point-blue/20 flex-2 rounded-[20px] py-4! text-xl! font-black shadow-xl"
+                    className="shadow-point-blue/20 flex-[2] rounded-[20px] py-4! text-xl! font-black shadow-xl"
                     onClick={() => navigate('/recommend/companies')}
                   >
                     맞춤 공고 확인하기
