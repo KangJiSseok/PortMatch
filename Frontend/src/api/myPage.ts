@@ -209,6 +209,58 @@ export const APPLICATIONS: ApplicationRow[] = [
 
 // interviews: applications(0..1) → interviews
 export const INTERVIEWS: InterviewRow[] = [
+  // ✅ 완료(과거)
+  {
+    id: 9003,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9003',
+    scheduled_at: '2026-01-10T16:00:00',
+    status: 'DONE',
+  },
+  {
+    id: 9001,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9001',
+    scheduled_at: '2026-01-21T13:00:00',
+    status: 'DONE',
+  },
+  {
+    id: 9002,
+    application_id: 7002,
+    room_id: 'room_web_dev_9002',
+    scheduled_at: '2026-01-23T10:30:00',
+    status: 'DONE',
+  },
+
+  // ✅ 2026-01-26 (5개)
+  {
+    id: 9100,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9100',
+    scheduled_at: '2026-01-26T10:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9101,
+    application_id: 7002,
+    room_id: 'room_web_dev_9101',
+    scheduled_at: '2026-01-26T11:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9102,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9102',
+    scheduled_at: '2026-01-26T13:30:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9103,
+    application_id: 7002,
+    room_id: 'room_web_dev_9103',
+    scheduled_at: '2026-01-26T15:00:00',
+    status: 'SCHEDULED',
+  },
   {
     id: 9000,
     application_id: 7001,
@@ -216,26 +268,190 @@ export const INTERVIEWS: InterviewRow[] = [
     scheduled_at: '2026-01-26T17:00:00',
     status: 'SCHEDULED',
   },
+
+  // ✅ 2026-01-27 (5개)
   {
-    id: 9001,
+    id: 9104,
     application_id: 7001,
-    room_id: 'room_frontend_intern_9001',
-    scheduled_at: '2026-01-21T13:00:00',
+    room_id: 'room_frontend_intern_9104',
+    scheduled_at: '2026-01-27T10:00:00',
     status: 'SCHEDULED',
   },
   {
-    id: 9002,
+    id: 9105,
     application_id: 7002,
-    room_id: 'room_web_dev_9002',
-    scheduled_at: '2026-01-23T10:30:00',
+    room_id: 'room_web_dev_9105',
+    scheduled_at: '2026-01-27T11:00:00',
     status: 'SCHEDULED',
   },
   {
-    id: 9003,
+    id: 9106,
     application_id: 7001,
-    room_id: 'room_frontend_intern_9003',
-    scheduled_at: '2026-01-10T16:00:00',
-    status: 'DONE',
+    room_id: 'room_frontend_intern_9106',
+    scheduled_at: '2026-01-27T13:30:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9107,
+    application_id: 7002,
+    room_id: 'room_web_dev_9107',
+    scheduled_at: '2026-01-27T15:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9108,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9108',
+    scheduled_at: '2026-01-27T17:00:00',
+    status: 'SCHEDULED',
+  },
+
+  // ✅ 2026-01-28 (5개)
+  {
+    id: 9109,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9109',
+    scheduled_at: '2026-01-28T10:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9110,
+    application_id: 7002,
+    room_id: 'room_web_dev_9110',
+    scheduled_at: '2026-01-28T11:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9111,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9111',
+    scheduled_at: '2026-01-28T13:30:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9112,
+    application_id: 7002,
+    room_id: 'room_web_dev_9112',
+    scheduled_at: '2026-01-28T15:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9113,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9113',
+    scheduled_at: '2026-01-28T17:00:00',
+    status: 'SCHEDULED',
+  },
+
+  // ✅ 2026-01-29 (5개)
+  {
+    id: 9114,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9114',
+    scheduled_at: '2026-01-29T10:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9115,
+    application_id: 7002,
+    room_id: 'room_web_dev_9115',
+    scheduled_at: '2026-01-29T11:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9116,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9116',
+    scheduled_at: '2026-01-29T13:30:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9117,
+    application_id: 7002,
+    room_id: 'room_web_dev_9117',
+    scheduled_at: '2026-01-29T15:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9118,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9118',
+    scheduled_at: '2026-01-29T17:00:00',
+    status: 'SCHEDULED',
+  },
+
+  // ✅ 2026-01-30 (5개)
+  {
+    id: 9119,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9119',
+    scheduled_at: '2026-01-30T10:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9120,
+    application_id: 7002,
+    room_id: 'room_web_dev_9120',
+    scheduled_at: '2026-01-30T11:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9121,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9121',
+    scheduled_at: '2026-01-30T13:30:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9122,
+    application_id: 7002,
+    room_id: 'room_web_dev_9122',
+    scheduled_at: '2026-01-30T15:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9123,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9123',
+    scheduled_at: '2026-01-30T17:00:00',
+    status: 'SCHEDULED',
+  },
+
+  // ✅ 2026-01-31 (5개)
+  {
+    id: 9124,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9124',
+    scheduled_at: '2026-01-31T10:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9125,
+    application_id: 7002,
+    room_id: 'room_web_dev_9125',
+    scheduled_at: '2026-01-31T11:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9126,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9126',
+    scheduled_at: '2026-01-31T13:30:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9127,
+    application_id: 7002,
+    room_id: 'room_web_dev_9127',
+    scheduled_at: '2026-01-31T15:00:00',
+    status: 'SCHEDULED',
+  },
+  {
+    id: 9128,
+    application_id: 7001,
+    room_id: 'room_frontend_intern_9128',
+    scheduled_at: '2026-01-31T17:00:00',
+    status: 'SCHEDULED',
   },
 ];
 
@@ -249,6 +465,18 @@ export const SCRAPS: ScrapRow[] = [
   },
   {
     id: 8002,
+    applicant_id: CURRENT_APPLICANT_ID,
+    job_post_id: 1001,
+    created_at: '2026-01-04T10:15:00',
+  },
+  {
+    id: 8003,
+    applicant_id: CURRENT_APPLICANT_ID,
+    job_post_id: 1001,
+    created_at: '2026-01-04T10:15:00',
+  },
+  {
+    id: 8004,
     applicant_id: CURRENT_APPLICANT_ID,
     job_post_id: 1001,
     created_at: '2026-01-04T10:15:00',

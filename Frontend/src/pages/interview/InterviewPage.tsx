@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
-import { fetchMyInterviewViewById, type InterviewSessionView } from '../../api/mockData';
+import { fetchMyInterviewViewById, type InterviewSessionView } from '../../api/myPage';
 
 type RoomNavState = {
   micOn?: boolean;

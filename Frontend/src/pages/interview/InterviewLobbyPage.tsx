@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
-import { fetchMyInterviewViewById, type InterviewSessionView } from '../../api/mockData';
+import { fetchMyInterviewViewById, type InterviewSessionView } from '../../api/myPage';
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
