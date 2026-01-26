@@ -130,10 +130,12 @@ function PortfoliosPage() {
         isLocal: true,
       };
 
-      setSavedPortfolios((prev) => [newEntry, ...prev]);
+      setSavedPortfolios((prev) => [newEntry, ...(prev || [])]);
       setSelectedPortfolioId(result.id);
       setIsListOpen(false);
       setShowTooltip(false);
+
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch {
       setModal({
         isOpen: true,
@@ -168,8 +170,9 @@ function PortfoliosPage() {
       type: 'confirm',
       onConfirm: async () => {
         try {
-          setSavedPortfolios((prev) => prev.filter((p) => p.id !== id));
-          if (selectedPortfolioId === id) {
+          await portfolioApi.deletePortfolio(id);
+          setSavedPortfolios((prev) => prev.filter((p) => String(p.id) !== String(id)));
+          if (String(selectedPortfolioId) === String(id)) {
             setSelectedPortfolioId(null);
           }
           closeModal();
@@ -246,7 +249,9 @@ function PortfoliosPage() {
 
       setTimeout(() => {
         setSavedPortfolios((prev) =>
-          prev.map((p) => (p.id === selectedPortfolioId ? { ...p, hasAnalysis: true } : p)),
+          prev.map((p) =>
+            String(p.id) === String(selectedPortfolioId) ? { ...p, hasAnalysis: true } : p,
+          ),
         );
         setStep('result');
       }, 800);
@@ -262,7 +267,9 @@ function PortfoliosPage() {
     }
   };
 
-  const selectedPortfolio = savedPortfolios.find((p) => p.id === selectedPortfolioId);
+  const selectedPortfolio = savedPortfolios.find(
+    (p) => String(p.id) === String(selectedPortfolioId),
+  );
 
   return (
     <div className="bg-pure-white min-h-screen min-w-350 pt-26 pb-32">
@@ -544,7 +551,7 @@ function PortfoliosPage() {
                                     setSelectedPortfolioId(p.id);
                                     setIsListOpen(false);
                                   }}
-                                  className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-6 py-4 text-left transition-colors ${selectedPortfolioId === p.id ? 'bg-point-blue/5 text-point-blue' : 'hover:bg-cloud-dancer text-midnight-ink/70'}`}
+                                  className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-6 py-4 text-left transition-colors ${String(selectedPortfolioId) === String(p.id) ? 'bg-point-blue/5 text-point-blue' : 'hover:bg-cloud-dancer text-midnight-ink/70'}`}
                                 >
                                   <div className="flex items-center gap-3">
                                     <button
@@ -665,37 +672,55 @@ function PortfoliosPage() {
                       </AnimatePresence>
                       <div className="min-h-16 w-full">
                         <AnimatePresence mode="wait">
-                          {selectedPortfolio?.hasAnalysis ? (
-                            <motion.div key="has-analysis-buttons" className="flex w-full gap-4">
-                              <Button
-                                variant="blue"
-                                size="xl"
-                                className="shadow-point-blue/20 flex-2 rounded-[20px] py-4! text-xl! font-black shadow-xl"
-                                onClick={handleViewResults}
-                              >
-                                결과 바로보기
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="xl"
-                                className="flex-1 rounded-[20px] py-4! text-xl! font-black"
-                                onClick={handleAnalysis}
-                              >
-                                다시 분석하기
-                              </Button>
+                          {selectedPortfolioId ? (
+                            <motion.div
+                              key="action-buttons"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                              className="w-full"
+                            >
+                              {selectedPortfolio?.hasAnalysis ? (
+                                <div className="flex w-full gap-4">
+                                  <Button
+                                    variant="blue"
+                                    size="xl"
+                                    className="shadow-point-blue/20 flex-2 rounded-[20px] py-4! text-xl! font-black shadow-xl"
+                                    onClick={handleViewResults}
+                                  >
+                                    결과 바로보기
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="xl"
+                                    className="flex-1 rounded-[20px] py-4! text-xl! font-black"
+                                    onClick={handleAnalysis}
+                                  >
+                                    다시 분석하기
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  variant="blue"
+                                  size="xl"
+                                  className="shadow-point-blue/20 w-full rounded-[20px] py-4! text-2xl! font-black shadow-xl"
+                                  onClick={handleAnalysis}
+                                >
+                                  분석 시작하기
+                                </Button>
+                              )}
                             </motion.div>
                           ) : (
-                            <motion.div key="no-analysis-button" className="w-full">
+                            <div className="w-full">
                               <Button
                                 variant="blue"
                                 size="xl"
-                                disabled={!selectedPortfolioId}
-                                className="disabled:bg-silver-mist disabled:text-slate-gray shadow-point-blue/20 w-full rounded-[20px] py-4! text-2xl! font-black shadow-xl disabled:cursor-not-allowed"
-                                onClick={handleAnalysis}
+                                disabled
+                                className="bg-silver-mist text-slate-gray w-full cursor-not-allowed rounded-[20px] py-4! text-2xl! font-black"
                               >
-                                분석 시작하기
+                                파일을 선택해주세요
                               </Button>
-                            </motion.div>
+                            </div>
                           )}
                         </AnimatePresence>
                       </div>
@@ -824,7 +849,6 @@ function PortfoliosPage() {
                     {selectedPortfolio?.name}
                   </div>
                 </div>
-
                 <div className="flex flex-col gap-6">
                   <section className="border-silver-mist bg-pure-white w-full rounded-4xl border p-10 shadow-sm">
                     <div className="mb-8 flex items-center gap-3">
@@ -834,40 +858,38 @@ function PortfoliosPage() {
                       </h3>
                     </div>
                     <div className="grid grid-cols-1 gap-4">
-                      {analysisData.projects && analysisData.projects.length > 0 ? (
-                        analysisData.projects.map((proj, idx) => (
-                          <div
-                            key={idx}
-                            onClick={() => setSelectedProject(proj)}
-                            className="group hover:border-point-blue/30 hover:bg-point-blue/5 border-silver-mist/50 cursor-pointer rounded-2xl border bg-gray-50/50 p-8 transition-all"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-6">
-                                <span className="text-point-blue text-sm font-black opacity-40 transition-opacity group-hover:opacity-100">
-                                  0{idx + 1}
-                                </span>
-                                <h4 className="text-midnight-ink group-hover:text-point-blue text-xl font-black transition-colors">
-                                  {proj.name}
-                                </h4>
-                              </div>
-                              <div className="text-point-blue -translate-x-2 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100">
-                                <svg
-                                  width="24"
-                                  height="24"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="3"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <polyline points="9 18 15 12 9 6" />
-                                </svg>
-                              </div>
+                      {analysisData.projects?.map((proj, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setSelectedProject(proj)}
+                          className="group hover:border-point-blue/30 hover:bg-point-blue/5 border-silver-mist/50 cursor-pointer rounded-2xl border bg-gray-50/50 p-8 transition-all"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                              <span className="text-point-blue text-sm font-black opacity-40 transition-opacity group-hover:opacity-100">
+                                0{idx + 1}
+                              </span>
+                              <h4 className="text-midnight-ink group-hover:text-point-blue text-xl font-black transition-colors">
+                                {proj.name}
+                              </h4>
+                            </div>
+                            <div className="text-point-blue -translate-x-2 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100">
+                              <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <polyline points="9 18 15 12 9 6" />
+                              </svg>
                             </div>
                           </div>
-                        ))
-                      ) : (
+                        </div>
+                      )) || (
                         <p className="text-slate-gray py-10 text-center opacity-40">
                           분석된 프로젝트가 없습니다.
                         </p>
