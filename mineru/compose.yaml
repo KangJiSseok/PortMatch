@@ -30,11 +30,11 @@ services:
 
   mineru-api:
     image: mineru:latest
-    container_name: mineru-api-v2
+    container_name: mineru-api
     restart: always
     profiles: ["api"]
     ports:
-      - 18001:8000
+      - 18000:8000
     environment:
       MINERU_MODEL_SOURCE: local
     entrypoint: mineru-api
