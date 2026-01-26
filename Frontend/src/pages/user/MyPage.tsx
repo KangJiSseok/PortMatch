@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import Button from '../components/Button/Button';
+import Button from '../../components/Button/Button';
 
 import {
   type InterviewSessionView,
@@ -12,7 +12,7 @@ import {
   fetchMyUpcomingInterviewViews,
   fetchMyScrapViews,
   fetchMyNotifications,
-} from '../api/mockData';
+} from '../../api/mockData';
 
 const ROUTES = {
   resume: '/resumes/me',
@@ -493,12 +493,15 @@ export default function MyPage() {
                           size="md"
                           onClick={() => {
                             setSelectedDate(ymd);
-                            if (!inThisMonth) setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                            if (!inThisMonth)
+                              setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
                           }}
                           className={[
                             'flex w-full flex-col items-stretch justify-start text-left',
                             'min-h-[90px] cursor-pointer rounded-2xl border p-3 transition',
-                            inThisMonth ? 'border-zinc-200 bg-white' : 'border-zinc-200/60 bg-zinc-50',
+                            inThisMonth
+                              ? 'border-zinc-200 bg-white'
+                              : 'border-zinc-200/60 bg-zinc-50',
                             'hover:bg-zinc-100/60',
                             isSelected ? 'ring-midnight-ink ring-2' : '',
                           ].join(' ')}
@@ -679,7 +682,11 @@ export default function MyPage() {
       </NotificationModal>
 
       {/* ✅ 스크랩 전체 모달 */}
-      <NotificationModal open={isScrapOpen} onClose={() => setIsScrapOpen(false)} title="스크랩한 공고">
+      <NotificationModal
+        open={isScrapOpen}
+        onClose={() => setIsScrapOpen(false)}
+        title="스크랩한 공고"
+      >
         {scrapQuery.isLoading ? (
           <div className="space-y-3">
             <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
@@ -701,7 +708,9 @@ export default function MyPage() {
         ) : (scrapQuery.data ?? []).length === 0 ? (
           <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
             <p className="text-midnight-ink text-sm font-black">스크랩한 공고가 없어요</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">마음에 드는 공고를 찜해보세요.</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">
+              마음에 드는 공고를 찜해보세요.
+            </p>
           </div>
         ) : (
           <div className="space-y-3">

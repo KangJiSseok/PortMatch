@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion';
 
-import imgS1Top from '../assets/images/intro/s1-top.avif';
-import imgS1Bottom from '../assets/images/intro/s1-bottom.avif';
-import imgS2 from '../assets/images/intro/s2-ai.avif';
-import imgS3Applicant from '../assets/images/intro/s3-applicant.avif';
-import imgS3Company from '../assets/images/intro/s3-company.avif';
+import imgS1Top from '../../assets/images/intro/s1-top.avif';
+import imgS1Bottom from '../../assets/images/intro/s1-bottom.avif';
+import imgS2 from '../../assets/images/intro/s2-ai.avif';
+import imgS3Applicant from '../../assets/images/intro/s3-applicant.avif';
+import imgS3Company from '../../assets/images/intro/s3-company.avif';
 
 function IntroPage() {
   const containerRef = useRef<HTMLDivElement>(null);

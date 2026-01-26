@@ -1,9 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import Button from '../components/Button/Button';
-import { portfolioApi } from '../api/portfolioApi';
-import type { SavedPortfolio, AnalysisData, AnalysisResponse, Project } from '../types/portfolio';
+import Button from '../../components/Button/Button';
+import { portfolioApi } from '../../api/portfolioApi';
+import type {
+  SavedPortfolio,
+  AnalysisData,
+  AnalysisResponse,
+  Project,
+} from '../../types/portfolio';
 
 type AnalysisStep = 'upload' | 'analyzing' | 'result';
 

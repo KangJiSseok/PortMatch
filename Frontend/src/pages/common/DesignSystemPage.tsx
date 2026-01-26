@@ -1,8 +1,8 @@
-import Button from '../components/Button/Button';
-import Input from '../components/Input/Input';
-import Checkbox from '../components/Checkbox/Checkbox';
-import Select from '../components/Select/Select';
-import FileUploader from '../components/FileUploader/FileUploader';
+import Button from '../../components/Button/Button';
+import Input from '../../components/Input/Input';
+import Checkbox from '../../components/Checkbox/Checkbox';
+import Select from '../../components/Select/Select';
+import FileUploader from '../../components/FileUploader/FileUploader';
 
 function DesignSystemPage() {
   const jobOptions = [

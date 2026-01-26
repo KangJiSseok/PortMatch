@@ -11,29 +11,36 @@ import 'aos/dist/aos.css';
 
 import Navbar from './components/Navbar/Navbar';
 import Footer from './components/Footer/Footer';
-import IntroPage from './pages/IntroPage';
-import MainPage from './pages/MainPage';
-import DesignSystemPage from './pages/DesignSystemPage';
-import InterviewPage from './pages/InterviewPage';
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import PortfoliosPage from './pages/PortfoliosPage';
-import RecommendCompanyPage from './pages/RecommendCompanyPage';
-import CompanyDetailsPage from './pages/CompanyDetailsPage';
-import ResumeDetailPage from './pages/ResumeDetailPage';
-import JobPostingsPage from '@/pages/JobPostingsPage';
+
+import IntroPage from './pages/common/IntroPage';
+import MainPage from './pages/common/MainPage';
+import DesignSystemPage from './pages/common/DesignSystemPage';
+
+import InterviewPage from './pages/interview/InterviewPage';
+import InterviewLobbyPage from './pages/interview/InterviewLobbyPage';
+
+import LoginPage from './pages/auth/LoginPage';
+import SignupPage from './pages/auth/SignupPage';
+
+import PortfoliosPage from './pages/user/PortfoliosPage';
+import ResumeDetailPage from './pages/user/ResumeDetailPage';
+import RecommendCompanyPage from './pages/user/RecommendCompanyPage';
+
+import JobPostingsPage from '@/pages/job/JobPostingsPage';
+import JobPostDetailPage from './pages/job/JobPostDetailPage';
+import JobPostFormPage from './pages/job/JobPostFormPage';
+import JobApplicationManagementPage from './pages/job/JobApplicationManagementPage';
+import JobApplyPage from './pages/job/JobApplyPage';
+
+import CompanyDetailsPage from './pages/company/CompanyDetailsPage';
+import CompanyJobManagementPage from './pages/company/CompanyJobManagementPage';
+import CompanyProfilePage from './pages/company/CompanyProfilePage';
+import CompanyProfileEditPage from './pages/company/CompanyProfileEditPage';
+
 import { ProtectedRoute, PublicRoute, CompanyRoute } from './routes/RouteGuard';
-import InterviewLobbyPage from './pages/InterviewLobbyPage';
-import JobPostDetailPage from './pages/JobPostDetailPage';
 import MypageGate from './routes/MyPageGate';
-import CompanyJobManagementPage from './pages/CompanyJobManagementPage';
-import JobApplicationManagementPage from './pages/JobApplicationManagementPage';
-import JobPostFormPage from './pages/JobPostFormPage';
 import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
-import JobApplyPage from './pages/JobApplyPage';
-import CompanyProfilePage from './pages/CompanyProfilePage';
-import CompanyProfileEditPage from './pages/CompanyProfileEditPage';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -175,7 +182,7 @@ const router = createBrowserRouter([
           <ProtectedRoute>
             <JobApplyPage />
           </ProtectedRoute>
-        )
+        ),
       },
       {
         path: 'company/jobs',
@@ -215,7 +222,7 @@ const router = createBrowserRouter([
           <CompanyRoute>
             <CompanyProfilePage />
           </CompanyRoute>
-        )
+        ),
       },
       {
         path: 'company/profile/edit',
@@ -223,7 +230,7 @@ const router = createBrowserRouter([
           <CompanyRoute>
             <CompanyProfileEditPage />
           </CompanyRoute>
-        )
+        ),
       },
       {
         path: 'design',

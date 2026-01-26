@@ -2,11 +2,11 @@ import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import Button from '../components/Button/Button';
-import Input from '../components/Input/Input';
-import Select from '../components/Select/Select';
-import { useSignup } from '../hooks/useAuth';
-import type { UserRole } from '../types/auth';
+import Button from '../../components/Button/Button';
+import Input from '../../components/Input/Input';
+import Select from '../../components/Select/Select';
+import { useSignup } from '../../hooks/useAuth';
+import type { UserRole } from '../../types/auth';
 
 const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boolean }) => {
   if (!isVisible || !message) return null;

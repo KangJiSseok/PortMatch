@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 
-import Button from '../components/Button/Button';
-import { fetchJobPostDetail } from '../api/jobPosts';
+import Button from '../../components/Button/Button';
+import { fetchJobPostDetail } from '../../api/jobPosts';
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
 type ApiResult = Awaited<ReturnType<typeof fetchJobPostDetail>>;

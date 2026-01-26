@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import Button from '../components/Button/Button';
-import { fetchMyInterviewViewById, type InterviewSessionView } from '../api/mockData';
+import Button from '../../components/Button/Button';
+import { fetchMyInterviewViewById, type InterviewSessionView } from '../../api/mockData';
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);

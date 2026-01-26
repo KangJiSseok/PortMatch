@@ -2,8 +2,8 @@
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import Button from '../components/Button/Button';
-import { fetchJobPostDetail, toggleJobPostScrapAsync } from '../api/jobPosts';
+import Button from '../../components/Button/Button';
+import { fetchJobPostDetail, toggleJobPostScrapAsync } from '../../api/jobPosts';
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
 type ApiResult = Awaited<ReturnType<typeof fetchJobPostDetail>>;

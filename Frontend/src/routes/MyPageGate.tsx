@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
-import MyPage from '../pages/MyPage';
-import CorporateMyPage from '../pages/CompanyMyPage';
+import MyPage from '../pages/user/MyPage';
+import CorporateMyPage from '../pages/company/CompanyMyPage';
 import { useAuthStore } from '@/store/authStore';
 
 export default function MyPageGate() {

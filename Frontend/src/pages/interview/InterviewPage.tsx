@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
-import Button from '../components/Button/Button';
-import { fetchMyInterviewViewById, type InterviewSessionView } from '../api/mockData';
+import Button from '../../components/Button/Button';
+import { fetchMyInterviewViewById, type InterviewSessionView } from '../../api/mockData';
 
 type RoomNavState = {
   micOn?: boolean;
@@ -203,7 +203,8 @@ export default function InterviewPage() {
                 {formatDateTime(session.scheduledAt)}
               </span>
               <span className="bg-cloud-dancer text-midnight-ink rounded-full px-3 py-1 text-xs font-black">
-                ROOM · <span className="font-semibold break-all text-zinc-600">{session.room_id}</span>
+                ROOM ·{' '}
+                <span className="font-semibold break-all text-zinc-600">{session.room_id}</span>
               </span>
             </>
           }
@@ -220,7 +221,7 @@ export default function InterviewPage() {
             />
           </div>
 
-          <section className="rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm col-span-1">
+          <section className="col-span-1 rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-lg font-black tracking-tight">내 화면</h2>
@@ -257,7 +258,9 @@ export default function InterviewPage() {
               <div className="flex items-center justify-between border-b border-zinc-100 bg-white px-6 py-4">
                 <div className="flex items-center gap-2">
                   <span className="bg-point-blue/60 inline-flex h-2 w-2 rounded-full" />
-                  <p className="text-sm font-black text-zinc-600">{camOn ? 'MY VIDEO' : 'CAM OFF'}</p>
+                  <p className="text-sm font-black text-zinc-600">
+                    {camOn ? 'MY VIDEO' : 'CAM OFF'}
+                  </p>
                 </div>
                 <span className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
                   preview
@@ -393,12 +396,12 @@ function RoomSkeleton({ onExit }: { onExit: () => void }) {
 
         {/* ✅ 반응형 제거: 항상 3컬럼 고정 */}
         <div className="grid grid-cols-3 gap-6">
-          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm col-span-2">
+          <div className="col-span-2 animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
             <div className="h-4 w-36 rounded bg-zinc-200/70" />
             <div className="bg-midnight-ink/70 mt-6 h-[520px] rounded-4xl" />
           </div>
 
-          <div className="animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm col-span-1">
+          <div className="col-span-1 animate-pulse rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
             <div className="h-4 w-24 rounded bg-zinc-200/70" />
             <div className="mt-3 h-4 w-48 rounded bg-zinc-200/60" />
             <div className="bg-midnight-ink/70 mt-6 h-[260px] rounded-4xl" />
