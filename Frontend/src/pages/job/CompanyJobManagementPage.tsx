@@ -82,7 +82,7 @@ const CompanyJobManagementPage = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="bg-pure-white relative w-full max-w-100 overflow-hidden rounded-4xl p-8 text-center shadow-xl"
+                className="bg-pure-white relative w-full max-w-[400px] overflow-hidden rounded-[32px] p-8 text-center shadow-xl"
               >
                 <h3 className="text-midnight-ink mb-3 text-2xl font-bold tracking-tight">
                   정말 삭제할까요?
@@ -100,9 +100,8 @@ const CompanyJobManagementPage = () => {
                     취소
                   </Button>
                   <Button
-                    variant="red"
                     size="lg"
-                    className="flex-1 rounded-xl font-bold text-white transition-colors"
+                    className="flex-1 rounded-xl bg-[#E16B63] font-bold text-white transition-colors hover:bg-[#d95a52]"
                     onClick={confirmDelete}
                   >
                     삭제하기
@@ -153,7 +152,8 @@ const CompanyJobManagementPage = () => {
               jobs.map((job) => (
                 <div
                   key={job.id}
-                  className="border-silver-mist bg-pure-white flex min-w-full items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
+                  onClick={() => navigate(`/job-posts/${job.id}`)}
+                  className="group border-silver-mist bg-pure-white flex min-w-full cursor-pointer items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
                 >
                   <div className="flex min-w-0 flex-col gap-4">
                     <div className="flex items-center gap-3">
@@ -169,8 +169,7 @@ const CompanyJobManagementPage = () => {
                     </div>
                     <div className="min-w-0">
                       <h3
-                        onClick={() => navigate(`/company/jobs/${job.id}/applicants`)}
-                        className="text-midnight-ink hover:text-point-blue cursor-pointer truncate text-2xl font-black tracking-tight transition-colors"
+                        className="text-midnight-ink group-hover:text-point-blue group-has-[.no-title-hover:hover]:text-midnight-ink truncate text-2xl font-black tracking-tight transition-colors"
                         title={job.title}
                       >
                         {job.title}
@@ -182,29 +181,35 @@ const CompanyJobManagementPage = () => {
                   </div>
 
                   <div className="flex shrink-0 items-center gap-10">
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="text-midnight-ink text-sm font-black tracking-widest uppercase">
-                        지원자
-                      </span>
-                      <Button
-                        variant="outline"
-                        className="text-midnight-ink hover:text-point-blue min-w-20 rounded-2xl border-2 py-3 transition-all hover:bg-slate-50"
-                        onClick={() => navigate(`/company/jobs/${job.id}/applicants`)}
-                      >
+                    <Button
+                      variant="outline"
+                      className="group/btn no-title-hover text-midnight-ink hover:text-point-blue min-w-24 rounded-2xl border-2 py-3 transition-all hover:bg-slate-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/company/jobs/${job.id}/applicants`);
+                      }}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-midnight-ink group-hover/btn:text-point-blue text-sm font-black tracking-widest uppercase transition-colors">
+                          지원자
+                        </span>
                         <span className="text-2xl font-black tabular-nums">
                           {job.applicantCount.toString().padStart(2, '0')}
                         </span>
-                      </Button>
-                    </div>
+                      </div>
+                    </Button>
 
                     <div className="bg-cloud-dancer h-12 w-px"></div>
 
-                    <div className="flex gap-3">
+                    <div className="no-title-hover flex gap-3">
                       <Button
                         variant="light"
                         size="md"
                         className="rounded-xl px-6"
-                        onClick={() => navigate(`/company/jobs/edit/${job.id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/company/jobs/edit/${job.id}`);
+                        }}
                       >
                         수정
                       </Button>
@@ -212,7 +217,10 @@ const CompanyJobManagementPage = () => {
                         variant="destructive"
                         size="md"
                         className="rounded-xl px-6"
-                        onClick={() => openDeleteModal(job)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDeleteModal(job);
+                        }}
                       >
                         삭제
                       </Button>
