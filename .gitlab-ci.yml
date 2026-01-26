@@ -45,8 +45,8 @@ deploy:
     - set -e
 
     # ---------- 배포 디렉토리 ----------
-    - mkdir -p /home/ubuntu/deploy
-    - cd /home/ubuntu/deploy
+    - mkdir -p /home/gitlab-runner/deploy
+    - cd /home/gitlab-runner/deploy
 
     # ---------- docker-compose 파일 복사 ----------
     - cp $CI_PROJECT_DIR/docker-compose.prod.yml ./docker-compose.prod.yml
