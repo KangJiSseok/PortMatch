@@ -330,8 +330,8 @@ function PortfoliosPage() {
   );
 
   return (
-    <div className="bg-pure-white min-h-screen min-w-80 pt-26 pb-32">
-      <div className="mx-auto max-w-5xl px-6">
+    <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
         <AnimatePresence>
           {modal.isOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -521,9 +521,6 @@ function PortfoliosPage() {
 
         <header className="border-point-blue mb-12 border-l-4 pl-6">
           <div className="flex flex-col gap-1">
-            <span className="text-point-blue text-xs font-black tracking-[0.2em] whitespace-nowrap uppercase">
-              Career Analysis
-            </span>
             <motion.h1
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}

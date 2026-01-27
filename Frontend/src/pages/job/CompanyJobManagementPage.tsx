@@ -82,7 +82,7 @@ const CompanyJobManagementPage = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="bg-pure-white relative w-full max-w-[400px] overflow-hidden rounded-[32px] p-8 text-center shadow-xl"
+                className="bg-pure-white relative w-full max-w-100 overflow-hidden rounded-4xl p-8 text-center shadow-xl"
               >
                 <h3 className="text-midnight-ink mb-3 text-2xl font-bold tracking-tight">
                   정말 삭제할까요?

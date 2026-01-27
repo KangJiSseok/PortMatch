@@ -113,7 +113,7 @@ const router = createBrowserRouter([
         path: 'profile/edit',
         element: (
           <ProtectedRoute>
-            <ProfileEditPage/>
+            <ProfileEditPage />
           </ProtectedRoute>
         ),
       },
@@ -134,12 +134,21 @@ const router = createBrowserRouter([
         element: <CompanyDetailsPage />,
       },
       {
-        path: 'resumes/:resumeId',
-        element: (
-          <ProtectedRoute>
-            <ResumeDetailPage />
-          </ProtectedRoute>
-        ),
+        path: 'resumes',
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/portfolios" replace />,
+          },
+          {
+            path: ':resumeId',
+            element: (
+              <ProtectedRoute>
+                <ResumeDetailPage />
+              </ProtectedRoute>
+            ),
+          },
+        ],
       },
       {
         path: 'interviews',

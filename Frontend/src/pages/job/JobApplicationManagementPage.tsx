@@ -46,17 +46,8 @@ const JobApplicationManagementPage = () => {
   return (
     <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
       <div className="mx-auto w-5xl px-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-soft-pebble hover:text-slate-gray text-md mb-4 flex items-center gap-2 font-black whitespace-nowrap transition-colors"
-        >
-          ← 뒤로가기
-        </button>
-        <header className="border-point-blue mb-12 border-l-4 pl-6">
+        <header className="border-point-blue mb-12 flex items-start justify-between border-l-4 pl-6">
           <div className="flex flex-col gap-1">
-            <span className="text-point-blue text-xs font-black tracking-[0.2em] whitespace-nowrap uppercase">
-              Applicant Tracking
-            </span>
             <motion.h1
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -70,6 +61,14 @@ const JobApplicationManagementPage = () => {
                 : '아직 접수된 지원서가 없습니다.'}
             </p>
           </div>
+
+          <Button
+            isBack
+            variant="outline"
+            size="md"
+            className="shrink-0 rounded-xl"
+            onClick={() => navigate(-1)}
+          />
         </header>
 
         <motion.div
