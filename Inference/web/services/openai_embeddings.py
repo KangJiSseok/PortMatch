@@ -14,9 +14,9 @@ def embed_texts(api_key: str, texts: List[str], model: str = "text-embedding-3-s
     if not isinstance(texts, list) or not texts:
         raise ValueError("texts must be a non-empty list")
 
-    base_url = os.getenv("OPENAI_BASE_URL")  # 오픈AI 전용만 사용
+    base_url = os.getenv("OPENAI_EMBEDDING_BASE_URL") or os.getenv("OPENAI_BASE_URL")
     if not base_url:
-        raise RuntimeError("OPENAI_BASE_URL is not set")
+        raise RuntimeError("OPENAI_EMBEDDING_BASE_URL or OPENAI_BASE_URL is not set")
 
     print(f"base_url: {base_url}")
 
