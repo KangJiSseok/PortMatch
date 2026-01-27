@@ -1,6 +1,5 @@
 package com.portmatch.domain.companyproject.embeddingv2.controller;
 
-<<<<<<< HEAD
 import com.portmatch.domain.companyproject.embeddingv2.dto.CompanyEmbeddingV2BatchRequest;
 import com.portmatch.domain.companyproject.embeddingv2.dto.CompanyEmbeddingV2BatchResponse;
 import com.portmatch.domain.companyproject.embeddingv2.dto.CompanyEmbeddingV2UpsertResponse;
