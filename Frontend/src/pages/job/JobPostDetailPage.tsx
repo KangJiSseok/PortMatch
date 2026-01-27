@@ -25,15 +25,6 @@ function formatYmdDot(ymd?: string | null) {
   return ymd.replaceAll('-', '.');
 }
 
-function formatIsoDot(iso?: string | null) {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}.${mm}.${dd}`;
-}
-
 function calcDday(deadline?: string | null) {
   if (!deadline) return '-';
   const end = new Date(`${deadline}T23:59:59`);
@@ -46,16 +37,16 @@ function calcDday(deadline?: string | null) {
 }
 
 function ddayClass(dday: string) {
-  if (dday === 'D-DAY' || dday === '마감') return 'text-red-500';
+  if (dday === 'D-DAY' || dday === '마감') return 'text-error';
 
   const m = dday.match(/^D-(\d+)$/);
   if (m) {
     const n = Number(m[1]);
-    if (Number.isFinite(n) && n <= 3) return 'text-red-500';
+    if (Number.isFinite(n) && n <= 3) return 'text-error';
     return 'text-point-blue';
   }
 
-  return 'text-zinc-800';
+  return 'text-midnight-ink';
 }
 
 function TextBlock({ text }: { text: string }) {
@@ -63,7 +54,7 @@ function TextBlock({ text }: { text: string }) {
   return (
     <div className="space-y-2">
       {lines.map((l, i) => (
-        <p key={i} className="text-sm leading-6 font-medium text-zinc-500">
+        <p key={i} className="text-midnight-ink text-sm leading-6 font-medium">
           {l === '' ? '\u00A0' : l}
         </p>
       ))}
@@ -75,7 +66,7 @@ function MiniRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-3">
       <p className="text-midnight-ink text-sm font-black">{label}</p>
-      <p className="text-sm font-black text-zinc-800">{value}</p>
+      <p className="text-midnight-ink text-sm font-black">{value}</p>
     </div>
   );
 }
@@ -86,7 +77,7 @@ function InfoRow({ label, value, isLink }: { label: string; value: string; isLin
       <p className="text-midnight-ink text-sm font-black">{label}</p>
       {isLink ? (
         <a
-          className="hover:text-point-blue mt-1 block text-sm font-medium break-all text-zinc-600 underline transition-colors"
+          className="hover:text-point-blue text-slate-gray mt-1 block text-sm font-medium break-all underline transition-colors"
           href={value}
           target="_blank"
           rel="noreferrer"
@@ -94,7 +85,7 @@ function InfoRow({ label, value, isLink }: { label: string; value: string; isLin
           {value}
         </a>
       ) : (
-        <p className="mt-1 text-sm font-medium break-all text-zinc-600">{value}</p>
+        <p className="text-slate-gray mt-1 text-sm font-medium break-all">{value}</p>
       )}
     </div>
   );
@@ -103,7 +94,7 @@ function InfoRow({ label, value, isLink }: { label: string; value: string; isLin
 function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[96px_1fr] items-center gap-6">
-      <p className="text-base font-black text-zinc-600">{label}</p>
+      <p className="text-slate-gray text-base font-black">{label}</p>
       <div className="min-w-0 text-base">{children}</div>
     </div>
   );
@@ -136,7 +127,6 @@ function SectionCard({
 
 function DetailSkeleton({ onBack }: { onBack: () => void }) {
   return (
-    // ✅ 가로 스크롤: root에 min-w + container 고정
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-24 pb-20">
       <div className="mx-auto w-[1280px] px-6">
         <div className="mb-6 flex items-center justify-between">
@@ -203,7 +193,7 @@ function ErrorBox({
       <div className="mx-auto w-[1280px] px-6">
         <div className="rounded-4xl border border-zinc-100 bg-white p-10 text-center shadow-sm">
           <p className="text-xl font-black">{title}</p>
-          <p className="mt-2 text-sm font-medium text-zinc-500">{message}</p>
+          <p className="text-slate-gray mt-2 text-sm font-medium">{message}</p>
           <div className="mt-6 flex justify-center gap-3">
             <Button type="button" variant="outline" size="md" onClick={onBack}>
               뒤로
@@ -232,7 +222,7 @@ function EmptyBox({
       <div className="mx-auto w-[1280px] px-6">
         <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
           <p className="text-xl font-black">{title}</p>
-          <p className="mt-2 text-sm font-medium text-zinc-500">{message}</p>
+          <p className="text-slate-gray mt-2 text-sm font-medium">{message}</p>
           <div className="mt-6 flex justify-center">
             <Button type="button" variant="dark" size="md" onClick={onBack}>
               뒤로
@@ -282,11 +272,13 @@ export default function JobPostDetailPage() {
 
     setScrapPending(true);
     try {
-      const confirmed = await toggleJobPostScrapAsync(jobPost.id, optimistic);
+      const confirmed = await toggleJobPostScrapAsync(data.jobPost.id, optimistic);
       setData((prev) => (prev ? { ...prev, isScrapped: confirmed } : prev));
     } catch (e) {
       setData((prev) => (prev ? { ...prev, isScrapped: !optimistic } : prev));
+      // eslint-disable-next-line no-console
       console.error(e);
+      // eslint-disable-next-line no-alert
       alert('스크랩 처리 실패! 다시 시도해줘 🥲');
     } finally {
       setScrapPending(false);
@@ -373,8 +365,8 @@ export default function JobPostDetailPage() {
       : (jp.work_days ?? jp.work_hours ?? null);
 
   return (
-    // ✅ 가로 스크롤: root에 min-w + container 고정
-    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-26 pb-20">
+    // ✅ pt-26 → pt-24 (Tailwind 플러그인 쓰면 pt-26이 경고 날 수 있어서 안전하게)
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-24 pb-20">
       <div className="mx-auto w-[1280px] px-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="space-y-1">
@@ -389,7 +381,7 @@ export default function JobPostDetailPage() {
           <div className="p-10 lg:p-14">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-black tracking-[0.2em] text-zinc-400 uppercase">
+                <p className="text-silver-mist text-xs font-black tracking-[0.2em] uppercase">
                   COMPANY
                 </p>
                 <p
@@ -427,33 +419,37 @@ export default function JobPostDetailPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <span className={`text-lg font-black ${ddayClass(dday)}`}>{dday}</span>
 
-                <span className="text-sm font-bold text-zinc-400">
+                <span className="text-silver-mist text-sm font-bold">
                   마감 {formatYmdDot(jobPost.deadline)}
                 </span>
 
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="md"
                   onClick={handleToggleScrap}
                   disabled={scrapPending}
-                  className={`ml-1 inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-black transition-all ${
-                    data.isScrapped
-                      ? 'border-point-blue/30 bg-point-blue/10 text-point-blue'
-                      : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900'
-                  } ${scrapPending ? 'cursor-not-allowed opacity-60' : ''} `}
                   aria-label={data.isScrapped ? '스크랩 해제' : '스크랩'}
+                  icon={
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill={data.isScrapped ? 'currentColor' : 'none'}
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+                    </svg>
+                  }
+                  className={`ml-1 rounded-xl px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
+                    data.isScrapped
+                      ? 'border-point-blue/30 bg-point-blue/10 text-point-blue hover:bg-point-blue/15 hover:text-point-blue'
+                      : 'border-soft-pebble text-slate-gray hover:border-midnight-ink hover:text-midnight-ink bg-white'
+                  }`}
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill={data.isScrapped ? 'currentColor' : 'none'}
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
-                    <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
-                  </svg>
-                  {scrapPending ? '처리중...' : '스크랩'}
-                </button>
+                  {scrapPending ? '처리중' : '스크랩'}
+                </Button>
               </div>
             </div>
 
@@ -477,12 +473,16 @@ export default function JobPostDetailPage() {
 
                 <div className="space-y-6 border-t border-zinc-100 p-7 md:border-t-0 md:border-l">
                   <SummaryRow label="급여">
-                    <span className="font-black text-zinc-800">{jp.salary ?? '면접 후 결정'}</span>
+                    <span className="text-midnight-ink font-black">
+                      {jp.salary ?? '면접 후 결정'}
+                    </span>
                   </SummaryRow>
 
                   <SummaryRow label="근무지역">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="font-black text-zinc-800">{jp.work_location ?? '-'}</span>
+                      <span className="text-midnight-ink font-black">
+                        {jp.work_location ?? '-'}
+                      </span>
                       {jp.work_location ? (
                         <button
                           type="button"
@@ -504,7 +504,7 @@ export default function JobPostDetailPage() {
 
                   {workTimeText ? (
                     <SummaryRow label="근무시간">
-                      <span className="font-black text-zinc-800">{workTimeText}</span>
+                      <span className="text-midnight-ink font-black">{workTimeText}</span>
                     </SummaryRow>
                   ) : null}
                 </div>
@@ -518,7 +518,7 @@ export default function JobPostDetailPage() {
                 {(jobPost.required_stacks ?? []).map((s) => (
                   <span
                     key={s}
-                    className="rounded-full border border-zinc-100 bg-white px-3 py-1 text-xs font-black text-zinc-600"
+                    className="text-slate-gray rounded-full border border-zinc-100 bg-white px-3 py-1 text-xs font-black"
                   >
                     {s}
                   </span>
@@ -535,7 +535,7 @@ export default function JobPostDetailPage() {
                 {jobPost.requirement_text ? (
                   <TextBlock text={jobPost.requirement_text} />
                 ) : (
-                  <p className="text-sm font-medium text-zinc-500">상세요강이 비어 있어요.</p>
+                  <p className="text-slate-gray text-sm font-medium">상세요강이 비어 있어요.</p>
                 )}
               </div>
             </SectionCard>
@@ -546,12 +546,12 @@ export default function JobPostDetailPage() {
                   <p className="text-midnight-ink text-sm font-black">필수 기술 스택</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(jobPost.required_stacks ?? []).length === 0 ? (
-                      <span className="text-sm font-medium text-zinc-500">-</span>
+                      <span className="text-slate-gray text-sm font-medium">-</span>
                     ) : (
                       (jobPost.required_stacks ?? []).map((s) => (
                         <span
                           key={s}
-                          className="rounded-full border border-zinc-100 bg-white px-3 py-1 text-xs font-black text-zinc-600"
+                          className="text-slate-gray rounded-full border border-zinc-100 bg-white px-3 py-1 text-xs font-black"
                         >
                           {s}
                         </span>
@@ -562,7 +562,7 @@ export default function JobPostDetailPage() {
 
                 <div className="rounded-xl bg-zinc-50 p-6">
                   <p className="text-midnight-ink text-sm font-black">우대사항</p>
-                  <p className="mt-2 text-sm leading-6 font-medium text-zinc-500">
+                  <p className="text-slate-gray mt-2 text-sm leading-6 font-medium">
                     (데모) 경력/학력/고용형태/근무지/급여/근무시간 정보는 상단 요약 영역에서 먼저
                     보여줘요.
                     <br />
@@ -592,73 +592,80 @@ export default function JobPostDetailPage() {
           </div>
 
           <aside className="lg:col-span-1">
-            <div
-              className="sticky rounded-[20px] border border-zinc-100 bg-white p-6 shadow-sm"
-              style={{ top: OFFSET }}
-            >
-              <div className="flex items-baseline justify-between">
-                <div className="flex items-baseline gap-2">
-                  <p className="text-xl font-black tracking-tighter">지원 정보</p>
-                  <span className={`text-sm font-black ${ddayClass(dday)}`}>{dday}</span>
+            <div className="sticky" style={{ top: OFFSET }}>
+              <div className="rounded-4xl border border-zinc-100 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-midnight-ink text-lg font-black tracking-tighter">
+                      지원 정보
+                    </p>
+                    <span className={`text-sm font-black ${ddayClass(dday)}`}>{dday}</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-4 space-y-3">
-                <MiniRow label="마감" value={formatYmdDot(jobPost.deadline)} />
-                <MiniRow label="상태" value={(jobPost.status ?? 'OPEN').toUpperCase()} />
-                <MiniRow label="등록일" value={formatIsoDot(jobPost.created_at)} />
-              </div>
+                <div className="mt-5">
+                  <MiniRow label="마감" value={formatYmdDot(jobPost.deadline)} />
+                </div>
 
-              <div className="mt-6 rounded-2xl bg-zinc-50 p-4">
-                <p className="text-midnight-ink text-sm font-black">바로가기</p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="my-8 h-px w-full bg-zinc-100" />
+
+                <h3 className="text-midnight-ink text-md font-black tracking-widest uppercase opacity-40">
+                  Quick Menu
+                </h3>
+
+                <nav className="mt-5 space-y-1">
                   {[
                     ['detail', '상세요강'],
                     ['requirements', '지원자격'],
                     ['company', '기업정보'],
                     ['reviews', '취업후기'],
                   ].map(([key, label]) => (
-                    <button
+                    <Button
                       key={key}
                       type="button"
+                      variant="outline"
+                      size="md"
                       onClick={() => scrollToId(key)}
-                      className="hover:text-point-blue hover:border-point-blue/40 rounded-xl border border-zinc-100 bg-white px-3 py-2 text-sm font-black text-zinc-700 transition hover:shadow-sm"
+                      className="group w-full justify-start border-transparent bg-transparent px-0 py-2 hover:border-transparent hover:bg-transparent active:scale-[0.98]"
+                      icon={<div className="bg-point-blue mt-0.5 h-5 w-1 shrink-0 rounded-full" />}
                     >
-                      {label}
-                    </button>
+                      <span className="text-midnight-ink group-hover:text-point-blue px-4 text-lg font-bold transition-all group-hover:translate-x-0.5">
+                        {label}
+                      </span>
+                    </Button>
                   ))}
+                </nav>
+
+                <div className="mt-8">
+                  {data.external_apply_url ? (
+                    <Button
+                      type="button"
+                      variant="blue"
+                      size="lg"
+                      className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
+                      onClick={() => window.open(data.external_apply_url!, '_blank', 'noreferrer')}
+                    >
+                      외부 페이지로 지원
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="blue"
+                      size="lg"
+                      className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
+                      onClick={() => navigate(`/job-posts/${jobPost.id}/apply`)}
+                      disabled={!canApply}
+                    >
+                      지원하기
+                    </Button>
+                  )}
+
+                  {!canApply && (
+                    <p className="text-slate-gray mt-2 text-xs font-medium opacity-70">
+                      현재 공고 상태/마감일 때문에 지원이 비활성화돼요.
+                    </p>
+                  )}
                 </div>
-              </div>
-
-              <div className="mt-6">
-                {data.external_apply_url ? (
-                  <Button
-                    type="button"
-                    variant="blue"
-                    size="lg"
-                    className="w-full rounded-2xl"
-                    onClick={() => window.open(data.external_apply_url!, '_blank', 'noreferrer')}
-                  >
-                    외부 페이지로 지원
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="blue"
-                    size="lg"
-                    className="w-full rounded-2xl"
-                    onClick={() => navigate(`/job-posts/${jobPost.id}/apply`)}
-                    disabled={!canApply}
-                  >
-                    지원하기
-                  </Button>
-                )}
-
-                {!canApply && (
-                  <p className="mt-2 text-xs font-medium text-zinc-500">
-                    현재 공고 상태/마감일 때문에 지원이 비활성화돼요.
-                  </p>
-                )}
               </div>
             </div>
           </aside>
