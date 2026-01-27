@@ -95,7 +95,7 @@ const SectionCard = ({
 }: SectionCardProps) => (
   <section
     ref={sectionRef}
-    className={`bg-pure-white rounded-40 flex flex-col border border-slate-100 p-10 shadow-xl shadow-slate-200/50 ${className}`}
+    className={`bg-pure-white flex flex-col rounded-[50px] border border-slate-100 p-10 shadow-xl shadow-slate-200/50 ${className}`}
   >
     <div className="mb-8 flex shrink-0 items-center justify-between gap-4">
       <div className="flex items-center gap-3">
@@ -376,14 +376,21 @@ const InterviewTemplatePage = () => {
       <div className="mx-auto w-350 px-6">
         <header className="border-point-blue mb-12 flex items-center justify-between border-l-4 pl-6">
           <div className="min-w-0">
-            <h1 className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase">
+            <motion.h1
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4 }}
+              className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
+            >
               {isCorporate ? 'Interview Management' : 'Interview Prep'}
-            </h1>
-            <p className="text-silver-mist mt-2 overflow-hidden text-lg font-bold whitespace-nowrap italic">
-              {view === 'list'
-                ? '보관된 템플릿을 관리하고 검색하세요'
-                : '질문을 구성하고 템플릿을 완성하세요'}
-            </p>
+            </motion.h1>
+            <div className="flex flex-col items-start">
+              <p className="text-silver-mist mt-2 overflow-hidden text-lg font-bold whitespace-nowrap italic opacity-40">
+                {view === 'list'
+                  ? '보관된 템플릿을 관리하고 검색하세요'
+                  : '질문을 구성하고 템플릿을 완성하세요'}
+              </p>
+            </div>
           </div>
           {view === 'list' && (
             <Button
@@ -397,14 +404,14 @@ const InterviewTemplatePage = () => {
           )}
         </header>
 
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="wait">
           {view === 'list' ? (
             <motion.div
               key="list-view"
-              initial={{ opacity: 0, x: -10 }}
+              initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
             >
               <SectionCard title="목록 관리">
                 <div className="mb-8 shrink-0">
@@ -505,10 +512,10 @@ const InterviewTemplatePage = () => {
           ) : (
             <motion.div
               key="form-view"
-              initial={{ opacity: 0, x: 10 }}
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
             >
               <div className="grid grid-cols-1 gap-8">
                 <SectionCard
