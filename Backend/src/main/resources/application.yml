@@ -51,9 +51,14 @@ portfolio-embedding:
   base-url: ${EMBEDDING_URL:http://localhost:8002}
   model: text-embedding-3-small
 
+openai:
+  base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+  api-key: ${OPENAI_API_KEY:sk-REPLACE_WITH_YOUR_KEY}
+  embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+
 springdoc:
   override-with-generic-response: false
 
 openvidu:
-  url: ${OPENVIDU_URL:http://openvidu-server:4443} 
+  url: ${OPENVIDU_URL:https://i14d205.p.ssafy.io/openvidu/}
   secret: ${OPENVIDU_SECRET:MY_SECRET}
