@@ -160,4 +160,7 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
         )
         validation_opinions.append(opinion)
 
+    existing_opinions: List[Dict[str, Any]] = state.get("validation_opinions", []) or []
+    if existing_opinions:
+        return {"validation_opinions": existing_opinions + validation_opinions}
     return {"validation_opinions": validation_opinions}

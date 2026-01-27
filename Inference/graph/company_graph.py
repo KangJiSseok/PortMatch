@@ -7,6 +7,7 @@ from graph.nodes.tool1_discovery import discovery_node
 from graph.nodes.tool2_validation import validation_node
 from graph.nodes.tool3_dedup import dedup_node
 from graph.nodes.tool4_structuring import structuring_node
+from graph.nodes.tool5_retry_control import retry_control_node
 from graph.state import CompanyGraphState
 
 
@@ -18,13 +19,22 @@ def build_graph() -> Any:
     graph.add_node("validate", validation_node)
     graph.add_node("dedup", dedup_node)
     graph.add_node("structure", structuring_node)
+    graph.add_node("retry_control", retry_control_node)
 
     graph.set_entry_point("collect_text")
     graph.add_edge("collect_text", "discovery")
     graph.add_edge("discovery", "validate")
     graph.add_edge("validate", "dedup")
     graph.add_edge("dedup", "structure")
-
-    graph.add_edge("structure", END)
+    graph.add_edge("structure", "retry_control")
+    graph.add_conditional_edges(
+        "retry_control",
+        _route_retry,
+        {"retry": "discovery", "end": END},
+    )
 
     return graph.compile()
+
+
+def _route_retry(state: Dict[str, Any]) -> str:
+    return "retry" if state.get("should_retry") else "end"
