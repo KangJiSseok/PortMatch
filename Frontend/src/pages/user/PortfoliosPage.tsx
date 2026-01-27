@@ -29,6 +29,27 @@ interface ApiError {
   };
 }
 
+const STAGES = [
+  {
+    id: 0,
+    label: '데이터 스캐닝',
+    threshold: 0,
+    description: '포트폴리오 텍스트 및 구조 분석 중...',
+  },
+  {
+    id: 1,
+    label: '기술 역량 추출',
+    threshold: 35,
+    description: '주요 기술 스택 및 프로젝트 성과 분류 중...',
+  },
+  {
+    id: 2,
+    label: '매칭 알고리즘 가동',
+    threshold: 70,
+    description: '최적의 커리어 경로 및 공고 매칭 중...',
+  },
+];
+
 function PortfoliosPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState<AnalysisStep>('upload');
@@ -50,27 +71,6 @@ function PortfoliosPage() {
   const [activeStage, setActiveStage] = useState(0);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const stages = [
-    {
-      id: 0,
-      label: '데이터 스캐닝',
-      threshold: 0,
-      description: '포트폴리오 텍스트 및 구조 분석 중...',
-    },
-    {
-      id: 1,
-      label: '기술 역량 추출',
-      threshold: 35,
-      description: '주요 기술 스택 및 프로젝트 성과 분류 중...',
-    },
-    {
-      id: 2,
-      label: '매칭 알고리즘 가동',
-      threshold: 70,
-      description: '최적의 커리어 경로 및 공고 매칭 중...',
-    },
-  ];
 
   const mapAnalysisData = (response: AnalysisResponse): AnalysisData => {
     const projects = response.data?.projects || [];
@@ -319,7 +319,7 @@ function PortfoliosPage() {
   };
 
   useEffect(() => {
-    const currentStage = [...stages].reverse().find((s) => progress >= s.threshold);
+    const currentStage = [...STAGES].reverse().find((s) => progress >= s.threshold);
     if (currentStage && currentStage.id !== activeStage) {
       setActiveStage(currentStage.id);
     }
@@ -437,7 +437,7 @@ function PortfoliosPage() {
                 initial={{ opacity: 0, scale: 0.95, y: 30 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 30 }}
-                className="bg-pure-white relative flex max-h-[80vh] w-[640px] flex-col overflow-hidden rounded-4xl shadow-2xl"
+                className="bg-pure-white relative flex max-h-[80vh] w-160 flex-col overflow-hidden rounded-4xl shadow-2xl"
               >
                 <div className="flex shrink-0 items-center justify-between border-b border-gray-100 p-8">
                   <div className="flex items-center gap-4">
@@ -454,7 +454,7 @@ function PortfoliosPage() {
                     <h4 className="text-midnight-ink mb-4 text-xs font-black tracking-[0.2em] uppercase opacity-40">
                       Problem & Context
                     </h4>
-                    <div className="bg-cloud-dancer/40 rounded-[24px] p-7">
+                    <div className="bg-cloud-dancer/40 rounded-3xl p-7">
                       <p className="text-midnight-ink text-[17px] leading-relaxed font-bold break-keep opacity-90">
                         {selectedProject.problem}
                       </p>
@@ -464,7 +464,7 @@ function PortfoliosPage() {
                     <h4 className="text-midnight-ink mb-4 text-xs font-black tracking-[0.2em] uppercase opacity-40">
                       Key Solution
                     </h4>
-                    <div className="rounded-[24px] border border-emerald-500/10 bg-emerald-500/5 p-7">
+                    <div className="rounded-3xl border border-emerald-500/10 bg-emerald-500/5 p-7">
                       <p className="text-midnight-ink text-[17px] leading-relaxed font-bold break-keep">
                         {selectedProject.solution}
                       </p>
@@ -826,17 +826,17 @@ function PortfoliosPage() {
                           className="space-y-2"
                         >
                           <h3 className="text-midnight-ink text-3xl font-black tracking-tight">
-                            {stages[activeStage].label}
+                            {STAGES[activeStage].label}
                           </h3>
                           <p className="text-slate-gray text-lg font-bold opacity-60">
-                            {stages[activeStage].description}
+                            {STAGES[activeStage].description}
                           </p>
                         </motion.div>
                       </AnimatePresence>
                     </div>
 
                     <div className="flex items-center justify-center gap-14">
-                      {stages.map((stage) => {
+                      {STAGES.map((stage) => {
                         const isReached = progress >= stage.threshold;
                         const isCurrentPart = activeStage === stage.id;
 
@@ -882,7 +882,7 @@ function PortfoliosPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-8"
               >
-                <div className="border-midnight-ink mt-[-16px] flex items-end justify-between border-b-4 pb-6">
+                <div className="border-midnight-ink -mt-4 flex items-end justify-between border-b-4 pb-6">
                   <h2 className="text-midnight-ink text-5xl font-black tracking-tighter">
                     진단 리포트
                   </h2>
