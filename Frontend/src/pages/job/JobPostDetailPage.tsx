@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
 import { fetchJobPostDetail, toggleJobPostScrapAsync } from '../../api/jobPosts';
+import { useAuthStore } from '@/store/authStore';
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
 type ApiResult = Awaited<ReturnType<typeof fetchJobPostDetail>>;
@@ -242,6 +243,10 @@ export default function JobPostDetailPage() {
   const navigate = useNavigate();
   const jobPostId = Number(id);
 
+  // ✅ 여기! store에서 user 가져오기 (MyPageGate랑 동일)
+  const { user } = useAuthStore();
+  const isCompanyViewer = user?.role === 'COMPANY';
+
   const [navH, setNavH] = useState(80);
   const GAP = 16;
   const OFFSET = useMemo(() => navH + GAP, [navH]);
@@ -362,12 +367,6 @@ export default function JobPostDetailPage() {
     return true;
   })();
 
-  // ✅ 기업이면 role이 company
-  const isCompanyViewer = (() => {
-    const role = (localStorage.getItem('role') ?? '').toLowerCase().trim();
-    return role === 'company';
-  })();
-
   const workTimeText =
     jp.work_days && jp.work_hours
       ? `${jp.work_days} ${jp.work_hours}`
@@ -402,9 +401,7 @@ export default function JobPostDetailPage() {
                     if (e.key === 'Enter' || e.key === ' ') navigate(`/companies/${company.id}`);
                   }}
                 >
-                  {/* ✅ 밑줄 효과는 바깥 span(overflow-hidden 없음) */}
                   <span className={`min-w-0 ${underlineEffect}`}>
-                    {/* ✅ truncate는 안쪽 span에만 */}
                     <span className="truncate">{company.companies_name}</span>
                   </span>
 
@@ -655,7 +652,7 @@ export default function JobPostDetailPage() {
                   ))}
                 </nav>
 
-                {/* ✅ 기업(company)이면 지원 버튼 숨김 */}
+                {/* ✅ 기업(COMPANY)이면 지원 버튼 숨김 */}
                 {!isCompanyViewer && (
                   <div className="mt-8">
                     {data.external_apply_url ? (
