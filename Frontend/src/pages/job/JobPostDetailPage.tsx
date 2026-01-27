@@ -411,12 +411,21 @@ export default function JobPostDetailPage() {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <h1 className="text-midnight-ink text-3xl font-black tracking-tighter lg:text-4xl">
-                {jobPost.title}
-              </h1>
+            {/* ✅ 제목이 길어도 배치 안 깨지게: 1fr + auto 고정 */}
+            <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-6">
+              {/* LEFT */}
+              <div className="min-w-0">
+                {/* ✅ 최대 2줄 클램프 (플러그인 없이도 동작) */}
+                <h1
+                  className="text-midnight-ink [display:-webkit-box] min-w-0 overflow-hidden text-3xl leading-tight font-black tracking-tighter break-words [-webkit-box-orient:vertical] [-webkit-line-clamp:2] lg:text-4xl"
+                  title={jobPost.title}
+                >
+                  {jobPost.title}
+                </h1>
+              </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              {/* RIGHT (절대 안 밀림) */}
+              <div className="flex items-center gap-3 whitespace-nowrap">
                 <span className={`text-lg font-black ${ddayClass(dday)}`}>{dday}</span>
 
                 <span className="text-silver-mist text-sm font-bold">
