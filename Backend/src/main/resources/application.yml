@@ -53,3 +53,7 @@ portfolio-embedding:
 
 springdoc:
   override-with-generic-response: false
+
+openvidu:
+  url: ${OPENVIDU_URL:https://i14d205.p.ssafy.io/openvidu/}
+  secret: ${OPENVIDU_SECRET:MY_SECRET}

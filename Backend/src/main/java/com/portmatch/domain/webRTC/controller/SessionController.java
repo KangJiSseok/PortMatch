@@ -7,6 +7,7 @@ import io.openvidu.java.client.*;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,8 +22,14 @@ public class SessionController {
 
     private final InterviewSessionRepository interviewRepository;
     private OpenVidu openVidu;
-    private String OPENVIDU_URL = "http://localhost:4443";
-    private String OPENVIDU_SECRET = "MY_SECRET";
+//    private String OPENVIDU_URL = "http://localhost:4443";
+//    private String OPENVIDU_SECRET = "MY_SECRET";
+
+    @Value("${openvidu.url}")
+    private String OPENVIDU_URL;
+
+    @Value("${openvidu.secret}")
+    private String OPENVIDU_SECRET;
 
     @PostConstruct
     public void init() {
