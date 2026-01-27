@@ -97,6 +97,7 @@ deploy:
       # ---------- Internal Services ----------
       PORTFOLIO_ANALYSIS_URL=${PORTFOLIO_ANALYSIS_URL}
       COMPANY_PROJECT_ANALYSIS_URL=${COMPANY_PROJECT_ANALYSIS_URL}
+      EMBEDDING_URL=${EMBEDDING_URL}
       MINERU_ENDPOINT=${MINERU_ENDPOINT}
 
       # ---------- Frontend ----------
