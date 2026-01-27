@@ -2,6 +2,8 @@ package com.portmatch.domain.portfolio.embedding.client;
 
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingRequest;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingResponse;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -34,7 +36,7 @@ public class PortfolioAnalysisClient {
     }
 
     public PortfolioEmbeddingResponse embed(PortfolioEmbeddingRequest request) {
-        String endpoint = baseUrl + "/embeddings";
+        String endpoint = baseUrl + "/embeddings/portfolio";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -47,12 +49,14 @@ public class PortfolioAnalysisClient {
                     PortfolioEmbeddingResponse.class
             );
             if (res.getBody() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service returned empty body");
+                //throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service returned empty body");
+                throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_EMPTY);
             }
             return res.getBody();
         } catch (RestClientException e) {
             log.error("Embedding request failed. endpoint={}", endpoint, e);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service unavailable", e);
+            //throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service unavailable", e);
+            throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SERVICE_UNAVAILABLE);
         }
     }
 

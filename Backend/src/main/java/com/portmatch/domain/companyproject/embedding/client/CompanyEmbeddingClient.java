@@ -37,7 +37,7 @@ public class CompanyEmbeddingClient {
     }
 
     public CompanyEmbeddingResponse embed(CompanyEmbeddingRequest payload) {
-        String endpoint = baseUrl + "/embeddings";
+        String endpoint = baseUrl + "/embeddings/company";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

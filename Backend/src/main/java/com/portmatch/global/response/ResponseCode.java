@@ -29,6 +29,9 @@ public enum ResponseCode {
     PORTFOLIO_ANALYSIS_PAYLOAD_FAILED(false, 2409, "포트폴리오 분석 요청 생성에 실패했습니다."),
     PORTFOLIO_ANALYSIS_EMPTY(false, 2410, "포트폴리오 분석 결과가 비어있습니다."),
     PORTFOLIO_ANALYSIS_BASE_URL_NOT_CONFIGURED(false, 2411, "포트폴리오 분석 URL 설정이 없습니다."),
+    PORTFOLIO_EMBEDDING_EMPTY(false, 2412, "포트폴리오 임베딩 결과가 비어있습니다."),
+    PORTFOLIO_EMBEDDING_SERVICE_UNAVAILABLE(false, 2413, "포트폴리오 임베딩 서비스가 응답하지 않습니다."),
+    PORTFOLIO_EMBEDDING_SIZE_MISMATCH(false, 2414, "포트폴리오 임베딩 결과 사이즈 불일치"),
 
     // 4000: domain error
     DUPLICATE_EMAIL(false, 4100, "이미 사용 중인 이메일입니다."),
