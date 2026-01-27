@@ -15,8 +15,7 @@ def _build_prompt() -> "ChatPromptTemplate":
         "- The input list contains only candidates already marked is_valid=true.\n"
         "- If multiple candidates describe substantially the same project, keep only ONE.\n"
         "- Treat naming variations as duplicates (e.g., \"AI OCR 솔루션\" vs \"AI OCR Engine\").\n"
-        "- Compare project_statement, problem, solution, and tech for overlap.\n"
-        "- Prefer the most specific candidate.\n"
+        "- Compare project_statement, problem, solution for overlap. Ignore tech.\n"
         "- Treat feature/module expansions as duplicates of their parent platform.\n"
         "- Preserve input order when selecting representatives.\n"
         "- If overlaps are minimal, keep all items; never drop below 1 item overall.\n"
@@ -98,22 +97,18 @@ def _parse_keep_indices(text: str, size: int) -> List[int]:
 def _build_candidate_payload(project: Dict[str, Any], local_index: int) -> Dict[str, Any]:
     return {
         "index": local_index,
+        "name": project.get("name", ""),
         "project_statement": project.get("project_statement", ""),
         "problem": project.get("problem", ""),
         "solution": project.get("solution", ""),
-        "tech": project.get("tech", []),
     }
 
 
-def _compose_text(project: Dict[str, Any]) -> str:
-    parts = [
-        str(project.get("project_statement", "")),
-        str(project.get("problem", "")),
-        str(project.get("solution", "")),
-    ]
-    tech = project.get("tech", []) or []
-    parts.extend(str(item) for item in tech)
-    return " ".join(part for part in parts if part)
+def _project_name_text(project: Dict[str, Any]) -> str:
+    statement = str(project.get("project_statement", "")).strip()
+    if statement:
+        return statement
+    return str(project.get("name", "")).strip()
 
 
 def _cosine_similarity(a: List[float], b: List[float]) -> float:
@@ -131,60 +126,6 @@ def _cosine_similarity(a: List[float], b: List[float]) -> float:
     return dot / ((norm_a ** 0.5) * (norm_b ** 0.5))
 
 
-def _normalize_tech(value: Any) -> List[str]:
-    if not isinstance(value, list):
-        return []
-    normalized: List[str] = []
-    for item in value:
-        text = str(item).strip().lower()
-        if text:
-            normalized.append(text)
-    return normalized
-
-
-def _tech_overlap(a: List[str], b: List[str]) -> float:
-    if not a or not b:
-        return 0.0
-    set_a = set(a)
-    set_b = set(b)
-    inter = set_a.intersection(set_b)
-    union = set_a.union(set_b)
-    return len(inter) / len(union)
-
-
-def _looks_like_feature(project: Dict[str, Any]) -> bool:
-    text = " ".join(
-        [
-            str(project.get("project_statement", "")),
-            str(project.get("problem", "")),
-            str(project.get("solution", "")),
-            str(project.get("name", "")),
-        ]
-    ).lower()
-    keywords = ["확장", "기능", "모듈", "플러그인", "옵션", "부가", "서브", "하위"]
-    return any(keyword in text for keyword in keywords)
-
-
-def _specificity_score(project: Dict[str, Any]) -> float:
-    name = str(project.get("name", ""))
-    statement = str(project.get("project_statement", ""))
-    text = f"{name} {statement}".strip()
-    if not text:
-        return 0.0
-    score = 0.0
-    if re.search(r"\([^)]+\)", text):
-        score += 2.0
-    if re.search(r"[A-Za-z]{2,}", text):
-        score += 1.0
-    if re.search(r"[A-Za-z]+[0-9]+|[0-9]+[A-Za-z]+", text):
-        score += 0.5
-    generic_keywords = ["플랫폼", "솔루션", "시스템", "서비스", "관리", "플랫품", "플렛폼"]
-    if any(keyword in text for keyword in generic_keywords):
-        score -= 1.0
-    score += min(len(text.split()), 20) / 10.0
-    return score
-
-
 def _embedding_keep_indices(candidates: List[Dict[str, Any]]) -> List[int]:
     api_key = os.getenv("OPENAI_API_KEY", "")
     base_url = os.getenv("OPENAI_EMBEDDING_BASE_URL") or os.getenv("OPENAI_BASE_URL", "")
@@ -195,56 +136,64 @@ def _embedding_keep_indices(candidates: List[Dict[str, Any]]) -> List[int]:
     except Exception:
         return []
 
-    texts = [_compose_text(project) for project in candidates]
-    if not any(texts):
-        return []
     model = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small").strip()
+    field_items: List[Tuple[int, str, str]] = []
+    for idx, project in enumerate(candidates):
+        name_text = _project_name_text(project)
+        problem = str(project.get("problem", "")).strip()
+        solution = str(project.get("solution", "")).strip()
+        if name_text:
+            field_items.append((idx, "project_name", name_text))
+        if problem:
+            field_items.append((idx, "problem", problem))
+        if solution:
+            field_items.append((idx, "solution", solution))
+
+    if not field_items:
+        return []
+
+    texts = [item[2] for item in field_items]
     try:
         vectors = embed_texts(api_key=api_key, texts=texts, model=model)
     except Exception:
         return []
-    if not vectors or len(vectors) != len(candidates):
+    if not vectors or len(vectors) != len(field_items):
         return []
 
+    field_vectors: Dict[int, Dict[str, List[float]]] = {}
+    for (idx, field, _), vec in zip(field_items, vectors):
+        field_vectors.setdefault(idx, {})[field] = vec
+
     threshold = float(os.getenv("DEDUP_SIMILARITY_THRESHOLD", "0.80"))
-    secondary_threshold = float(os.getenv("DEDUP_SIMILARITY_SECONDARY", "0.70"))
-    tech_threshold = float(os.getenv("DEDUP_TECH_OVERLAP_THRESHOLD", "0.40"))
     keep: List[int] = []
-    kept_vectors: List[List[float]] = []
-    kept_tech: List[List[str]] = []
-    kept_scores: List[float] = []
-    for idx, vec in enumerate(vectors):
+    kept_indices: List[int] = []
+    for idx in range(len(candidates)):
         is_dup = False
-        candidate = candidates[idx]
-        tech = _normalize_tech(candidate.get("tech", []))
-        is_feature = _looks_like_feature(candidate)
-        score = _specificity_score(candidate)
-        for kept_idx, kept_vec in enumerate(kept_vectors):
-            similarity = _cosine_similarity(vec, kept_vec)
-            if similarity >= threshold:
-                if score > kept_scores[kept_idx]:
-                    keep[kept_idx] = idx
-                    kept_vectors[kept_idx] = vec
-                    kept_tech[kept_idx] = tech
-                    kept_scores[kept_idx] = score
+        for kept_idx in kept_indices:
+            if _fields_similar(field_vectors, idx, kept_idx, threshold):
                 is_dup = True
                 break
-            if similarity >= secondary_threshold:
-                overlap = _tech_overlap(tech, kept_tech[kept_idx])
-                if overlap >= tech_threshold or is_feature:
-                    if score > kept_scores[kept_idx]:
-                        keep[kept_idx] = idx
-                        kept_vectors[kept_idx] = vec
-                        kept_tech[kept_idx] = tech
-                        kept_scores[kept_idx] = score
-                    is_dup = True
-                    break
         if not is_dup:
             keep.append(idx)
-            kept_vectors.append(vec)
-            kept_tech.append(tech)
-            kept_scores.append(score)
-    return sorted(set(keep))
+            kept_indices.append(idx)
+    return keep
+
+
+def _fields_similar(
+    field_vectors: Dict[int, Dict[str, List[float]]],
+    current_idx: int,
+    kept_idx: int,
+    threshold: float,
+) -> bool:
+    current_fields = field_vectors.get(current_idx, {})
+    kept_fields = field_vectors.get(kept_idx, {})
+    for field in ("project_name", "problem", "solution"):
+        if field not in current_fields or field not in kept_fields:
+            continue
+        similarity = _cosine_similarity(current_fields[field], kept_fields[field])
+        if similarity >= threshold:
+            return True
+    return False
 
 
 def _split_valid_projects(
