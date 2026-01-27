@@ -1,6 +1,8 @@
 package com.portmatch.domain.companyproject.embeddingv2.service;
 
 import com.portmatch.domain.companyproject.embeddingv2.client.OpenAiEmbeddingClient;
+import com.portmatch.domain.companyproject.embeddingv2.dto.CompanyEmbeddingV2BatchItemResponse;
+import com.portmatch.domain.companyproject.embeddingv2.dto.CompanyEmbeddingV2BatchResponse;
 import com.portmatch.domain.companyproject.embeddingv2.dto.OpenAiEmbeddingResponse;
 import com.portmatch.domain.companyproject.embeddingv2.repository.CompanyProjectEmbeddingV2Repository;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysis;
@@ -42,8 +44,6 @@ public class CompanyProjectEmbeddingV2Service {
         analysis.getProjects().forEach(p -> p.getTechs().size());
 
         Long companyId = analysis.getCompany().getId();
-        String companyName = analysis.getCompany().getCompaniesName();
-
         List<CompanyProjectAnalysisProject> projects = analysis.getProjects();
         if (projects == null || projects.isEmpty()) {
             return 0;
@@ -62,7 +62,6 @@ public class CompanyProjectEmbeddingV2Service {
                     .toList();
 
             contents.add(buildProjectEmbeddingText(
-                    companyName,
                     p.getName(),
                     p.getProblem(),
                     p.getSolution(),
@@ -104,8 +103,53 @@ public class CompanyProjectEmbeddingV2Service {
         return projectIds.size();
     }
 
+    public CompanyEmbeddingV2BatchResponse embedAndSaveByAnalysisIds(
+            List<Long> analysisIds
+    ) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            throw new BusinessException(ResponseCode.INVALID_PARAMETER, "analysisIds", "analysisIds 리스트는 필수입니다.");
+        }
+        List<CompanyEmbeddingV2BatchItemResponse> results = new ArrayList<>();
+        for (Long analysisId : analysisIds) {
+            if (analysisId == null) {
+                results.add(new CompanyEmbeddingV2BatchItemResponse(
+                        null,
+                        null,
+                        ResponseCode.INVALID_PARAMETER.getCode(),
+                        "analysisId는 필수입니다."
+                ));
+                continue;
+            }
+            try {
+                int saved = embedAndSaveByAnalysisId(analysisId);
+                results.add(new CompanyEmbeddingV2BatchItemResponse(
+                        analysisId,
+                        saved,
+                        ResponseCode.OK.getCode(),
+                        ResponseCode.OK.getMessage()
+                ));
+            } catch (BusinessException ex) {
+                ResponseCode code = ex.getResponseCode();
+                results.add(new CompanyEmbeddingV2BatchItemResponse(
+                        analysisId,
+                        null,
+                        code.getCode(),
+                        code.getMessage()
+                ));
+            } catch (Exception ex) {
+                ResponseCode code = ResponseCode.INTERNAL_SERVER_ERROR;
+                results.add(new CompanyEmbeddingV2BatchItemResponse(
+                        analysisId,
+                        null,
+                        code.getCode(),
+                        code.getMessage()
+                ));
+            }
+        }
+        return new CompanyEmbeddingV2BatchResponse(results);
+    }
+
     private String buildProjectEmbeddingText(
-            String companyName,
             String projectName,
             String problem,
             String solution,
@@ -116,7 +160,6 @@ public class CompanyProjectEmbeddingV2Service {
                 : techs.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
 
         return ""
-                + "[회사] " + safe(companyName) + "\n"
                 + "[프로젝트명] " + safe(projectName) + "\n"
                 + "[문제] " + safe(problem) + "\n"
                 + "[해결] " + safe(solution) + "\n"
