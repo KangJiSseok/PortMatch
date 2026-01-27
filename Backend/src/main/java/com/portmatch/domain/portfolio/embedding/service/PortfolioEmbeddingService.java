@@ -11,6 +11,8 @@ import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProject;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectTech;
 import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -90,7 +92,7 @@ public class PortfolioEmbeddingService {
         );
 
         if (resp.vectors() == null || resp.vectors().size() != contents.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding response size mismatch");
+            throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
         }
 
         // 5) upsert + 상세 결과 만들기

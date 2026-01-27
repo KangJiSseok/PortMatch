@@ -10,5 +10,5 @@ uvicorn web.api.app:app --host 0.0.0.0 --port 8002
 
 ## Endpoints
 
-- `POST /embeddings`
-- `POST /api/embeddings/portfolio`
+- `POST /embeddings/company`
+- `POST /embeddings/portfolio`
