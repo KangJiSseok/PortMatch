@@ -3,7 +3,8 @@ import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'r
 import { useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
-import { fetchJobPostDetail, toggleJobPostScrapAsync } from '../../api/jobPosts';
+import { fetchJobPostDetail } from '@/api/jobPost/detail';
+import { fetchScrapCheck, toggleScrap } from '@/api/jobPost/scrap';
 import { useAuthStore } from '@/store/authStore';
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
@@ -12,13 +13,13 @@ type JobPostDetailData = NonNullable<ApiResult>;
 
 // ✅ 타입에 아직 필드 추가 전이어도 TS 에러 안나게 로컬 확장 타입
 type JobPostExtraFields = {
-  career?: string | null; // 신입/경력/무관 등
-  education?: string | null; // 학력무관/대졸(4년) 이상 등
-  employment_type?: string | null; // 정규직/계약직/인턴
-  work_location?: string | null; // 서울 강남구 등
-  salary?: string | null; // 면접 후 결정/회사내규 등
-  work_days?: string | null; // 주 5일(월~금) 등
-  work_hours?: string | null; // 09:00~18:00 등
+  career?: string | null;
+  education?: string | null;
+  employment_type?: string | null;
+  work_location?: string | null;
+  salary?: string | null;
+  work_days?: string | null;
+  work_hours?: string | null;
 };
 
 const underlineEffect =
@@ -243,8 +244,8 @@ export default function JobPostDetailPage() {
   const navigate = useNavigate();
   const jobPostId = Number(id);
 
-  // ✅ 여기! store에서 user 가져오기 (MyPageGate랑 동일)
-  const { user } = useAuthStore();
+  const { user, isLoggedIn } = useAuthStore();
+  const uid = user?.userId;
   const isCompanyViewer = user?.role === 'COMPANY';
 
   const [navH, setNavH] = useState(80);
@@ -254,7 +255,10 @@ export default function JobPostDetailPage() {
   const [status, setStatus] = useState<PageStatus>('loading');
   const [errorMessage, setErrorMessage] = useState('공고 정보를 불러오지 못했어요.');
   const [data, setData] = useState<JobPostDetailData | null>(null);
+
   const [scrapPending, setScrapPending] = useState(false);
+
+  const pid = useMemo(() => (Number.isFinite(jobPostId) ? String(jobPostId) : ''), [jobPostId]);
 
   useLayoutEffect(() => {
     const nav = document.getElementById('app-navbar');
@@ -271,27 +275,6 @@ export default function JobPostDetailPage() {
       document.documentElement.style.scrollPaddingTop = prev;
     };
   }, [OFFSET]);
-
-  const handleToggleScrap = async () => {
-    if (!data || scrapPending) return;
-
-    const optimistic = !data.isScrapped;
-    setData((prev) => (prev ? { ...prev, isScrapped: optimistic } : prev));
-
-    setScrapPending(true);
-    try {
-      const confirmed = await toggleJobPostScrapAsync(data.jobPost.id, optimistic);
-      setData((prev) => (prev ? { ...prev, isScrapped: confirmed } : prev));
-    } catch (e) {
-      setData((prev) => (prev ? { ...prev, isScrapped: !optimistic } : prev));
-      // eslint-disable-next-line no-console
-      console.error(e);
-      // eslint-disable-next-line no-alert
-      alert('스크랩 처리 실패! 다시 시도해줘 🥲');
-    } finally {
-      setScrapPending(false);
-    }
-  };
 
   const scrollToId = (sectionId: string) => {
     const el = document.getElementById(sectionId);
@@ -317,8 +300,19 @@ export default function JobPostDetailPage() {
         setData(null);
         return;
       }
+
       setData(res);
       setStatus('success');
+
+      // ✅ 로그인 상태면 스크랩 여부 체크 (쿠키 세션)
+      if (isLoggedIn && uid && pid) {
+        try {
+          const checked = await fetchScrapCheck(uid, pid);
+          setData((prev) => (prev ? { ...prev, isScrapped: checked } : prev));
+        } catch (e) {
+          console.warn('scrap check failed', e);
+        }
+      }
     } catch (err) {
       setStatus('error');
       setData(null);
@@ -329,7 +323,32 @@ export default function JobPostDetailPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, isLoggedIn, uid]);
+
+  const handleToggleScrap = async () => {
+    if (!data || scrapPending) return;
+
+    if (!isLoggedIn || !uid) {
+      alert('로그인 후 스크랩할 수 있어요 🥲');
+      return;
+    }
+    if (!pid) return;
+
+    const optimistic = !data.isScrapped;
+    setData((prev) => (prev ? { ...prev, isScrapped: optimistic } : prev));
+
+    setScrapPending(true);
+    try {
+      const confirmed = await toggleScrap(uid, pid);
+      setData((prev) => (prev ? { ...prev, isScrapped: confirmed } : prev));
+    } catch (e) {
+      setData((prev) => (prev ? { ...prev, isScrapped: !optimistic } : prev));
+      console.error(e);
+      alert('스크랩 처리 실패! 다시 시도해줘 🥲');
+    } finally {
+      setScrapPending(false);
+    }
+  };
 
   if (status === 'loading') return <DetailSkeleton onBack={() => navigate(-1)} />;
 
