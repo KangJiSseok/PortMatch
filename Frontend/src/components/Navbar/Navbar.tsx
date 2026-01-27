@@ -88,9 +88,12 @@ function Navbar() {
 
   const handleSearch = () => {
     const trimmed = searchKeyword.trim();
-    if (trimmed) {
-      navigate(`/job-postings?companyName=${encodeURIComponent(trimmed)}`);
+    if (!trimmed) {
+      navigate('/job-postings');
+      return;
     }
+
+    navigate(`/job-postings?keyword=${encodeURIComponent(trimmed)}`);
   };
 
   const logoPart1 = 'PORT'.split('');

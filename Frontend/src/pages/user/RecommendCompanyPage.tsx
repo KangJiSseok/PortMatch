@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Button from '@/components/Button/Button';
 import LoadingState from '@/components/states/LoadingState';
-import EmptyState from '@/components/states/EmptyState';
 import ErrorState from '@/components/states/ErrorState';
 import { useRecommendedCompanies } from '@/hooks/useRecommendedCompanies';
 import type { RecommendedCompany, SortBy } from '@/types/recommendCompany';
@@ -43,8 +42,10 @@ const MOCK_COMPANIES: RecommendedCompany[] = [
 
 function CompanyCard({ company }: { company: RecommendedCompany }) {
   const navigate = useNavigate();
+  const hasOpenings = company.hiringCount > 0;
 
   const handleSearchByCompany = () => {
+    if (!hasOpenings) return;
     navigate(
       `/job-postings?companyId=${company.companyId}&companyName=${encodeURIComponent(company.name)}`,
     );
@@ -53,48 +54,72 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
   return (
     <motion.li
       whileHover={{ y: -4 }}
-      className="group flex flex-col gap-6 rounded-4xl border border-zinc-100 bg-white p-8 shadow-sm transition-all hover:border-zinc-200 hover:shadow-md md:flex-row md:items-center"
+      className="group border-silver-mist bg-pure-white flex min-w-full flex-col items-center justify-between gap-6 rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50 md:flex-row md:items-center"
     >
       <div className="flex-1">
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <h3 className="text-midnight-ink text-2xl font-black tracking-tight">{company.name}</h3>
+          <h3 className="text-midnight-ink text-2xl font-black tracking-tight">
+            {company.name}
+          </h3>
+
           <div className="flex gap-1.5">
             {company.stacks.map((stack) => (
               <span
                 key={stack}
-                className="rounded-lg border border-zinc-100 bg-zinc-50 px-2.5 py-1 text-[11px] font-bold text-zinc-500"
+                className="border-silver-mist bg-cloud-dancer text-slate-gray rounded-full border px-3 py-1 text-[11px] font-black tracking-tight"
               >
                 {stack}
               </span>
             ))}
           </div>
         </div>
-        <p className="text-base leading-relaxed text-zinc-600 md:max-w-[90%]">{company.reason}</p>
+
+        <p className="text-slate-gray text-base leading-relaxed opacity-80 md:max-w-[90%]">
+          {company.reason}
+        </p>
       </div>
 
-      <button
-        onClick={handleSearchByCompany}
-        className="flex min-w-[140px] cursor-pointer flex-col items-center justify-center self-end border-t border-zinc-50 pt-6 transition-all md:self-center md:border-t-0 md:border-l md:pt-0 md:pl-10"
-      >
-        <span className="group-hover:text-point-blue mb-1 text-[11px] font-black tracking-[0.2em] text-zinc-400 uppercase">
-          모집 중
-        </span>
-        <div className="flex items-baseline gap-1">
-          <span className="text-midnight-ink group-hover:text-point-blue text-3xl font-black tabular-nums transition-colors">
-            {company.hiringCount}
-          </span>
-          <span className="text-midnight-ink text-sm font-bold">건</span>
-          <svg
-            className="text-point-blue ml-2 h-5 w-5 opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={3}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </button>
+      <div className="flex shrink-0 items-center gap-10">
+        <Button
+          variant="outline"
+          onClick={handleSearchByCompany}
+          aria-disabled={!hasOpenings}
+          className={[
+            'group/btn no-title-hover h-28 w-28 rounded-2xl border-2 transition-all',
+            hasOpenings
+              ? 'text-midnight-ink hover:text-point-blue hover:bg-slate-50 cursor-pointer'
+              : 'text-slate-gray cursor-default opacity-60 hover:bg-transparent',
+          ].join(' ')}
+        >
+          {/* ✅ 버튼 내부 기준을 항상 중앙으로 */}
+          <div className="flex h-full flex-col items-center justify-center gap-1">
+            {hasOpenings ? (
+              <>
+                <span className="whitespace-nowrap text-[15px] font-black tracking-[0.2em] uppercase opacity-60">
+                  모집 중
+                </span>
+
+                <span className="text-2xl font-black tabular-nums">
+                  {company.hiringCount.toString().padStart(2, '0')}
+                </span>
+
+                <span className="text-[11px] font-black tracking-widest uppercase opacity-50">
+                  OPENINGS
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="whitespace-nowrap text-sm font-black">
+                  공고 없음
+                </span>
+                <span className="text-lg font-black opacity-50">-</span>
+              </>
+            )}
+          </div>
+        </Button>
+
+        <div className="bg-cloud-dancer hidden h-12 w-px md:block" />
+      </div>
     </motion.li>
   );
 }
@@ -104,105 +129,72 @@ function RecommendCompanyPage() {
   const { data: apiData, isLoading, isError, refetch } = useRecommendedCompanies();
   const companies = apiData || MOCK_COMPANIES;
 
-  // Navbar의 검색어 초기화
   useEffect(() => {
-    const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement;
-    if (navbarInput) {
-      navbarInput.value = '';
-    }
+    const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement | null;
+    if (navbarInput) navbarInput.value = '';
   }, []);
 
-  const sortedCompanies = [...companies].sort((a, b) => {
-    return sortBy === 'score' ? b.matchScore - a.matchScore : b.hiringCount - a.hiringCount;
-  });
+  const sortedCompanies = [...companies].sort((a, b) =>
+    sortBy === 'score' ? b.matchScore - a.matchScore : b.hiringCount - a.hiringCount,
+  );
 
   return (
-    <div className="min-h-screen bg-white pt-24 pb-20">
-      <div className="mx-auto w-[1200px] px-6">
-        <header className="mb-16">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="bg-point-blue/30 h-1 w-8 rounded-full"></div>
-            <span className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
-              Port Match AI Analysis
-            </span>
-          </div>
-          <h1 className="text-midnight-ink mb-8 text-4xl font-black tracking-tighter md:text-5xl lg:text-6xl">
-            추천 기업 리스트
-          </h1>
-          <div className="space-y-2">
-            <p className="text-xl font-bold text-zinc-600">
-              데이터로 분석한 최적의 커리어 매칭입니다.
-            </p>
-            <p className="text-xl font-medium text-zinc-400">
-              귀하의 역량이 가장 빛날 수 있는{' '}
-              <span className="text-midnight-ink relative inline-block">
-                3개의 팀
-                <span className="bg-point-blue/10 absolute bottom-1 left-0 -z-10 h-2 w-full" />
-              </span>
-              을 찾았습니다.
-            </p>
-          </div>
+    <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
+        <header className="border-point-blue mb-12 border-l-4 pl-6">
+          <motion.h1
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
+          >
+            Recommended Companies
+          </motion.h1>
+
+          <p className="text-slate-gray mt-2 text-lg font-bold italic opacity-50">
+            데이터로 분석한 최적의 커리어 매칭입니다.
+          </p>
         </header>
 
         <section className="space-y-8">
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-6">
-            <h2 className="text-midnight-ink text-sm font-black tracking-widest uppercase">
-              Matched Companies
-            </h2>
-            <div className="flex gap-1 rounded-2xl border border-zinc-100 bg-zinc-100/50 p-1.5">
+          <div className="mb-10 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-point-blue h-6 w-1.5 rounded-full" />
+              <div>
+                <h2 className="text-midnight-ink text-2xl font-black uppercase">
+                  추천 기업 목록
+                </h2>
+                <p className="text-slate-gray mt-1 text-sm font-bold italic opacity-40">
+                  추천 점수와 공고 수 기준으로 정렬할 수 있어요.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
               <Button
-                variant="light"
-                size="sm"
+                variant={sortBy === 'score' ? 'dark' : 'outline'}
+                size="lg"
                 onClick={() => setSortBy('score')}
-                className={`!rounded-xl !px-4 !py-2 !text-xs ${
-                  sortBy === 'score'
-                    ? '!text-midnight-ink !border-transparent !bg-white !shadow-sm'
-                    : '!border-transparent !bg-transparent !text-zinc-400 hover:!text-zinc-600'
-                }`}
+                className="rounded-2xl px-8 font-bold shadow-xl"
               >
                 추천 점수 순
               </Button>
+
               <Button
-                variant="light"
-                size="sm"
+                variant={sortBy === 'hiring' ? 'dark' : 'outline'}
+                size="lg"
                 onClick={() => setSortBy('hiring')}
-                className={`!rounded-xl !px-4 !py-2 !text-xs ${
-                  sortBy === 'hiring'
-                    ? '!text-midnight-ink !border-transparent !bg-white !shadow-sm'
-                    : '!border-transparent !bg-transparent !text-zinc-400 hover:!text-zinc-600'
-                }`}
+                className="rounded-2xl px-8 font-bold shadow-xl"
               >
                 공고 많은 순
               </Button>
             </div>
           </div>
 
-          {isLoading && (
-            <div className="py-20">
-              <LoadingState />
-            </div>
-          )}
-          {isError && (
-            <div className="rounded-4xl border-2 border-dashed border-zinc-100 bg-white py-20">
-              <ErrorState description="데이터를 불러오지 못했습니다." onAction={refetch} />
-            </div>
-          )}
+          {isLoading && <LoadingState />}
+          {isError && <ErrorState description="데이터를 불러오지 못했습니다." onAction={refetch} />}
 
-          {!isLoading && !isError && sortedCompanies.length === 0 && (
-            <div className="rounded-4xl border-2 border-dashed border-zinc-100 bg-white py-20">
-              <EmptyState
-                title="추천 기업이 없습니다"
-                description="아직 매칭되는 기업을 찾지 못했습니다. 포트폴리오를 업데이트하면 더 많은 추천을 받을 수 있습니다."
-              />
-            </div>
-          )}
-
-          {!isLoading && !isError && sortedCompanies.length > 0 && (
-            <motion.ul
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="grid gap-6"
-            >
+          {!isLoading && !isError && (
+            <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-6">
               {sortedCompanies.map((company) => (
                 <CompanyCard key={company.id} company={company} />
               ))}
