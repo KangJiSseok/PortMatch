@@ -55,5 +55,5 @@ springdoc:
   override-with-generic-response: false
 
 openvidu:
-  url: ${OPENVIDU_URL:https://openvidu-server:4443}
+  url: ${OPENVIDU_URL:http://openvidu-server:4443} 
   secret: ${OPENVIDU_SECRET:MY_SECRET}
