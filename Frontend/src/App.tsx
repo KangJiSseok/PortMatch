@@ -40,6 +40,7 @@ import RecommendCandidatesPage from './pages/company/RecommendCandidatesPage';
 
 import SalaryCalculatorPage from './pages/support/SalaryCalculatorPage';
 import ScheduleManagementPage from './pages/support/ScheduleManagementPage';
+import InterviewTemplatePage from './pages/support/InterviewTemplatePage';
 
 import { ProtectedRoute, PublicRoute, CompanyRoute } from './routes/RouteGuard';
 import MypageGate from './routes/MyPageGate';
@@ -269,6 +270,10 @@ const router = createBrowserRouter([
       {
         path: 'support/schedule',
         element: <ScheduleManagementPage />,
+      },
+      {
+        path: 'support/interview-template',
+        element: <InterviewTemplatePage />,
       },
       {
         path: 'design',

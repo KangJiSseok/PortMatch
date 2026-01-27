@@ -373,9 +373,6 @@ function CompanyDetailsPage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-slate-gray border-silver-mist/30 mt-8 border-t pt-8 text-lg leading-relaxed font-medium">
-                  {company.description}
-                </p>
               </section>
 
               <section
