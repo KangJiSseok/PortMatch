@@ -23,22 +23,22 @@ const USER_QUICK_MENUS: QuickMenu[] = [
   { id: 2, title: '합격 이력서 분석', icon: '📝', color: 'bg-emerald-50' },
   { id: 3, title: '실수령액 계산기', icon: '💰', color: 'bg-indigo-50', link: '/support/salary' },
   { id: 4, title: '맞춤형 이력서 첨삭', icon: '🎙️', color: 'bg-orange-50' },
-  { id: 5, title: '취준용 일정 관리', icon: '📅', color: 'bg-pink-50', link: '/support/schedule' },
+  { id: 5, title: '협업 일정 관리', icon: '📅', color: 'bg-pink-50', link: '/support/schedule' },
   { id: 6, title: '실시간 채용 알림', icon: '🔔', color: 'bg-amber-50' },
 ];
 
 const COMPANY_QUICK_MENUS: QuickMenu[] = [
   { id: 1, title: 'AI 인재 매칭 리포트', icon: '🎯', color: 'bg-blue-50' },
   { id: 2, title: 'AI 공고 자동 생성', icon: '📄', color: 'bg-emerald-50' },
-  { id: 3, title: '면접 평가지 템플릿', icon: '📋', color: 'bg-indigo-50' },
-  { id: 4, title: '맞춤형 면접 질문 생성', icon: '🎙️', color: 'bg-orange-50' },
   {
-    id: 5,
-    title: '채용 전형 일정 관리',
-    icon: '📅',
-    color: 'bg-pink-50',
-    link: '/support/schedule',
+    id: 3,
+    title: '면접 평가지 템플릿',
+    icon: '📋',
+    color: 'bg-indigo-50',
+    link: '/support/interview-template',
   },
+  { id: 4, title: '맞춤형 면접 질문 생성', icon: '🎙️', color: 'bg-orange-50' },
+  { id: 5, title: '협업 일정 관리', icon: '📅', color: 'bg-pink-50', link: '/support/schedule' },
   { id: 6, title: '신규 인재 실시간 알림', icon: '🔔', color: 'bg-amber-50' },
 ];
 

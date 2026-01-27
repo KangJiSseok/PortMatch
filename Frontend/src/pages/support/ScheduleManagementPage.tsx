@@ -141,7 +141,7 @@ const ScheduleManagementPage = () => {
           <motion.section
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-pure-white flex h-235 flex-col justify-between rounded-[40px] border border-gray-100 p-10 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.05)]"
+            className="bg-pure-white flex h-225 flex-col justify-between rounded-[40px] border border-gray-100 p-10 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.05)]"
           >
             <div className="flex flex-col gap-5">
               <div className="space-y-3">
@@ -214,11 +214,11 @@ const ScheduleManagementPage = () => {
           <motion.section
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-pure-white flex h-235 flex-col justify-between rounded-[40px] border border-gray-100 p-10 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.05)]"
+            className="bg-pure-white flex h-225 flex-col justify-between rounded-[40px] border border-gray-100 p-10 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.05)]"
           >
             <div className="flex h-full flex-col gap-5">
               <div className="flex items-center justify-between">
-                <h3 className="text-midnight-ink text-xl font-black">2. 종합 투합 현황</h3>
+                <h3 className="text-midnight-ink text-xl font-black">2. 일정 종합 현황</h3>
                 {analysis.max > 0 && (
                   <span className="text-point-blue animate-pulse text-sm font-black">
                     🏆 최다 {analysis.max}명 가능
@@ -308,15 +308,6 @@ const ScheduleManagementPage = () => {
                   )}
                 </div>
               </div>
-            </div>
-
-            <div className="mt-6 flex items-center justify-center gap-3 rounded-2xl bg-gray-50 py-3">
-              {[1, 2, 3, 4, 5].map((num) => (
-                <div key={num} className="flex items-center gap-1.5">
-                  <div className="h-3 w-3 rounded-sm" style={getIntensityStyle(num)} />
-                  <span className="text-midnight-ink text-[13px] font-bold">{num}명</span>
-                </div>
-              ))}
             </div>
           </motion.section>
         </div>
