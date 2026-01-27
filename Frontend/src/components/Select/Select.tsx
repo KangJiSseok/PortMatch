@@ -7,15 +7,24 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   options: SelectOption[];
   variant?: 'light' | 'dark';
+  error?: boolean;
 }
 
-function Select({ label, options, variant = 'light', className = '', id, ...props }: SelectProps) {
+function Select({
+  label,
+  options,
+  variant = 'light',
+  error,
+  className = '',
+  id,
+  ...props
+}: SelectProps) {
   const labelStyles = variant === 'light' ? 'text-slate-gray' : 'text-cloud-dancer';
 
   const selectStyles =
     variant === 'light'
-      ? 'bg-pure-white border-soft-pebble text-midnight-ink focus:border-midnight-ink'
-      : 'bg-midnight-ink border-[#333] text-pure-white focus:border-pure-white';
+      ? `bg-pure-white ${error ? 'border-error' : 'border-soft-pebble'} text-midnight-ink focus:border-midnight-ink`
+      : `bg-midnight-ink ${error ? 'border-error' : 'border-[#333]'} text-pure-white focus:border-pure-white`;
 
   return (
     <div className="flex w-full flex-col gap-2">
