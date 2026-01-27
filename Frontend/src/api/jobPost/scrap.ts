@@ -5,7 +5,14 @@ import axiosInstance from '@/api/axiosInstance';
 type ApiEnvelope<T> = {
   code: number | string;
   message: string;
-  data: T;
+  data: T | null;
+};
+
+export type ScrapRowApi = {
+  id: number;
+  uid: number;
+  pid: string;
+  createdAt: string;
 };
 
 function extractApiMessage(payload: unknown): string | null {
@@ -40,6 +47,16 @@ export async function fetchScrapCheck(uid: number, pid: string): Promise<boolean
     throw new Error(res.data.message || '스크랩 여부 확인 실패');
   } catch (err) {
     throw normalizeError(err, '스크랩 여부 확인 실패');
+  }
+}
+
+/** 내 스크랩 목록 조회: GET /api/scraps/{uid} */
+export async function fetchMyScrapRows(uid: number): Promise<ScrapRowApi[]> {
+  try {
+    const res = await axiosInstance.get<ApiEnvelope<ScrapRowApi[]>>(`/scraps/${uid}`);
+    return res.data.data ?? [];
+  } catch (err) {
+    throw normalizeError(err, '스크랩 목록 조회 실패');
   }
 }
 
