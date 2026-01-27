@@ -81,7 +81,13 @@ public class SessionController {
                     .build();
 
             Connection connection = session.createConnection(properties);
-            return new ResponseEntity<>(connection.getToken(), HttpStatus.OK);
+
+            String originalToken = connection.getToken();
+            String fixedToken = originalToken
+                    .replace("ws://", "wss://")     // 보안 연결로 변경
+                    .replace(":4443", "/openvidu"); // 포트를 떼고 Nginx 경로로 변경
+
+            return new ResponseEntity<>(fixedToken, HttpStatus.OK);
 
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
