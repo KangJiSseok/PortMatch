@@ -169,7 +169,7 @@ export default function InterviewListPage() {
                           {isUpcoming ? '예정' : '완료'}
                         </span>
 
-                        <span className="text-soft-pebble text-sm font-black tracking-widest whitespace-nowrap uppercase">
+                        <span className="text-slate-gray text-sm font-black tracking-widest whitespace-nowrap uppercase">
                           {s.companyName}
                         </span>
                       </div>
