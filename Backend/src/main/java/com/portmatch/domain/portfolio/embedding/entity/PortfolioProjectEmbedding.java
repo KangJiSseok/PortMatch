@@ -37,8 +37,17 @@ public class PortfolioProjectEmbedding {
     @Column(name = "content_hash", nullable = false, length = 64)
     private String contentHash;
 
-    @Column(name = "embedding", columnDefinition = "vector(1536)", nullable = false)
-    private String embedding;
+    @Column(name = "project_embedding", columnDefinition = "vector(1536)")
+    private String projectEmbedding;
+
+    @Column(name = "problem_embedding", columnDefinition = "vector(1536)")
+    private String problemEmbedding;
+
+    @Column(name = "solution_embedding", columnDefinition = "vector(1536)")
+    private String solutionEmbedding;
+
+    @Column(name = "tech_embedding", columnDefinition = "vector(1536)")
+    private String techEmbedding;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -52,14 +61,20 @@ public class PortfolioProjectEmbedding {
             Long projectId,
             String content,
             String contentHash,
-            String embedding
+            String projectEmbedding,
+            String problemEmbedding,
+            String solutionEmbedding,
+            String techEmbedding
     ) {
         this.portfolioId = portfolioId;
         this.analysisId = analysisId;
         this.projectId = projectId;
         this.content = content;
         this.contentHash = contentHash;
-        this.embedding = embedding;
+        this.projectEmbedding = projectEmbedding;
+        this.problemEmbedding = problemEmbedding;
+        this.solutionEmbedding = solutionEmbedding;
+        this.techEmbedding = techEmbedding;
     }
 
     @PrePersist

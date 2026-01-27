@@ -14,16 +14,43 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
     @Modifying
     @Query(value = """
         INSERT INTO portfolio_project_embeddings
-            (portfolio_id, analysis_id, project_id, content, content_hash, embedding, created_at, updated_at)
+            (
+                portfolio_id,
+                analysis_id,
+                project_id,
+                content,
+                content_hash,
+                project_embedding,
+                problem_embedding,
+                solution_embedding,
+                tech_embedding,
+                created_at,
+                updated_at
+            )
         VALUES
-            (:portfolioId, :analysisId, :projectId, :content, :contentHash, CAST(:embedding AS vector), NOW(), NOW())
+            (
+                :portfolioId,
+                :analysisId,
+                :projectId,
+                :content,
+                :contentHash,
+                CAST(:projectEmbedding AS vector),
+                CAST(:problemEmbedding AS vector),
+                CAST(:solutionEmbedding AS vector),
+                CAST(:techEmbedding AS vector),
+                NOW(),
+                NOW()
+            )
         ON CONFLICT (project_id)
         DO UPDATE SET
             portfolio_id = EXCLUDED.portfolio_id,
             analysis_id = EXCLUDED.analysis_id,
             content = EXCLUDED.content,
             content_hash = EXCLUDED.content_hash,
-            embedding = EXCLUDED.embedding,
+            project_embedding = EXCLUDED.project_embedding,
+            problem_embedding = EXCLUDED.problem_embedding,
+            solution_embedding = EXCLUDED.solution_embedding,
+            tech_embedding = EXCLUDED.tech_embedding,
             updated_at = NOW()
         """, nativeQuery = true)
     void upsertByProjectId(
@@ -32,6 +59,9 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
             Long projectId,
             String content,
             String contentHash,
-            String embedding
+            String projectEmbedding,
+            String problemEmbedding,
+            String solutionEmbedding,
+            String techEmbedding
     );
 }

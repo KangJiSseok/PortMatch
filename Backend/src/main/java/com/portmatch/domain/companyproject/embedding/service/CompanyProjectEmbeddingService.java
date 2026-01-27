@@ -53,9 +53,11 @@ public class CompanyProjectEmbeddingService {
             return 0;
         }
 
-        // 1) 프로젝트별 텍스트(content) 생성
+        // 1) ?꾨줈?앺듃蹂??띿뒪??content) ?앹꽦
         List<Long> projectIds = new ArrayList<>();
         List<String> contents = new ArrayList<>();
+        List<String> textsToEmbed = new ArrayList<>();
+        List<FieldEmbeddingIndices> embeddingIndices = new ArrayList<>();
 
         for (CompanyProjectAnalysisProject p : projects) {
             projectIds.add(p.getId());
@@ -66,43 +68,82 @@ public class CompanyProjectEmbeddingService {
                     .filter(t -> t != null && !t.isBlank())
                     .toList();
 
-            contents.add(buildProjectEmbeddingText(
+            String techStr = techs.isEmpty()
+                    ? "N/A"
+                    : techs.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
+
+            String content = buildProjectEmbeddingText(
                     companyName,
                     p.getName(),
                     p.getProblem(),
                     p.getSolution(),
                     techs
+            );
+
+            contents.add(content);
+
+            int projectIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("project", p.getName()));
+
+            int problemIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("problem", p.getProblem()));
+
+            int solutionIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("solution", p.getSolution()));
+
+            int techIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("tech", techStr));
+
+            embeddingIndices.add(new FieldEmbeddingIndices(
+                    projectIdx,
+                    problemIdx,
+                    solutionIdx,
+                    techIdx
             ));
         }
 
-        // 2) inference로 배치 임베딩 요청
+        // 2) inference濡?諛곗튂 ?꾨쿋???붿껌
         CompanyEmbeddingResponse resp = embeddingClient.embed(
-                new CompanyEmbeddingRequest(contents)
+                new CompanyEmbeddingRequest(textsToEmbed)
         );
 
-        if (resp.vectors() == null || resp.vectors().size() != contents.size()) {
+        if (resp.vectors() == null || resp.vectors().size() != textsToEmbed.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding response size mismatch");
         }
 
-        // 3) project_id 기준 upsert 저장
+        // 3) project_id 湲곗? upsert ???
         for (int i = 0; i < projectIds.size(); i++) {
             Long projectId = projectIds.get(i);
             String content = contents.get(i);
-            List<Double> vector = resp.vectors().get(i);
+            FieldEmbeddingIndices indices = embeddingIndices.get(i);
 
-            String vectorStr = toVectorString(vector); // "[0.1,0.2,...]"
+            String projectVector = toVectorString(resp.vectors().get(indices.projectIdx()));
+            String problemVector = toVectorString(resp.vectors().get(indices.problemIdx()));
+            String solutionVector = toVectorString(resp.vectors().get(indices.solutionIdx()));
+            String techVector = toVectorString(resp.vectors().get(indices.techIdx()));
 
             embeddingRepository.upsertByProjectId(
                     companyId,
                     analysisId,
                     projectId,
                     content,
-                    vectorStr
+                    projectVector,
+                    problemVector,
+                    solutionVector,
+                    techVector
             );
         }
 
 
         return projectIds.size();
+    }
+
+    private record FieldEmbeddingIndices(
+            int projectIdx,
+            int problemIdx,
+            int solutionIdx,
+            int techIdx
+    ) {
     }
 
     private String buildProjectEmbeddingText(
@@ -124,6 +165,10 @@ public class CompanyProjectEmbeddingService {
                 + "[기술] " + techStr;
     }
 
+    private String buildFieldEmbeddingText(String label, String value) {
+        return "[" + label + "] " + safe(value);
+    }
+
     private String safe(String s) {
         if (s == null) return "정보 없음";
         String t = s.trim();
@@ -132,8 +177,29 @@ public class CompanyProjectEmbeddingService {
 
 
     private String toVectorString(List<Double> vector) {
-        return "[" + vector.stream()
+        List<Double> normalized = normalizeVector(vector);
+        return "[" + normalized.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(",")) + "]";
     }
+
+    private List<Double> normalizeVector(List<Double> vector) {
+        if (vector == null || vector.isEmpty()) {
+            throw new IllegalArgumentException("Vector must not be null or empty");
+        }
+        double normSq = 0.0;
+        for (Double v : vector) {
+            double d = (v == null) ? 0.0 : v;
+            normSq += d * d;
+        }
+        double norm = Math.sqrt(normSq);
+        if (norm == 0.0) {
+            return vector.stream().map(v -> 0.0).toList();
+        }
+        final double denom = norm;
+        return vector.stream()
+                .map(v -> (v == null ? 0.0 : v) / denom)
+                .toList();
+    }
 }
+

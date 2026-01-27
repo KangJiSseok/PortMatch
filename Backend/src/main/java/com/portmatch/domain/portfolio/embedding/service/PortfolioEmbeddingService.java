@@ -48,11 +48,11 @@ public class PortfolioEmbeddingService {
     }
 
     public void buildForMyPortfolio(Long userId, Long portfolioId) {
-        // 1) 소유권 체크
+        // 1) ?뚯쑀沅?泥댄겕
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
 
-        // 2) 분석 결과 로드 (현재 구현에 맞춰 portfolioId로 fetch)
+        // 2) 遺꾩꽍 寃곌낵 濡쒕뱶 (?꾩옱 援ы쁽??留욎떠 portfolioId濡?fetch)
         PortfolioAnalysis analysis = analysisRepository.findWithProjectsByPortfolioId(portfolio.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
 
@@ -61,10 +61,12 @@ public class PortfolioEmbeddingService {
             return;
         }
 
-        // 3) 프로젝트별 content 생성 + content_hash
+        // 3) ?꾨줈?앺듃蹂?content ?앹꽦 + content_hash
         List<Long> projectIds = new ArrayList<>();
         List<String> contents = new ArrayList<>();
         List<String> hashes = new ArrayList<>();
+        List<String> textsToEmbed = new ArrayList<>();
+        List<FieldEmbeddingIndices> embeddingIndices = new ArrayList<>();
 
         for (PortfolioAnalysisProject p : projects) {
             projectIds.add(p.getId());
@@ -75,6 +77,10 @@ public class PortfolioEmbeddingService {
                     .filter(t -> t != null && !t.isBlank())
                     .toList();
 
+            String techStr = techs.isEmpty()
+                    ? "N/A"
+                    : techs.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
+
             String content = buildProjectEmbeddingText(
                     p.getName(),
                     p.getProblem(),
@@ -84,52 +90,74 @@ public class PortfolioEmbeddingService {
 
             contents.add(content);
             hashes.add(sha256Hex(content));
+
+            int projectIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("project", p.getName()));
+
+            int problemIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("problem", p.getProblem()));
+
+            int solutionIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("solution", p.getSolution()));
+
+            int techIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("tech", techStr));
+
+            embeddingIndices.add(new FieldEmbeddingIndices(
+                    projectIdx,
+                    problemIdx,
+                    solutionIdx,
+                    techIdx
+            ));
         }
 
-        // 4) Portfolio-Analysis로 배치 임베딩 요청
+        // 4) Portfolio-Analysis濡?諛곗튂 ?꾨쿋???붿껌
         PortfolioEmbeddingResponse resp = embeddingClient.embed(
-                new PortfolioEmbeddingRequest(contents)
+                new PortfolioEmbeddingRequest(textsToEmbed)
         );
 
-        if (resp.vectors() == null || resp.vectors().size() != contents.size()) {
+        if (resp.vectors() == null || resp.vectors().size() != textsToEmbed.size()) {
             throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
         }
 
-        // 5) upsert + 상세 결과 만들기
+        // 5) upsert + ?곸꽭 寃곌낵 留뚮뱾湲?
         for (int i = 0; i < projectIds.size(); i++) {
             Long projectId = projectIds.get(i);
             String content = contents.get(i);
             String contentHash = hashes.get(i);
+            FieldEmbeddingIndices indices = embeddingIndices.get(i);
+
+            String projectVector = toVectorString(resp.vectors().get(indices.projectIdx()));
+            String problemVector = toVectorString(resp.vectors().get(indices.problemIdx()));
+            String solutionVector = toVectorString(resp.vectors().get(indices.solutionIdx()));
+            String techVector = toVectorString(resp.vectors().get(indices.techIdx()));
 
             Optional<PortfolioProjectEmbedding> existingOpt = embeddingRepository.findByProjectId(projectId);
 
-            if (existingOpt.isPresent()) {
-                // 같은 hash면 스킵
-                if (contentHash.equals(existingOpt.get().getContentHash())) {
-                    continue;
-                }
-
-                // 업데이트
-                embeddingRepository.upsertByProjectId(
-                        portfolioId,
-                        analysis.getId(),
-                        projectId,
-                        content,
-                        contentHash,
-                        toVectorString(resp.vectors().get(i))
-                );
-            } else {
-                // 신규
-                embeddingRepository.upsertByProjectId(
-                        portfolioId,
-                        analysis.getId(),
-                        projectId,
-                        content,
-                        contentHash,
-                        toVectorString(resp.vectors().get(i))
-                );
+            if (existingOpt.isPresent() && contentHash.equals(existingOpt.get().getContentHash())) {
+                continue;
             }
+
+            embeddingRepository.upsertByProjectId(
+                    portfolioId,
+                    analysis.getId(),
+                    projectId,
+                    content,
+                    contentHash,
+                    projectVector,
+                    problemVector,
+                    solutionVector,
+                    techVector
+            );
         }
+    }
+
+    private record FieldEmbeddingIndices(
+            int projectIdx,
+            int problemIdx,
+            int solutionIdx,
+            int techIdx
+    ) {
     }
 
     private String buildProjectEmbeddingText(
@@ -149,6 +177,10 @@ public class PortfolioEmbeddingService {
                 + "[기술] " + techStr;
     }
 
+    private String buildFieldEmbeddingText(String label, String value) {
+        return "[" + label + "] " + safe(value);
+    }
+
     private String safe(String s) {
         if (s == null) return "정보 없음";
         String t = s.trim();
@@ -156,9 +188,29 @@ public class PortfolioEmbeddingService {
     }
 
     private String toVectorString(List<Double> vector) {
-        return "[" + vector.stream()
+        List<Double> normalized = normalizeVector(vector);
+        return "[" + normalized.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(",")) + "]";
+    }
+
+    private List<Double> normalizeVector(List<Double> vector) {
+        if (vector == null || vector.isEmpty()) {
+            throw new IllegalArgumentException("Vector must not be null or empty");
+        }
+        double normSq = 0.0;
+        for (Double v : vector) {
+            double d = (v == null) ? 0.0 : v;
+            normSq += d * d;
+        }
+        double norm = Math.sqrt(normSq);
+        if (norm == 0.0) {
+            return vector.stream().map(v -> 0.0).toList();
+        }
+        final double denom = norm;
+        return vector.stream()
+                .map(v -> (v == null ? 0.0 : v) / denom)
+                .toList();
     }
 
     private String sha256Hex(String text) {
@@ -171,3 +223,4 @@ public class PortfolioEmbeddingService {
         }
     }
 }
+
