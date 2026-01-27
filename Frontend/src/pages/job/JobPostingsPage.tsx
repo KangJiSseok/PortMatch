@@ -525,14 +525,14 @@ function JobPostingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const companyId = searchParams.get('companyId') ?? '';
-  const rawCompanyName = searchParams.get('companyName') ?? '';
-  const companyName = useMemo(() => {
+  const rawKeyword = searchParams.get('keyword') ?? '';
+  const keyword = useMemo(() => {
     try {
-      return decodeURIComponent(rawCompanyName);
+      return decodeURIComponent(rawKeyword);
     } catch {
-      return rawCompanyName;
+      return rawKeyword;
     }
-  }, [rawCompanyName]);
+  }, [rawKeyword]);
 
   const sort = (searchParams.get('sort') as Sort) ?? 'latest';
 
@@ -548,8 +548,8 @@ function JobPostingsPage() {
   useEffect(() => {
     const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement | null;
     if (!navbarInput) return;
-    navbarInput.value = companyName ?? '';
-  }, [companyName]);
+    navbarInput.value = keyword ?? '';
+  }, [keyword]);
 
   const setParams = (next: Record<string, string>) => setSearchParams(next);
 
@@ -568,7 +568,7 @@ function JobPostingsPage() {
   }) => {
     const params: Record<string, string> = {};
     if (companyId) params.companyId = companyId;
-    if (rawCompanyName) params.companyName = rawCompanyName;
+    if (rawKeyword) params.keyword = rawKeyword;
 
     params.sort = nextSort ?? sort;
 
@@ -602,7 +602,7 @@ function JobPostingsPage() {
   const clearAllFilters = () => {
     const params: Record<string, string> = {};
     if (companyId) params.companyId = companyId;
-    if (rawCompanyName) params.companyName = rawCompanyName;
+    if (rawKeyword) params.keyword = rawKeyword;
     params.sort = sort;
     params.page = '1';
     setParams(params);
@@ -612,7 +612,10 @@ function JobPostingsPage() {
     let filtered = MOCK_JOBS;
 
     if (companyId) filtered = filtered.filter((job) => job.companyId === Number(companyId));
-    else if (companyName) filtered = filtered.filter((job) => job.company.includes(companyName));
+    else if (keyword) {
+      const k = keyword.toLowerCase();
+      filtered = filtered.filter((job) => job.title.toLowerCase().includes(k));
+    }
 
     if (selectedStacks.length > 0) {
       filtered = filtered.filter((job) => selectedStacks.some((s) => job.stacks.includes(s)));
@@ -650,7 +653,7 @@ function JobPostingsPage() {
     });
 
     return sortedList;
-  }, [companyId, companyName, selectedStacks, deadlineFilter, experienceFilter, sort]);
+  }, [companyId, keyword, selectedStacks, deadlineFilter, experienceFilter, sort]);
 
   const totalCount = filteredSortedJobs.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -686,10 +689,10 @@ function JobPostingsPage() {
   const isError = false;
 
   const headerTitle = useMemo(() => {
-    if (!companyId && !companyName) return '전체 공고 조회';
-    if (companyName) return `'${companyName}' 공고 조회`;
+    if (!companyId && !keyword) return '전체 공고 조회';
+    if (keyword) return `'${keyword}' 공고 조회`;
     return '해당 기업 공고 조회';
-  }, [companyId, companyName]);
+  }, [companyId, keyword]);
 
   return (
     <div className="bg-pure-white min-h-screen overflow-x-auto pt-32 pb-32">
