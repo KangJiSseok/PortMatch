@@ -20,6 +20,9 @@ type JobPostExtraFields = {
   work_hours?: string | null; // 09:00~18:00 등
 };
 
+const underlineEffect =
+  "relative after:content-[''] after:absolute after:left-0 after:bottom-[-2px] after:w-0 after:h-[2px] after:bg-point-blue after:transition-all after:duration-300 hover:after:w-full";
+
 function formatYmdDot(ymd?: string | null) {
   if (!ymd) return '-';
   return ymd.replaceAll('-', '.');
@@ -359,13 +362,18 @@ export default function JobPostDetailPage() {
     return true;
   })();
 
+  // ✅ 기업이면 role이 company
+  const isCompanyViewer = (() => {
+    const role = (localStorage.getItem('role') ?? '').toLowerCase().trim();
+    return role === 'company';
+  })();
+
   const workTimeText =
     jp.work_days && jp.work_hours
       ? `${jp.work_days} ${jp.work_hours}`
       : (jp.work_days ?? jp.work_hours ?? null);
 
   return (
-    // ✅ pt-26 → pt-24 (Tailwind 플러그인 쓰면 pt-26이 경고 날 수 있어서 안전하게)
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-24 pb-20">
       <div className="mx-auto w-[1280px] px-6">
         <div className="mb-6 flex items-center justify-between">
@@ -384,6 +392,7 @@ export default function JobPostDetailPage() {
                 <p className="text-silver-mist text-xs font-black tracking-[0.2em] uppercase">
                   COMPANY
                 </p>
+
                 <p
                   className="text-midnight-ink hover:text-point-blue mt-1 inline-flex max-w-full cursor-pointer items-center gap-2 text-base font-black transition-colors"
                   onClick={() => navigate(`/companies/${company.id}`)}
@@ -393,7 +402,12 @@ export default function JobPostDetailPage() {
                     if (e.key === 'Enter' || e.key === ' ') navigate(`/companies/${company.id}`);
                   }}
                 >
-                  <span className="truncate">{company.companies_name}</span>
+                  {/* ✅ 밑줄 효과는 바깥 span(overflow-hidden 없음) */}
+                  <span className={`min-w-0 ${underlineEffect}`}>
+                    {/* ✅ truncate는 안쪽 span에만 */}
+                    <span className="truncate">{company.companies_name}</span>
+                  </span>
+
                   <svg
                     width="16"
                     height="16"
@@ -411,11 +425,8 @@ export default function JobPostDetailPage() {
               </div>
             </div>
 
-            {/* ✅ 제목이 길어도 배치 안 깨지게: 1fr + auto 고정 */}
             <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-6">
-              {/* LEFT */}
               <div className="min-w-0">
-                {/* ✅ 최대 2줄 클램프 (플러그인 없이도 동작) */}
                 <h1
                   className="text-midnight-ink [display:-webkit-box] min-w-0 overflow-hidden text-3xl leading-tight font-black tracking-tighter break-words [-webkit-box-orient:vertical] [-webkit-line-clamp:2] lg:text-4xl"
                   title={jobPost.title}
@@ -424,7 +435,6 @@ export default function JobPostDetailPage() {
                 </h1>
               </div>
 
-              {/* RIGHT (절대 안 밀림) */}
               <div className="flex items-center gap-3 whitespace-nowrap">
                 <span className={`text-lg font-black ${ddayClass(dday)}`}>{dday}</span>
 
@@ -645,36 +655,41 @@ export default function JobPostDetailPage() {
                   ))}
                 </nav>
 
-                <div className="mt-8">
-                  {data.external_apply_url ? (
-                    <Button
-                      type="button"
-                      variant="blue"
-                      size="lg"
-                      className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
-                      onClick={() => window.open(data.external_apply_url!, '_blank', 'noreferrer')}
-                    >
-                      외부 페이지로 지원
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="blue"
-                      size="lg"
-                      className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
-                      onClick={() => navigate(`/job-posts/${jobPost.id}/apply`)}
-                      disabled={!canApply}
-                    >
-                      지원하기
-                    </Button>
-                  )}
+                {/* ✅ 기업(company)이면 지원 버튼 숨김 */}
+                {!isCompanyViewer && (
+                  <div className="mt-8">
+                    {data.external_apply_url ? (
+                      <Button
+                        type="button"
+                        variant="blue"
+                        size="lg"
+                        className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
+                        onClick={() =>
+                          window.open(data.external_apply_url!, '_blank', 'noreferrer')
+                        }
+                      >
+                        외부 페이지로 지원
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="blue"
+                        size="lg"
+                        className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
+                        onClick={() => navigate(`/job-posts/${jobPost.id}/apply`)}
+                        disabled={!canApply}
+                      >
+                        지원하기
+                      </Button>
+                    )}
 
-                  {!canApply && (
-                    <p className="text-slate-gray mt-2 text-xs font-medium opacity-70">
-                      현재 공고 상태/마감일 때문에 지원이 비활성화돼요.
-                    </p>
-                  )}
-                </div>
+                    {!canApply && (
+                      <p className="text-slate-gray mt-2 text-xs font-medium opacity-70">
+                        현재 공고 상태/마감일 때문에 지원이 비활성화돼요.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </aside>
