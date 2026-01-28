@@ -1,13 +1,25 @@
 import type { PortfolioResponse, AnalysisResponse } from '../types/portfolio';
 
+interface ApiResponse<T = null> {
+  status: boolean;
+  code: number;
+  message: string;
+  data: T;
+}
+
 export const portfolioApi = {
   fetchMyPortfolios: async (): Promise<PortfolioResponse[]> => {
     const response = await fetch('/api/portfolios/me', {
       method: 'GET',
       credentials: 'include',
     });
-    if (!response.ok) throw new Error();
-    const result = await response.json();
+
+    const result: ApiResponse<PortfolioResponse[]> = await response.json();
+
+    if (!response.ok || !result.status) {
+      throw new Error(result.message || '포트폴리오 목록을 불러오지 못했습니다.');
+    }
+
     return result.data || [];
   },
 
@@ -20,8 +32,13 @@ export const portfolioApi = {
       body: formData,
       credentials: 'include',
     });
-    if (!response.ok) throw new Error();
-    const result = await response.json();
+
+    const result: ApiResponse<PortfolioResponse> = await response.json();
+
+    if (!response.ok || !result.status) {
+      throw new Error(result.message || '파일 업로드에 실패했습니다.');
+    }
+
     return result.data;
   },
 
@@ -30,7 +47,12 @@ export const portfolioApi = {
       method: 'DELETE',
       credentials: 'include',
     });
-    if (!response.ok) throw new Error();
+
+    const result: ApiResponse = await response.json();
+
+    if (!response.ok || !result.status) {
+      throw new Error(result.message || '삭제 요청이 실패했습니다.');
+    }
   },
 
   requestAnalysis: async (portfolioId: number | string): Promise<void> => {
@@ -38,16 +60,31 @@ export const portfolioApi = {
       method: 'POST',
       credentials: 'include',
     });
-    if (!response.ok) throw new Error();
+
+    const result: ApiResponse = await response.json();
+
+    if (!response.ok || !result.status) {
+      throw new Error(result.message || '분석 요청에 실패했습니다.');
+    }
   },
 
-  getAnalysisResult: async (portfolioId: number | string): Promise<AnalysisResponse> => {
+  getAnalysisResult: async (portfolioId: number | string): Promise<AnalysisResponse | null> => {
     const response = await fetch(`/api/portfolios/me/${portfolioId}/analysis`, {
       method: 'GET',
       credentials: 'include',
     });
-    if (!response.ok) throw new Error();
-    return response.json();
+
+    const result: ApiResponse<AnalysisResponse> = await response.json();
+
+    if (!response.ok) {
+      throw new Error('분석 결과를 가져오는 데 실패했습니다.');
+    }
+
+    if (!result.status) {
+      return null;
+    }
+
+    return result.data;
   },
 
   getPresignedUrl: async (portfolioId: number | string): Promise<{ url: string }> => {
@@ -55,8 +92,13 @@ export const portfolioApi = {
       method: 'GET',
       credentials: 'include',
     });
-    if (!response.ok) throw new Error();
-    const result = await response.json();
+
+    const result: ApiResponse<{ url: string }> = await response.json();
+
+    if (!response.ok || !result.status) {
+      throw new Error(result.message || '파일 경로를 불러오지 못했습니다.');
+    }
+
     return result.data;
   },
 };

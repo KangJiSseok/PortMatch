@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../../components/Button/Button';
@@ -18,15 +18,6 @@ interface ModalConfig {
   message: string;
   type: 'alert' | 'confirm';
   onConfirm?: () => void;
-}
-
-interface ApiError {
-  response?: {
-    data?: {
-      code?: number;
-      message?: string;
-    };
-  };
 }
 
 const STAGES = [
@@ -56,24 +47,23 @@ function PortfoliosPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-
   const [modal, setModal] = useState<ModalConfig>({
     isOpen: false,
     title: '',
     message: '',
     type: 'alert',
   });
-
   const [savedPortfolios, setSavedPortfolios] = useState<SavedPortfolio[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | number | null>(null);
   const [isListOpen, setIsListOpen] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [activeStage, setActiveStage] = useState(0);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const activeStageId = [...STAGES].reverse().find((s) => progress >= s.threshold)?.id ?? 0;
+
   const mapAnalysisData = (response: AnalysisResponse): AnalysisData => {
-    const projects = response.data?.projects || [];
+    const projects = response.projects || [];
     const allTech = projects.flatMap((p) => p.tech || []);
     return {
       projects,
@@ -82,51 +72,55 @@ function PortfoliosPage() {
     };
   };
 
-  const loadPortfolios = useCallback(async (isMounted: boolean) => {
-    try {
-      const response = await portfolioApi.fetchMyPortfolios();
-      if (!isMounted) return;
-
-      const portfolioList = Array.isArray(response) ? response : [];
-
-      const initialPortfolios: SavedPortfolio[] = portfolioList.map((p) => ({
-        id: p.id,
-        name: p.originalFilename,
-        hasAnalysis: false,
-        isLocal: false,
-      }));
-      setSavedPortfolios(initialPortfolios);
-
-      portfolioList.forEach(async (p) => {
-        try {
-          const analysisResult = await portfolioApi.getAnalysisResult(p.id);
-          if (analysisResult && isMounted) {
-            setSavedPortfolios((prev) =>
-              prev.map((item) => (item.id === p.id ? { ...item, hasAnalysis: true } : item)),
-            );
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      });
-    } catch (error) {
-      if (isMounted) {
-        setSavedPortfolios([]);
-        console.error(error);
-      }
-    }
-  }, []);
-
   useEffect(() => {
     let isMounted = true;
-    const init = async () => {
-      await loadPortfolios(isMounted);
+
+    const fetchPortfolios = async () => {
+      try {
+        const portfolioList = await portfolioApi.fetchMyPortfolios();
+        if (!isMounted) return;
+
+        const initialPortfolios: SavedPortfolio[] = portfolioList.map((p) => ({
+          id: p.id,
+          name: p.originalFilename,
+          status: false,
+          isLocal: false,
+        }));
+        setSavedPortfolios(initialPortfolios);
+
+        const statusChecks = await Promise.all(
+          portfolioList.map(async (p) => {
+            try {
+              const result = await portfolioApi.getAnalysisResult(p.id);
+              return { id: p.id, hasAnalysis: !!result };
+            } catch {
+              return { id: p.id, hasAnalysis: false };
+            }
+          }),
+        );
+
+        if (!isMounted) return;
+
+        setSavedPortfolios((prev) =>
+          prev.map((item) => {
+            const check = statusChecks.find((c) => c.id === item.id);
+            return check ? { ...item, status: check.hasAnalysis } : item;
+          }),
+        );
+      } catch (err) {
+        if (isMounted) {
+          setSavedPortfolios([]);
+          console.error(err);
+        }
+      }
     };
-    init();
+
+    fetchPortfolios();
+
     return () => {
       isMounted = false;
     };
-  }, [loadPortfolios]);
+  }, []);
 
   const closeModal = () => setModal((prev) => ({ ...prev, isOpen: false }));
 
@@ -140,7 +134,6 @@ function PortfoliosPage() {
       });
       return;
     }
-
     if (savedPortfolios.some((p) => p.name === uploadedFile.name)) {
       setModal({
         isOpen: true,
@@ -150,30 +143,22 @@ function PortfoliosPage() {
       });
       return;
     }
-
     try {
       const response = await portfolioApi.uploadPortfolio(uploadedFile);
       const newEntry: SavedPortfolio = {
         id: response.id,
         name: response.originalFilename,
-        hasAnalysis: false,
+        status: false,
         isLocal: true,
       };
-
       setSavedPortfolios((prev) => [newEntry, ...(prev || [])]);
       setSelectedPortfolioId(response.id);
       setIsListOpen(false);
       setShowTooltip(false);
-
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (error) {
-      setModal({
-        isOpen: true,
-        title: '업로드 실패',
-        message: '파일 업로드 중 오류가 발생했습니다.',
-        type: 'alert',
-      });
-      console.error(error);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
+      setModal({ isOpen: true, title: '업로드 실패', message: errorMessage, type: 'alert' });
     }
   };
 
@@ -182,14 +167,14 @@ function PortfoliosPage() {
     try {
       const { url } = await portfolioApi.getPresignedUrl(id);
       window.open(url, '_blank');
-    } catch (error) {
+    } catch (err) {
       setModal({
         isOpen: true,
         title: '파일 열기 실패',
         message: '파일을 불러올 수 없습니다.',
         type: 'alert',
       });
-      console.error(error);
+      console.error(err);
     }
   };
 
@@ -204,18 +189,16 @@ function PortfoliosPage() {
         try {
           await portfolioApi.deletePortfolio(id);
           setSavedPortfolios((prev) => prev.filter((p) => String(p.id) !== String(id)));
-          if (String(selectedPortfolioId) === String(id)) {
-            setSelectedPortfolioId(null);
-          }
+          if (String(selectedPortfolioId) === String(id)) setSelectedPortfolioId(null);
           closeModal();
-        } catch (error) {
+        } catch (err) {
           setModal({
             isOpen: true,
             title: '삭제 실패',
             message: '삭제 처리 중 오류가 발생했습니다.',
             type: 'alert',
           });
-          console.error(error);
+          console.error(err);
         }
       },
     });
@@ -243,16 +226,25 @@ function PortfoliosPage() {
     if (!selectedPortfolioId) return;
     try {
       const result = await portfolioApi.getAnalysisResult(selectedPortfolioId);
+      if (!result) {
+        setModal({
+          isOpen: true,
+          title: '조회 결과 없음',
+          message: '아직 분석 결과가 생성되지 않았습니다.',
+          type: 'alert',
+        });
+        return;
+      }
       setAnalysisData(mapAnalysisData(result));
       setStep('result');
-    } catch (error) {
+    } catch (err) {
       setModal({
         isOpen: true,
         title: '조회 실패',
         message: '분석 결과를 불러올 수 없습니다.',
         type: 'alert',
       });
-      console.error(error);
+      console.error(err);
     }
   };
 
@@ -260,7 +252,6 @@ function PortfoliosPage() {
     if (!selectedPortfolioId) return;
     setStep('analyzing');
     setProgress(0);
-    setActiveStage(0);
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -273,24 +264,17 @@ function PortfoliosPage() {
 
     try {
       await portfolioApi.requestAnalysis(selectedPortfolioId);
-
       const pollResult = async (retries = 15): Promise<AnalysisResponse> => {
-        try {
-          const res = await portfolioApi.getAnalysisResult(selectedPortfolioId);
-          if (res && res.data) return res;
-          throw new Error('Not Ready');
-        } catch (error) {
-          const apiErr = error as ApiError;
-          if (retries > 0 && (apiErr.response?.data?.code === 2401 || !apiErr.response)) {
-            await new Promise((res) => setTimeout(res, 2000));
-            return pollResult(retries - 1);
-          }
-          throw error;
+        const res = await portfolioApi.getAnalysisResult(selectedPortfolioId);
+        if (res) return res;
+        if (retries > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          return pollResult(retries - 1);
         }
+        throw new Error('Timeout');
       };
 
       const result = await pollResult();
-
       clearInterval(progressInterval);
       setProgress(100);
       setAnalysisData(mapAnalysisData(result));
@@ -299,13 +283,13 @@ function PortfoliosPage() {
         setSavedPortfolios((prev) =>
           prev.map((p) =>
             String(p.id) === String(selectedPortfolioId)
-              ? { ...p, hasAnalysis: true, isLocal: false }
+              ? { ...p, status: true, isLocal: false }
               : p,
           ),
         );
         setStep('result');
       }, 1000);
-    } catch (error) {
+    } catch (err) {
       clearInterval(progressInterval);
       setModal({
         isOpen: true,
@@ -314,16 +298,9 @@ function PortfoliosPage() {
         type: 'alert',
       });
       setStep('upload');
-      console.error(error);
+      console.error(err);
     }
   };
-
-  useEffect(() => {
-    const currentStage = [...STAGES].reverse().find((s) => progress >= s.threshold);
-    if (currentStage && currentStage.id !== activeStage) {
-      setActiveStage(currentStage.id);
-    }
-  }, [progress, activeStage]);
 
   const selectedPortfolio = savedPortfolios.find(
     (p) => String(p.id) === String(selectedPortfolioId),
@@ -442,36 +419,34 @@ function PortfoliosPage() {
                 <div className="flex shrink-0 items-center justify-between border-b border-gray-100 p-8">
                   <div className="flex items-center gap-4">
                     <div className="bg-point-blue h-10 w-1.5 rounded-full" />
-                    <div>
-                      <h3 className="text-midnight-ink text-2xl font-black tracking-tighter">
-                        {selectedProject.name}
-                      </h3>
-                    </div>
+                    <h3 className="text-midnight-ink text-2xl font-black tracking-tighter">
+                      {selectedProject.name}
+                    </h3>
                   </div>
                 </div>
                 <div className="custom-scrollbar space-y-8 overflow-y-auto p-10">
                   <section>
-                    <h4 className="text-midnight-ink mb-4 text-xs font-black tracking-[0.2em] uppercase opacity-40">
+                    <h4 className="text-midnight-ink mb-4 text-xs font-black tracking-widest uppercase opacity-40">
                       Problem & Context
                     </h4>
                     <div className="bg-cloud-dancer/40 rounded-3xl p-7">
-                      <p className="text-midnight-ink text-[17px] leading-relaxed font-bold break-keep opacity-90">
+                      <p className="text-midnight-ink text-lg leading-relaxed font-bold break-keep opacity-90">
                         {selectedProject.problem}
                       </p>
                     </div>
                   </section>
                   <section>
-                    <h4 className="text-midnight-ink mb-4 text-xs font-black tracking-[0.2em] uppercase opacity-40">
+                    <h4 className="text-midnight-ink mb-4 text-xs font-black tracking-widest uppercase opacity-40">
                       Key Solution
                     </h4>
                     <div className="rounded-3xl border border-emerald-500/10 bg-emerald-500/5 p-7">
-                      <p className="text-midnight-ink text-[17px] leading-relaxed font-bold break-keep">
+                      <p className="text-midnight-ink text-lg leading-relaxed font-bold break-keep">
                         {selectedProject.solution}
                       </p>
                     </div>
                   </section>
                   <section>
-                    <h4 className="text-midnight-ink mb-5 text-xs font-black tracking-[0.2em] uppercase opacity-40">
+                    <h4 className="text-midnight-ink mb-5 text-xs font-black tracking-widest uppercase opacity-40">
                       Stack Used
                     </h4>
                     <div className="flex flex-wrap gap-2.5">
@@ -614,12 +589,12 @@ function PortfoliosPage() {
                                       {p.name}
                                     </span>
                                     {p.isLocal && (
-                                      <span className="bg-point-blue/10 text-point-blue rounded-md px-2 py-1 text-[10px] font-black whitespace-nowrap uppercase">
+                                      <span className="bg-point-blue/10 text-point-blue rounded-md px-2 py-1 text-xs font-black whitespace-nowrap uppercase">
                                         New
                                       </span>
                                     )}
-                                    {p.hasAnalysis && (
-                                      <span className="ml-1 shrink-0 rounded-full bg-emerald-500/10 px-3 py-1 text-[13px] font-black tracking-tight whitespace-nowrap text-emerald-600">
+                                    {p.status && (
+                                      <span className="ml-1 shrink-0 rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-black tracking-tight whitespace-nowrap text-emerald-600">
                                         분석 완료
                                       </span>
                                     )}
@@ -648,7 +623,7 @@ function PortfoliosPage() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      className={`group relative cursor-pointer rounded-3xl border-2 border-dashed py-10 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-[1.01] shadow-inner' : 'border-silver-mist hover:border-point-blue/40 hover:bg-point-blue/5'}`}
+                      className={`group relative cursor-pointer rounded-3xl border-2 border-dashed py-10 transition-all duration-300 ${isDragging ? 'border-point-blue bg-point-blue/5 scale-105 shadow-inner' : 'border-silver-mist hover:border-point-blue/40 hover:bg-point-blue/5'}`}
                     >
                       <input
                         type="file"
@@ -682,7 +657,7 @@ function PortfoliosPage() {
                           <h3 className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
                             {isDragging ? '여기에 놓으세요!' : '새 포트폴리오 업로드'}
                           </h3>
-                          <p className="text-slate-gray text-[14px] font-bold tracking-widest whitespace-nowrap uppercase opacity-40">
+                          <p className="text-slate-gray text-sm font-bold tracking-widest whitespace-nowrap uppercase opacity-40">
                             PDF 파일을 드래그하거나 클릭하여 추가하세요
                           </p>
                         </div>
@@ -718,7 +693,7 @@ function PortfoliosPage() {
                               exit={{ opacity: 0 }}
                               className="w-full"
                             >
-                              {selectedPortfolio?.hasAnalysis ? (
+                              {selectedPortfolio?.status ? (
                                 <div className="flex w-full gap-4">
                                   <Button
                                     variant="blue"
@@ -813,12 +788,11 @@ function PortfoliosPage() {
                       </span>
                     </div>
                   </div>
-
                   <div className="w-full space-y-10">
                     <div className="min-h-24">
                       <AnimatePresence mode="wait">
                         <motion.div
-                          key={activeStage}
+                          key={activeStageId}
                           initial={{ opacity: 0, y: 15 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -15 }}
@@ -826,20 +800,18 @@ function PortfoliosPage() {
                           className="space-y-2"
                         >
                           <h3 className="text-midnight-ink text-3xl font-black tracking-tight">
-                            {STAGES[activeStage].label}
+                            {STAGES[activeStageId].label}
                           </h3>
                           <p className="text-slate-gray text-lg font-bold opacity-60">
-                            {STAGES[activeStage].description}
+                            {STAGES[activeStageId].description}
                           </p>
                         </motion.div>
                       </AnimatePresence>
                     </div>
-
                     <div className="flex items-center justify-center gap-14">
                       {STAGES.map((stage) => {
                         const isReached = progress >= stage.threshold;
-                        const isCurrentPart = activeStage === stage.id;
-
+                        const isCurrentPart = activeStageId === stage.id;
                         return (
                           <div key={stage.id} className="relative flex flex-col items-center gap-4">
                             <div className="relative h-6 w-6">
@@ -862,7 +834,7 @@ function PortfoliosPage() {
                               />
                             </div>
                             <span
-                              className={`text-[13px] font-black transition-colors duration-700 ${isReached ? 'text-point-blue' : 'text-slate-gray opacity-30'}`}
+                              className={`text-sm font-black transition-colors duration-700 ${isReached ? 'text-point-blue' : 'text-slate-gray opacity-30'}`}
                             >
                               {stage.label}
                             </span>
@@ -893,7 +865,6 @@ function PortfoliosPage() {
                     </p>
                   </div>
                 </div>
-
                 <div className="flex gap-4">
                   <div className="border-silver-mist bg-cloud-dancer/30 flex flex-1 items-center justify-between rounded-3xl border px-8 py-5 shadow-sm">
                     <p className="text-slate-gray text-sm font-black uppercase opacity-50">
@@ -912,7 +883,6 @@ function PortfoliosPage() {
                     </p>
                   </div>
                 </div>
-
                 <div className="space-y-12">
                   <section>
                     <div className="mb-8 flex items-center gap-3">
@@ -940,7 +910,7 @@ function PortfoliosPage() {
                                 {proj.tech.slice(0, 4).map((t) => (
                                   <span
                                     key={t}
-                                    className="rounded-full bg-emerald-50 px-4 py-1 text-xs font-black tracking-tight text-emerald-600"
+                                    className="rounded-full bg-emerald-50 px-4 py-1 text-sm font-black tracking-tight text-emerald-600"
                                   >
                                     #{t}
                                   </span>
@@ -957,7 +927,6 @@ function PortfoliosPage() {
                       ))}
                     </div>
                   </section>
-
                   <section>
                     <div className="mb-8 flex items-center gap-3">
                       <div className="bg-point-blue h-6 w-1.5 rounded-full" />
@@ -973,7 +942,7 @@ function PortfoliosPage() {
                             className="border-silver-mist bg-cloud-dancer/20 hover:border-point-blue/40 hover:bg-point-blue/5 flex items-center gap-3 rounded-2xl border px-6 py-4.5 shadow-sm transition-all hover:-translate-y-1"
                           >
                             <div className="bg-point-blue h-2 w-2 rounded-full" />
-                            <span className="text-midnight-ink text-[15px] font-black tracking-tight">
+                            <span className="text-midnight-ink text-base font-black tracking-tight">
                               {tech}
                             </span>
                           </div>
@@ -982,7 +951,6 @@ function PortfoliosPage() {
                     </div>
                   </section>
                 </div>
-
                 <div className="flex gap-5 pt-10">
                   <Button
                     variant="blue"
@@ -1001,7 +969,6 @@ function PortfoliosPage() {
                       setStep('upload');
                       setAnalysisData(null);
                       setProgress(0);
-                      setActiveStage(0);
                     }}
                   >
                     다시 분석하기

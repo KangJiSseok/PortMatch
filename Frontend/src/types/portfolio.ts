@@ -1,5 +1,4 @@
 export interface PortfolioResponse {
-  isAnalyzed: boolean;
   id: number;
   userId: number;
   originalFilename: string;
@@ -17,17 +16,13 @@ export interface Project {
 }
 
 export interface AnalysisResponse {
-  code: string;
-  message: string;
-  data: {
-    projects: Project[];
-  };
+  projects: Project[];
 }
 
 export interface SavedPortfolio {
   id: number | string;
   name: string;
-  hasAnalysis?: boolean;
+  status: boolean;
   fileUrl?: string;
   isLocal?: boolean;
 }
