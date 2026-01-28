@@ -32,7 +32,6 @@ type LobbyNavState = {
 const ROUTES = {
   list: '/interviews',
   testLobby: (id: number) => `/interviews/test/${id}/lobby`,
-  room: (id: number) => `/interviews/${id}/room`,
 } as const;
 
 function LobbyHeader({ subtitle, onBack }: { subtitle: string; onBack: () => void }) {
@@ -119,7 +118,9 @@ export default function TestInterviewLobbyPage() {
   const navState = (location.state ?? {}) as LobbyNavState;
 
   const rawInterviewId = Number(id);
-  const safeInterviewId = Number.isFinite(rawInterviewId) && rawInterviewId > 0 ? rawInterviewId : 1;
+  // ✅ 테스트 로비에서만 쓰는 더미 interview_id (표시/초대링크용)
+  const safeInterviewId =
+    Number.isFinite(rawInterviewId) && rawInterviewId > 0 ? rawInterviewId : 1;
 
   const role = ((localStorage.getItem('userRole') ?? 'guest') as UserRole) || 'guest';
   const isCorporate = role === 'corporate';
@@ -132,8 +133,14 @@ export default function TestInterviewLobbyPage() {
   const [micOn, setMicOn] = useState<boolean>(navState.initialMicOn ?? false);
   const [camOn, setCamOn] = useState<boolean>(navState.initialCamOn ?? false);
 
-  // ✅ 여기서 sessionId를 “페이지에서 수정” 가능하게
-  const [sessionIdInput, setSessionIdInput] = useState<string>(navState.sessionId ?? '');
+  // ✅ sessionId 입력(테스트 편의)
+  const initialSessionId = navState.sessionId ?? '';
+  const [sessionIdInput, setSessionIdInput] = useState<string>(() => initialSessionId);
+
+  useEffect(() => {
+    if (!initialSessionId) return;
+    setSessionIdInput((prev) => (prev ? prev : initialSessionId));
+  }, [initialSessionId]);
 
   // ✅ 미디어 프리뷰 상태
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -141,7 +148,7 @@ export default function TestInterviewLobbyPage() {
   const [mediaError, setMediaError] = useState<string>('');
   const [micLevel, setMicLevel] = useState<number>(0); // 0~1
 
-  // ✅ 트랙만 바뀌어도(스트림 객체는 같아도) 리렌더/이펙트 재실행 트리거
+  // ✅ 트랙만 바뀌어도 리렌더/이펙트 재실행 트리거
   const [streamRev, setStreamRev] = useState(0);
 
   // ✅ async 경합 방지(카메라/마이크 따로)
@@ -172,36 +179,32 @@ export default function TestInterviewLobbyPage() {
     };
   }, []);
 
-  // ✅ 로드: 테스트 로비는 무조건 더미 세션으로 “성공 상태” 만들고,
-  // sessionId는 input에서 수정하도록 둠.
+  const dummyCompanyName = navState.companyName ?? 'TEST';
+  const dummyPostingTitle = navState.postingTitle ?? 'INTERVIEW SESSION';
+  const dummyScheduledAt = navState.scheduledAt ?? new Date().toISOString();
+
+  // ✅ 테스트 로비는 더미 세션으로 “성공 상태” 만들기
   const load = useCallback(() => {
     setStatus('loading');
     setErrorMessage('세션 정보를 불러오지 못했어요.');
 
     try {
-      const nowIso = navState.scheduledAt ?? new Date().toISOString();
-
       const dummy = {
         interview_id: safeInterviewId,
-        companyName: navState.companyName ?? 'TEST',
-        postingTitle: navState.postingTitle ?? 'INTERVIEW SESSION',
-        scheduledAt: nowIso,
-        room_id: navState.sessionId ?? '',
+        companyName: dummyCompanyName,
+        postingTitle: dummyPostingTitle,
+        scheduledAt: dummyScheduledAt,
+        room_id: sessionIdInput.trim(),
       } as unknown as InterviewSessionView;
 
       setSession(dummy);
-
-      // ✅ state로 넘어온 세션ID가 있으면 input에도 반영(없으면 기존 입력 유지)
-      if (navState.sessionId && !sessionIdInput) setSessionIdInput(navState.sessionId);
-
       setStatus('success');
     } catch (err) {
       setSession(null);
       setStatus('error');
       setErrorMessage(err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navState.companyName, navState.postingTitle, navState.scheduledAt, navState.sessionId, safeInterviewId]);
+  }, [dummyCompanyName, dummyPostingTitle, dummyScheduledAt, safeInterviewId, sessionIdInput]);
 
   useEffect(() => {
     const cleanup = defer(() => {
@@ -223,8 +226,8 @@ export default function TestInterviewLobbyPage() {
       return;
     }
 
-    navigate(ROUTES.room(session.interview_id), {
-      state: { micOn, camOn, sessionId: sid },
+    navigate('/interviews/test/room', {
+      state: { sessionId: sid, micOn, camOn },
     });
   }, [camOn, micOn, navigate, session, sessionIdInput, showToast]);
 
@@ -560,7 +563,8 @@ export default function TestInterviewLobbyPage() {
 
   if (status === 'loading') return <LobbySkeleton onBack={goList} />;
   if (status === 'error') return <ErrorBox message={errorMessage} onRetry={load} onBack={goList} />;
-  if (!session) return <ErrorBox message="세션 데이터가 비어있어요." onRetry={load} onBack={goList} />;
+  if (!session)
+    return <ErrorBox message="세션 데이터가 비어있어요." onRetry={load} onBack={goList} />;
 
   const showPreview = camOn && !!mediaStream && mediaStream.getVideoTracks().length > 0;
   const roomLabel = sessionIdInput.trim() ? sessionIdInput.trim() : '-';
@@ -568,7 +572,10 @@ export default function TestInterviewLobbyPage() {
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        <LobbyHeader subtitle={`${session.companyName} · ${session.postingTitle}`} onBack={goList} />
+        <LobbyHeader
+          subtitle={`${session.companyName} · ${session.postingTitle}`}
+          onBack={goList}
+        />
 
         <div className="grid grid-cols-3 gap-6">
           <section className="col-span-1 rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
@@ -586,11 +593,11 @@ export default function TestInterviewLobbyPage() {
               </span>
             </div>
 
-            {/* ✅ sessionId 입력/수정 (이게 메인!) */}
+            {/* ✅ sessionId 입력/수정 */}
             <div className="mt-6 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
               <p className="text-sm font-black">세션 ID</p>
               <p className="mt-1 text-xs font-semibold text-zinc-500">
-                여기서 바꾸면 “면접 시작/입장” 시 그대로 Room으로 전달돼요.
+                여기서 바꾸면 Room 이동 시 그대로 전달돼요.
               </p>
 
               <input
@@ -599,7 +606,7 @@ export default function TestInterviewLobbyPage() {
                 placeholder="예: ses_dummy_test_001"
                 className={[
                   'mt-3 w-full rounded-2xl border bg-white px-4 py-3 text-base font-bold text-zinc-700',
-                  'border-zinc-200 outline-none focus:ring-2 focus:ring-midnight-ink',
+                  'focus:ring-midnight-ink border-zinc-200 outline-none focus:ring-2',
                 ].join(' ')}
               />
 
@@ -629,7 +636,7 @@ export default function TestInterviewLobbyPage() {
 
               {!sessionIdInput.trim() ? (
                 <p className="mt-3 text-xs font-bold text-red-500">
-                  세션 ID가 비어있으면 입장 버튼이 먹통(정상)입니다.
+                  세션 ID가 비어있으면 입장 버튼이 막히는 게 정상입니다.
                 </p>
               ) : null}
             </div>
