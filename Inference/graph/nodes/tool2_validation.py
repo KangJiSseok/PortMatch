@@ -21,24 +21,16 @@ def _build_prompt() -> "ChatPromptTemplate":
         "- If the candidate describes market expansion, partnerships, or general business strategy rather than a project,\n"
         "  mark is_valid=false.\n"
         "- project_statement must be a single Korean sentence.\n"
-        "- problem must be a single Korean sentence describing a real-world issue, limitation, or goal.\n"
-        "- problem should focus on the situation or need, not on technical implementation details.\n"
-        "- solution must be a single Korean sentence describing how the problem was addressed.\n"
-        "- solution should explicitly mention the technologies used and what was implemented, "
-        "using patterns like \"~을 활용하여 ~ 구현/개발\" when possible.\n"
-        "- tech must be a list of short strings (technology names only), preferably in English.\n"
-        "- source_type must be one of the following (exactly as written): "
-        "Official Company Website; Official Recruitment / Job Posting Pages; "
-        "Trusted News Articles; Regulatory Filings & Financial Disclosures; "
-        "Official Product / Service Pages; Official Social Media Channels; "
-        "Patents & Academic Publications.\n"
-        "- If you cannot infer a valid source_type, use \"Unknown\" and set is_valid=false.\n"
-        "- If support is weak, prefer empty problem/solution or cautious wording like \"...수행한 것으로 보입니다.\".\n"
-        "- Preserve the input order.\n"
+        "- domain must be a short Korean category label.\n"
+        "- problem/solution must be short Korean phrases.\n"
+        "- tech must be a list of short strings.\n"
+        "- If evidence is weak, use cautious wording like "
+        "\"...수행한 것으로 보입니다.\".\n"
         "Return JSON only. No prose.\n"
         "Output schema:\n"
         "[{{"
         "\"project_statement\": str,"
+        "\"domain\": str,"
         "\"problem\": str,"
         "\"solution\": str,"
         "\"tech\": [str],"
@@ -287,6 +279,7 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
         anchor_name = str(project.get("name", ""))
         llm_item = parsed[idx] if idx < len(parsed) else {}
         project_statement = str(llm_item.get("project_statement", "")).strip()
+        domain = str(llm_item.get("domain", "")).strip()
         problem = str(llm_item.get("problem", "")).strip()
         solution = str(llm_item.get("solution", "")).strip()
         tech = _normalize_tech(llm_item.get("tech"))
@@ -319,6 +312,7 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
                 "source_unknown": candidate_unknown,
                 # Tool2 provides the real, human-readable statement.
                 "project_statement": project_statement,
+                "domain": domain,
                 "problem": problem,
                 "solution": solution,
                 "tech": tech,
