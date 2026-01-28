@@ -30,13 +30,11 @@ public class JobPostingServiceImpl implements JobPostingService {
 
     @Override
     @Transactional
-    public void saveJobPosting(JobPostingDto dto) {
-        // 기업이 없는 경우 USER_NOT_FOUND (또는 COMPANY_NOT_FOUND 추가해서 사용)
+    public JobPostingEntity saveJobPosting(JobPostingDto dto) { // void -> Entity로 변경
         Company company = jobCompaniesRepository.findByCid(dto.getCid())
                 .orElseThrow(() -> new BusinessException(ResponseCode.USER_NOT_FOUND));
 
-        JobPostingEntity entity = JobPostingEntity.builder()
-                .id(dto.getId())
+        JobPostingEntity.JobPostingEntityBuilder builder = JobPostingEntity.builder()
                 .title(dto.getTitle())
                 .active(dto.getActive())
                 .startDate(dto.getStartDate())
@@ -44,29 +42,30 @@ public class JobPostingServiceImpl implements JobPostingService {
                 .company(company)
                 .detail(dto.getDetail())
                 .jobType(dto.getJobType())
-                .vcnt(dto.getVcnt())
-                .build();
+                .vcnt(dto.getVcnt());
 
-        jobPostingRepository.save(entity);
+        if (dto.getId() != null && dto.getId() > 0) {
+            builder.id(dto.getId());
+        }
+
+        JobPostingEntity entity = builder.build();
+        return jobPostingRepository.save(entity); // 저장된 객체를 반환!
     }
 
     @Override
     @Transactional
     public void saveJobPostingWithStacks(JobPostingDto dto) {
-        saveJobPosting(dto);
+        // 1. 저장된 엔티티를 직접 받아온다! (DB가 생성한 ID가 들어있음)
+        JobPostingEntity jobPosting = saveJobPosting(dto);
 
-        // 공고가 안 만들어졌다면 서버 에러 혹은 데이터 누락 에러
-        JobPostingEntity jobPosting = jobPostingRepository.findById(dto.getId())
-                .orElseThrow(() -> new BusinessException(ResponseCode.INTERNAL_SERVER_ERROR));
-
+        // 2. 이제 다시 조회할 필요 없이 바로 사용하면 돼!
         if (dto.getStackIds() != null) {
             for (Long sId : dto.getStackIds()) {
-                // 스택 ID가 잘못된 경우 INVALID_PARAMETER 활용
                 TechStackEntity techStack = techStackRepository.findById(sId)
                         .orElseThrow(() -> new BusinessException(ResponseCode.INVALID_PARAMETER));
 
                 PostingStackEntity psEntity = PostingStackEntity.builder()
-                        .jobPosting(jobPosting)
+                        .jobPosting(jobPosting) // 여기서 사용!
                         .techStack(techStack)
                         .build();
 
@@ -108,7 +107,7 @@ public class JobPostingServiceImpl implements JobPostingService {
     }
 
     @Override
-    public JobPostingDto getJobDetail(String id) {
+    public JobPostingDto getJobDetail(Long id) {
         // 기존의 throws Exception을 제거하고 BusinessException으로 통일!
         return jobPostingRepository.findById(id)
                 .map(this::convertToDto)
@@ -117,7 +116,7 @@ public class JobPostingServiceImpl implements JobPostingService {
 
     @Override
     @Transactional
-    public void deleteJobPosting(String id) {
+    public void deleteJobPosting(Long id) {
         // 삭제 전 존재 여부 체크 (선택사항이나 권장함)
         if (!jobPostingRepository.existsById(id)) {
             throw new BusinessException(ResponseCode.NOT_FOUND);
@@ -127,7 +126,7 @@ public class JobPostingServiceImpl implements JobPostingService {
 
     @Override
     @Transactional
-    public void updateViewCount(String id) {
+    public void updateViewCount(Long id) {
         // 수정할 대상이 없으면 조용히 넘어가거나 에러를 던질 수 있어
         JobPostingEntity entity = jobPostingRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));

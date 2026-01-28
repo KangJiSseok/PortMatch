@@ -40,7 +40,7 @@ public class JobPostingController {
     })
     @GetMapping("/{id}")
     public BaseApiResponse<JobPostingDto> getJobDetail(
-            @Parameter(description = "공고 ID", example = "job_001") @PathVariable("id") String id) {
+            @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long id) {
         log.info("공고 상세 조회 요청 - ID: {}", id);
 
         // 서비스 내부에서 BusinessException을 던지므로 try-catch가 필요 없음!
@@ -69,7 +69,7 @@ public class JobPostingController {
     @Operation(summary = "공고 수정", description = "기존 공고의 내용을 수정합니다.")
     @PutMapping("/{id}")
     public BaseApiResponse<String> updateJob(
-            @PathVariable String id, @RequestBody JobPostingDto dto) {
+            @PathVariable Long id, @RequestBody JobPostingDto dto) {
         log.info("공고 수정 요청 - ID: {}", id);
         dto.setId(id);
         jobPostingService.saveJobPosting(dto);
@@ -78,7 +78,7 @@ public class JobPostingController {
 
     @Operation(summary = "공고 삭제", description = "공고 ID를 통해 해당 공고를 삭제합니다.")
     @DeleteMapping("/{id}")
-    public BaseApiResponse<String> deleteJob(@PathVariable String id) {
+    public BaseApiResponse<String> deleteJob(@PathVariable Long id) {
         log.info("공고 삭제 요청 - ID: {}", id);
         jobPostingService.deleteJobPosting(id);
         return BaseApiResponse.ok("공고가 삭제되었습니다.");

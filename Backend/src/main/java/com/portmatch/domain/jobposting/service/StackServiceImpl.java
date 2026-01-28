@@ -60,7 +60,7 @@ public class StackServiceImpl implements StackService {
 
     // 3. 특정 공고에 포함된 스택 리스트 조회
     @Override
-    public List<TechStackDto> getPostingStacks(String postingId) {
+    public List<TechStackDto> getPostingStacks(Long postingId) {
         log.info("공고별 스택 조회 요청 - ID: {}", postingId);
 
         List<PostingStackEntity> entities = postingStackRepository.findByJobPostingId(postingId);
