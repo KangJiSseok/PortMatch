@@ -84,6 +84,7 @@ public class PortfolioEmbeddingService {
 
             String content = buildProjectEmbeddingText(
                     p.getName(),
+                    p.getDomain(),
                     p.getProblem(),
                     p.getSolution(),
                     techs
@@ -94,6 +95,9 @@ public class PortfolioEmbeddingService {
 
             int projectIdx = textsToEmbed.size();
             textsToEmbed.add(buildFieldEmbeddingText("project", p.getName()));
+
+            int domainIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("domain", p.getDomain()));
 
             int problemIdx = textsToEmbed.size();
             textsToEmbed.add(buildFieldEmbeddingText("problem", p.getProblem()));
@@ -106,6 +110,7 @@ public class PortfolioEmbeddingService {
 
             embeddingIndices.add(new FieldEmbeddingIndices(
                     projectIdx,
+                    domainIdx,
                     problemIdx,
                     solutionIdx,
                     techIdx
@@ -136,6 +141,7 @@ public class PortfolioEmbeddingService {
             FieldMissingFlags flags = missingFlags.get(i);
 
             String projectVector = toVectorString(resp.vectors().get(indices.projectIdx()));
+            String domainVector = toVectorString(resp.vectors().get(indices.domainIdx()));
             String problemVector = toVectorString(resp.vectors().get(indices.problemIdx()));
             String solutionVector = toVectorString(resp.vectors().get(indices.solutionIdx()));
             String techVector = toVectorString(resp.vectors().get(indices.techIdx()));
@@ -153,6 +159,7 @@ public class PortfolioEmbeddingService {
                     content,
                     contentHash,
                     projectVector,
+                    domainVector,
                     problemVector,
                     solutionVector,
                     techVector,
@@ -165,6 +172,7 @@ public class PortfolioEmbeddingService {
 
     private record FieldEmbeddingIndices(
             int projectIdx,
+            int domainIdx,
             int problemIdx,
             int solutionIdx,
             int techIdx
@@ -180,6 +188,7 @@ public class PortfolioEmbeddingService {
 
     private String buildProjectEmbeddingText(
             String projectName,
+            String domain,
             String problem,
             String solution,
             List<String> techs
@@ -190,6 +199,7 @@ public class PortfolioEmbeddingService {
 
         return ""
                 + "[프로젝트명] " + safe(projectName) + "\n"
+                + "[???] " + safe(domain) + "\n"
                 + "[문제] " + safe(problem) + "\n"
                 + "[해결] " + safe(solution) + "\n"
                 + "[기술] " + techStr;
