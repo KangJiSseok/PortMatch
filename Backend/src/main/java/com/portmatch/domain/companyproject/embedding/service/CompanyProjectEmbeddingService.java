@@ -76,6 +76,7 @@ public class CompanyProjectEmbeddingService {
             String content = buildProjectEmbeddingText(
                     companyName,
                     p.getName(),
+                    p.getDomain(),
                     p.getProblem(),
                     p.getSolution(),
                     techs
@@ -85,6 +86,9 @@ public class CompanyProjectEmbeddingService {
 
             int projectIdx = textsToEmbed.size();
             textsToEmbed.add(buildFieldEmbeddingText("project", p.getName()));
+
+            int domainIdx = textsToEmbed.size();
+            textsToEmbed.add(buildFieldEmbeddingText("domain", p.getDomain()));
 
             int problemIdx = textsToEmbed.size();
             textsToEmbed.add(buildFieldEmbeddingText("problem", p.getProblem()));
@@ -97,6 +101,7 @@ public class CompanyProjectEmbeddingService {
 
             embeddingIndices.add(new FieldEmbeddingIndices(
                     projectIdx,
+                    domainIdx,
                     problemIdx,
                     solutionIdx,
                     techIdx
@@ -126,6 +131,7 @@ public class CompanyProjectEmbeddingService {
             FieldMissingFlags flags = missingFlags.get(i);
 
             String projectVector = toVectorString(resp.vectors().get(indices.projectIdx()));
+            String domainVector = toVectorString(resp.vectors().get(indices.domainIdx()));
             String problemVector = toVectorString(resp.vectors().get(indices.problemIdx()));
             String solutionVector = toVectorString(resp.vectors().get(indices.solutionIdx()));
             String techVector = toVectorString(resp.vectors().get(indices.techIdx()));
@@ -136,6 +142,7 @@ public class CompanyProjectEmbeddingService {
                     projectId,
                     content,
                     projectVector,
+                    domainVector,
                     problemVector,
                     solutionVector,
                     techVector,
@@ -151,6 +158,7 @@ public class CompanyProjectEmbeddingService {
 
     private record FieldEmbeddingIndices(
             int projectIdx,
+            int domainIdx,
             int problemIdx,
             int solutionIdx,
             int techIdx
@@ -167,6 +175,7 @@ public class CompanyProjectEmbeddingService {
     private String buildProjectEmbeddingText(
             String companyName,
             String projectName,
+            String domain,
             String problem,
             String solution,
             List<String> techs
@@ -175,9 +184,10 @@ public class CompanyProjectEmbeddingService {
                 ? "정보 없음"
                 : techs.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
 
-        return ""
+                return ""
                 + "[회사] " + safe(companyName) + "\n"
                 + "[프로젝트명] " + safe(projectName) + "\n"
+                + "[도메인] " + safe(domain) + "\n"
                 + "[문제] " + safe(problem) + "\n"
                 + "[해결] " + safe(solution) + "\n"
                 + "[기술] " + techStr;

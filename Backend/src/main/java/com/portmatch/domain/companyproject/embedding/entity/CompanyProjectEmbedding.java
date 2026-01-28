@@ -37,6 +37,9 @@ public class CompanyProjectEmbedding {
     @Column(name = "project_embedding", columnDefinition = "vector(1536)")
     private String projectEmbedding;
 
+    @Column(name = "domain_embedding", columnDefinition = "vector(1536)")
+    private String domainEmbedding;
+
     @Column(name = "problem_embedding", columnDefinition = "vector(1536)")
     private String problemEmbedding;
 
@@ -67,6 +70,7 @@ public class CompanyProjectEmbedding {
             Long projectId,
             String content,
             String projectEmbedding,
+            String domainEmbedding,
             String problemEmbedding,
             String solutionEmbedding,
             String techEmbedding,
@@ -79,6 +83,7 @@ public class CompanyProjectEmbedding {
         this.projectId = projectId;
         this.content = content;
         this.projectEmbedding = projectEmbedding;
+        this.domainEmbedding = domainEmbedding;
         this.problemEmbedding = problemEmbedding;
         this.solutionEmbedding = solutionEmbedding;
         this.techEmbedding = techEmbedding;
