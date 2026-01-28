@@ -44,6 +44,8 @@ import ScheduleManagementPage from './pages/support/ScheduleManagementPage';
 import InterviewTemplatePage from './pages/support/InterviewTemplatePage';
 import ResumeFeedbackPage from './pages/support/ResumeFeedbackPage';
 import InterviewQuestionGeneratorPage from './pages/support/InterviewQuestionGeneratorPage';
+import InterviewSpeechTimerPage from './pages/support/InterviewSpeechTimerPage';
+import SprintCapacityCalculatorPage from './pages/support/SprintCapacityCalculatorPage';
 
 import NoticePage from './pages/admin/NoticePage';
 import NoticeManagementPage from './pages/admin/NoticeManagementPage';
@@ -285,6 +287,18 @@ const router = createBrowserRouter([
             element: <InterviewTemplatePage />,
           },
           {
+            path: 'speech-timer',
+            element: <InterviewSpeechTimerPage />,
+          },
+          {
+            path: 'sprint-capacity',
+            element: (
+              <AuthGuard mode="COMPANY">
+                <SprintCapacityCalculatorPage />
+              </AuthGuard>
+            ),
+          },
+          {
             path: 'resume-feedback',
             element: (
               <AuthGuard mode="AUTHENTICATED">
@@ -296,7 +310,6 @@ const router = createBrowserRouter([
             path: 'interview-generator',
             element: (
               <AuthGuard mode="COMPANY">
-                {' '}
                 <InterviewQuestionGeneratorPage />
               </AuthGuard>
             ),
