@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .common import EmbeddingsResponse, run_embeddings
+from .gemini_embeddings import EmbeddingsResponse, run_embeddings
 
 router = APIRouter()
 

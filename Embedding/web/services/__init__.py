@@ -1,1 +1,1 @@
-__all__ = []
+"""Service package marker."""
