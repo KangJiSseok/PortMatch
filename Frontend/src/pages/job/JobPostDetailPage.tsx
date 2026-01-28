@@ -1,9 +1,10 @@
 // src/pages/JobPostDetailPage.tsx
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
-import { fetchJobPostDetail, toggleJobPostScrapAsync } from '../../api/jobPosts';
+import { fetchJobPostDetail } from '@/api/jobPost/detail';
+import { fetchScrapCheck, toggleScrap } from '@/api/jobPost/scrap';
 import { useAuthStore } from '@/store/authStore';
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
@@ -12,13 +13,13 @@ type JobPostDetailData = NonNullable<ApiResult>;
 
 // ✅ 타입에 아직 필드 추가 전이어도 TS 에러 안나게 로컬 확장 타입
 type JobPostExtraFields = {
-  career?: string | null; // 신입/경력/무관 등
-  education?: string | null; // 학력무관/대졸(4년) 이상 등
-  employment_type?: string | null; // 정규직/계약직/인턴
-  work_location?: string | null; // 서울 강남구 등
-  salary?: string | null; // 면접 후 결정/회사내규 등
-  work_days?: string | null; // 주 5일(월~금) 등
-  work_hours?: string | null; // 09:00~18:00 등
+  career?: string | null;
+  education?: string | null;
+  employment_type?: string | null;
+  work_location?: string | null;
+  salary?: string | null;
+  work_days?: string | null;
+  work_hours?: string | null;
 };
 
 const underlineEffect =
@@ -241,10 +242,12 @@ function EmptyBox({
 export default function JobPostDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const jobPostId = Number(id);
 
-  // ✅ 여기! store에서 user 가져오기 (MyPageGate랑 동일)
-  const { user } = useAuthStore();
+  const { user, isLoggedIn } = useAuthStore();
+  const uid = user?.userId;
   const isCompanyViewer = user?.role === 'COMPANY';
 
   const [navH, setNavH] = useState(80);
@@ -254,7 +257,15 @@ export default function JobPostDetailPage() {
   const [status, setStatus] = useState<PageStatus>('loading');
   const [errorMessage, setErrorMessage] = useState('공고 정보를 불러오지 못했어요.');
   const [data, setData] = useState<JobPostDetailData | null>(null);
+
   const [scrapPending, setScrapPending] = useState(false);
+
+  const pid = useMemo(() => (Number.isFinite(jobPostId) ? String(jobPostId) : ''), [jobPostId]);
+
+  const goLogin = () => {
+    // ✅ 로그인 후 돌아올 수 있게 state로 현재 경로 같이 넘겨두기
+    navigate('/login', { state: { from: location.pathname } });
+  };
 
   useLayoutEffect(() => {
     const nav = document.getElementById('app-navbar');
@@ -271,27 +282,6 @@ export default function JobPostDetailPage() {
       document.documentElement.style.scrollPaddingTop = prev;
     };
   }, [OFFSET]);
-
-  const handleToggleScrap = async () => {
-    if (!data || scrapPending) return;
-
-    const optimistic = !data.isScrapped;
-    setData((prev) => (prev ? { ...prev, isScrapped: optimistic } : prev));
-
-    setScrapPending(true);
-    try {
-      const confirmed = await toggleJobPostScrapAsync(data.jobPost.id, optimistic);
-      setData((prev) => (prev ? { ...prev, isScrapped: confirmed } : prev));
-    } catch (e) {
-      setData((prev) => (prev ? { ...prev, isScrapped: !optimistic } : prev));
-      // eslint-disable-next-line no-console
-      console.error(e);
-      // eslint-disable-next-line no-alert
-      alert('스크랩 처리 실패! 다시 시도해줘 🥲');
-    } finally {
-      setScrapPending(false);
-    }
-  };
 
   const scrollToId = (sectionId: string) => {
     const el = document.getElementById(sectionId);
@@ -317,8 +307,19 @@ export default function JobPostDetailPage() {
         setData(null);
         return;
       }
+
       setData(res);
       setStatus('success');
+
+      // ✅ 로그인 상태면 스크랩 여부 체크 (쿠키 세션)
+      if (isLoggedIn && uid && pid) {
+        try {
+          const checked = await fetchScrapCheck(uid, pid);
+          setData((prev) => (prev ? { ...prev, isScrapped: checked } : prev));
+        } catch (e) {
+          console.warn('scrap check failed', e);
+        }
+      }
     } catch (err) {
       setStatus('error');
       setData(null);
@@ -329,7 +330,43 @@ export default function JobPostDetailPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, isLoggedIn, uid]);
+
+  const handleToggleScrap = async () => {
+    if (!data || scrapPending) return;
+
+    if (!isLoggedIn || !uid) {
+      // 버튼 자체가 안 보이지만, 혹시 모를 방어코드
+      alert('로그인이 필요합니다.');
+      goLogin();
+      return;
+    }
+    if (!pid) return;
+
+    const optimistic = !data.isScrapped;
+    setData((prev) => (prev ? { ...prev, isScrapped: optimistic } : prev));
+
+    setScrapPending(true);
+    try {
+      const confirmed = await toggleScrap(uid, pid);
+      setData((prev) => (prev ? { ...prev, isScrapped: confirmed } : prev));
+    } catch (e) {
+      setData((prev) => (prev ? { ...prev, isScrapped: !optimistic } : prev));
+      console.error(e);
+      alert('스크랩 처리 실패! 다시 시도해줘 🥲');
+    } finally {
+      setScrapPending(false);
+    }
+  };
+
+  const requireLoginThen = (next: () => void) => {
+    if (!isLoggedIn || !uid) {
+      alert('로그인이 필요합니다.');
+      goLogin();
+      return;
+    }
+    next();
+  };
 
   if (status === 'loading') return <DetailSkeleton onBack={() => navigate(-1)} />;
 
@@ -439,33 +476,36 @@ export default function JobPostDetailPage() {
                   마감 {formatYmdDot(jobPost.deadline)}
                 </span>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={handleToggleScrap}
-                  disabled={scrapPending}
-                  aria-label={data.isScrapped ? '스크랩 해제' : '스크랩'}
-                  icon={
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill={data.isScrapped ? 'currentColor' : 'none'}
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                    >
-                      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
-                    </svg>
-                  }
-                  className={`ml-1 rounded-xl px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
-                    data.isScrapped
-                      ? 'border-point-blue/30 bg-point-blue/10 text-point-blue hover:bg-point-blue/15 hover:text-point-blue'
-                      : 'border-soft-pebble text-slate-gray hover:border-midnight-ink hover:text-midnight-ink bg-white'
-                  }`}
-                >
-                  {scrapPending ? '처리중' : '스크랩'}
-                </Button>
+                {/* ✅ 로그인 안 했으면 스크랩 버튼 숨김 */}
+                {isLoggedIn && uid ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="md"
+                    onClick={handleToggleScrap}
+                    disabled={scrapPending}
+                    aria-label={data.isScrapped ? '스크랩 해제' : '스크랩'}
+                    icon={
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill={data.isScrapped ? 'currentColor' : 'none'}
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
+                        <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+                      </svg>
+                    }
+                    className={`ml-1 rounded-xl px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
+                      data.isScrapped
+                        ? 'border-point-blue/30 bg-point-blue/10 text-point-blue hover:bg-point-blue/15 hover:text-point-blue'
+                        : 'border-soft-pebble text-slate-gray hover:border-midnight-ink hover:text-midnight-ink bg-white'
+                    }`}
+                  >
+                    {scrapPending ? '처리중' : '스크랩'}
+                  </Button>
+                ) : null}
               </div>
             </div>
 
@@ -662,7 +702,9 @@ export default function JobPostDetailPage() {
                         size="lg"
                         className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
                         onClick={() =>
-                          window.open(data.external_apply_url!, '_blank', 'noreferrer')
+                          requireLoginThen(() => {
+                            window.open(data.external_apply_url!, '_blank', 'noreferrer');
+                          })
                         }
                       >
                         외부 페이지로 지원
@@ -673,7 +715,11 @@ export default function JobPostDetailPage() {
                         variant="blue"
                         size="lg"
                         className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
-                        onClick={() => navigate(`/job-posts/${jobPost.id}/apply`)}
+                        onClick={() =>
+                          requireLoginThen(() => {
+                            navigate(`/job-posts/${jobPost.id}/apply`);
+                          })
+                        }
                         disabled={!canApply}
                       >
                         지원하기
