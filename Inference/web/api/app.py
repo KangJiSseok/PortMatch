@@ -41,7 +41,7 @@ def get_structured_projects(
     return CompanyProjectAnalysisResponse(projects=structured)
 
 # embedding
-# ----- ?�베??(Spring???�스??만들?�서 ?�기???�짐) -----
+# ----- ?ë² ??(Spring???ì¤??ë§ë¤?´ì ?¬ê¸°???ì§) -----
 class EmbeddingsRequest(BaseModel):
     texts: List[str] = Field(..., min_length=1)
     model: Optional[str] = None
@@ -55,9 +55,9 @@ class EmbeddingsResponse(BaseModel):
 
 @app.post("/embeddings", response_model=EmbeddingsResponse)
 def embeddings(payload: EmbeddingsRequest) -> EmbeddingsResponse:
-    # ========== ?�버�?==========
+    # ========== ?ë²ê¹?==========
     print("=" * 60)
-    print("?�� EMBEDDINGS REQUEST RECEIVED")
+    print("?µ EMBEDDINGS REQUEST RECEIVED")
     print(f"Payload: {payload}")
     print(f"Texts: {payload.texts}")
     print(f"Model: {payload.model}")
@@ -69,17 +69,23 @@ def embeddings(payload: EmbeddingsRequest) -> EmbeddingsResponse:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not set")
 
     model = (payload.model or os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")).strip()
+    output_dim = int(os.getenv("GEMINI_OUTPUT_DIMENSIONS", "1536"))
 
     texts = [(t or "").strip() for t in payload.texts]
     if any(not t for t in texts):
         raise HTTPException(status_code=400, detail="texts contains empty string")
 
     try:
-        print(f"?�� Calling Gemini API with model: {model}")
-        vectors = embed_texts(api_key=gemini_key, texts=texts, model=model)
-        print(f"?�� Success! Got {len(vectors)} vectors")
+        print(f"?¢ Calling Gemini API with model: {model}")
+        vectors = embed_texts(
+            api_key=gemini_key,
+            texts=texts,
+            model=model,
+            output_dimensionality=output_dim,
+        )
+        print(f"?¢ Success! Got {len(vectors)} vectors")
     except Exception as e:
-        print(f"?�� Gemini API Error: {type(e).__name__}: {e}")
+        print(f"?´ Gemini API Error: {type(e).__name__}: {e}")
         raise HTTPException(status_code=502, detail=f"embedding failed: {type(e).__name__}: {e}")
 
     if not vectors or not vectors[0]:
