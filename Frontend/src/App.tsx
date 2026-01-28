@@ -42,6 +42,8 @@ import SalaryCalculatorPage from './pages/support/SalaryCalculatorPage';
 import ScheduleManagementPage from './pages/support/ScheduleManagementPage';
 import InterviewTemplatePage from './pages/support/InterviewTemplatePage';
 
+import NoticePage from './pages/admin/NoticePage';
+
 import { ProtectedRoute, PublicRoute, CompanyRoute } from './routes/RouteGuard';
 import MypageGate from './routes/MyPageGate';
 import InterviewListGate from './routes/InterviewListGate';
@@ -274,6 +276,10 @@ const router = createBrowserRouter([
       {
         path: 'support/interview-template',
         element: <InterviewTemplatePage />,
+      },
+      {
+        path: 'support/notices',
+        element: <NoticePage />,
       },
       {
         path: 'design',
