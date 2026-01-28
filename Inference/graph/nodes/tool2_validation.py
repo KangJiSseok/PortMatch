@@ -19,7 +19,7 @@ def _build_prompt() -> "ChatPromptTemplate":
         "- support_type must be one of: explicit, implicit, none.\n"
         "- evidence.source must be one of: homepage, press, report, job_posting.\n"
         "- project_statement must be a single Korean sentence.\n"
-        "- domain must be a single Korean sentence describing the domain.\n"
+        "- domain must be a short Korean category label.\n"
         "- problem/solution must be short Korean phrases.\n"
         "- tech must be a list of short, concrete technology terms (e.g., Spring Boot, Node.js, React, Python, AWS, PostgreSQL, Kafka).\n"
         "- Do NOT include abstract domain words like \"매칭\", \"플랫폼\", \"서비스\", \"AI 코칭\", \"재능 거래\".\n"
