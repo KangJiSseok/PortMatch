@@ -105,6 +105,7 @@ public class PortfolioAnalysisService {
         List<PortfolioAnalysisResponse.Project> projects = analysis.getProjects().stream()
                 .map(project -> new PortfolioAnalysisResponse.Project(
                         project.getName(),
+                        project.getDomain(),
                         project.getProblem(),
                         project.getSolution(),
                         project.getTechs().stream()
@@ -144,6 +145,7 @@ public class PortfolioAnalysisService {
                     PortfolioAnalysisProject entity = new PortfolioAnalysisProject(
                             analysis,
                             project.name(),
+                            project.domain(),
                             project.problem(),
                             project.solution()
                     );
