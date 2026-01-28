@@ -40,11 +40,11 @@ interface QuickMenu {
 }
 
 const USER_QUICK_MENUS: QuickMenu[] = [
-  { id: 1, title: 'AI 매칭 리포트', icon: '📊', color: 'bg-blue-50' },
+  { id: 1, title: '스피치 타이머', icon: '⏱️', color: 'bg-blue-50', link: '/support/speech-timer' },
   { id: 2, title: '실수령액 계산기', icon: '💰', color: 'bg-emerald-50', link: '/support/salary' },
   {
     id: 3,
-    title: '예상 면접 질문 정리',
+    title: '면접 예상 질문 템플릿',
     icon: '📋',
     color: 'bg-indigo-50',
     link: '/support/interview-template',
@@ -61,7 +61,13 @@ const USER_QUICK_MENUS: QuickMenu[] = [
 ];
 
 const COMPANY_QUICK_MENUS: QuickMenu[] = [
-  { id: 1, title: 'AI 인재 매칭 리포트', icon: '🎯', color: 'bg-blue-50' },
+  {
+    id: 1,
+    title: '스프린트 캐파 계산기',
+    icon: '🔢',
+    color: 'bg-blue-50',
+    link: '/support/sprint-capacity',
+  },
   { id: 2, title: '실수령액 계산기', icon: '💰', color: 'bg-emerald-50', link: '/support/salary' },
   {
     id: 3,
