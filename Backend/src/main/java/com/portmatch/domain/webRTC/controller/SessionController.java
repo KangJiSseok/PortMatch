@@ -110,4 +110,30 @@ public class SessionController {
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
+
+    /**
+     * OpenVidu 서버에서 날아오는 Webhook 처리
+     * 세션이 자동으로 종료(sessionDestroyed)될 때 DB 상태를 업데이트함
+     */
+    /**
+     * OpenVidu Webhook 처리
+     * 주의: yml에 적은 주소(http://.../api/webhook)와 일치해야 함!
+     */
+    @PostMapping(value = "/webhook") // @RequestMapping이 /api/interview 라면 최종 주소는 /api/interview/webhook 이 됨!
+    @Transactional
+    public ResponseEntity<Void> handleOpenViduWebhook(@RequestBody Map<String, Object> callbackData) {
+        String event = (String) callbackData.get("event");
+
+        if ("sessionDestroyed".equals(event)) {
+            String sessionId = (String) callbackData.get("sessionId");
+            System.out.println("WebHook 수신 - 세션 종료됨: " + sessionId);
+
+            interviewRepository.findBySessionId(sessionId).ifPresent(session -> {
+                session.finish();
+                interviewRepository.save(session);
+            });
+        }
+
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }
