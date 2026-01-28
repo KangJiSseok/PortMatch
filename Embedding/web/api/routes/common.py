@@ -4,7 +4,7 @@ import os
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
-from web.services.openai_embeddings import embed_texts
+from web.services.gemini_embeddings import embed_texts
 
 
 class EmbeddingsRequest(BaseModel):
@@ -19,19 +19,31 @@ class EmbeddingsResponse(BaseModel):
 
 
 def run_embeddings(texts: List[str], model: Optional[str]) -> EmbeddingsResponse:
-    openai_key = os.getenv("OPENAI_API_KEY")
-    if not openai_key:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY is not set")
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not set")
 
-    resolved_model = (model or os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")).strip()
+    requested_model = (model or "").strip()
+    resolved_model = (requested_model or os.getenv("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")).strip()
+    print(
+        f"[embeddings] requested_model={requested_model or None} "
+        f"resolved_model={resolved_model} texts={len(texts)}"
+    )
 
     normalized = [(t or "").strip() for t in texts]
     if not normalized or any(not t for t in normalized):
         raise HTTPException(status_code=400, detail="texts contains empty string")
 
+    output_dim = int(os.getenv("GEMINI_OUTPUT_DIMENSIONS", "1536"))
     try:
-        vectors = embed_texts(api_key=openai_key, texts=normalized, model=resolved_model)
+        vectors = embed_texts(
+            api_key=gemini_key,
+            texts=normalized,
+            model=resolved_model,
+            output_dimensionality=output_dim,
+        )
     except Exception as exc:
+        print(f"[embeddings][error] {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=502, detail=f"embedding failed: {type(exc).__name__}: {exc}") from exc
 
     if not vectors or not vectors[0]:
