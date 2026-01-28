@@ -1,6 +1,6 @@
 // src/pages/JobPostDetailPage.tsx
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
 import { fetchJobPostDetail } from '@/api/jobPost/detail';
@@ -242,6 +242,8 @@ function EmptyBox({
 export default function JobPostDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const jobPostId = Number(id);
 
   const { user, isLoggedIn } = useAuthStore();
@@ -259,6 +261,11 @@ export default function JobPostDetailPage() {
   const [scrapPending, setScrapPending] = useState(false);
 
   const pid = useMemo(() => (Number.isFinite(jobPostId) ? String(jobPostId) : ''), [jobPostId]);
+
+  const goLogin = () => {
+    // ✅ 로그인 후 돌아올 수 있게 state로 현재 경로 같이 넘겨두기
+    navigate('/login', { state: { from: location.pathname } });
+  };
 
   useLayoutEffect(() => {
     const nav = document.getElementById('app-navbar');
@@ -329,7 +336,9 @@ export default function JobPostDetailPage() {
     if (!data || scrapPending) return;
 
     if (!isLoggedIn || !uid) {
-      alert('로그인 후 스크랩할 수 있어요 🥲');
+      // 버튼 자체가 안 보이지만, 혹시 모를 방어코드
+      alert('로그인이 필요합니다.');
+      goLogin();
       return;
     }
     if (!pid) return;
@@ -348,6 +357,15 @@ export default function JobPostDetailPage() {
     } finally {
       setScrapPending(false);
     }
+  };
+
+  const requireLoginThen = (next: () => void) => {
+    if (!isLoggedIn || !uid) {
+      alert('로그인이 필요합니다.');
+      goLogin();
+      return;
+    }
+    next();
   };
 
   if (status === 'loading') return <DetailSkeleton onBack={() => navigate(-1)} />;
@@ -458,33 +476,36 @@ export default function JobPostDetailPage() {
                   마감 {formatYmdDot(jobPost.deadline)}
                 </span>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={handleToggleScrap}
-                  disabled={scrapPending}
-                  aria-label={data.isScrapped ? '스크랩 해제' : '스크랩'}
-                  icon={
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill={data.isScrapped ? 'currentColor' : 'none'}
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                    >
-                      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
-                    </svg>
-                  }
-                  className={`ml-1 rounded-xl px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
-                    data.isScrapped
-                      ? 'border-point-blue/30 bg-point-blue/10 text-point-blue hover:bg-point-blue/15 hover:text-point-blue'
-                      : 'border-soft-pebble text-slate-gray hover:border-midnight-ink hover:text-midnight-ink bg-white'
-                  }`}
-                >
-                  {scrapPending ? '처리중' : '스크랩'}
-                </Button>
+                {/* ✅ 로그인 안 했으면 스크랩 버튼 숨김 */}
+                {isLoggedIn && uid ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="md"
+                    onClick={handleToggleScrap}
+                    disabled={scrapPending}
+                    aria-label={data.isScrapped ? '스크랩 해제' : '스크랩'}
+                    icon={
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill={data.isScrapped ? 'currentColor' : 'none'}
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
+                        <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+                      </svg>
+                    }
+                    className={`ml-1 rounded-xl px-3 py-2 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
+                      data.isScrapped
+                        ? 'border-point-blue/30 bg-point-blue/10 text-point-blue hover:bg-point-blue/15 hover:text-point-blue'
+                        : 'border-soft-pebble text-slate-gray hover:border-midnight-ink hover:text-midnight-ink bg-white'
+                    }`}
+                  >
+                    {scrapPending ? '처리중' : '스크랩'}
+                  </Button>
+                ) : null}
               </div>
             </div>
 
@@ -681,7 +702,9 @@ export default function JobPostDetailPage() {
                         size="lg"
                         className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
                         onClick={() =>
-                          window.open(data.external_apply_url!, '_blank', 'noreferrer')
+                          requireLoginThen(() => {
+                            window.open(data.external_apply_url!, '_blank', 'noreferrer');
+                          })
                         }
                       >
                         외부 페이지로 지원
@@ -692,7 +715,11 @@ export default function JobPostDetailPage() {
                         variant="blue"
                         size="lg"
                         className="w-full rounded-2xl py-4 text-base font-black shadow-lg"
-                        onClick={() => navigate(`/job-posts/${jobPost.id}/apply`)}
+                        onClick={() =>
+                          requireLoginThen(() => {
+                            navigate(`/job-posts/${jobPost.id}/apply`);
+                          })
+                        }
                         disabled={!canApply}
                       >
                         지원하기
