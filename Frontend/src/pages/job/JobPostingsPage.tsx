@@ -1,5 +1,8 @@
+// JobPostingsPage.tsx (수정본)
+// ✅ 변경점: stackId -> stackName 표시 + 스택 필터 AND -> OR + 절대 URL 기반 스택 조회 훅 사용
+
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Button from '@/components/Button/Button';
@@ -8,6 +11,7 @@ import EmptyState from '@/components/states/EmptyState';
 import ErrorState from '@/components/states/ErrorState';
 
 import { useJobPostings } from '@/hooks/useJobPostings';
+import { useStackNames } from '@/hooks/useStackNames';
 import type { JobPostingDto } from '@/types/backendJobPosting';
 
 type Sort = 'latest' | 'deadline';
@@ -15,7 +19,7 @@ type DeadlineFilter = 'all' | 'urgent' | 'week' | 'relaxed' | 'always';
 type ExperienceFilter = 'all' | 'junior' | '1+' | '3+' | '5+';
 
 type JobPosting = {
-  id: number; 
+  id: number;
   title: string;
   companyId: string; // cid
   company: string; // corpName
@@ -129,7 +133,6 @@ function sortLatest(a: JobPosting, b: JobPosting) {
   return b.id - a.id;
 }
 
-
 // -------------------- CollapsibleSection --------------------
 type CollapsibleSectionProps = {
   title: string;
@@ -141,7 +144,15 @@ type CollapsibleSectionProps = {
   hasDivider?: boolean;
 };
 
-function CollapsibleSection({ title, subtitle, right, isOpen, onToggle, children, hasDivider = true }: CollapsibleSectionProps) {
+function CollapsibleSection({
+  title,
+  subtitle,
+  right,
+  isOpen,
+  onToggle,
+  children,
+  hasDivider = true,
+}: CollapsibleSectionProps) {
   return (
     <section className="py-5">
       <button
@@ -151,7 +162,9 @@ function CollapsibleSection({ title, subtitle, right, isOpen, onToggle, children
       >
         <div className="min-w-0">
           <h3 className="text-midnight-ink text-base font-black tracking-tight">{title}</h3>
-          {subtitle && <p className="text-slate-gray mt-1 text-xs font-bold italic opacity-60">{subtitle}</p>}
+          {subtitle && (
+            <p className="text-slate-gray mt-1 text-xs font-bold italic opacity-60">{subtitle}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -235,7 +248,7 @@ function FilterPanel({
 
       <CollapsibleSection
         title="기술 스택"
-        subtitle="스택 ID 기준으로 필터링해요."
+        subtitle="기술 스택을 선택하세요"
         isOpen={openStacks}
         onToggle={() => setOpenStacks((v) => !v)}
         right={selectedStacksBadge}
@@ -283,7 +296,10 @@ function FilterPanel({
                 size="sm"
                 fullWidth
                 onClick={() => onChangeDeadline(option.value)}
-                className={['!justify-start !rounded-xl', active ? '!shadow-sm hover:!opacity-100' : ''].join(' ')}
+                className={[
+                  '!justify-start !rounded-xl',
+                  active ? '!shadow-sm hover:!opacity-100' : '',
+                ].join(' ')}
               >
                 {option.label}
               </Button>
@@ -315,7 +331,10 @@ function FilterPanel({
                 size="sm"
                 fullWidth
                 onClick={() => onChangeExperience(option.value)}
-                className={['!justify-start !rounded-xl', active ? '!shadow-sm hover:!opacity-100' : ''].join(' ')}
+                className={[
+                  '!justify-start !rounded-xl',
+                  active ? '!shadow-sm hover:!opacity-100' : '',
+                ].join(' ')}
               >
                 {option.label}
               </Button>
@@ -398,13 +417,15 @@ function Pagination({ page, totalPages, onChangePage }: PaginationProps) {
               onClick={() => onChangePage(p)}
               className={[
                 'px-1 text-sm font-black transition-colors',
-                p === page ? 'text-midnight-ink underline underline-offset-4' : 'text-slate-gray hover:text-midnight-ink',
+                p === page
+                  ? 'text-midnight-ink underline underline-offset-4'
+                  : 'text-slate-gray hover:text-midnight-ink',
               ].join(' ')}
               aria-current={p === page ? 'page' : undefined}
             >
               {p}
             </button>
-          )
+          ),
         )}
       </nav>
 
@@ -425,8 +446,19 @@ function Pagination({ page, totalPages, onChangePage }: PaginationProps) {
 
 // -------------------- Page --------------------
 function JobPostingsPage() {
+  const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useJobPostings();
+
   const SERVER_JOBS: JobPosting[] = useMemo(() => (data?.data ?? []).map(mapDtoToUiJob), [data]);
+
+  // ✅ 화면에 등장하는 stackIds를 전부 모아서 스택 이름을 비동기로 캐싱
+  const allStackIdsOnPage = useMemo(() => {
+    const ids: number[] = [];
+    SERVER_JOBS.forEach((j) => (j.stackIds ?? []).forEach((id) => ids.push(id)));
+    return ids;
+  }, [SERVER_JOBS]);
+
+  const stackNameMap = useStackNames(allStackIdsOnPage);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -459,14 +491,14 @@ function JobPostingsPage() {
 
   const listTopRef = useRef<HTMLDivElement | null>(null);
 
-  // ✅ 서버 데이터 기반으로 스택 옵션 만들기 (이름은 임시로 #id)
+  // ✅ 서버 데이터 기반으로 스택 옵션 만들기 (id -> stackName 표시)
   const ALL_STACK_OPTIONS: StackOption[] = useMemo(() => {
     const set = new Set<number>();
     SERVER_JOBS.forEach((j) => (j.stackIds ?? []).forEach((id) => set.add(id)));
     return Array.from(set)
       .sort((a, b) => a - b)
-      .map((id) => ({ id, name: `#${id}` }));
-  }, [SERVER_JOBS]);
+      .map((id) => ({ id, name: stackNameMap[id] ?? `#${id}` }));
+  }, [SERVER_JOBS, stackNameMap]);
 
   useEffect(() => {
     const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement | null;
@@ -519,7 +551,8 @@ function JobPostingsPage() {
     setParams(buildParams({ nextStackIds: next, nextPage: 1 }));
   };
 
-  const changeDeadlineFilter = (filter: DeadlineFilter) => setParams(buildParams({ nextDeadline: filter, nextPage: 1 }));
+  const changeDeadlineFilter = (filter: DeadlineFilter) =>
+    setParams(buildParams({ nextDeadline: filter, nextPage: 1 }));
   const changeExperienceFilter = (filter: ExperienceFilter) =>
     setParams(buildParams({ nextExperience: filter, nextPage: 1 }));
 
@@ -545,9 +578,11 @@ function JobPostingsPage() {
       filtered = filtered.filter((job) => job.title.toLowerCase().includes(k));
     }
 
-    // ✅ 스택 필터: stackIds(number[]) 정석
+    // ✅ 스택 필터: OR (선택한 것 중 하나라도 포함)
     if (selectedStackIds.length > 0) {
-      filtered = filtered.filter((job) => selectedStackIds.every((id) => (job.stackIds ?? []).includes(id)));
+      filtered = filtered.filter((job) =>
+        selectedStackIds.some((id) => (job.stackIds ?? []).includes(id)),
+      );
     }
 
     if (deadlineFilter !== 'all') {
@@ -556,7 +591,8 @@ function JobPostingsPage() {
         const n = parseDday(d);
 
         if (deadlineFilter === 'always') return d === '상시';
-        if (deadlineFilter === 'urgent') return d === '오늘마감' || (n !== null && n >= 1 && n <= 3);
+        if (deadlineFilter === 'urgent')
+          return d === '오늘마감' || (n !== null && n >= 1 && n <= 3);
         if (deadlineFilter === 'week') return n !== null && n >= 4 && n <= 7;
         if (deadlineFilter === 'relaxed') return n !== null && n >= 8;
         return true;
@@ -567,7 +603,8 @@ function JobPostingsPage() {
       filtered = filtered.filter((job) => {
         const type = job.type;
         if (experienceFilter === 'junior') return type.includes('신입');
-        if (experienceFilter === '1+') return type.includes('경력') || /[1-9]년/.test(type) || type.includes('5년↑');
+        if (experienceFilter === '1+')
+          return type.includes('경력') || /[1-9]년/.test(type) || type.includes('5년↑');
         if (experienceFilter === '3+') return /[3-9]년/.test(type) || type.includes('5년↑');
         if (experienceFilter === '5+') return /[5-9]년/.test(type) || type.includes('5년↑');
         return true;
@@ -732,7 +769,7 @@ function JobPostingsPage() {
                                   }}
                                 />
                               ) : (
-                                <span className="text-xl font-black text-slate-gray">{job.company?.[0] ?? '?'}</span>
+                                <span className="text-slate-gray text-xl font-black">{job.company?.[0] ?? '?'}</span>
                               )}
                             </div>
 
@@ -755,10 +792,14 @@ function JobPostingsPage() {
                                 {job.title}
                               </h3>
 
-                              <div className="mt-3 flex flex-wrap gap-1.5">
+                              {/* ✅ stackId -> stackName 표시 */}
+                              <div className="mt-3 flex flex-wrap gap-2">
                                 {(job.stackIds ?? []).map((id) => (
-                                  <span key={`${job.id}-${id}`} className="text-slate-gray text-[11px] font-bold opacity-70">
-                                    #{id}
+                                  <span
+                                    key={`${job.id}-${id}`}
+                                    className="border-silver-mist bg-cloud-dancer text-slate-gray rounded-full border px-3 py-1 text-[11px] font-black tracking-tight"
+                                  >
+                                    {stackNameMap[id] ?? `#${id}`}
                                   </span>
                                 ))}
                               </div>
@@ -783,6 +824,8 @@ function JobPostingsPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => navigate(`/job-posts/${job.id}`)}
+
                                 className="hover:text-point-blue rounded-2xl px-6 font-bold shadow-md hover:bg-slate-50"
                               >
                                 공고 보기
@@ -797,7 +840,9 @@ function JobPostingsPage() {
                           title="조건에 맞는 공고가 없습니다"
                           description="필터 조건을 변경하거나 초기화해보세요."
                           actionLabel={activeFilterCount > 0 ? '필터 초기화' : '뒤로 가기'}
-                          onAction={() => (activeFilterCount > 0 ? clearAllFilters() : window.history.back())}
+                          onAction={() =>
+                            activeFilterCount > 0 ? clearAllFilters() : window.history.back()
+                          }
                         />
                       </div>
                     )}

@@ -9,34 +9,31 @@ import type { RecommendedCompany, SortBy } from '@/types/recommendCompany';
 
 const MOCK_COMPANIES: RecommendedCompany[] = [
   {
-    id: 101,
-    companyId: 101,
-    name: '삼성전자 (DX부문)',
-    reason:
-      '글로벌 서비스의 복잡한 UI를 체계적으로 관리하기 위해 React/TypeScript 숙련도가 필수적인데, 유저님의 컴포넌트 설계 능력이 삼성닷컴 및 내부 시스템 고도화 프로젝트에 최적화되어 있습니다.',
-    hiringCount: 2,
-    stacks: ['React', 'TypeScript', 'Tailwind'],
+    id: 1,
+    companyId: 1001,
+    name: '삼성전자',
+    hiringCount: 3,
+    stacks: [],
     matchScore: 98,
+    reason: '...',
   },
   {
-    id: 102,
-    companyId: 102,
-    name: 'SK하이닉스',
-    reason:
-      '반도체 공정 모니터링 시스템의 실시간 데이터 시각화가 중요한 과제입니다. 유저님이 프로젝트에서 보여준 대규모 상태 관리(Redux)와 대시보드 UI 최적화 경험이 현업에 즉시 투입 가능한 수준입니다.',
-    hiringCount: 1,
-    stacks: ['Next.js', 'Redux', 'Framer Motion'],
+    id: 2,
+    companyId: 1002,
+    name: '네이버',
+    hiringCount: 2,
+    stacks: [],
     matchScore: 92,
+    reason: '...',
   },
   {
-    id: 103,
-    companyId: 103,
-    name: 'LG전자 (ThinQ)',
-    reason:
-      'LG ThinQ 앱의 대규모 트래픽 처리와 IoT 기기 연동 데이터 파이프라인 구축을 위해 Node.js 및 AWS 역량이 강조됩니다. 유저님의 백엔드 트러블슈팅 경험이 서비스 안정성에 큰 기여를 할 것으로 보입니다.',
-    hiringCount: 0,
-    stacks: ['Python', 'Node.js', 'AWS'],
+    id: 3,
+    companyId: 1003,
+    name: '카카오',
+    hiringCount: 2,
+    stacks: [],
     matchScore: 89,
+    reason: '...',
   },
 ];
 
@@ -47,7 +44,7 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
   const handleSearchByCompany = () => {
     if (!hasOpenings) return;
     navigate(
-      `/job-postings?companyId=${company.companyId}&companyName=${encodeURIComponent(company.name)}`,
+      `/job-postings?cid=${company.companyId}&companyName=${encodeURIComponent(company.name)}`,
     );
   };
 
@@ -58,9 +55,7 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
     >
       <div className="flex-1">
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <h3 className="text-midnight-ink text-2xl font-black tracking-tight">
-            {company.name}
-          </h3>
+          <h3 className="text-midnight-ink text-2xl font-black tracking-tight">{company.name}</h3>
 
           <div className="flex gap-1.5">
             {company.stacks.map((stack) => (
@@ -87,7 +82,7 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
           className={[
             'group/btn no-title-hover h-28 w-28 rounded-2xl border-2 transition-all',
             hasOpenings
-              ? 'text-midnight-ink hover:text-point-blue hover:bg-slate-50 cursor-pointer'
+              ? 'text-midnight-ink hover:text-point-blue cursor-pointer hover:bg-slate-50'
               : 'text-slate-gray cursor-default opacity-60 hover:bg-transparent',
           ].join(' ')}
         >
@@ -95,7 +90,7 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
           <div className="flex h-full flex-col items-center justify-center gap-1">
             {hasOpenings ? (
               <>
-                <span className="whitespace-nowrap text-[15px] font-black tracking-[0.2em] uppercase opacity-60">
+                <span className="text-[15px] font-black tracking-[0.2em] whitespace-nowrap uppercase opacity-60">
                   모집 중
                 </span>
 
@@ -109,9 +104,7 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
               </>
             ) : (
               <>
-                <span className="whitespace-nowrap text-sm font-black">
-                  공고 없음
-                </span>
+                <span className="text-sm font-black whitespace-nowrap">공고 없음</span>
                 <span className="text-lg font-black opacity-50">-</span>
               </>
             )}
@@ -127,7 +120,7 @@ function CompanyCard({ company }: { company: RecommendedCompany }) {
 function RecommendCompanyPage() {
   const [sortBy, setSortBy] = useState<SortBy>('score');
   const { data: apiData, isLoading, isError, refetch } = useRecommendedCompanies();
-  const companies = apiData || MOCK_COMPANIES;
+  const companies = apiData || MOCK_COMPANIES; // mock 사용 할때는 apiData 제거 !!!
 
   useEffect(() => {
     const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement | null;
@@ -160,9 +153,7 @@ function RecommendCompanyPage() {
             <div className="flex items-center gap-3">
               <div className="bg-point-blue h-6 w-1.5 rounded-full" />
               <div>
-                <h2 className="text-midnight-ink text-2xl font-black uppercase">
-                  추천 기업 목록
-                </h2>
+                <h2 className="text-midnight-ink text-2xl font-black uppercase">추천 기업 목록</h2>
                 <p className="text-slate-gray mt-1 text-sm font-bold italic opacity-40">
                   추천 점수와 공고 수 기준으로 정렬할 수 있어요.
                 </p>
