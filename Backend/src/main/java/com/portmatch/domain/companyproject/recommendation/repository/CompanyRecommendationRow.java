@@ -8,6 +8,7 @@ public interface CompanyRecommendationRow {
     String getPortfolioContent();
     String getCompanyContent();
     Double getProjectDistance();
+    Double getDomainDistance();
     Double getProblemDistance();
     Double getSolutionDistance();
     Double getTechDistance();

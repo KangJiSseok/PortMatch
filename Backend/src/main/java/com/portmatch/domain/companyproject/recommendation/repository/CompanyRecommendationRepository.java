@@ -18,6 +18,7 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
                 ppe.content AS portfolio_content,
                 cpe.content AS company_content,
                 (ppe.project_embedding <=> cpe.project_embedding) AS project_distance,
+                (ppe.domain_embedding <=> cpe.domain_embedding) AS domain_distance,
                 (ppe.problem_embedding <=> cpe.problem_embedding) AS problem_distance,
                 (ppe.solution_embedding <=> cpe.solution_embedding) AS solution_distance,
                 (ppe.tech_embedding <=> cpe.tech_embedding) AS tech_distance,
@@ -36,9 +37,10 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
                     END
                 ) AS missing_field_count,
                 (
-                    0.15 * (ppe.project_embedding <=> cpe.project_embedding)
-                    + 0.45 * (ppe.problem_embedding <=> cpe.problem_embedding)
-                    + 0.30 * (ppe.solution_embedding <=> cpe.solution_embedding)
+                    0.10 * (ppe.project_embedding <=> cpe.project_embedding)
+                    + 0.30 * (ppe.domain_embedding <=> cpe.domain_embedding)
+                    + 0.20 * (ppe.problem_embedding <=> cpe.problem_embedding)
+                    + 0.25 * (ppe.solution_embedding <=> cpe.solution_embedding)
                     + 0.10 * (ppe.tech_embedding <=> cpe.tech_embedding)
                     + 0.05 * (
                         CASE
@@ -73,6 +75,7 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
             portfolio_content AS portfolioContent,
             company_content AS companyContent,
             project_distance AS projectDistance,
+            domain_distance AS domainDistance,
             problem_distance AS problemDistance,
             solution_distance AS solutionDistance,
             tech_distance AS techDistance

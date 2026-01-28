@@ -9,6 +9,7 @@ public record CompanyRecommendationResponse(
         String portfolioContent,
         String companyContent,
         double projectDistance,
+        double domainDistance,
         double problemDistance,
         double solutionDistance,
         double techDistance
@@ -21,6 +22,7 @@ public record CompanyRecommendationResponse(
             String portfolioContent,
             String companyContent,
             double projectDistance,
+            double domainDistance,
             double problemDistance,
             double solutionDistance,
             double techDistance
@@ -34,6 +36,7 @@ public record CompanyRecommendationResponse(
                 portfolioContent,
                 companyContent,
                 projectDistance,
+                domainDistance,
                 problemDistance,
                 solutionDistance,
                 techDistance

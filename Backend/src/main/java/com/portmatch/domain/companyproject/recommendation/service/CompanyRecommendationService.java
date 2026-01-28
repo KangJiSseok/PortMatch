@@ -25,6 +25,7 @@ public class CompanyRecommendationService {
                         r.getPortfolioContent(),
                         r.getCompanyContent(),
                         nvl(r.getProjectDistance(), 1.0),
+                        nvl(r.getDomainDistance(), 1.0),
                         nvl(r.getProblemDistance(), 1.0),
                         nvl(r.getSolutionDistance(), 1.0),
                         nvl(r.getTechDistance(), 1.0)
