@@ -19,7 +19,7 @@ build:
   services:
     - docker:25.0-dind
   rules:
-    - if: '$CI_COMMIT_BRANCH == "infra-fix/git-conflict"'
+    - if: '$CI_COMMIT_BRANCH == "dev"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -44,7 +44,7 @@ deploy:
   tags:
     - deploy
   rules:
-    - if: '$CI_COMMIT_BRANCH == "infra-fix/git-conflict"'
+    - if: '$CI_COMMIT_BRANCH == "dev"'
 
 
   script:
