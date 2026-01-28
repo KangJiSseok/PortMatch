@@ -113,6 +113,15 @@ public class GlobalExceptionHandler {
     }
 
     private HttpStatus mapToHttpStatus(int code) {
-        return HttpStatus.OK;
+        if (code >= 1000 && code < 2000) {
+            return HttpStatus.OK;
+        }
+        if (code >= 2000 && code < 5000) {
+            return HttpStatus.BAD_REQUEST;
+        }
+        if (code >= 5000 && code < 6000) {
+            return HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        return HttpStatus.INTERNAL_SERVER_ERROR;
     }
 }
