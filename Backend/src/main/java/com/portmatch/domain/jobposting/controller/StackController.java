@@ -44,10 +44,10 @@ public class StackController {
     @Operation(summary = "마스터 기술 스택 등록", description = "새로운 기술 스택 이름을 시스템에 등록합니다.")
     @ApiResponse(responseCode = "200", description = "등록 성공")
     @PostMapping
-    public BaseApiResponse<String> createStack(
-            @Parameter(description = "등록할 스택 이름", example = "Kotlin") @RequestParam String stackName) {
-        log.info("새로운 기술 스택 등록 요청: {}", stackName);
-        stackService.createStack(stackName);
+    public BaseApiResponse<String> createStack(@RequestBody TechStackDto techStackDto) {
+        log.info("새로운 기술 스택 등록 요청 - ID: {}, Name: {}",
+                techStackDto.getStackId(), techStackDto.getStackName());
+        stackService.createStack(techStackDto.getStackId(), techStackDto.getStackName());
         return BaseApiResponse.ok("기술 스택이 성공적으로 등록되었습니다.");
     }
 

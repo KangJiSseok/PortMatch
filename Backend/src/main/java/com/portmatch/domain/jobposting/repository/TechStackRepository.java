@@ -8,6 +8,8 @@ import java.util.Optional;
 @Repository
 public interface TechStackRepository extends JpaRepository<TechStackEntity, Long> { // String -> Long으로 변경
 
+    boolean existsByStackName(String stackName);
+    boolean existsById(Long id);
     Optional<TechStackEntity> findByStackName(String stackName);
     Optional<TechStackEntity> findById(Long id);
 }

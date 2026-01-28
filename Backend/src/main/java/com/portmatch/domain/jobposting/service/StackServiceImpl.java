@@ -27,15 +27,23 @@ public class StackServiceImpl implements StackService {
     // 1. 새로운 마스터 기술 스택 생성
     @Override
     @Transactional
-    public void createStack(String stackName) {
-        log.info("새로운 기술 스택 등록: {}", stackName);
+    public void createStack(Long id, String stackName) {
+        log.info("새로운 기술 스택 등록: {} {}", id, stackName);
 
         // (선택사항) 이미 존재하는 스택인지 체크하면 더 좋아!
-        // if (techStackRepository.existsByStackName(stackName)) {
-        //     throw new BusinessException(ResponseCode.INVALID_PARAMETER);
-        // }
+
+        if (techStackRepository.existsById(id)) {
+            log.warn("이미 존재하는 ID: {}", id);
+            throw new BusinessException(ResponseCode.INVALID_PARAMETER); // 혹은 적절한 에러코드
+        }
+
+        if (techStackRepository.existsByStackName(stackName)) {
+            log.warn("이미 존재하는 스택: {}", stackName);
+            throw new BusinessException(ResponseCode.INVALID_PARAMETER);
+        }
 
         TechStackEntity entity = TechStackEntity.builder()
+                .id(id)
                 .stackName(stackName)
                 .build();
         techStackRepository.save(entity);
