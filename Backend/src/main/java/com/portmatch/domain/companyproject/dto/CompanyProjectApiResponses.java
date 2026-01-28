@@ -6,6 +6,7 @@ public class CompanyProjectApiResponses {
 
     @Schema(name = "CompanyProjectAnalysisApiResponse")
     public static class CompanyProjectAnalysisApiResponse {
+        public boolean status;
         public int code;
         public String message;
         public CompanyProjectAnalysisResponse data;

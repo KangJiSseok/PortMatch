@@ -7,6 +7,7 @@ public class AuthApiResponses {
 
     @Schema(name = "AuthLoginApiResponse")
     public static class AuthLoginApiResponse {
+        public boolean status;
         public int code;
         public String message;
         public LoginResponse data;
@@ -14,6 +15,7 @@ public class AuthApiResponses {
 
     @Schema(name = "AuthMeApiResponse")
     public static class AuthMeApiResponse {
+        public boolean status;
         public int code;
         public String message;
         public LoginResponse data;
@@ -21,6 +23,7 @@ public class AuthApiResponses {
 
     @Schema(name = "AuthVoidApiResponse")
     public static class AuthVoidApiResponse {
+        public boolean status;
         public int code;
         public String message;
         public Object data;
