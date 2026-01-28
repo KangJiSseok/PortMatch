@@ -93,9 +93,11 @@ const SectionCard = ({
   className = '',
   sectionRef,
 }: SectionCardProps) => (
-  <section
+  <motion.section
     ref={sectionRef}
-    className={`bg-pure-white flex flex-col rounded-[50px] border border-slate-100 p-10 shadow-xl shadow-slate-200/50 ${className}`}
+    initial={{ opacity: 0, x: -20 }}
+    animate={{ opacity: 1, x: 0 }}
+    className={`bg-pure-white flex flex-col rounded-[40px] border border-gray-100 p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)] ${className}`}
   >
     <div className="mb-8 flex shrink-0 items-center justify-between gap-4">
       <div className="flex items-center gap-3">
@@ -107,7 +109,7 @@ const SectionCard = ({
       <div className="flex gap-3">{actions}</div>
     </div>
     <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
-  </section>
+  </motion.section>
 );
 
 const InterviewTemplatePage = () => {
@@ -357,7 +359,7 @@ const InterviewTemplatePage = () => {
   };
 
   return (
-    <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32 select-none">
+    <div className="bg-pure-white flex min-h-screen justify-center overflow-x-auto select-none">
       <AnimatePresence>
         {toastMessage && (
           <motion.div
@@ -373,35 +375,24 @@ const InterviewTemplatePage = () => {
         )}
       </AnimatePresence>
 
-      <div className="mx-auto w-350 px-6">
-        <header className="border-point-blue mb-12 flex items-center justify-between border-l-4 pl-6">
-          <div className="min-w-0">
+      <div className="w-350 min-w-350 px-6 pt-24 pb-16">
+        <header className="border-point-blue mt-4 mb-10 ml-6 border-l-4 pl-6">
+          <div className="min-w-0 flex-1">
             <motion.h1
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4 }}
               className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
             >
               {isCorporate ? 'Interview Management' : 'Interview Prep'}
             </motion.h1>
             <div className="flex flex-col items-start">
-              <p className="text-silver-mist mt-2 overflow-hidden text-lg font-bold whitespace-nowrap italic opacity-40">
+              <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
                 {view === 'list'
                   ? '보관된 템플릿을 관리하고 검색하세요'
                   : '질문을 구성하고 템플릿을 완성하세요'}
               </p>
             </div>
           </div>
-          {view === 'list' && (
-            <Button
-              variant="blue"
-              size="lg"
-              className="shrink-0 rounded-2xl px-8 font-black shadow-lg"
-              onClick={() => handleOpenForm()}
-            >
-              새 템플릿 추가
-            </Button>
-          )}
         </header>
 
         <AnimatePresence mode="wait">
@@ -411,9 +402,20 @@ const InterviewTemplatePage = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
             >
-              <SectionCard title="목록 관리">
+              <SectionCard
+                title="목록 관리"
+                actions={
+                  <Button
+                    variant="blue"
+                    size="lg"
+                    className="shrink-0 rounded-2xl px-8 font-black shadow-lg"
+                    onClick={() => handleOpenForm()}
+                  >
+                    새 템플릿 추가
+                  </Button>
+                }
+              >
                 <div className="mb-8 shrink-0">
                   <div className="relative">
                     <input
@@ -438,75 +440,93 @@ const InterviewTemplatePage = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-6">
-                  {filteredTemplates.map((t) => (
-                    <motion.div
-                      key={t.id}
-                      layout
-                      className="group bg-pure-white relative flex h-full min-h-70 cursor-pointer flex-col overflow-hidden rounded-4xl border border-slate-100 p-6 shadow-sm transition-all hover:border-transparent hover:shadow-2xl"
-                      onClick={() => setSelectedViewTemplate(t)}
-                    >
-                      <div className="bg-point-blue absolute top-0 bottom-0 left-0 w-1.5 transition-all group-hover:w-2" />
-                      <div className="mb-5 flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1 pr-8 pl-3">
-                          <div className="mb-3 flex items-center justify-between gap-2">
-                            <span className="bg-point-blue text-pure-white max-w-40 truncate rounded-lg px-3 py-1 text-[11px] font-black tracking-wider uppercase shadow-sm">
-                              {t.role}
-                            </span>
-                            <span className="text-silver-mist shrink-0 text-[10px] font-bold">
-                              {t.createdAt}
-                            </span>
+                {filteredTemplates.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-6">
+                    {filteredTemplates.map((t) => (
+                      <motion.div
+                        key={t.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="group bg-pure-white relative flex h-full min-h-70 cursor-pointer flex-col overflow-hidden rounded-4xl border border-slate-100 p-6 shadow-sm transition-all hover:border-transparent hover:shadow-2xl"
+                        onClick={() => setSelectedViewTemplate(t)}
+                      >
+                        <div className="bg-point-blue absolute top-0 bottom-0 left-0 w-1.5 transition-all group-hover:w-2" />
+                        <div className="mb-5 flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1 pr-8 pl-3">
+                            <div className="mb-3 flex items-center justify-between gap-2">
+                              <span className="bg-point-blue text-pure-white max-w-40 truncate rounded-lg px-3 py-1 text-[11px] font-black tracking-wider uppercase shadow-sm">
+                                {t.role}
+                              </span>
+                              <span className="text-silver-mist shrink-0 text-[10px] font-bold">
+                                {t.createdAt}
+                              </span>
+                            </div>
+                            <h4 className="text-midnight-ink truncate text-2xl leading-tight font-black">
+                              {t.title}
+                            </h4>
                           </div>
-                          <h4 className="text-midnight-ink truncate text-2xl leading-tight font-black">
-                            {t.title}
-                          </h4>
+                          <Button
+                            variant="close"
+                            size="md"
+                            className="shrink-0"
+                            onClick={(e: MouseEvent) => {
+                              e.stopPropagation();
+                              setConfirmModal({ type: 'DELETE_TEMPLATE', data: t.id });
+                            }}
+                          />
                         </div>
-                        <Button
-                          variant="close"
-                          size="md"
-                          className="shrink-0"
-                          onClick={(e: MouseEvent) => {
-                            e.stopPropagation();
-                            setConfirmModal({ type: 'DELETE_TEMPLATE', data: t.id });
-                          }}
-                        />
-                      </div>
 
-                      <div className="relative mb-6 flex max-h-26.25 flex-wrap items-start gap-1.5 overflow-hidden pl-3">
-                        {t.categories.slice(0, 6).map((c, i) => (
-                          <span
-                            key={i}
-                            className="bg-point-blue/10 text-point-blue rounded-lg px-2.5 py-1 text-[10px] font-black whitespace-nowrap"
+                        <div className="relative mb-6 flex max-h-26.25 flex-wrap items-start gap-1.5 overflow-hidden pl-3">
+                          {t.categories.slice(0, 6).map((c, i) => (
+                            <span
+                              key={i}
+                              className="bg-point-blue/10 text-point-blue rounded-lg px-2.5 py-1 text-[10px] font-black whitespace-nowrap"
+                            >
+                              {c.categoryName} ({c.questions.length})
+                            </span>
+                          ))}
+                          {t.categories.length > 6 && (
+                            <span className="bg-point-blue/5 text-point-blue rounded-lg px-2.5 py-1 text-[11px] font-black whitespace-nowrap italic">
+                              외 {t.categories.length - 6}개 주제
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-4 pl-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl px-4 font-black"
+                            onClick={(e: MouseEvent) => {
+                              e.stopPropagation();
+                              handleOpenForm(t);
+                            }}
                           >
-                            {c.categoryName} ({c.questions.length})
+                            수정
+                          </Button>
+                          <span className="text-point-blue text-sm font-black whitespace-nowrap transition-transform group-hover:translate-x-1">
+                            상세 보기 및 작성 →
                           </span>
-                        ))}
-                        {t.categories.length > 6 && (
-                          <span className="bg-point-blue/5 text-point-blue rounded-lg px-2.5 py-1 text-[11px] font-black whitespace-nowrap italic">
-                            외 {t.categories.length - 6}개 주제
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-4 pl-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-xl px-4 font-black"
-                          onClick={(e: MouseEvent) => {
-                            e.stopPropagation();
-                            handleOpenForm(t);
-                          }}
-                        >
-                          수정
-                        </Button>
-                        <span className="text-point-blue text-sm font-black whitespace-nowrap transition-transform group-hover:translate-x-1">
-                          상세 보기 및 작성 →
-                        </span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex min-h-100 flex-col items-center justify-center rounded-4xl border border-dashed border-slate-200 bg-slate-50/50 p-10"
+                  >
+                    <div className="mb-6 text-6xl">🔍</div>
+                    <h3 className="text-midnight-ink mb-2 text-2xl font-black">
+                      검색 결과가 없습니다
+                    </h3>
+                    <p className="text-silver-mist text-lg font-bold">
+                      다른 검색어를 입력하거나 새로운 템플릿을 추가해 보세요.
+                    </p>
+                  </motion.div>
+                )}
               </SectionCard>
             </motion.div>
           ) : (
@@ -515,7 +535,6 @@ const InterviewTemplatePage = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
             >
               <div className="grid grid-cols-1 gap-8">
                 <SectionCard
@@ -524,8 +543,8 @@ const InterviewTemplatePage = () => {
                   actions={
                     <Button
                       variant="outline"
-                      size="md"
-                      className="rounded-2xl font-black"
+                      size="lg"
+                      className="shrink-0 rounded-2xl px-8 font-black"
                       onClick={handleReturnToList}
                     >
                       목록으로 돌아가기

@@ -114,24 +114,26 @@ const ScheduleManagementPage = () => {
       onMouseUp={() => setIsDragging(false)}
       onMouseLeave={() => setIsDragging(false)}
     >
-      <div className="w-350 min-w-350 px-6 pt-20 pb-16">
+      <div className="w-350 min-w-350 px-6 pt-24 pb-16">
         <header className="border-point-blue mt-4 mb-10 ml-6 flex items-end justify-between border-l-4 pl-6">
-          <div>
+          <div className="min-w-0 flex-1">
             <motion.h1
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="text-midnight-ink text-4xl font-black tracking-tighter uppercase"
+              className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
             >
               Schedule Adjustment
             </motion.h1>
-            <h2 className="text-midnight-ink mt-1 text-2xl font-black tracking-tighter">
-              일정 조정 플래너
-            </h2>
+            <div className="flex flex-col items-start">
+              <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
+                함께하는 시간을 맞추기 위한 최적의 일정을 찾아보세요.
+              </p>
+            </div>
           </div>
           <Button
             variant="outline"
             onClick={handleReset}
-            className="border-midnight-ink text-midnight-ink rounded-xl px-4 py-2 font-bold hover:bg-gray-50"
+            className="border-midnight-ink text-midnight-ink mb-1 rounded-xl px-4 py-2 font-bold hover:bg-gray-50"
           >
             초기화
           </Button>
@@ -141,7 +143,7 @@ const ScheduleManagementPage = () => {
           <motion.section
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-pure-white flex h-225 flex-col justify-between rounded-[40px] border border-gray-100 p-10 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.05)]"
+            className="bg-pure-white flex h-225 flex-col justify-between rounded-[40px] border border-gray-100 p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]"
           >
             <div className="flex flex-col gap-5">
               <div className="space-y-3">
@@ -204,7 +206,7 @@ const ScheduleManagementPage = () => {
               variant="blue"
               size="lg"
               fullWidth
-              className="mt-6 rounded-[20px] py-4 text-xl font-black shadow-2xl transition-all"
+              className="shadow-point-blue/20 mt-6 rounded-2xl py-4.5 text-xl font-black shadow-2xl transition-all active:scale-[0.98]"
               onClick={submitVotes}
             >
               내 시간 결과에 반영하기
@@ -214,15 +216,19 @@ const ScheduleManagementPage = () => {
           <motion.section
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-pure-white flex h-225 flex-col justify-between rounded-[40px] border border-gray-100 p-10 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.05)]"
+            className="bg-pure-white flex h-225 flex-col justify-between rounded-[40px] border border-gray-100 p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]"
           >
             <div className="flex h-full flex-col gap-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-midnight-ink text-xl font-black">2. 일정 종합 현황</h3>
                 {analysis.max > 0 && (
-                  <span className="text-point-blue animate-pulse text-sm font-black">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-point-blue/10 text-point-blue rounded-lg px-3 py-1.5 text-[11px] font-black"
+                  >
                     🏆 최다 {analysis.max}명 가능
-                  </span>
+                  </motion.div>
                 )}
               </div>
 
@@ -279,8 +285,8 @@ const ScheduleManagementPage = () => {
                 </div>
               </div>
 
-              <div className="mt-auto border-t border-gray-100 pt-4">
-                <h4 className="text-midnight-ink mb-3 text-sm font-black tracking-wider uppercase opacity-60">
+              <div className="mt-auto border-t border-gray-100 pt-6">
+                <h4 className="text-midnight-ink mb-4 text-sm font-black tracking-wider uppercase opacity-40">
                   Best 3 Recommended
                 </h4>
                 <div className="grid grid-cols-3 gap-3">
@@ -302,7 +308,7 @@ const ScheduleManagementPage = () => {
                       </div>
                     ))
                   ) : (
-                    <div className="text-midnight-ink/30 col-span-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50 py-4 text-center text-sm font-bold">
+                    <div className="text-midnight-ink/30 col-span-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50 py-8 text-center text-sm font-bold">
                       데이터 대기 중...
                     </div>
                   )}

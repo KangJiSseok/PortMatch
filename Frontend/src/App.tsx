@@ -42,12 +42,14 @@ import RecommendCandidatesPage from './pages/company/RecommendCandidatesPage';
 import SalaryCalculatorPage from './pages/support/SalaryCalculatorPage';
 import ScheduleManagementPage from './pages/support/ScheduleManagementPage';
 import InterviewTemplatePage from './pages/support/InterviewTemplatePage';
+import ResumeFeedbackPage from './pages/support/ResumeFeedbackPage';
+import InterviewQuestionGeneratorPage from './pages/support/InterviewQuestionGeneratorPage';
 
 import NoticePage from './pages/admin/NoticePage';
 import NoticeManagementPage from './pages/admin/NoticeManagementPage';
 import NoticeFormPage from './pages/admin/NoticeFormPage';
 
-import { ProtectedRoute, PublicRoute, CompanyRoute, AdminRoute } from './routes/RouteGuard';
+import { AuthGuard } from './routes/RouteGuard';
 import MypageGate from './routes/MyPageGate';
 import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
@@ -93,33 +95,33 @@ const router = createBrowserRouter([
       {
         path: 'intro',
         element: (
-          <PublicRoute>
+          <AuthGuard mode="PUBLIC">
             <IntroPage />
-          </PublicRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'login',
         element: (
-          <PublicRoute>
+          <AuthGuard mode="PUBLIC">
             <LoginPage />
-          </PublicRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'signup',
         element: (
-          <PublicRoute>
+          <AuthGuard mode="PUBLIC">
             <SignupPage />
-          </PublicRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'profile/edit',
         element: (
-          <ProtectedRoute>
+          <AuthGuard mode="AUTHENTICATED">
             <ProfileEditPage />
-          </ProtectedRoute>
+          </AuthGuard>
         ),
       },
       {
@@ -129,9 +131,9 @@ const router = createBrowserRouter([
       {
         path: 'mypage',
         element: (
-          <ProtectedRoute>
+          <AuthGuard mode="AUTHENTICATED">
             <MypageGate />
-          </ProtectedRoute>
+          </AuthGuard>
         ),
       },
       {
@@ -148,9 +150,9 @@ const router = createBrowserRouter([
           {
             path: ':resumeId',
             element: (
-              <ProtectedRoute>
+              <AuthGuard mode="AUTHENTICATED">
                 <ResumeDetailPage />
-              </ProtectedRoute>
+              </AuthGuard>
             ),
           },
         ],
@@ -158,41 +160,41 @@ const router = createBrowserRouter([
       {
         path: 'interviews',
         element: (
-          <ProtectedRoute>
+          <AuthGuard mode="AUTHENTICATED">
             <InterviewListGate />
-          </ProtectedRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'interviews/:id/lobby',
         element: (
-          <ProtectedRoute>
+          <AuthGuard mode="AUTHENTICATED">
             <InterviewLobbyPage />
-          </ProtectedRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'interviews/:id/room',
         element: (
-          <ProtectedRoute>
+          <AuthGuard mode="AUTHENTICATED">
             <InterviewPage />
-          </ProtectedRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'portfolios',
         element: (
-          <ProtectedRoute>
+          <AuthGuard mode="AUTHENTICATED">
             <PortfoliosPage />
-          </ProtectedRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'recommend/companies',
         element: (
-          <ProtectedRoute>
+          <AuthGuard mode="AUTHENTICATED">
             <RecommendCompanyPage />
-          </ProtectedRoute>
+          </AuthGuard>
         ),
       },
       {
@@ -206,82 +208,104 @@ const router = createBrowserRouter([
       {
         path: 'job-posts/:id/apply',
         element: (
-          <ProtectedRoute>
+          <AuthGuard mode="AUTHENTICATED">
             <JobApplyPage />
-          </ProtectedRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'company/jobs',
         element: (
-          <CompanyRoute>
+          <AuthGuard mode="COMPANY">
             <CompanyJobManagementPage />
-          </CompanyRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'company/jobs/new',
         element: (
-          <CompanyRoute>
+          <AuthGuard mode="COMPANY">
             <JobPostFormPage />
-          </CompanyRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'company/jobs/edit/:id',
         element: (
-          <CompanyRoute>
+          <AuthGuard mode="COMPANY">
             <JobPostFormPage />
-          </CompanyRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'company/jobs/:id/applicants',
         element: (
-          <CompanyRoute>
+          <AuthGuard mode="COMPANY">
             <JobApplicationManagementPage />
-          </CompanyRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'company/profile',
         element: (
-          <CompanyRoute>
+          <AuthGuard mode="COMPANY">
             <CompanyProfilePage />
-          </CompanyRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'company/profile/edit',
         element: (
-          <CompanyRoute>
+          <AuthGuard mode="COMPANY">
             <CompanyProfileEditPage />
-          </CompanyRoute>
+          </AuthGuard>
         ),
       },
       {
         path: 'company/recommend/candidates',
         element: (
-          <CompanyRoute>
+          <AuthGuard mode="COMPANY">
             <RecommendCandidatesPage />
-          </CompanyRoute>
+          </AuthGuard>
         ),
       },
       {
-        path: 'support/salary',
-        element: <SalaryCalculatorPage />,
-      },
-      {
-        path: 'support/schedule',
-        element: <ScheduleManagementPage />,
-      },
-      {
-        path: 'support/interview-template',
-        element: <InterviewTemplatePage />,
-      },
-      {
-        path: 'support/notices',
-        element: <NoticePage />,
+        path: 'support',
+        children: [
+          {
+            path: 'salary',
+            element: <SalaryCalculatorPage />,
+          },
+          {
+            path: 'schedule',
+            element: <ScheduleManagementPage />,
+          },
+          {
+            path: 'interview-template',
+            element: <InterviewTemplatePage />,
+          },
+          {
+            path: 'resume-feedback',
+            element: (
+              <AuthGuard mode="AUTHENTICATED">
+                <ResumeFeedbackPage />
+              </AuthGuard>
+            ),
+          },
+          {
+            path: 'interview-generator',
+            element: (
+              <AuthGuard mode="COMPANY">
+                {' '}
+                <InterviewQuestionGeneratorPage />
+              </AuthGuard>
+            ),
+          },
+          {
+            path: 'notices',
+            element: <NoticePage />,
+          },
+        ],
       },
       {
         path: 'admin',
@@ -289,25 +313,25 @@ const router = createBrowserRouter([
           {
             path: 'notices',
             element: (
-              <AdminRoute>
+              <AuthGuard mode="ADMIN">
                 <NoticeManagementPage />
-              </AdminRoute>
+              </AuthGuard>
             ),
           },
           {
             path: 'notices/new',
             element: (
-              <AdminRoute>
+              <AuthGuard mode="ADMIN">
                 <NoticeFormPage />
-              </AdminRoute>
+              </AuthGuard>
             ),
           },
           {
             path: 'notices/edit/:id',
             element: (
-              <AdminRoute>
+              <AuthGuard mode="ADMIN">
                 <NoticeFormPage />
-              </AdminRoute>
+              </AuthGuard>
             ),
           },
         ],
