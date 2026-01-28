@@ -24,6 +24,9 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
                 problem_embedding,
                 solution_embedding,
                 tech_embedding,
+                problem_missing,
+                solution_missing,
+                tech_missing,
                 created_at,
                 updated_at
             )
@@ -38,6 +41,9 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
                 CAST(:problemEmbedding AS vector),
                 CAST(:solutionEmbedding AS vector),
                 CAST(:techEmbedding AS vector),
+                :problemMissing,
+                :solutionMissing,
+                :techMissing,
                 NOW(),
                 NOW()
             )
@@ -51,6 +57,9 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
             problem_embedding = EXCLUDED.problem_embedding,
             solution_embedding = EXCLUDED.solution_embedding,
             tech_embedding = EXCLUDED.tech_embedding,
+            problem_missing = EXCLUDED.problem_missing,
+            solution_missing = EXCLUDED.solution_missing,
+            tech_missing = EXCLUDED.tech_missing,
             updated_at = NOW()
         """, nativeQuery = true)
     void upsertByProjectId(
@@ -62,6 +71,9 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
             String projectEmbedding,
             String problemEmbedding,
             String solutionEmbedding,
-            String techEmbedding
+            String techEmbedding,
+            boolean problemMissing,
+            boolean solutionMissing,
+            boolean techMissing
     );
 }

@@ -67,6 +67,7 @@ public class PortfolioEmbeddingService {
         List<String> hashes = new ArrayList<>();
         List<String> textsToEmbed = new ArrayList<>();
         List<FieldEmbeddingIndices> embeddingIndices = new ArrayList<>();
+        List<FieldMissingFlags> missingFlags = new ArrayList<>();
 
         for (PortfolioAnalysisProject p : projects) {
             projectIds.add(p.getId());
@@ -109,6 +110,12 @@ public class PortfolioEmbeddingService {
                     solutionIdx,
                     techIdx
             ));
+
+            missingFlags.add(new FieldMissingFlags(
+                    isMissing(p.getProblem()),
+                    isMissing(p.getSolution()),
+                    techs.isEmpty()
+            ));
         }
 
         // 4) Portfolio-Analysis濡?諛곗튂 ?꾨쿋???붿껌
@@ -126,6 +133,7 @@ public class PortfolioEmbeddingService {
             String content = contents.get(i);
             String contentHash = hashes.get(i);
             FieldEmbeddingIndices indices = embeddingIndices.get(i);
+            FieldMissingFlags flags = missingFlags.get(i);
 
             String projectVector = toVectorString(resp.vectors().get(indices.projectIdx()));
             String problemVector = toVectorString(resp.vectors().get(indices.problemIdx()));
@@ -147,7 +155,10 @@ public class PortfolioEmbeddingService {
                     projectVector,
                     problemVector,
                     solutionVector,
-                    techVector
+                    techVector,
+                    flags.problemMissing(),
+                    flags.solutionMissing(),
+                    flags.techMissing()
             );
         }
     }
@@ -157,6 +168,13 @@ public class PortfolioEmbeddingService {
             int problemIdx,
             int solutionIdx,
             int techIdx
+    ) {
+    }
+
+    private record FieldMissingFlags(
+            boolean problemMissing,
+            boolean solutionMissing,
+            boolean techMissing
     ) {
     }
 
@@ -186,6 +204,11 @@ public class PortfolioEmbeddingService {
         String t = s.trim();
         return t.isBlank() ? "정보 없음" : t;
     }
+
+    private boolean isMissing(String s) {
+        return s == null || s.trim().isBlank();
+    }
+
 
     private String toVectorString(List<Double> vector) {
         List<Double> normalized = normalizeVector(vector);

@@ -26,6 +26,9 @@ public interface CompanyProjectEmbeddingRepository extends JpaRepository<Company
                 problem_embedding,
                 solution_embedding,
                 tech_embedding,
+                problem_missing,
+                solution_missing,
+                tech_missing,
                 created_at,
                 updated_at
             )
@@ -39,6 +42,9 @@ public interface CompanyProjectEmbeddingRepository extends JpaRepository<Company
                 CAST(:problemEmbedding AS vector),
                 CAST(:solutionEmbedding AS vector),
                 CAST(:techEmbedding AS vector),
+                :problemMissing,
+                :solutionMissing,
+                :techMissing,
                 now(),
                 now()
             )
@@ -50,6 +56,9 @@ public interface CompanyProjectEmbeddingRepository extends JpaRepository<Company
             problem_embedding = EXCLUDED.problem_embedding,
             solution_embedding = EXCLUDED.solution_embedding,
             tech_embedding = EXCLUDED.tech_embedding,
+            problem_missing = EXCLUDED.problem_missing,
+            solution_missing = EXCLUDED.solution_missing,
+            tech_missing = EXCLUDED.tech_missing,
             updated_at = now()
         """, nativeQuery = true)
     void upsertByProjectId(
@@ -60,7 +69,10 @@ public interface CompanyProjectEmbeddingRepository extends JpaRepository<Company
             @Param("projectEmbedding") String projectEmbedding,
             @Param("problemEmbedding") String problemEmbedding,
             @Param("solutionEmbedding") String solutionEmbedding,
-            @Param("techEmbedding") String techEmbedding
+            @Param("techEmbedding") String techEmbedding,
+            @Param("problemMissing") boolean problemMissing,
+            @Param("solutionMissing") boolean solutionMissing,
+            @Param("techMissing") boolean techMissing
     );
 
     @Query(value = """

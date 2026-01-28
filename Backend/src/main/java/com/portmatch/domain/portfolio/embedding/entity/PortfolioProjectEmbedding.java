@@ -49,6 +49,15 @@ public class PortfolioProjectEmbedding {
     @Column(name = "tech_embedding", columnDefinition = "vector(1536)")
     private String techEmbedding;
 
+    @Column(name = "problem_missing", nullable = false)
+    private boolean problemMissing;
+
+    @Column(name = "solution_missing", nullable = false)
+    private boolean solutionMissing;
+
+    @Column(name = "tech_missing", nullable = false)
+    private boolean techMissing;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -64,7 +73,10 @@ public class PortfolioProjectEmbedding {
             String projectEmbedding,
             String problemEmbedding,
             String solutionEmbedding,
-            String techEmbedding
+            String techEmbedding,
+            boolean problemMissing,
+            boolean solutionMissing,
+            boolean techMissing
     ) {
         this.portfolioId = portfolioId;
         this.analysisId = analysisId;
@@ -75,6 +87,9 @@ public class PortfolioProjectEmbedding {
         this.problemEmbedding = problemEmbedding;
         this.solutionEmbedding = solutionEmbedding;
         this.techEmbedding = techEmbedding;
+        this.problemMissing = problemMissing;
+        this.solutionMissing = solutionMissing;
+        this.techMissing = techMissing;
     }
 
     @PrePersist

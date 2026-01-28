@@ -22,10 +22,38 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
                 (ppe.solution_embedding <=> cpe.solution_embedding) AS solution_distance,
                 (ppe.tech_embedding <=> cpe.tech_embedding) AS tech_distance,
                 (
+                    CASE
+                        WHEN ppe.problem_missing OR cpe.problem_missing THEN 1
+                        ELSE 0
+                    END
+                    + CASE
+                        WHEN ppe.solution_missing OR cpe.solution_missing THEN 1
+                        ELSE 0
+                    END
+                    + CASE
+                        WHEN ppe.tech_missing OR cpe.tech_missing THEN 1
+                        ELSE 0
+                    END
+                ) AS missing_field_count,
+                (
                     0.15 * (ppe.project_embedding <=> cpe.project_embedding)
                     + 0.45 * (ppe.problem_embedding <=> cpe.problem_embedding)
                     + 0.30 * (ppe.solution_embedding <=> cpe.solution_embedding)
                     + 0.10 * (ppe.tech_embedding <=> cpe.tech_embedding)
+                    + 0.05 * (
+                        CASE
+                            WHEN ppe.problem_missing OR cpe.problem_missing THEN 1
+                            ELSE 0
+                        END
+                        + CASE
+                            WHEN ppe.solution_missing OR cpe.solution_missing THEN 1
+                            ELSE 0
+                        END
+                        + CASE
+                            WHEN ppe.tech_missing OR cpe.tech_missing THEN 1
+                            ELSE 0
+                        END
+                    )
                 ) AS distance
             FROM portfolio_project_embeddings ppe
             JOIN company_project_embeddings cpe ON TRUE
