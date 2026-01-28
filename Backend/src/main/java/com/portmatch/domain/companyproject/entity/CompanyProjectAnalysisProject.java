@@ -33,6 +33,9 @@ public class CompanyProjectAnalysisProject {
     @Column(name = "name", nullable = false, length = 512)
     private String name;
 
+    @Column(name = "domain", length = 512)
+    private String domain;
+
     @Column(name = "problem", length = 2000)
     private String problem;
 
@@ -45,11 +48,13 @@ public class CompanyProjectAnalysisProject {
     public CompanyProjectAnalysisProject(
             CompanyProjectAnalysis analysis,
             String name,
+            String domain,
             String problem,
             String solution
     ) {
         this.analysis = analysis;
         this.name = name;
+        this.domain = domain;
         this.problem = problem;
         this.solution = solution;
     }
