@@ -8,10 +8,7 @@ public enum ResponseCode {
     // 1000: success
     OK(true, 1000, "success"),
 
-
-
-
-    // 2000: client error
+    // 2000: client error (4xx)
     NOT_FOUND(false, 2001, "존재하지 않는 URL입니다."),
     INVALID_PARAMETER(false, 2002, "요청 파라미터 형식이 잘못되었습니다."),
     VALIDATION_ERROR(false, 2003, "입력값이 올바르지 않습니다."),
@@ -23,6 +20,9 @@ public enum ResponseCode {
     USER_NOT_FOUND(false, 2403, "사용자를 찾을 수 없습니다."),
     PORTFOLIO_NOT_FOUND(false, 2404, "포트폴리오를 찾을 수 없습니다."),
     PORTFOLIO_FILE_REQUIRED(false, 2405, "포트폴리오 파일은 필수입니다."),
+    DUPLICATE_EMAIL(false, 4100, "이미 사용 중인 이메일입니다."),
+
+    // 9000: server error (5xx)
     PORTFOLIO_S3_UPLOAD_FAILED(false, 2406, "포트폴리오 업로드에 실패했습니다."),
     PORTFOLIO_S3_DELETE_FAILED(false, 2407, "포트폴리오 삭제에 실패했습니다."),
     PORTFOLIO_ANALYSIS_SERVICE_UNAVAILABLE(false, 2408, "포트폴리오 분석 서비스가 응답하지 않습니다."),
@@ -38,17 +38,11 @@ public enum ResponseCode {
     OPENAI_EMBEDDING_SERVICE_UNAVAILABLE(false, 2418, "OpenAI 임베딩 서비스가 응답하지 않습니다."),
     OPENAI_EMBEDDING_SIZE_MISMATCH(false, 2419, "OpenAI 임베딩 결과 사이즈 불일치"),
     OPENAI_EMBEDDING_INDEX_MISMATCH(false, 2420, "OpenAI 임베딩 결과 인덱스 불일치"),
-
-    // 4000: domain error
-    DUPLICATE_EMAIL(false, 4100, "이미 사용 중인 이메일입니다."),
-
-    // 9000: server error
     INTERNAL_SERVER_ERROR(false, 9000, "알 수 없는 서버 오류가 발생했습니다.");
 
     private final Boolean status;
     private final Integer code;
     private final String message;
-
     ResponseCode(Boolean status, Integer code, String message) {
         this.status = status;
         this.code = code;

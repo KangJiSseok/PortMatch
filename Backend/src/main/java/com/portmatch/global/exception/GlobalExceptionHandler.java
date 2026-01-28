@@ -28,7 +28,7 @@ public class GlobalExceptionHandler {
         if (ex.getField() != null) {
             List<ErrorField> errors = List.of(new ErrorField(ex.getField(), ex.getMessage()));
             return ResponseEntity.status(status).body(
-                    new BaseApiResponse<>(code.getCode(), code.getMessage(), errors)
+                    new BaseApiResponse<>(code.getStatus(), code.getCode(), code.getMessage(), errors)
             );
         }
 
@@ -46,8 +46,8 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.VALIDATION_ERROR;
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(new BaseApiResponse<>(code.getCode(), code.getMessage(), errors));
+                .status(mapToHttpStatus(code.getCode()))
+                .body(new BaseApiResponse<>(code.getStatus(), code.getCode(), code.getMessage(), errors));
     }
 
     @ExceptionHandler(BindException.class)
@@ -61,8 +61,8 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.VALIDATION_ERROR;
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(new BaseApiResponse<>(code.getCode(), code.getMessage(), errors));
+                .status(mapToHttpStatus(code.getCode()))
+                .body(new BaseApiResponse<>(code.getStatus(), code.getCode(), code.getMessage(), errors));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
@@ -70,7 +70,7 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.INVALID_PARAMETER;
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+                .status(mapToHttpStatus(code.getCode()))
                 .body(BaseApiResponse.error(code));
     }
 
@@ -79,7 +79,7 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.INVALID_PARAMETER;
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+                .status(mapToHttpStatus(code.getCode()))
                 .body(BaseApiResponse.error(code));
     }
 
@@ -88,7 +88,7 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.NOT_FOUND;
 
         return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
+                .status(mapToHttpStatus(code.getCode()))
                 .body(BaseApiResponse.error(code));
     }
 
@@ -97,7 +97,7 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.INTERNAL_SERVER_ERROR;
 
         return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .status(mapToHttpStatus(code.getCode()))
                 .body(BaseApiResponse.error(code));
     }
 
@@ -113,9 +113,6 @@ public class GlobalExceptionHandler {
     }
 
     private HttpStatus mapToHttpStatus(int code) {
-        if (code >= 1000 && code < 2000) return HttpStatus.OK;
-        if (code >= 2000 && code < 3000) return HttpStatus.BAD_REQUEST;
-        if (code >= 3000 && code < 4000) return HttpStatus.UNPROCESSABLE_ENTITY;
-        return HttpStatus.INTERNAL_SERVER_ERROR;
+        return HttpStatus.OK;
     }
 }
