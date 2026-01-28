@@ -1,9 +1,9 @@
-// src/pages/InterviewLobbyPage.tsx
+// src/pages/TestInterviewLobbyPage.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
-import { fetchMyInterviewViewById, type InterviewSessionView } from '../../api/myPage';
+import { type InterviewSessionView } from '../../api/myPage';
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -15,18 +15,23 @@ function formatDateTime(iso: string) {
   return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
 }
 
-type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
+type PageStatus = 'loading' | 'error' | 'success';
 type UserRole = 'guest' | 'individual' | 'corporate';
 
 type LobbyNavState = {
   sessionId?: string;
   initialMicOn?: boolean;
   initialCamOn?: boolean;
+
+  // 테스트 편의: 있으면 화면에 그대로 꽂아줌
+  companyName?: string;
+  postingTitle?: string;
+  scheduledAt?: string;
 };
 
 const ROUTES = {
   list: '/interviews',
-  lobby: (id: number) => `/interviews/${id}/lobby`,
+  testLobby: (id: number) => `/interviews/test/${id}/lobby`,
   room: (id: number) => `/interviews/${id}/room`,
 } as const;
 
@@ -101,19 +106,20 @@ function removeTracksByKind(stream: MediaStream, kind: 'audio' | 'video') {
   });
 }
 
-/** ✅ effect 본문에서 setState “즉시 호출” 피하려고 한 번 늦춰 실행 */
+/** effect 본문에서 setState “즉시 호출” 피하려고 한 번 늦춰 실행 */
 function defer(fn: () => void) {
   const id = window.setTimeout(fn, 0);
   return () => window.clearTimeout(id);
 }
 
-export default function InterviewLobbyPage() {
+export default function TestInterviewLobbyPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const navState = (location.state ?? {}) as LobbyNavState;
 
-  const interviewId = Number(id);
+  const rawInterviewId = Number(id);
+  const safeInterviewId = Number.isFinite(rawInterviewId) && rawInterviewId > 0 ? rawInterviewId : 1;
 
   const role = ((localStorage.getItem('userRole') ?? 'guest') as UserRole) || 'guest';
   const isCorporate = role === 'corporate';
@@ -126,20 +132,23 @@ export default function InterviewLobbyPage() {
   const [micOn, setMicOn] = useState<boolean>(navState.initialMicOn ?? false);
   const [camOn, setCamOn] = useState<boolean>(navState.initialCamOn ?? false);
 
+  // ✅ 여기서 sessionId를 “페이지에서 수정” 가능하게
+  const [sessionIdInput, setSessionIdInput] = useState<string>(navState.sessionId ?? '');
+
   // ✅ 미디어 프리뷰 상태
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const [mediaError, setMediaError] = useState<string>('');
   const [micLevel, setMicLevel] = useState<number>(0); // 0~1
 
-  // ✅ 트랙만 바뀌어도(스트림 객체는 같아도) 리렌더/이펙트 재실행하게 하는 트리거
+  // ✅ 트랙만 바뀌어도(스트림 객체는 같아도) 리렌더/이펙트 재실행 트리거
   const [streamRev, setStreamRev] = useState(0);
 
   // ✅ async 경합 방지(카메라/마이크 따로)
   const camOpIdRef = useRef(0);
   const micOpIdRef = useRef(0);
 
-  // ✅ 최신 스트림을 안전하게 참조
+  // ✅ 최신 스트림 참조
   const streamRef = useRef<MediaStream | null>(null);
   useEffect(() => {
     streamRef.current = mediaStream;
@@ -149,7 +158,7 @@ export default function InterviewLobbyPage() {
   const rafRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // ✅ 토스트(clipboard 복사 안내) — no-alert 회피
+  // ✅ 토스트
   const [toast, setToast] = useState<string>('');
   const toastTimerRef = useRef<number | null>(null);
   const showToast = useCallback((msg: string) => {
@@ -163,37 +172,40 @@ export default function InterviewLobbyPage() {
     };
   }, []);
 
-  const load = useCallback(async () => {
-    // ✅ 실제용: interviewId가 유효하지 않으면 notfound
-    if (!Number.isFinite(interviewId) || interviewId === 0) {
-      setSession(null);
-      setStatus('notfound');
-      return;
-    }
-
+  // ✅ 로드: 테스트 로비는 무조건 더미 세션으로 “성공 상태” 만들고,
+  // sessionId는 input에서 수정하도록 둠.
+  const load = useCallback(() => {
     setStatus('loading');
     setErrorMessage('세션 정보를 불러오지 못했어요.');
 
     try {
-      const data = await fetchMyInterviewViewById(interviewId);
-      if (!data) {
-        setSession(null);
-        setStatus('notfound');
-        return;
-      }
-      setSession(data);
+      const nowIso = navState.scheduledAt ?? new Date().toISOString();
+
+      const dummy = {
+        interview_id: safeInterviewId,
+        companyName: navState.companyName ?? 'TEST',
+        postingTitle: navState.postingTitle ?? 'INTERVIEW SESSION',
+        scheduledAt: nowIso,
+        room_id: navState.sessionId ?? '',
+      } as unknown as InterviewSessionView;
+
+      setSession(dummy);
+
+      // ✅ state로 넘어온 세션ID가 있으면 input에도 반영(없으면 기존 입력 유지)
+      if (navState.sessionId && !sessionIdInput) setSessionIdInput(navState.sessionId);
+
       setStatus('success');
     } catch (err) {
       setSession(null);
       setStatus('error');
       setErrorMessage(err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
     }
-  }, [interviewId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navState.companyName, navState.postingTitle, navState.scheduledAt, navState.sessionId, safeInterviewId]);
 
-  // ✅ 빨간줄 방지: effect 본문에서 load 즉시 호출 X → defer 콜백에서 호출
   useEffect(() => {
     const cleanup = defer(() => {
-      void load();
+      load();
     });
     return cleanup;
   }, [load]);
@@ -204,14 +216,21 @@ export default function InterviewLobbyPage() {
 
   const goRoom = useCallback(() => {
     if (!session) return;
+
+    const sid = sessionIdInput.trim();
+    if (!sid) {
+      showToast('세션 ID를 입력해줘야 들어갈 수 있어요 😇');
+      return;
+    }
+
     navigate(ROUTES.room(session.interview_id), {
-      state: { micOn, camOn, sessionId: navState.sessionId ?? session.room_id },
+      state: { micOn, camOn, sessionId: sid },
     });
-  }, [camOn, micOn, navigate, navState.sessionId, session]);
+  }, [camOn, micOn, navigate, session, sessionIdInput, showToast]);
 
   const inviteLink = useMemo(() => {
     if (!session) return '';
-    return `${window.location.origin}${ROUTES.lobby(session.interview_id)}`;
+    return `${window.location.origin}${ROUTES.testLobby(session.interview_id)}`;
   }, [session]);
 
   const copyInviteLink = useCallback(async () => {
@@ -235,6 +254,20 @@ export default function InterviewLobbyPage() {
     }
   }, [inviteLink, showToast]);
 
+  const copySessionId = useCallback(async () => {
+    const sid = sessionIdInput.trim();
+    if (!sid) {
+      showToast('복사할 세션 ID가 비어있어요 🫠');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(sid);
+      showToast('세션 ID 복사 완료!');
+    } catch {
+      showToast('복사 실패… 직접 드래그해서 복사해줘!');
+    }
+  }, [sessionIdInput, showToast]);
+
   const ensureMediaSupported = useCallback(() => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setMediaError('이 브라우저는 카메라/마이크 권한 요청을 지원하지 않아요.');
@@ -245,7 +278,6 @@ export default function InterviewLobbyPage() {
 
   /**
    * ✅ 0) 둘 다 OFF면 스트림 완전 종료
-   * - cam/mic 토글 로직이 서로 건드리지 않도록 “완전 종료”만 따로 관리
    */
   useEffect(() => {
     const alive = { current: true };
@@ -270,8 +302,7 @@ export default function InterviewLobbyPage() {
   }, [camOn, micOn]);
 
   /**
-   * ✅ 1) 카메라 토글 전용 (마이크 변화에 반응 X)
-   * - 깜빡임 방지 핵심
+   * ✅ 1) 카메라 토글 전용
    */
   useEffect(() => {
     const alive = { current: true };
@@ -281,7 +312,6 @@ export default function InterviewLobbyPage() {
       if (!alive.current) return;
 
       const run = async () => {
-        // camOn이 꺼지면 비디오 트랙만 제거
         if (!camOn) {
           setMediaError('');
           const current = streamRef.current;
@@ -293,7 +323,6 @@ export default function InterviewLobbyPage() {
           return;
         }
 
-        // camOn이 켜지면 비디오 트랙만 확보/추가
         if (!ensureMediaSupported()) return;
 
         setMediaError('');
@@ -345,8 +374,7 @@ export default function InterviewLobbyPage() {
   }, [camOn, ensureMediaSupported]);
 
   /**
-   * ✅ 2) 마이크 토글 전용 (카메라 변화에 반응 X)
-   * - 깜빡임 방지 핵심
+   * ✅ 2) 마이크 토글 전용
    */
   useEffect(() => {
     const alive = { current: true };
@@ -356,7 +384,6 @@ export default function InterviewLobbyPage() {
       if (!alive.current) return;
 
       const run = async () => {
-        // micOn이 꺼지면 오디오 트랙만 제거
         if (!micOn) {
           setMediaError('');
           const current = streamRef.current;
@@ -369,7 +396,6 @@ export default function InterviewLobbyPage() {
           return;
         }
 
-        // micOn이 켜지면 오디오 트랙만 확보/추가
         if (!ensureMediaSupported()) return;
 
         setMediaError('');
@@ -421,7 +447,7 @@ export default function InterviewLobbyPage() {
     };
   }, [micOn, ensureMediaSupported]);
 
-  // ✅ video 태그에 stream 연결 (트랙만 바뀌어도 play 재시도)
+  // ✅ video 태그에 stream 연결
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
@@ -447,7 +473,6 @@ export default function InterviewLobbyPage() {
   useEffect(() => {
     const alive = { current: true };
 
-    // 기존 cleanup
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -535,17 +560,15 @@ export default function InterviewLobbyPage() {
 
   if (status === 'loading') return <LobbySkeleton onBack={goList} />;
   if (status === 'error') return <ErrorBox message={errorMessage} onRetry={load} onBack={goList} />;
-  if (status === 'notfound' || !session) return <NotFoundBox onBack={goList} />;
+  if (!session) return <ErrorBox message="세션 데이터가 비어있어요." onRetry={load} onBack={goList} />;
 
   const showPreview = camOn && !!mediaStream && mediaStream.getVideoTracks().length > 0;
+  const roomLabel = sessionIdInput.trim() ? sessionIdInput.trim() : '-';
 
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        <LobbyHeader
-          subtitle={`${session.companyName} · ${session.postingTitle}`}
-          onBack={goList}
-        />
+        <LobbyHeader subtitle={`${session.companyName} · ${session.postingTitle}`} onBack={goList} />
 
         <div className="grid grid-cols-3 gap-6">
           <section className="col-span-1 rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
@@ -559,9 +582,56 @@ export default function InterviewLobbyPage() {
                 {formatDateTime(session.scheduledAt)}
               </span>
               <span className="bg-cloud-dancer text-midnight-ink rounded-full px-3 py-1 text-xs font-black">
-                ROOM ·{' '}
-                <span className="font-semibold break-all text-zinc-600">{session.room_id}</span>
+                ROOM · <span className="font-semibold break-all text-zinc-600">{roomLabel}</span>
               </span>
+            </div>
+
+            {/* ✅ sessionId 입력/수정 (이게 메인!) */}
+            <div className="mt-6 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
+              <p className="text-sm font-black">세션 ID</p>
+              <p className="mt-1 text-xs font-semibold text-zinc-500">
+                여기서 바꾸면 “면접 시작/입장” 시 그대로 Room으로 전달돼요.
+              </p>
+
+              <input
+                value={sessionIdInput}
+                onChange={(e) => setSessionIdInput(e.target.value)}
+                placeholder="예: ses_dummy_test_001"
+                className={[
+                  'mt-3 w-full rounded-2xl border bg-white px-4 py-3 text-base font-bold text-zinc-700',
+                  'border-zinc-200 outline-none focus:ring-2 focus:ring-midnight-ink',
+                ].join(' ')}
+              />
+
+              <div className="mt-3 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  className="flex-1 rounded-2xl"
+                  onClick={copySessionId}
+                >
+                  세션 ID 복사
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  className="flex-1 rounded-2xl"
+                  onClick={() => {
+                    setSessionIdInput('');
+                    showToast('세션 ID 비움(=입장 불가 상태) 😈');
+                  }}
+                >
+                  비우기
+                </Button>
+              </div>
+
+              {!sessionIdInput.trim() ? (
+                <p className="mt-3 text-xs font-bold text-red-500">
+                  세션 ID가 비어있으면 입장 버튼이 먹통(정상)입니다.
+                </p>
+              ) : null}
             </div>
 
             {isCorporate && (
@@ -606,6 +676,7 @@ export default function InterviewLobbyPage() {
                 size="md"
                 className="w-full rounded-2xl"
                 onClick={goRoom}
+                disabled={!sessionIdInput.trim()}
               >
                 {isCorporate ? '면접 시작' : '면접 입장'}
               </Button>
@@ -704,26 +775,6 @@ export default function InterviewLobbyPage() {
 }
 
 /* ---------------- 상태 UI ---------------- */
-
-function NotFoundBox({ onBack }: { onBack: () => void }) {
-  return (
-    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
-      <div className="mx-auto w-[1280px] space-y-10 px-6">
-        <LobbyHeader subtitle="입장 전 대기실" onBack={onBack} />
-
-        <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
-          <p className="text-lg font-black">유효하지 않은 면접 세션이에요.</p>
-          <p className="mt-2 text-sm font-semibold text-zinc-500">목록에서 다시 선택해 주세요.</p>
-          <div className="mt-6 flex justify-center">
-            <Button type="button" variant="blue" size="md" className="rounded-2xl" onClick={onBack}>
-              면접 목록으로
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ErrorBox({
   message,

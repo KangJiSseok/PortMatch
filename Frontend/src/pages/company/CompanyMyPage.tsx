@@ -1,5 +1,5 @@
 // src/pages/CorporateMyPage.tsx
-import { useEffect, useMemo, useState, type ReactNode, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -16,7 +16,6 @@ import {
 
 /** ------------------ routes (프로젝트 라우트에 맞게 수정) ------------------ */
 const ROUTES = {
-  jobPostNew: '/jobposts/new',
   jobPostManage: '/company/jobs',
   interviewManage: '/interviews',
   // ✅ 이력서 보기 라우트(프로젝트에 맞게 변경)
@@ -112,13 +111,11 @@ function formatScheduleHint(startIso: string) {
     return `${h}시간 ${m}분 전`;
   }
 
-  // ✅ 이후 날짜면: "D-3" 같은 스타일 (원래대로 하고 싶으면 여기만 바꾸면 됨)
+  // ✅ 이후 날짜면: "D-3" 같은 스타일
   if (dayDiff > 0) return `D-${dayDiff}`;
 
-  // ✅ '곧 시작돼요.' 같은 거 안 씀
   return null;
 }
-
 
 /** ✅ React Query 느낌 미니 훅 */
 function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
@@ -145,7 +142,7 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
   };
 
   useEffect(() => {
-    run();
+    void run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
@@ -217,7 +214,6 @@ async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
   // ✅ 이번 달 마지막날 23:59:59
   const end = new Date(year, month0 + 1, 0, 23, 59, 59, 999);
 
-  // 하루에 5개씩 생성할 “시간표”
   const slots = [
     { h: 9, m: 0, title: '1차 면접' },
     { h: 10, m: 30, title: '실무 면접' },
@@ -234,7 +230,6 @@ async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
 
   const out: InterviewEvent[] = [];
 
-  // ✅ 날짜를 하루씩 증가시키면서 이번 달 끝까지 생성
   for (
     let d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
     d.getTime() <= end.getTime();
@@ -242,8 +237,6 @@ async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
   ) {
     for (let i = 0; i < slots.length; i++) {
       const s = slots[i];
-
-      // 로컬 시간 기준으로 생성 → toISOString()으로 저장
       const when = new Date(d.getFullYear(), d.getMonth(), d.getDate(), s.h, s.m, 0, 0);
 
       out.push({
@@ -261,7 +254,7 @@ async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
 }
 
 /** ------------------ page ------------------ */
-export default function CorporateMyPage() {
+export default function CompanyMyPage() {
   const navigate = useNavigate();
 
   const profileQuery = useQueryLike(fetchCompanyProfile, []);
@@ -273,7 +266,10 @@ export default function CorporateMyPage() {
   // ✅ 부드러운 진입(깜빡임/급전개 완화)
   const [entered, setEntered] = useState(false);
   useEffect(() => {
-    setEntered(true);
+    const raf = window.requestAnimationFrame(() => {
+      setEntered(true);
+    });
+    return () => window.cancelAnimationFrame(raf);
   }, []);
 
   const companyName = authCompanyName ?? profileQuery.data?.companyName ?? '기업';
@@ -295,7 +291,6 @@ export default function CorporateMyPage() {
     const sorted = [...list].sort((a, b) => {
       if (jobPostSort === 'latest') return a.createdAt > b.createdAt ? -1 : 1;
 
-      // deadline sort: 가까운 마감이 위
       const aHas = !!a.deadlineAt;
       const bHas = !!b.deadlineAt;
       if (aHas && bHas) return a.deadlineAt! < b.deadlineAt! ? -1 : 1;
@@ -361,7 +356,7 @@ export default function CorporateMyPage() {
   }, [interviewQuery.data, interviewFilter, navigate, companyName]);
 
   // ==========================
-  // ✅ 캘린더 (컴포넌트 사용)
+  // ✅ 캘린더
   // ==========================
   const todayYmd = toYmd(new Date());
 
@@ -372,7 +367,6 @@ export default function CorporateMyPage() {
 
   const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
 
-  // ✅ 날짜별 이벤트 맵
   const interviewEvents = interviewQuery.data ?? [];
   const interviewEventMap = useMemo(() => {
     const m = new Map<string, InterviewEvent[]>();
@@ -575,7 +569,7 @@ export default function CorporateMyPage() {
           </div>
         </section>
 
-        {/* ✅ 캘린더 (오른쪽 일정에 “몇시간몇분전 / 며칠후” 포함) */}
+        {/* ✅ 캘린더 */}
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
             <div>
@@ -619,7 +613,6 @@ export default function CorporateMyPage() {
                           <span className="ml-2">{e.candidateName}</span>
                         </p>
 
-                        {/* ✅ 날짜 + 상대 시간 표시 */}
                         <p className="mt-2 text-xs font-semibold text-zinc-500">
                           {formatDateTime(e.scheduledAt)} <span className="text-zinc-300">·</span>{' '}
                           {hint}
@@ -665,32 +658,45 @@ function HubCard({
   onClick: () => void;
   children: ReactNode;
 }) {
-  const handleCardClick = (e: MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    const interactive = target.closest('button, a, input, select, textarea, [role="button"]');
-    if (interactive && interactive !== e.currentTarget) return;
-    onClick();
+  const shouldIgnoreCardClick = (target: EventTarget | null, currentTarget: HTMLElement) => {
+    if (!(target instanceof HTMLElement)) return false;
+
+    const interactive = target.closest(
+      'button, a, input, select, textarea, [data-stop-card-click="true"]',
+    );
+    if (interactive) return true;
+
+    const roleButton = target.closest('[role="button"]');
+    if (roleButton && roleButton !== currentTarget) return true;
+
+    return false;
   };
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={handleCardClick}
+      onClick={(e) => {
+        if (shouldIgnoreCardClick(e.target, e.currentTarget)) return;
+        onClick();
+      }}
       onKeyDown={(e) => {
+        if (e.currentTarget !== e.target) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onClick();
         }
       }}
       className={[
-        'group flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition-all',
-        'hover:-translate-y-0.5 hover:shadow-md hover:ring-2 hover:ring-midnight-ink/20',
-        'focus:ring-2 focus:ring-midnight-ink/30 focus:outline-none',
+        'group flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition',
+        'hover:ring-midnight-ink/20 hover:-translate-y-0.5 hover:shadow-md hover:ring-2',
+        'focus:ring-midnight-ink/30 focus:ring-2 focus:outline-none',
       ].join(' ')}
     >
       <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
-        <p className="text-midnight-ink text-base font-black">{title}</p>
+        <div className="min-w-0">
+          <p className="text-midnight-ink truncate text-base font-black">{title}</p>
+        </div>
         <ChevronRight className="text-zinc-300" size={18} aria-hidden />
       </div>
 
@@ -763,7 +769,11 @@ function ListRowInterviewWithResume({
       tabIndex={0}
       onClick={onRowClick}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onRowClick();
+        if (e.key === 'Enter') onRowClick();
+        if (e.key === ' ') {
+          e.preventDefault();
+          onRowClick();
+        }
       }}
       className="group w-full cursor-pointer rounded-2xl p-3 text-left transition hover:bg-zinc-50"
     >

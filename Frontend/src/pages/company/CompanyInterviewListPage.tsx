@@ -63,6 +63,8 @@ type CorporateView = InterviewSessionView & {
 const ROUTES = {
   list: '/interviews',
   lobby: (id: number) => `/interviews/${id}/lobby`,
+  // ✅ 테스트 로비 라우트 추가 (앞에 "/" 필수)
+  test: (id: number) => `/interviews/test/${id}/lobby`,
 } as const;
 
 // ✅ 실명 느낌 없이: “지원자 01~”
@@ -70,6 +72,9 @@ function pickApplicantName(interviewId: number) {
   const n = (Math.abs(interviewId) % 99) + 1;
   return `지원자 ${String(n).padStart(2, '0')}`;
 }
+
+// ✅ 테스트 고정 세션(InterviewPage랑 동일하게 맞추기)
+const DUMMY_SESSION = 'ses_dummy_test_001';
 
 export default function CorporateInterviewListPage() {
   const navigate = useNavigate();
@@ -104,7 +109,7 @@ export default function CorporateInterviewListPage() {
   };
 
   useEffect(() => {
-    load();
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -174,22 +179,55 @@ export default function CorporateInterviewListPage() {
 
   const isUpcoming = tab === 'UPCOMING';
 
+  // ✅ 테스트 로비로 이동 (TestInterviewLobbyPage.tsx 라우트로!)
+  const goTestLobby = () => {
+    navigate(ROUTES.test(0), {
+      state: {
+        sessionId: DUMMY_SESSION,
+        initialMicOn: false,
+        initialCamOn: false,
+
+        // (선택) 테스트 화면에 텍스트 채워 넣기
+        companyName: 'TEST',
+        postingTitle: 'INTERVIEW MANAGEMENT TEST',
+        scheduledAt: new Date().toISOString(),
+      },
+    });
+  };
+
   return (
     // ✅ 가로 스크롤/고정폭: CompanyJobManagementPage 톤 그대로
     <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
       <div className="mx-auto w-5xl px-6">
         {/* ✅ 헤더(왼쪽 파란 라인 + 큰 타이틀) */}
         <header className="border-point-blue mb-12 border-l-4 pl-6">
-          <motion.h1
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
-          >
-            Interview Management
-          </motion.h1>
-          <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
-            면접 일정을 관리하고 바로 입장/수정까지 처리하세요.
-          </p>
+          <div className="flex items-end justify-between gap-6">
+            <div className="min-w-0">
+              <motion.h1
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
+              >
+                Interview Management
+              </motion.h1>
+              <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
+                면접 일정을 관리하고 바로 입장/수정까지 처리하세요.
+              </p>
+            </div>
+
+            {/* ✅ 테스트 로비 입장 버튼 */}
+            <div className="shrink-0">
+              <Button
+                type="button"
+                variant="blue"
+                size="lg"
+                className="rounded-2xl px-8 shadow-xl"
+                onClick={goTestLobby}
+              >
+                테스트 로비 입장
+              </Button>
+            </div>
+          </div>
         </header>
 
         <motion.div
@@ -250,7 +288,7 @@ export default function CorporateInterviewListPage() {
                   variant="blue"
                   size="lg"
                   className="rounded-2xl px-8 shadow-xl"
-                  onClick={load}
+                  onClick={() => void load()}
                 >
                   다시 시도
                 </Button>
@@ -363,7 +401,7 @@ export default function CorporateInterviewListPage() {
           )}
         </motion.div>
 
-        {/* ✅ 면접 시간 수정 모달 (CompanyJobManagementPage 톤) */}
+        {/* ✅ 면접 시간 수정 모달 */}
         <AnimatePresence>
           {editOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-6">

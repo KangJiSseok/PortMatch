@@ -58,6 +58,7 @@ import MypageGate from './routes/MyPageGate';
 import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
 import CompanyInterviewSchedulePage from './pages/company/CompanyInterviewSchedulePage';
+import TestInterviewLobbyPage from './pages/interview/TestInterviewLobbyPage';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -218,6 +219,12 @@ const router = createBrowserRouter([
             <JobApplyPage />
           </AuthGuard>
         ),
+      },
+      {
+        path: 'interviews/test/:id/lobby',
+        element: (
+          <TestInterviewLobbyPage/>
+        )
       },
       {
         path: 'company/jobs',
