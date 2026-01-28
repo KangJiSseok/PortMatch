@@ -79,6 +79,21 @@ services:
       - "443:443"
     depends_on:
       - backend
+      - openvidu-server
+
+  openvidu-server:
+    image: openvidu/openvidu-dev:2.30.0
+    container_name: openvidu-server
+    restart: always
+    ports:
+      - "8443:4443"
+    environment:
+      - OPENVIDU_SECRET=MY_SECRET
+      - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=60
+      - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=1200
+      - OPENVIDU_WEBHOOK=true
+      - OPENVIDU_WEBHOOK_ENDPOINT=http://portmatch-backend-prod:8080/api/interview/webhook
+      - OPENVIDU_WEBHOOK_EVENTS=[sessionDestroyed]
 
   certbot:
     image: certbot/certbot:latest
