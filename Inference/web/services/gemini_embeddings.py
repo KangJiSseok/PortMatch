@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 import os
 
 import requests
@@ -13,12 +13,7 @@ def _normalize_model(model: str) -> str:
     return f"models/{cleaned}"
 
 
-def embed_texts(
-    api_key: str,
-    texts: List[str],
-    model: str = "gemini-embedding-001",
-    output_dimensionality: Optional[int] = None,
-) -> List[List[float]]:
+def embed_texts(api_key: str, texts: List[str], model: str = "gemini-embedding-001") -> List[List[float]]:
     if not isinstance(texts, list) or not texts:
         raise ValueError("texts must be a non-empty list")
 
@@ -28,16 +23,15 @@ def embed_texts(
 
     model_name = _normalize_model(model)
     url = f"{base_url.rstrip('/')}/v1beta/{model_name}:batchEmbedContents"
-    requests_payload = []
-    for text in texts:
-        req = {
-            "model": model_name,
-            "content": {"parts": [{"text": text}]},
-        }
-        if output_dimensionality:
-            req["outputDimensionality"] = int(output_dimensionality)
-        requests_payload.append(req)
-    payload = {"requests": requests_payload}
+    payload = {
+        "requests": [
+            {
+                "model": model_name,
+                "content": {"parts": [{"text": text}]},
+            }
+            for text in texts
+        ]
+    }
     headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
 
     response = requests.post(url, json=payload, headers=headers, timeout=30)

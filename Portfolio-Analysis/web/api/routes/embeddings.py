@@ -53,17 +53,15 @@ def _gemini_embed_documents(texts: List[str], model: str) -> List[List[float]]:
     model_name = _normalize_model(model)
     url = f"{base_url.rstrip('/')}/v1beta/{model_name}:batchEmbedContents"
     print(f"[gemini] base_url={base_url} model={model_name} url={url} texts={len(texts)}")
-    output_dim = int(os.getenv("GEMINI_OUTPUT_DIMENSIONS", "1536"))
-    requests_payload = []
-    for text in texts:
-        req = {
-            "model": model_name,
-            "content": {"parts": [{"text": text}]},
-        }
-        if output_dim:
-            req["outputDimensionality"] = output_dim
-        requests_payload.append(req)
-    payload = {"requests": requests_payload}
+    payload = {
+        "requests": [
+            {
+                "model": model_name,
+                "content": {"parts": [{"text": text}]},
+            }
+            for text in texts
+        ]
+    }
     headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
 
     response = requests.post(url, json=payload, headers=headers, timeout=30)
