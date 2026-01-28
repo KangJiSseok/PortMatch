@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import Button from '../../components/Button/Button';
 
 interface Notice {
   id: number;
@@ -48,7 +49,7 @@ const MOCK_NOTICES: Notice[] = [
 
 const CATEGORIES = ['전체', '시스템', '서비스', '이벤트', '안내'];
 
-function NoticePage() {
+const NoticePage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('전체');
 
@@ -57,117 +58,119 @@ function NoticePage() {
       ? MOCK_NOTICES
       : MOCK_NOTICES.filter((notice) => notice.category === activeTab);
 
-  const underlineEffect =
-    "relative after:content-[''] after:absolute after:left-0 after:bottom-[-2px] after:w-0 after:h-[2px] after:bg-point-blue after:transition-all after:duration-300 group-hover:after:w-full";
-
   return (
-    <div className="text-midnight-ink min-h-screen bg-white">
-      <div className="mx-auto w-350 px-6 pt-32 pb-20">
-        <header className="mb-12">
-          <button
-            onClick={() => navigate(-1)}
-            className="group hover:text-midnight-ink mb-6 flex items-center gap-2 text-sm font-bold text-zinc-400 transition-colors"
+    <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
+      <div className="mx-auto w-5xl px-6">
+        <header className="border-point-blue mb-12 flex items-start justify-between border-l-4 pl-6">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex-1"
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            뒤로가기
-          </button>
-          <h1 className="text-4xl font-black tracking-tighter">공지사항</h1>
-          <p className="mt-4 text-lg font-bold text-zinc-400">
-            PortMatch의 새로운 소식과 안내사항을 확인하세요.
-          </p>
+            <h1 className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase">
+              Notice
+            </h1>
+            <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
+              PortMatch의 새로운 소식과 안내사항을 확인하세요.
+            </p>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+            <Button
+              isBack
+              variant="outline"
+              size="md"
+              onClick={() => navigate(-1)}
+              className="hover:text-midnight-ink border-none px-0! text-zinc-400 hover:bg-transparent!"
+            />
+          </motion.div>
         </header>
 
-        <section className="mb-10 flex gap-4 border-b border-zinc-100 pb-4">
+        <section className="mb-10 flex gap-2">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveTab(cat)}
-              className={`relative px-4 py-2 text-base font-black transition-all ${
-                activeTab === cat ? 'text-midnight-ink' : 'text-zinc-300 hover:text-zinc-500'
+              className={`relative rounded-xl px-6 py-2 text-sm font-black transition-all ${
+                activeTab === cat ? 'bg-midnight-ink text-white' : 'text-zinc-400 hover:bg-zinc-100'
               }`}
             >
               {cat}
-              {activeTab === cat && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="bg-midnight-ink absolute bottom-[-17px] left-0 h-1 w-full"
-                />
-              )}
             </button>
           ))}
         </section>
 
-        <section className="overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm">
-          <div className="flex bg-zinc-50 px-8 py-4 text-sm font-black tracking-widest text-zinc-400 uppercase">
-            <span className="w-16 text-center">NO</span>
-            <span className="w-24 text-center">CATEGORY</span>
-            <span className="flex-1 px-10">TITLE</span>
-            <span className="w-32 text-center">DATE</span>
-          </div>
-
-          <div className="divide-y divide-zinc-50">
-            {filteredNotices.map((notice) => (
-              <div
-                key={notice.id}
-                className="group flex cursor-pointer items-center px-8 py-6 transition-colors hover:bg-zinc-50/50"
-              >
-                <span className="w-16 text-center text-sm font-bold text-zinc-300">
-                  {notice.id}
-                </span>
-                <span
-                  className={`w-24 rounded-md px-2 py-1 text-center text-xs font-black tracking-tighter uppercase ${
-                    notice.category === '시스템'
-                      ? 'bg-red-50 text-red-500'
-                      : notice.category === '서비스'
-                        ? 'bg-blue-50 text-blue-500'
-                        : notice.category === '이벤트'
-                          ? 'bg-orange-50 text-orange-500'
-                          : 'bg-zinc-100 text-zinc-500'
-                  }`}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="grid gap-4">
+            {filteredNotices.length > 0 ? (
+              filteredNotices.map((notice) => (
+                <div
+                  key={notice.id}
+                  className="group border-silver-mist bg-pure-white flex min-w-full cursor-pointer items-center justify-between rounded-3xl border p-7 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
                 >
-                  {notice.category}
-                </span>
-                <div className="flex-1 px-10">
-                  <h3
-                    className={`text-midnight-ink group-hover:text-point-blue inline-block text-lg font-bold transition-colors ${underlineEffect}`}
-                  >
-                    {notice.title}
-                    {notice.isNew && (
-                      <span className="bg-point-blue ml-2 inline-block h-2 w-2 rounded-full" />
-                    )}
-                  </h3>
-                </div>
-                <span className="w-32 text-center text-sm font-bold text-zinc-400">
-                  {notice.date}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+                  <div className="flex min-w-0 items-center gap-8">
+                    <span className="w-12 text-center text-sm font-bold text-zinc-300 tabular-nums">
+                      {notice.id.toString().padStart(2, '0')}
+                    </span>
 
-        {filteredNotices.length === 0 && (
-          <div className="py-20 text-center">
-            <p className="text-xl font-bold text-zinc-300">해당 카테고리의 공지사항이 없습니다.</p>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`shrink-0 rounded-full px-3 py-0.5 text-[11px] font-black tracking-tight uppercase ${
+                            notice.category === '시스템'
+                              ? 'bg-red-50 text-red-500'
+                              : notice.category === '서비스'
+                                ? 'bg-blue-50 text-blue-500'
+                                : notice.category === '이벤트'
+                                  ? 'bg-orange-50 text-orange-500'
+                                  : 'bg-zinc-100 text-zinc-500'
+                          }`}
+                        >
+                          {notice.category}
+                        </span>
+                        {notice.isNew && (
+                          <span className="bg-point-blue h-1.5 w-1.5 animate-pulse rounded-full" />
+                        )}
+                      </div>
+                      <h3 className="text-midnight-ink group-hover:text-point-blue truncate text-xl font-black tracking-tight transition-colors">
+                        {notice.title}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-8">
+                    <div className="bg-cloud-dancer h-8 w-px" />
+                    <span className="w-24 text-right text-sm font-bold text-zinc-400 tabular-nums">
+                      {notice.date}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="border-silver-mist bg-pure-white rounded-[40px] border-2 border-dashed py-32 text-center">
+                <div className="mb-4 text-6xl opacity-20">📢</div>
+                <p className="text-soft-pebble text-xl font-black italic">
+                  해당 카테고리의 공지사항이 없습니다.
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {filteredNotices.length > 0 && (
+          <div className="mt-12 flex justify-center">
+            <button className="text-midnight-ink flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-100 font-black shadow-sm transition-all hover:bg-zinc-50">
+              1
+            </button>
           </div>
         )}
-
-        <div className="mt-12 flex justify-center gap-2">
-          <button className="text-midnight-ink flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-100 font-bold shadow-sm transition-all hover:bg-zinc-50">
-            1
-          </button>
-        </div>
       </div>
     </div>
   );
-}
+};
 
 export default NoticePage;

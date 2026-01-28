@@ -25,6 +25,7 @@ import SignupPage from './pages/auth/SignupPage';
 import PortfoliosPage from './pages/user/PortfoliosPage';
 import ResumeDetailPage from './pages/user/ResumeDetailPage';
 import RecommendCompanyPage from './pages/user/RecommendCompanyPage';
+import ProfileEditPage from './pages/user/ProfileEditPage';
 
 import JobPostingsPage from './pages/job/JobPostingsPage';
 import CompanyJobManagementPage from './pages/job/CompanyJobManagementPage';
@@ -43,12 +44,13 @@ import ScheduleManagementPage from './pages/support/ScheduleManagementPage';
 import InterviewTemplatePage from './pages/support/InterviewTemplatePage';
 
 import NoticePage from './pages/admin/NoticePage';
+import NoticeManagementPage from './pages/admin/NoticeManagementPage';
+import NoticeFormPage from './pages/admin/NoticeFormPage';
 
-import { ProtectedRoute, PublicRoute, CompanyRoute } from './routes/RouteGuard';
+import { ProtectedRoute, PublicRoute, CompanyRoute, AdminRoute } from './routes/RouteGuard';
 import MypageGate from './routes/MyPageGate';
 import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
-import ProfileEditPage from './pages/user/ProfileEditPage';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -280,6 +282,35 @@ const router = createBrowserRouter([
       {
         path: 'support/notices',
         element: <NoticePage />,
+      },
+      {
+        path: 'admin',
+        children: [
+          {
+            path: 'notices',
+            element: (
+              <AdminRoute>
+                <NoticeManagementPage />
+              </AdminRoute>
+            ),
+          },
+          {
+            path: 'notices/new',
+            element: (
+              <AdminRoute>
+                <NoticeFormPage />
+              </AdminRoute>
+            ),
+          },
+          {
+            path: 'notices/edit/:id',
+            element: (
+              <AdminRoute>
+                <NoticeFormPage />
+              </AdminRoute>
+            ),
+          },
+        ],
       },
       {
         path: 'design',
