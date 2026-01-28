@@ -17,9 +17,9 @@ def _build_prompt() -> "ChatPromptTemplate":
         "- Do NOT include revenue, sales figures, financial performance, or valuation.\n"
         "- Do NOT include executives, ownership, or company size.\n"
         "- Focus on what the company does, products, platforms, systems, services.\n"
-        "- If known, include concrete product/service names and technical terms.\n"
-        "- If known, include customer/industry focus and delivery model (SaaS, on-premise, etc.).\n"
-        "- If uncertain, omit rather than guess.\n"
+        "- Prefer concise, high-level descriptions over exhaustive details.\n"
+        "- Include only widely known product/service names or technical terms.\n"
+        "- If not clearly known, omit rather than guess.\n"
         "- Keep it to 3-5 sentences.\n"
         "Return plain text only."
     )
