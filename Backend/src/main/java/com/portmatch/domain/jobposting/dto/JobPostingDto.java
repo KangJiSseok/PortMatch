@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JobPostingDto implements Serializable {
-    private String id; //공고 ID
+    private Long id; //공고 ID
     private String title; //공고 제목
     private int active; // 공고 상태(활성: 1, 비활성: 0)
     private String startDate; // 공고 시작일

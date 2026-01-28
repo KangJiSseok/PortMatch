@@ -1,12 +1,13 @@
 package com.portmatch.domain.jobposting.service;
 
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
+import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 
 import java.util.List;
 
 public interface JobPostingService {
     // 1. [Create / Update] 공고 저장 및 수정 (Upsert)
-    void saveJobPosting(JobPostingDto dto);
+    JobPostingEntity saveJobPosting(JobPostingDto dto);
 
     // [추가] 1-1. 공고 정보와 기술 스택 리스트를 함께 저장
     void saveJobPostingWithStacks(JobPostingDto dto);
@@ -15,13 +16,13 @@ public interface JobPostingService {
     List<JobPostingDto> getAllJobPostings();
 
     // 3. [Read] 특정 공고 상세 조회 (기존 getJobDetail 활용)
-    JobPostingDto getJobDetail(String id);
+    JobPostingDto getJobDetail(Long id);
 
     // 4. [Delete] 특정 공고 삭제
-    void deleteJobPosting(String id);
+    void deleteJobPosting(Long id);
 
     // 5. [Update] 조회수 증가 (필요하다면!)
-    void updateViewCount(String id);
+    void updateViewCount(Long id);
 
     // 6. [Read] 스택 별 공고 조회
     List<JobPostingDto> getJobsByStacks(List<Long> stackIds);

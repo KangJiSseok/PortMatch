@@ -35,7 +35,7 @@ public class StackController {
     @Operation(summary = "공고별 스택 리스트 조회", description = "특정 채용 공고에 요구사항으로 등록된 기술 스택들을 조회합니다.")
     @GetMapping("/posting/{postingId}")
     public BaseApiResponse<List<TechStackDto>> getStacksByPosting(
-            @Parameter(description = "공고 ID", example = "job_001") @PathVariable String postingId) {
+            @Parameter(description = "공고 ID", example = "job_001") @PathVariable Long postingId) {
         log.info("공고별 스택 조회 요청 - 공고 ID: {}", postingId);
         List<TechStackDto> stacks = stackService.getPostingStacks(postingId);
         return BaseApiResponse.ok(stacks);

@@ -15,8 +15,9 @@ import java.util.List;
 @Builder
 public class JobPostingEntity {
 
-    @Id // 사람인 공고 ID (wid)
-    private String id;
+    @Id // 공고 ID (wid)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     private String title;
 

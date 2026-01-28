@@ -9,7 +9,7 @@ import java.util.List;
 public interface PostingStackRepository extends JpaRepository<PostingStackEntity, Long> {
 
     // 1. 공고 ID로 조회 (JobPostingEntity 내부의 id 필드 참조)
-    List<PostingStackEntity> findByJobPostingId(String jobPostingId);
+    List<PostingStackEntity> findByJobPostingId(Long jobPostingId);
 
     // 2. 스택 ID로 조회 (TechStackEntity 내부의 id 필드 참조)
     // 필드명이 techStack이고 그 안의 필드가 id이므로 아래 이름이 정확해!

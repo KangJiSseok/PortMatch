@@ -10,7 +10,7 @@ public interface StackService {
 
     List<TechStackDto> getAllTechStacks();
 
-    List<TechStackDto> getPostingStacks(String posting_id);
+    List<TechStackDto> getPostingStacks(Long posting_id);
 
     TechStackDto getTechStackById(Long id);
 }

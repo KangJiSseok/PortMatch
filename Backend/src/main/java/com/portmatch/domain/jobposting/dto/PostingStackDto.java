@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PostingStackDto {
-    private String jobPostingId; // 연결된 공고 ID (FK)
+    private Long jobPostingId; // 연결된 공고 ID (FK)
     private Long stackId;     // 기술 스택 ID (FK)
     private String stackName;    // 화면에 보여주기 위한 스택 이름 (예: Java)
 
