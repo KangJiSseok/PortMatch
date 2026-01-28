@@ -199,7 +199,7 @@ public class PortfolioEmbeddingService {
 
         return ""
                 + "[프로젝트명] " + safe(projectName) + "\n"
-                + "[???] " + safe(domain) + "\n"
+                + "[도메인] " + safe(domain) + "\n"
                 + "[문제] " + safe(problem) + "\n"
                 + "[해결] " + safe(solution) + "\n"
                 + "[기술] " + techStr;
