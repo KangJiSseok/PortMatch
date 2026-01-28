@@ -39,6 +39,8 @@ def structuring_node(state: CompanyGraphState) -> Dict[str, Any]:
             "problem": project.get("problem", "") or "정보 없음",
             "solution": project.get("solution", "") or "정보 없음",
             "tech": project.get("tech", []) or [],
+            "source_type": project.get("source_type", "") or "Unknown",
+            "source_is_valid": bool(project.get("source_is_valid", False)),
         }
         for project in supported_projects
     ]

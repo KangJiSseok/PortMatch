@@ -1,0 +1,128 @@
+package com.portmatch.domain.companyproject.embeddingv3.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Getter
+@NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
+@Entity
+@Table(
+        name = "company_project_embeddings_v3",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_company_project_embeddings_v3_project_id",
+                columnNames = "project_id"
+        )
+)
+public class CompanyProjectEmbeddingV3 {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "company_id", nullable = false)
+    private Long companyId;
+
+    @Column(name = "analysis_id", nullable = false)
+    private Long analysisId;
+
+    @Column(name = "project_id", nullable = false)
+    private Long projectId;
+
+    @Column(name = "project_name", columnDefinition = "TEXT", nullable = false)
+    private String projectName;
+
+    @Column(name = "problem", columnDefinition = "TEXT", nullable = false)
+    private String problem;
+
+    @Column(name = "solution", columnDefinition = "TEXT", nullable = false)
+    private String solution;
+
+    @Column(name = "techs", columnDefinition = "TEXT", nullable = false)
+    private String techs;
+
+    @Column(name = "content", columnDefinition = "TEXT", nullable = false)
+    private String content;
+
+    @Column(name = "name_embedding", columnDefinition = "vector(1536)", nullable = false)
+    private String nameEmbedding;
+
+    @Column(name = "problem_embedding", columnDefinition = "vector(1536)", nullable = false)
+    private String problemEmbedding;
+
+    @Column(name = "solution_embedding", columnDefinition = "vector(1536)", nullable = false)
+    private String solutionEmbedding;
+
+    @Column(name = "tech_embedding", columnDefinition = "vector(1536)", nullable = false)
+    private String techEmbedding;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    public CompanyProjectEmbeddingV3(
+            Long companyId,
+            Long analysisId,
+            Long projectId,
+            String projectName,
+            String problem,
+            String solution,
+            String techs,
+            String content,
+            String nameEmbedding,
+            String problemEmbedding,
+            String solutionEmbedding,
+            String techEmbedding
+    ) {
+        this.companyId = companyId;
+        this.analysisId = analysisId;
+        this.projectId = projectId;
+        this.projectName = projectName;
+        this.problem = problem;
+        this.solution = solution;
+        this.techs = techs;
+        this.content = content;
+        this.nameEmbedding = nameEmbedding;
+        this.problemEmbedding = problemEmbedding;
+        this.solutionEmbedding = solutionEmbedding;
+        this.techEmbedding = techEmbedding;
+    }
+
+    @PrePersist
+    void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void update(
+            String projectName,
+            String problem,
+            String solution,
+            String techs,
+            String content,
+            String nameEmbedding,
+            String problemEmbedding,
+            String solutionEmbedding,
+            String techEmbedding
+    ) {
+        this.projectName = projectName;
+        this.problem = problem;
+        this.solution = solution;
+        this.techs = techs;
+        this.content = content;
+        this.nameEmbedding = nameEmbedding;
+        this.problemEmbedding = problemEmbedding;
+        this.solutionEmbedding = solutionEmbedding;
+        this.techEmbedding = techEmbedding;
+    }
+}

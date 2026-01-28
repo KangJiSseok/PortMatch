@@ -21,7 +21,7 @@ def sha256_hex(text: str) -> str:
 
 @router.post("/embeddings/portfolio")
 def portfolio_embeddings(payload: PortfolioEmbeddingsRequest):
-    model = (payload.model or os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")).strip()
+    model = (payload.model or os.getenv("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")).strip()
 
     texts = payload.texts
     if not isinstance(texts, list) or not texts:

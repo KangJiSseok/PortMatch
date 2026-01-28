@@ -12,6 +12,8 @@ class ProjectResult(BaseModel):
     problem: str
     solution: str
     tech: List[str]
+    source_type: str
+    source_is_valid: bool
 
 
 class CompanyProjectAnalysisResponse(BaseModel):

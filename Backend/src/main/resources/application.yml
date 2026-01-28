@@ -51,6 +51,10 @@ portfolio-embedding:
   base-url: ${EMBEDDING_URL:http://localhost:8002}
   model: text-embedding-3-small
 
+embedding-v3:
+  base-url: ${EMBEDDING_URL:http://localhost:8002}
+  model: models/gemini-embedding-001
+
 openai:
   base-url: ${OPENAI_BASE_URL:https://api.openai.com}
   api-key: ${OPENAI_API_KEY:sk-REPLACE_WITH_YOUR_KEY}
