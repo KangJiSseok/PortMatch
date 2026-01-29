@@ -1,14 +1,12 @@
 package com.portmatch.domain.auth.controller;
 
 import com.portmatch.domain.auth.dto.AuthApiResponses;
-import com.portmatch.domain.auth.dto.request.LoginRequest;
 import com.portmatch.domain.auth.dto.request.ApplicantSignUpRequest;
 import com.portmatch.domain.auth.dto.request.CompanySignUpRequest;
 import com.portmatch.domain.auth.dto.request.LoginRequest;
 import com.portmatch.domain.auth.dto.response.LoginResponse;
 import com.portmatch.domain.auth.dto.response.MeResponse;
 import com.portmatch.domain.auth.security.UserPrincipal;
-import com.portmatch.domain.auth.service.AuthResponseMapper;
 import com.portmatch.domain.auth.service.AuthMeService;
 import com.portmatch.domain.auth.service.AuthSessionService;
 import com.portmatch.domain.auth.service.AuthSignUpService;
@@ -35,7 +33,7 @@ public class AuthController {
 
     private final AuthSignUpService authSignUpService;
     private final AuthSessionService authSessionService;
-    private final AuthResponseMapper authResponseMapper;
+    private final AuthMeService authMeService;
 
     @Operation(summary = "로그인", description = "이메일/비밀번호로 로그인합니다.")
     @ApiResponse(
@@ -52,7 +50,7 @@ public class AuthController {
                 servletRequest,
                 servletResponse
         );
-        return BaseApiResponse.ok(authResponseMapper.toLoginResponse(principal));
+        return BaseApiResponse.ok(authMeService.login(principal.getUser()));
     }
 
     @Operation(summary = "로그아웃", description = "세션을 종료합니다.")
