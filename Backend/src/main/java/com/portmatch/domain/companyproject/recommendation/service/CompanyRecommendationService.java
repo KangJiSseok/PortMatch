@@ -16,11 +16,24 @@ public class CompanyRecommendationService {
     private final CompanyRecommendationRepository repository;
 
     public List<CompanyRecommendationResponse> recommendTop10(Long portfolioId) {
-        return repository.findTopCompaniesByPortfolio(portfolioId, 10).stream()
+        return repository.findTopCompaniesByPortfolio(portfolioId, 20).stream()
                 .map(r -> CompanyRecommendationResponse.of(
                         r.getCompanyId(),
-                        r.getDistance() == null ? 999.0 : r.getDistance()
+                        nvl(r.getDistance(), 999.0),
+                        r.getPortfolioProjectId(),
+                        r.getCompanyProjectId(),
+                        r.getPortfolioContent(),
+                        r.getCompanyContent(),
+                        nvl(r.getProjectDistance(), 1.0),
+                        nvl(r.getDomainDistance(), 1.0),
+                        nvl(r.getProblemDistance(), 1.0),
+                        nvl(r.getSolutionDistance(), 1.0),
+                        nvl(r.getTechDistance(), 1.0)
                 ))
                 .toList();
+    }
+
+    private double nvl(Double value, double fallback) {
+        return value == null ? fallback : value;
     }
 }

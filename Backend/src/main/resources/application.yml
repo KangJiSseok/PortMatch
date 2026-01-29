@@ -45,11 +45,11 @@ company-project-analysis:
 
 company-embedding:
   base-url: ${EMBEDDING_URL:http://localhost:8002}
-  model: text-embedding-3-small
+  model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
 
 portfolio-embedding:
   base-url: ${EMBEDDING_URL:http://localhost:8002}
-  model: text-embedding-3-small
+  model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
 
 embedding-v3:
   base-url: ${EMBEDDING_URL:http://localhost:8002}
