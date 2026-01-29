@@ -17,18 +17,20 @@ import {
 
 import {
   type InterviewSessionView,
-  type ScrapView,
   type NotificationItem,
   fetchMyInterviewViews,
   fetchMyUpcomingInterviewViews,
-  fetchMyScrapViews,
   fetchMyNotifications,
 } from '../../api/myPage';
+import { useAuthStore } from '../../store/authStore';
+
+import { fetchMyScrapRowsForMe } from '../../api/myPage/scraps';
+import type { ScrapRowApi } from '../../api/myPage/types';
+import { fetchJobPostDetail } from '../../api/jobPost/detail';
 
 const ROUTES = {
   resume: '/resumes/me',
   interviewList: '/interviews',
-  scrapList: '/scraps',
   profileEdit: '/profile/edit',
 } as const;
 
@@ -47,16 +49,24 @@ type PreviewRow = {
   meta?: string;
 };
 
+type ScrapView = {
+  scrap_id: number;
+  job_post_id: number | null;
+  postingTitle: string;
+  companyName: string;
+  createdAt: string;
+};
+
 type ScrapModalItem = {
-  order: number; // ✅ 원본 순서(최근 느낌)
   key: string | number;
-  title: string; // postingTitle
+  title: string;
   subtitle: string; // companyName
   jobPostId: number | null;
+  createdAtMs: number;
   onClick: () => void;
 };
 
-/** ✅ React Query 느낌 미니 훅 */
+/** React Query 비슷한 미니 훅 */
 function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,42 +91,11 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
   };
 
   useEffect(() => {
-    run();
+    void run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return { data, isLoading, isError, errorMessage, refetch: run };
-}
-
-/**
- * ✅ ScrapView에서 공고 id 꺼내기
- */
-function getJobPostIdFromScrap(s: ScrapView): number | null {
-  const any = s as unknown as Partial<{
-    id: number | string;
-    jobPostId: number | string;
-    job_post_id: number | string;
-    postingId: number | string;
-    posting_id: number | string;
-    jobPostingId: number | string;
-    job_posting_id: number | string;
-    jobPost_id: number | string;
-  }>;
-
-  const raw =
-    any.jobPostId ??
-    any.job_post_id ??
-    any.jobPost_id ??
-    any.postingId ??
-    any.posting_id ??
-    any.jobPostingId ??
-    any.job_posting_id ??
-    any.id;
-
-  const n = typeof raw === 'string' ? Number(raw) : raw;
-
-  if (typeof n === 'number' && Number.isFinite(n)) return n;
-  return null;
 }
 
 function padToFixedSlots<T>(rows: T[], size: number): (T | null)[] {
@@ -150,11 +129,13 @@ function resolveNotificationRoute(n: NotificationItem): string | null {
     any.postingId ??
     any.job_post_id ??
     (any.type === 'JOB_POST' ? any.targetId : undefined);
+
   const jobId = typeof jobIdRaw === 'string' ? Number(jobIdRaw) : jobIdRaw;
   if (typeof jobId === 'number' && Number.isFinite(jobId)) return `/job-posts/${jobId}`;
 
   const ivRaw =
     any.interviewId ?? any.interview_id ?? (any.type === 'INTERVIEW' ? any.targetId : undefined);
+
   const ivId = typeof ivRaw === 'string' ? Number(ivRaw) : ivRaw;
   if (typeof ivId === 'number' && Number.isFinite(ivId)) return `/interviews/${ivId}/lobby`;
 
@@ -163,6 +144,43 @@ function resolveNotificationRoute(n: NotificationItem): string | null {
 
 function normalizeText(s: string) {
   return s.trim().toLowerCase();
+}
+
+async function toScrapViews(rows: ScrapRowApi[]): Promise<ScrapView[]> {
+  const normalized = rows.map((row) => {
+    const pid = typeof row.pid === 'string' ? Number(row.pid) : row.pid;
+    const jobPostId = typeof pid === 'number' && Number.isFinite(pid) ? pid : null;
+    return { row, jobPostId };
+  });
+
+  const details = await Promise.all(
+    normalized.map(async ({ jobPostId }) => {
+      if (!jobPostId) return null;
+      try {
+        return await fetchJobPostDetail(jobPostId);
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  return normalized.map(({ row, jobPostId }, idx) => {
+    const detail = details[idx] as null | {
+      jobPost?: { title?: string };
+      company?: { companies_name?: string };
+    };
+
+    const title = detail?.jobPost?.title || (jobPostId ? `공고 ${jobPostId}` : '공고');
+    const company = detail?.company?.companies_name || '-';
+
+    return {
+      scrap_id: row.id,
+      job_post_id: jobPostId,
+      postingTitle: title,
+      companyName: company,
+      createdAt: row.createdAt,
+    };
+  });
 }
 
 export default function MyPage() {
@@ -176,22 +194,23 @@ export default function MyPage() {
     () => fetchMyUpcomingInterviewViews(2),
     [],
   );
-  const scrapQuery = useQueryLike<ScrapView[]>(() => fetchMyScrapViews(), []);
+  const scrapQuery = useQueryLike<ScrapView[]>(async () => {
+    const rows = await fetchMyScrapRowsForMe();
+    return toScrapViews(rows);
+  }, []);
   const notiQuery = useQueryLike<NotificationItem[]>(() => fetchMyNotifications(), []);
 
-  // ✅ 알림: 원본은 notiQuery.data, 로컬 변경(읽음/삭제)만 패치로 관리
+  // 알림: 서버 원본을 안 건드리고 로컬에서 읽음/삭제 패치만 얹기
   type NotiPatch = { read?: boolean; deleted?: boolean };
   const [notiPatchById, setNotiPatchById] = useState<Record<number, NotiPatch>>({});
 
   const notiItems = useMemo(() => {
     const base = notiQuery.data ?? [];
-
     return base
       .filter((n) => !notiPatchById[n.id]?.deleted)
       .map((n) => {
         const patch = notiPatchById[n.id];
-        if (!patch) return n;
-        if (patch.read === undefined) return n;
+        if (!patch || patch.read === undefined) return n;
         return { ...n, read: patch.read };
       });
   }, [notiQuery.data, notiPatchById]);
@@ -199,17 +218,11 @@ export default function MyPage() {
   const unreadCount = notiItems.filter((n) => !n.read).length;
 
   const handleNotiDelete = (id: number) => {
-    setNotiPatchById((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], deleted: true },
-    }));
+    setNotiPatchById((prev) => ({ ...prev, [id]: { ...prev[id], deleted: true } }));
   };
 
   const handleNotiClick = (n: NotificationItem) => {
-    setNotiPatchById((prev) => ({
-      ...prev,
-      [n.id]: { ...prev[n.id], read: true },
-    }));
+    setNotiPatchById((prev) => ({ ...prev, [n.id]: { ...prev[n.id], read: true } }));
 
     const route = resolveNotificationRoute(n);
     if (route) {
@@ -218,7 +231,6 @@ export default function MyPage() {
     }
   };
 
-  // ✅ ✅ ✅ 추가: 전체 읽음 / 전체 삭제
   const hasNoti = notiItems.length > 0;
   const hasUnread = unreadCount > 0;
 
@@ -227,43 +239,33 @@ export default function MyPage() {
 
     setNotiPatchById((prev) => {
       const next = { ...prev };
-      for (const n of notiItems) {
-        next[n.id] = { ...next[n.id], read: true };
-      }
+      for (const n of notiItems) next[n.id] = { ...next[n.id], read: true };
       return next;
     });
   };
 
   const handleNotiDeleteAll = () => {
     if (!hasNoti) return;
-
     const ok = window.confirm('알림을 전부 삭제할까요?');
     if (!ok) return;
 
     setNotiPatchById((prev) => {
       const next = { ...prev };
-      for (const n of notiItems) {
-        next[n.id] = { ...next[n.id], deleted: true };
-      }
+      for (const n of notiItems) next[n.id] = { ...next[n.id], deleted: true };
       return next;
     });
   };
 
-  // ==========================
-  // ✅ "현재 시간"은 렌더에서 만들지 말고 state로 관리 (purity lint 대응)
-  // ==========================
+  // Date.now()를 render 안에서 직접 안 부르게 state로 들고 있음 (purity/린트 방어)
   const [nowMs, setNowMs] = useState<number>(0);
-
   useEffect(() => {
     const tick = () => setNowMs(Date.now());
-    tick(); // 최초 1회 즉시 세팅
-    const id = window.setInterval(tick, 30_000); // 30초마다 갱신 (원하면 조절)
+    tick();
+    const id = window.setInterval(tick, 30_000);
     return () => window.clearInterval(id);
   }, []);
 
-  // ==========================
-  // ✅ 캘린더 상태 (컴포넌트로 분리)
-  // ==========================
+  // 캘린더 상태
   const todayYmd = toYmd(new Date());
 
   const [viewMonth, setViewMonth] = useState<Date>(() => {
@@ -273,7 +275,7 @@ export default function MyPage() {
 
   const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
 
-  // ✅ 인터뷰 이벤트 맵(YYYY-MM-DD -> Interview[])
+  // 이벤트 맵 (YYYY-MM-DD -> Interview[])
   const interviewViews = interviewQuery.data ?? [];
   const interviewEventMap = useMemo(() => {
     const m = new Map<string, InterviewSessionView[]>();
@@ -295,10 +297,8 @@ export default function MyPage() {
     [interviewEventMap, selectedDate],
   );
 
-  // ==========================
-  // ✅ 관리 카드(3개) - “고정 3슬롯 + 빈칸은 빈칸”
-  // ==========================
-  const resumeLastEdited = '2026.01.18 09:15';
+  // 상단 카드 프리뷰
+  const resumeLastEdited = '—';
 
   const interviewPreviewSlots = useMemo(() => {
     const rows: PreviewRow[] = (upcomingQuery.data ?? []).slice(0, 3).map((i) => ({
@@ -311,8 +311,8 @@ export default function MyPage() {
   }, [upcomingQuery.data]);
 
   const scrapPreviewSlots = useMemo(() => {
-    const rows: PreviewRow[] = (scrapQuery.data ?? []).slice(0, 3).map((s, idx) => ({
-      key: (s as unknown as { id?: number | string }).id ?? `${s.companyName}-${idx}`,
+    const rows: PreviewRow[] = (scrapQuery.data ?? []).slice(0, 3).map((s) => ({
+      key: s.scrap_id,
       title: s.postingTitle,
       subtitle: s.companyName,
       meta: '',
@@ -320,22 +320,24 @@ export default function MyPage() {
     return padToFixedSlots(rows, 3);
   }, [scrapQuery.data]);
 
-  // ✅ 스크랩 모달: 원본 아이템 + 클릭 이동
+  // 스크랩 모달 아이템
   const scrapAllItems = useMemo<ScrapModalItem[]>(() => {
     const list = scrapQuery.data ?? [];
-    return list.map((s, idx) => {
-      const jobPostId = getJobPostIdFromScrap(s);
+    return list.map((s) => {
+      const jobPostId = s.job_post_id;
+      const createdAtMs = Number.isFinite(new Date(s.createdAt).getTime())
+        ? new Date(s.createdAt).getTime()
+        : 0;
+
       return {
-        order: idx, // ✅ 원본(최근 느낌) 정렬용
-        key:
-          (s as unknown as { id?: number | string }).id ??
-          `${s.companyName}-${s.postingTitle}-${idx}`,
+        key: s.scrap_id,
         title: s.postingTitle,
         subtitle: s.companyName,
         jobPostId,
+        createdAtMs,
         onClick: () => {
           if (!jobPostId) {
-            alert('공고 id가 없어서 상세 페이지로 이동할 수 없어요. (mockData 필드 확인 필요)');
+            alert('공고 ID가 없어서 상세 페이지로 이동할 수 없어요.');
             return;
           }
           setIsScrapOpen(false);
@@ -345,14 +347,13 @@ export default function MyPage() {
     });
   }, [scrapQuery.data, navigate]);
 
-  // ==========================
-  // ✅ 스크랩 모달: 검색 + 정렬
-  // ==========================
+  // 스크랩 모달: 정렬 + 검색
   const [scrapSort, setScrapSort] = useState<'recent' | 'company' | 'title'>('company');
   const [scrapSearch, setScrapSearch] = useState('');
 
   const filteredSortedScraps = useMemo(() => {
     const q = normalizeText(scrapSearch);
+
     const filtered = q
       ? scrapAllItems.filter((it) => {
           const a = normalizeText(it.title);
@@ -362,7 +363,7 @@ export default function MyPage() {
       : scrapAllItems;
 
     const sorted = [...filtered].sort((a, b) => {
-      if (scrapSort === 'recent') return a.order - b.order;
+      if (scrapSort === 'recent') return b.createdAtMs - a.createdAtMs;
 
       if (scrapSort === 'title') {
         const t = a.title.localeCompare(b.title, 'ko');
@@ -384,10 +385,13 @@ export default function MyPage() {
     return set.size;
   }, [filteredSortedScraps]);
 
+  const userName = useAuthStore((state) => state.user?.name);
+  const myPageTitle = userName ? `${userName}의 My Page` : 'My Page';
+
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        {/* ✅ 헤더 */}
+        {/* 헤더 */}
         <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
           <div className="relative p-10">
             <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
@@ -396,7 +400,7 @@ export default function MyPage() {
                 <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
                   PERSONAL DASHBOARD
                 </p>
-                <h1 className="mt-2 text-4xl font-black tracking-tighter">My Page</h1>
+                <h1 className="mt-2 text-4xl font-black tracking-normal">{myPageTitle}</h1>
                 <p className="mt-2 text-sm font-semibold text-zinc-500">
                   이력서 · 면접 · 스크랩을 한 곳에서 관리해요.
                 </p>
@@ -412,7 +416,7 @@ export default function MyPage() {
                     setIsNotiOpen(true);
                   }}
                 >
-                  알림 {unreadCount > 0 ? `(${unreadCount})` : ''}
+                  알림{unreadCount > 0 ? ` (${unreadCount})` : ''}
                 </Button>
 
                 <Button
@@ -428,19 +432,19 @@ export default function MyPage() {
           </div>
         </header>
 
-        {/* ✅ 관리 바로가기 */}
+        {/* 바로가기 */}
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
             <div>
-              <h2 className="text-2xl font-black tracking-tighter">관리 바로가기</h2>
+              <h2 className="text-2xl font-black tracking-tighter">바로가기</h2>
               <p className="mt-1 text-sm font-semibold text-zinc-500">
-                자주 쓰는 기능은 여기서 바로 이동해요.
+                자주 쓰는 기능을 빠르게 이동해요.
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-5">
-            {/* ✅ 이력서 (카드 전체 클릭) */}
+            {/* 이력서 */}
             <HubCard title="이력서" onClick={() => navigate(ROUTES.resume)}>
               <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-6 py-10">
                 <div className="bg-cloud-dancer text-midnight-ink grid h-14 w-14 place-items-center rounded-2xl transition group-hover:scale-[1.04]">
@@ -454,13 +458,13 @@ export default function MyPage() {
 
                 <div className="mt-6">
                   <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
-                    자세히 보기 <span className="text-zinc-400">›</span>
+                    상세 보기 <IconChevronRight />
                   </span>
                 </div>
               </div>
             </HubCard>
 
-            {/* ✅ 면접 (카드 전체 클릭) */}
+            {/* 면접 */}
             <HubCard title="면접" onClick={() => navigate(ROUTES.interviewList)}>
               <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
                 <div className="flex-1">
@@ -495,13 +499,13 @@ export default function MyPage() {
 
                 <div className="mt-4 flex justify-end">
                   <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
-                    전체 보기 <span className="text-zinc-400">›</span>
+                    전체 보기 <IconChevronRight />
                   </span>
                 </div>
               </div>
             </HubCard>
 
-            {/* ✅ 스크랩한 공고 (카드 전체 클릭 → 모달 오픈) */}
+            {/* 스크랩 */}
             <HubCard
               title="스크랩한 공고"
               onClick={() => {
@@ -542,7 +546,7 @@ export default function MyPage() {
 
                 <div className="mt-4 flex justify-end">
                   <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
-                    전체 보기 <span className="text-zinc-400">›</span>
+                    전체 보기 <IconChevronRight />
                   </span>
                 </div>
               </div>
@@ -550,12 +554,12 @@ export default function MyPage() {
           </div>
         </section>
 
-        {/* ✅ 캘린더 */}
+        {/* 캘린더 */}
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
             <div>
               <h2 className="text-2xl font-black tracking-tighter">캘린더</h2>
-              <p className="mt-1 text-sm font-semibold text-zinc-500">면접 일정만 모아봤어요.</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-500">면접 일정을 모아봤어요.</p>
             </div>
           </div>
 
@@ -582,10 +586,10 @@ export default function MyPage() {
                   title="선택한 날짜 일정"
                   subtitle={formatYmdToKorean(selectedDate)}
                   items={selectedInterviews}
-                  emptyText="이 날짜에는 면접 일정이 없어요."
+                  emptyText="해당 날짜에는 면접 일정이 없어요."
                   renderItem={(e) => {
                     const startMs = new Date(e.scheduledAt).getTime();
-                    const currentMs = nowMs; // ✅ 렌더에서 Date.now() 호출 금지
+                    const currentMs = nowMs;
 
                     const JOIN_BEFORE_MIN = 30;
                     const JOIN_AFTER_HOURS = 2;
@@ -610,7 +614,7 @@ export default function MyPage() {
                       disabled = true;
                     } else if (joinable) {
                       btnText = '입장';
-                      helperText = '입장 가능';
+                      helperText = '지금 입장 가능해요.';
                     } else {
                       btnText = isToday ? '대기' : '예정';
                       disabled = true;
@@ -660,7 +664,7 @@ export default function MyPage() {
         </section>
       </div>
 
-      {/* ✅ 알림 모달 */}
+      {/* 알림 모달 */}
       <NotificationModal open={isNotiOpen} onClose={() => setIsNotiOpen(false)} title="알림">
         {notiQuery.isLoading ? (
           <div className="space-y-3 py-5">
@@ -682,19 +686,17 @@ export default function MyPage() {
           </div>
         ) : (notiItems ?? []).length === 0 ? (
           <div className="bg-cloud-dancer/25 rounded-xl p-6 py-5 text-center">
-            <p className="text-midnight-ink text-sm font-black">알림이 없어요</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">조용해서 좋다… 💤</p>
+            <p className="text-midnight-ink text-sm font-black">알림이 없어요.</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">조용해서 좋다… (진심)</p>
           </div>
         ) : (
           <div className="space-y-4 py-5">
-            {/* ✅ 상단 액션바: 전체 읽음 / 전체 삭제 */}
+            {/* 상단 액션 */}
             <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
               <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold text-zinc-500">
-                    총 {notiItems.length}개 · 미읽음 {unreadCount}개
-                  </p>
-                </div>
+                <p className="text-xs font-semibold text-zinc-500">
+                  총 {notiItems.length}개 · 미읽음 {unreadCount}개
+                </p>
 
                 <div className="flex items-center gap-2">
                   <Button
@@ -721,7 +723,7 @@ export default function MyPage() {
               </div>
             </div>
 
-            {/* ✅ 리스트 */}
+            {/* 리스트 */}
             <div className="space-y-3">
               {notiItems.map((n) => {
                 const route = resolveNotificationRoute(n);
@@ -744,7 +746,7 @@ export default function MyPage() {
                         </p>
                         {route ? (
                           <p className="mt-1 text-[11px] font-semibold text-zinc-400">
-                            클릭하면 관련 페이지로 이동
+                            클릭하면 관련 페이지로 이동해요
                           </p>
                         ) : null}
                       </div>
@@ -773,7 +775,7 @@ export default function MyPage() {
         )}
       </NotificationModal>
 
-      {/* ✅ 스크랩 전체 모달 (그룹핑 X / 정렬+검색 O) */}
+      {/* 스크랩 모달 */}
       <NotificationModal
         open={isScrapOpen}
         onClose={() => setIsScrapOpen(false)}
@@ -799,21 +801,19 @@ export default function MyPage() {
           </div>
         ) : (scrapQuery.data ?? []).length === 0 ? (
           <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
-            <p className="text-midnight-ink text-sm font-black">스크랩한 공고가 없어요</p>
+            <p className="text-midnight-ink text-sm font-black">스크랩한 공고가 없어요.</p>
             <p className="mt-1 text-sm font-semibold text-zinc-500">
-              마음에 드는 공고를 찜해보세요.
+              마음에 드는 공고를 찜해보세요!
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* ✅ 상단 툴바(정렬/검색) - 스크롤해도 위에 붙어있게 */}
+          <div className="space-y-4 pb-6">
+            {/* 상단 바 (정렬/검색) */}
             <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
               <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold text-zinc-500">
-                    총 {filteredSortedScraps.length}개 · {companyCount}개 회사
-                  </p>
-                </div>
+                <p className="text-xs font-semibold text-zinc-500">
+                  총 {filteredSortedScraps.length}개 · {companyCount}개 회사
+                </p>
 
                 <div className="flex items-center gap-2">
                   <Button
@@ -832,7 +832,7 @@ export default function MyPage() {
                     className="rounded-xl"
                     onClick={() => setScrapSort('company')}
                   >
-                    회사순
+                    회사명
                   </Button>
                   <Button
                     type="button"
@@ -856,10 +856,10 @@ export default function MyPage() {
               </div>
             </div>
 
-            {/* ✅ 리스트 */}
+            {/* 리스트 */}
             {filteredSortedScraps.length === 0 ? (
               <div className="bg-cloud-dancer/25 rounded-2xl p-6 text-center">
-                <p className="text-midnight-ink text-sm font-black">검색 결과가 없어요</p>
+                <p className="text-midnight-ink text-sm font-black">검색 결과가 없어요.</p>
                 <p className="mt-1 text-sm font-semibold text-zinc-500">
                   다른 키워드로 다시 찾아보세요.
                 </p>
@@ -1066,23 +1066,22 @@ function NotificationModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex justify-center overflow-auto px-4 py-10">
-      {/* ✅ 오버레이 */}
+      {/* 오버레이 */}
       <div
         className="fixed inset-0 bg-black/65 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
       />
 
-      {/* ✅ 모달 카드 */}
+      {/* 모달 카드 */}
       <div
         role="dialog"
         aria-modal="true"
         className="relative z-10 w-[92vw] max-w-[560px]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ✅ 핵심: max-h + flex-col + min-h-0로 “바디 스크롤” 강제 */}
         <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-2xl">
-          {/* ✅ 헤더 고정 */}
+          {/* 헤더 고정 */}
           <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
             <p className="text-midnight-ink text-lg font-black">{title}</p>
 
@@ -1097,12 +1096,11 @@ function NotificationModal({
             </Button>
           </div>
 
-          {/* ✅ 바디만 스크롤 (스크롤바 커스텀 포함) */}
+          {/* 바디 스크롤 */}
           <div
             className={[
               'min-h-0 flex-1 overflow-auto px-6',
               '[overscroll-behavior:contain]',
-              // WebKit scrollbar styling
               '[&::-webkit-scrollbar]:w-2',
               '[&::-webkit-scrollbar-track]:rounded-full',
               '[&::-webkit-scrollbar-track]:bg-cloud-dancer/60',
@@ -1159,12 +1157,14 @@ function ScrapListRow({
           <p className="mt-2 text-xs font-semibold text-zinc-500">{company}</p>
 
           {disabled ? (
-            <p className="mt-2 text-[11px] font-semibold text-zinc-400">상세 이동 불가</p>
+            <p className="mt-2 text-[11px] font-semibold text-zinc-400">
+              상세 이동 불가 (공고 ID 없음)
+            </p>
           ) : null}
         </div>
 
-        <div className="shrink-0 pt-1">
-          <span className="text-zinc-300">›</span>
+        <div className="shrink-0 pt-1 text-zinc-300">
+          <IconChevronRight />
         </div>
       </div>
     </button>
@@ -1186,9 +1186,28 @@ function IconUser() {
       strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden
     >
       <path d="M20 21a8 8 0 0 0-16 0" />
       <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function IconChevronRight() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M9 18l6-6-6-6" />
     </svg>
   );
 }

@@ -5,7 +5,7 @@ import path from 'path';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiTarget = env.VITE_API_BASE_URL || 'https://i14d205.p.ssafy.io';
+  const apiTarget = env.VITE_API_BASE_URL || 'http://i14d205.p.ssafy.io';
 
   return {
     plugins: [
@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
           secure: false,
+          cookieDomainRewrite: 'localhost',
         },
       },
     },
