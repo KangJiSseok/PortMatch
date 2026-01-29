@@ -38,11 +38,11 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
                 ) AS missing_field_count,
                 (
                     0.05 * (ppe.project_embedding <=> cpe.project_embedding)
-                    + 0.35 * (ppe.domain_embedding <=> cpe.domain_embedding)
+                    + 0.40 * (ppe.domain_embedding <=> cpe.domain_embedding)
                     + 0.25 * (ppe.problem_embedding <=> cpe.problem_embedding)
                     + 0.25 * (ppe.solution_embedding <=> cpe.solution_embedding)
-                    + 0.05 * (ppe.tech_embedding <=> cpe.tech_embedding)
-                    + 0.05 * (
+                    + 0.03 * (ppe.tech_embedding <=> cpe.tech_embedding)
+                    + 0.02 * (
                         CASE
                             WHEN ppe.problem_missing OR cpe.problem_missing THEN 1
                             ELSE 0
