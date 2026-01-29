@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { Settings2, Coffee, Target, Activity, Lightbulb, Clock } from 'lucide-react';
 import Input from '../../components/Input/Input';
 
 const SprintCapacityCalculatorPage = () => {
@@ -41,6 +42,7 @@ const SprintCapacityCalculatorPage = () => {
             <div className="flex h-full flex-col gap-6">
               <div className="flex items-center gap-2">
                 <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+                <Settings2 size={20} className="text-midnight-ink ml-1" />
                 <h3 className="text-midnight-ink text-xl font-black whitespace-nowrap uppercase">
                   스프린트 설정
                 </h3>
@@ -72,6 +74,7 @@ const SprintCapacityCalculatorPage = () => {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <div className="bg-point-blue h-4 w-1 rounded-full" />
+                    <Coffee size={16} className="text-midnight-ink ml-1" />
                     <h3 className="text-midnight-ink text-sm font-black whitespace-nowrap uppercase">
                       비업무 오버헤드
                     </h3>
@@ -100,6 +103,7 @@ const SprintCapacityCalculatorPage = () => {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <div className="bg-point-blue h-4 w-1 rounded-full" />
+                    <Target size={16} className="text-midnight-ink ml-1" />
                     <h3 className="text-midnight-ink text-sm font-black whitespace-nowrap uppercase">
                       몰입 가중치
                     </h3>
@@ -136,6 +140,7 @@ const SprintCapacityCalculatorPage = () => {
             <div className="mb-8">
               <div className="mb-3 flex items-center gap-2">
                 <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+                <Activity size={20} className="text-midnight-ink ml-1" />
                 <h3 className="text-midnight-ink text-xl font-black whitespace-nowrap uppercase">
                   가용 리소스 결과
                 </h3>
@@ -151,7 +156,7 @@ const SprintCapacityCalculatorPage = () => {
             </div>
 
             <div className="flex flex-1 flex-col border-t border-gray-100 pt-2">
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-6 py-6">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
                     <span className="text-midnight-ink text-base font-black uppercase opacity-80">
@@ -189,20 +194,19 @@ const SprintCapacityCalculatorPage = () => {
                       집중 가중치 적용 결과
                     </span>
                   </div>
-                  <span className="text-point-blue text-2xl font-black tabular-nums">
-                    x{focusFactor}
-                  </span>
+                  <div className="text-point-blue flex items-center gap-2">
+                    <Clock size={20} />
+                    <span className="text-2xl font-black tabular-nums">x{focusFactor}</span>
+                  </div>
                 </div>
               </div>
 
               <div className="mt-auto rounded-3xl border border-blue-100 bg-blue-50/30 p-6">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="text-lg">💡</span>
-                  <h4 className="text-point-blue text-xs font-black tracking-wider uppercase">
-                    Planning Insight
-                  </h4>
+                <div className="text-point-blue mb-2 flex items-center gap-2">
+                  <Lightbulb size={18} />
+                  <h4 className="text-xs font-black tracking-wider uppercase">Planning Insight</h4>
                 </div>
-                <p className="text-midnight-ink text-sm leading-relaxed font-bold">
+                <p className="text-midnight-ink text-sm leading-relaxed font-bold break-keep">
                   팀의 가용량은{' '}
                   <span className="text-point-blue font-black underline underline-offset-4">
                     {result.capacity}시간

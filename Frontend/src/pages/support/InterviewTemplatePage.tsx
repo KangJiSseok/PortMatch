@@ -10,6 +10,20 @@ import {
 } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import { useBlocker } from 'react-router-dom';
+import {
+  Search,
+  SearchX,
+  Trash2,
+  ArrowRight,
+  GripVertical,
+  Plus,
+  X,
+  AlertTriangle,
+  ChevronLeft,
+  ListTodo,
+  PenTool,
+  Settings2,
+} from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -40,6 +54,7 @@ interface InterviewTemplate {
 
 interface SectionCardProps {
   title: string;
+  icon?: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
   className?: string;
@@ -78,7 +93,7 @@ const ROLE_OPTIONS = [
   { value: 'data', label: '데이터 엔지니어 / 사이언티스트' },
   { value: 'ai_ml', label: 'AI / 머신러닝 엔지니어' },
   { value: 'design', label: 'UI/UX 디자이너' },
-  { value: 'pm_po', label: '기획자 (PM/PO)' },
+  { value: 'pm_pm', label: '기획자 (PM/PO)' },
   { value: 'qa', label: 'QA / 테스트 엔지니어' },
   { value: 'marketing', label: '퍼포먼스 마케팅' },
   { value: 'other', label: '기타 (직접 입력)' },
@@ -88,6 +103,7 @@ const STORAGE_KEY = 'giterra_interview_templates_v3';
 
 const SectionCard = ({
   title,
+  icon,
   children,
   actions,
   className = '',
@@ -101,7 +117,8 @@ const SectionCard = ({
   >
     <div className="mb-6 flex shrink-0 items-center justify-between gap-3">
       <div className="flex items-center gap-2">
-        <div className="bg-point-blue h-4 w-1 rounded-full" />
+        <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+        {icon && <span className="text-midnight-ink ml-1">{icon}</span>}
         <h2 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap uppercase">
           {title}
         </h2>
@@ -386,8 +403,8 @@ const InterviewTemplatePage = () => {
           </motion.h1>
           <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
             {view === 'list'
-              ? '보관된 템플릿을 관리하고 검색하세요'
-              : '질문을 구성하고 템플릿을 완성하세요'}
+              ? '보관된 템플릿을 관리하고 검색하세요.'
+              : '질문을 구성하고 템플릿을 완성하세요.'}
           </p>
         </header>
 
@@ -401,14 +418,15 @@ const InterviewTemplatePage = () => {
             >
               <SectionCard
                 title="목록 관리"
+                icon={<ListTodo size={22} />}
                 actions={
                   <Button
                     variant="blue"
                     size="md"
-                    className="shrink-0 rounded-xl px-6 font-black whitespace-nowrap shadow-md"
+                    className="flex shrink-0 items-center gap-2 rounded-xl px-6 font-black whitespace-nowrap shadow-md"
                     onClick={() => handleOpenForm()}
                   >
-                    새 템플릿 추가
+                    <Plus size={18} />새 템플릿 추가
                   </Button>
                 }
               >
@@ -421,18 +439,10 @@ const InterviewTemplatePage = () => {
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="bg-cloud-dancer/20 border-soft-pebble/30 focus:border-point-blue w-full rounded-2xl border py-3.5 pr-5 pl-12 text-base font-bold transition-all outline-none"
                     />
-                    <svg
+                    <Search
                       className="text-silver-mist absolute top-1/2 left-5 -translate-y-1/2"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                    >
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="M21 21l-4.35-4.35" />
-                    </svg>
+                      size={18}
+                    />
                   </div>
                 </div>
 
@@ -454,7 +464,7 @@ const InterviewTemplatePage = () => {
                               <span className="bg-point-blue text-pure-white max-w-full truncate rounded-md px-2.5 py-0.5 text-[11px] font-black tracking-wider whitespace-nowrap uppercase shadow-sm">
                                 {t.role}
                               </span>
-                              <h4 className="text-midnight-ink w-full truncate text-xl leading-tight font-black">
+                              <h4 className="text-midnight-ink w-full truncate text-xl leading-tight font-black break-keep">
                                 {t.title}
                               </h4>
                             </div>
@@ -462,15 +472,15 @@ const InterviewTemplatePage = () => {
                               {t.createdAt}
                             </span>
                           </div>
-                          <Button
-                            variant="close"
-                            size="sm"
-                            className="shrink-0"
+                          <button
                             onClick={(e: MouseEvent) => {
                               e.stopPropagation();
                               setConfirmModal({ type: 'DELETE_TEMPLATE', data: t.id });
                             }}
-                          />
+                            className="text-silver-mist hover:text-error shrink-0 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </div>
 
                         <div className="relative mb-5 flex flex-wrap items-start gap-1 pl-2">
@@ -493,7 +503,7 @@ const InterviewTemplatePage = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 rounded-lg px-3 text-xs font-black whitespace-nowrap"
+                            className="flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-black whitespace-nowrap"
                             onClick={(e: MouseEvent) => {
                               e.stopPropagation();
                               handleOpenForm(t);
@@ -501,11 +511,15 @@ const InterviewTemplatePage = () => {
                           >
                             수정
                           </Button>
-                          <div className="relative">
-                            <span className="text-point-blue text-[11px] font-black whitespace-nowrap transition-transform group-hover:translate-x-1">
-                              상세 보기 →
+                          <div className="group/link relative flex items-center gap-1">
+                            <span className="text-point-blue text-[11px] font-black whitespace-nowrap transition-transform group-hover/link:translate-x-1">
+                              상세 보기
                             </span>
-                            <div className="bg-point-blue absolute -bottom-1 left-0 h-0.5 w-0 transition-all duration-300 group-hover:w-full" />
+                            <ArrowRight
+                              size={12}
+                              className="text-point-blue transition-transform group-hover/link:translate-x-1"
+                            />
+                            <div className="bg-point-blue absolute -bottom-1 left-0 h-0.5 w-0 transition-all duration-300 group-hover/link:w-full" />
                           </div>
                         </div>
                       </motion.div>
@@ -517,7 +531,7 @@ const InterviewTemplatePage = () => {
                     animate={{ opacity: 1, scale: 1 }}
                     className="flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8"
                   >
-                    <div className="mb-4 text-5xl">🔍</div>
+                    <SearchX size={48} className="text-silver-mist mb-4 opacity-30" />
                     <h3 className="text-midnight-ink mb-2 text-xl font-black whitespace-nowrap">
                       검색 결과가 없습니다
                     </h3>
@@ -538,14 +552,16 @@ const InterviewTemplatePage = () => {
               <div className="grid grid-cols-1 gap-6">
                 <SectionCard
                   title={editingId ? '질문 수정하기' : '질문 구성하기'}
+                  icon={editingId ? <Settings2 size={22} /> : <PenTool size={22} />}
                   sectionRef={formRef}
                   actions={
                     <Button
                       variant="outline"
                       size="md"
-                      className="shrink-0 rounded-xl px-5 font-black whitespace-nowrap"
+                      className="flex shrink-0 items-center gap-2 rounded-xl px-5 font-black whitespace-nowrap"
                       onClick={handleReturnToList}
                     >
+                      <ChevronLeft size={18} />
                       목록으로 돌아가기
                     </Button>
                   }
@@ -610,9 +626,10 @@ const InterviewTemplatePage = () => {
                         </div>
                         <Button
                           variant="outline"
-                          className="h-11 shrink-0 rounded-xl px-6 font-black whitespace-nowrap"
+                          className="flex h-11 shrink-0 items-center gap-2 rounded-xl px-6 font-black whitespace-nowrap"
                           onClick={handleAddCategory}
                         >
+                          <Plus size={18} />
                           주제 추가
                         </Button>
                       </div>
@@ -691,19 +708,19 @@ const InterviewTemplatePage = () => {
             >
               <div className="mb-5 flex shrink-0 items-start justify-between">
                 <div>
-                  <span className="bg-point-blue rounded-lg px-3 py-1 text-[10px] font-black whitespace-nowrap text-white uppercase">
+                  <span className="bg-point-blue text-pure-white rounded-lg px-3 py-1 text-[10px] font-black whitespace-nowrap uppercase">
                     {selectedViewTemplate.role}
                   </span>
-                  <h3 className="text-midnight-ink mt-2 truncate text-2xl font-black">
+                  <h3 className="text-midnight-ink mt-2 truncate text-2xl leading-tight font-black break-keep">
                     {selectedViewTemplate.title}
                   </h3>
                 </div>
-                <Button
-                  variant="close"
-                  size="md"
-                  className="shrink-0"
+                <button
                   onClick={() => setSelectedViewTemplate(null)}
-                />
+                  className="text-silver-mist hover:text-midnight-ink transition-colors"
+                >
+                  <X size={28} />
+                </button>
               </div>
 
               <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto pr-3">
@@ -719,16 +736,17 @@ const InterviewTemplatePage = () => {
                       {cat.questions.map((q, qIdx) => (
                         <div
                           key={q.id}
-                          className="border-soft-pebble/30 bg-cloud-dancer/10 rounded-2xl border p-4"
+                          className="border-soft-pebble/30 bg-cloud-dancer/10 rounded-2xl border p-5 shadow-sm"
                         >
-                          <p className="text-midnight-ink mb-3 text-base font-bold">
+                          <p className="text-midnight-ink mb-4 text-[15px] leading-relaxed font-bold break-keep">
                             <span className="text-point-blue/30 mr-3 font-black whitespace-nowrap">
                               Q{qIdx + 1}
                             </span>
                             {q.content}
                           </p>
                           <textarea
-                            className="bg-pure-white border-soft-pebble/50 focus:border-point-blue min-h-18 w-full rounded-xl border p-4 text-sm font-bold outline-none"
+                            className="bg-pure-white border-soft-pebble/50 focus:border-point-blue min-h-20 w-full rounded-xl border p-4 text-sm leading-relaxed font-semibold break-keep whitespace-pre-wrap outline-none"
+                            placeholder="이곳에 메모나 가이드 답변을 작성하세요."
                             value={(isCorporate ? q.intervieweeAnswer : q.userAnswer) || ''}
                             onChange={(e) =>
                               handleUpdateDetailContent(
@@ -781,12 +799,15 @@ const InterviewTemplatePage = () => {
               exit={{ opacity: 0, scale: 0.9, y: 15 }}
               className="bg-pure-white relative w-full max-w-sm overflow-hidden rounded-3xl p-8 text-center shadow-2xl"
             >
+              <div className="text-error mb-4 flex justify-center">
+                <AlertTriangle size={48} />
+              </div>
               <h3 className="text-midnight-ink mb-1.5 text-xl font-black whitespace-nowrap">
                 {confirmModal?.type === 'EXIT' || blocker.state === 'blocked'
                   ? '작성을 중단할까요?'
                   : '정말 삭제할까요?'}
               </h3>
-              <p className="text-silver-mist text-base font-bold">
+              <p className="text-silver-mist text-base font-bold break-keep">
                 {confirmModal?.type === 'EXIT' || blocker.state === 'blocked'
                   ? '이동하면 작성 중인 항목들이 사라집니다.'
                   : '삭제된 데이터는 복구할 수 없습니다.'}
@@ -874,21 +895,7 @@ const CategoryItem = ({
             onPointerDown={(e: PointerEvent) => dragControls.start(e)}
             className="text-silver-mist hover:text-point-blue shrink-0 cursor-grab p-1 active:cursor-grabbing"
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-            >
-              <circle cx="9" cy="5" r="1" fill="currentColor" />
-              <circle cx="9" cy="12" r="1" fill="currentColor" />
-              <circle cx="9" cy="19" r="1" fill="currentColor" />
-              <circle cx="15" cy="5" r="1" fill="currentColor" />
-              <circle cx="15" cy="12" r="1" fill="currentColor" />
-              <circle cx="15" cy="19" r="1" fill="currentColor" />
-            </svg>
+            <GripVertical size={20} />
           </div>
           <div className="bg-point-blue h-4 w-1 shrink-0 rounded-full" />
           <span className="text-midnight-ink truncate text-lg font-black whitespace-nowrap">
@@ -897,8 +904,9 @@ const CategoryItem = ({
         </div>
         <button
           onClick={onRemoveCategory}
-          className="bg-error text-pure-white hover:bg-pure-white hover:text-error hover:border-error shrink-0 rounded-lg border border-transparent px-3 py-1.5 text-xs font-black whitespace-nowrap transition-all"
+          className="bg-error text-pure-white hover:bg-pure-white hover:text-error hover:border-error flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-xs font-black whitespace-nowrap transition-all"
         >
+          <Trash2 size={12} />
           주제 삭제
         </button>
       </motion.div>
@@ -969,36 +977,24 @@ const QuestionItem = ({
           onPointerDown={(e: PointerEvent) => dragControls.start(e)}
           className="text-silver-mist hover:text-point-blue flex shrink-0 cursor-grab items-center justify-center p-1.5 active:cursor-grabbing"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-          >
-            <circle cx="9" cy="5" r="1" fill="currentColor" />
-            <circle cx="9" cy="12" r="1" fill="currentColor" />
-            <circle cx="9" cy="19" r="1" fill="currentColor" />
-            <circle cx="15" cy="5" r="1" fill="currentColor" />
-            <circle cx="15" cy="12" r="1" fill="currentColor" />
-            <circle cx="15" cy="19" r="1" fill="currentColor" />
-          </svg>
+          <GripVertical size={16} />
         </div>
         <span className="text-point-blue/30 mx-2 shrink-0 text-sm font-black whitespace-nowrap">
           Q{qIdx + 1}
         </span>
-        <p className="text-midnight-ink truncate pr-3 text-sm font-bold">{q.content}</p>
+        <p className="text-midnight-ink truncate pr-3 text-sm leading-normal font-bold break-keep">
+          {q.content}
+        </p>
       </div>
-      <Button
-        variant="close"
-        size="sm"
-        className="shrink-0 scale-90"
+      <button
         onClick={(e: MouseEvent) => {
           e.stopPropagation();
           onRemove();
         }}
-      />
+        className="text-silver-mist hover:text-error shrink-0 transition-colors"
+      >
+        <Trash2 size={16} />
+      </button>
     </Reorder.Item>
   );
 };

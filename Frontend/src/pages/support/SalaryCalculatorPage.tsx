@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Calculator,
+  ReceiptText, // ReceiptKoreanWon 대신 존재함이 확실한 아이콘으로 교체
+  Wallet,
+  Check,
+  Gift,
+  CircleDollarSign,
+} from 'lucide-react';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 import Select from '../../components/Select/Select';
@@ -120,6 +128,14 @@ const SalaryCalculatorPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="bg-pure-white flex w-88 shrink-0 flex-col rounded-3xl border border-gray-100 p-7 shadow-lg"
           >
+            <div className="mb-6 flex shrink-0 items-center gap-2">
+              <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+              <Calculator size={20} className="text-midnight-ink" />
+              <h2 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap uppercase">
+                급여 조건 설정
+              </h2>
+            </div>
+
             <div className="flex h-full flex-col">
               <div className="flex shrink-0 rounded-xl bg-gray-50 p-1">
                 {(['yearly', 'monthly'] as const).map((t) => (
@@ -195,9 +211,10 @@ const SalaryCalculatorPage = () => {
                 variant="blue"
                 size="md"
                 fullWidth
-                className="mt-auto rounded-xl py-4 text-lg font-black whitespace-nowrap shadow-md active:scale-[0.98]"
+                className="mt-auto flex items-center justify-center gap-2 rounded-xl py-4 text-lg font-black whitespace-nowrap shadow-md active:scale-[0.98]"
                 onClick={calculateSalary}
               >
+                <Check size={20} />
                 계산하기
               </Button>
             </div>
@@ -209,6 +226,14 @@ const SalaryCalculatorPage = () => {
             transition={{ delay: 0.1 }}
             className="bg-pure-white flex flex-1 flex-col rounded-3xl border border-gray-100 p-7 shadow-lg"
           >
+            <div className="mb-6 flex shrink-0 items-center gap-2">
+              <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+              <ReceiptText size={20} className="text-midnight-ink" />
+              <h2 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap uppercase">
+                상세 계산 결과
+              </h2>
+            </div>
+
             <AnimatePresence mode="wait">
               {!result ? (
                 <motion.div
@@ -218,7 +243,7 @@ const SalaryCalculatorPage = () => {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 opacity-40"
                 >
-                  <div className="mb-3 text-4xl">💰</div>
+                  <Wallet size={48} className="text-midnight-ink mb-3" />
                   <p className="text-slate-gray text-center text-sm leading-relaxed font-bold whitespace-nowrap">
                     급여 정보를 입력하고
                     <br />
@@ -241,13 +266,15 @@ const SalaryCalculatorPage = () => {
                         <motion.div
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className="bg-point-blue/10 text-point-blue rounded-lg px-2 py-1 text-[10px] font-black whitespace-nowrap"
+                          className="bg-point-blue/10 text-point-blue flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-black whitespace-nowrap"
                         >
+                          <Gift size={12} />
                           부양가족 혜택: {formatKrw(result.taxSavings)} 절세
                         </motion.div>
                       )}
                     </div>
-                    <div className="text-point-blue mt-3 text-4xl font-black tracking-tighter whitespace-nowrap">
+                    <div className="text-point-blue mt-3 flex items-center gap-2 text-4xl font-black tracking-tighter whitespace-nowrap">
+                      <CircleDollarSign size={32} />
                       {formatKrw(result.netPay)}
                     </div>
                   </div>

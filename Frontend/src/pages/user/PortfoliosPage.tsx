@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, ChevronDown, Search, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import { portfolioApi } from '../../api/portfolioApi';
 import type {
@@ -327,35 +328,9 @@ function PortfoliosPage() {
               >
                 <div className="bg-point-blue/10 text-point-blue mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl">
                   {modal.type === 'confirm' ? (
-                    <svg
-                      width="32"
-                      height="32"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="17 8 12 3 7 8" />
-                      <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
+                    <CheckCircle2 size={32} strokeWidth={3} />
                   ) : (
-                    <svg
-                      width="32"
-                      height="32"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="8" x2="12" y2="12" />
-                      <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
+                    <AlertCircle size={32} strokeWidth={3} />
                   )}
                 </div>
                 <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight">
@@ -513,19 +488,7 @@ function PortfoliosPage() {
                           <div
                             className={`flex h-8 w-8 items-center justify-center rounded-lg ${selectedPortfolioId ? 'bg-point-blue text-pure-white' : 'bg-silver-mist text-slate-gray'}`}
                           >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                            </svg>
+                            <FileText size={16} strokeWidth={3} />
                           </div>
                           <span
                             className={`text-xl font-black tracking-tight whitespace-nowrap ${selectedPortfolioId ? 'text-point-blue' : 'text-midnight-ink'}`}
@@ -533,20 +496,12 @@ function PortfoliosPage() {
                             {selectedPortfolio?.name || '저장된 포트폴리오 선택'}
                           </span>
                         </div>
-                        <motion.svg
+                        <motion.div
                           animate={{ rotate: isListOpen ? 180 : 0 }}
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
                           className={selectedPortfolioId ? 'text-point-blue' : 'text-slate-gray'}
                         >
-                          <polyline points="6 9 12 15 18 9" />
-                        </motion.svg>
+                          <ChevronDown size={24} strokeWidth={3} />
+                        </motion.div>
                       </button>
                       <AnimatePresence>
                         {isListOpen && (
@@ -571,19 +526,7 @@ function PortfoliosPage() {
                                       onClick={(e) => handleOpenFile(e, p.id)}
                                       className="hover:text-point-blue shrink-0 p-1 transition-colors"
                                     >
-                                      <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2.5"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <circle cx="11" cy="11" r="8" />
-                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                                      </svg>
+                                      <Search size={18} strokeWidth={2.5} />
                                     </button>
                                     <span className="text-lg font-bold whitespace-nowrap">
                                       {p.name}
@@ -638,20 +581,7 @@ function PortfoliosPage() {
                           transition={{ repeat: Infinity, duration: 1 }}
                           className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm transition-all duration-300 ${isDragging ? 'bg-point-blue text-pure-white' : 'bg-silver-mist text-slate-gray group-hover:bg-point-blue group-hover:text-pure-white'}`}
                         >
-                          <svg
-                            width="32"
-                            height="32"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
-                          </svg>
+                          <Upload size={32} strokeWidth={3} />
                         </motion.div>
                         <div className="space-y-1">
                           <h3 className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
@@ -728,8 +658,8 @@ function PortfoliosPage() {
                               <Button
                                 variant="blue"
                                 size="xl"
-                                disabled
                                 className="bg-silver-mist text-slate-gray w-full cursor-not-allowed rounded-2xl py-4! text-2xl! font-black"
+                                disabled
                               >
                                 파일을 선택해주세요
                               </Button>

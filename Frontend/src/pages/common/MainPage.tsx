@@ -10,13 +10,15 @@ import {
   Bell,
   BarChart3,
   CheckSquare,
+  Globe,
+  TrendingUp,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import heroBg from '../../assets/images/main/HERO_BG.avif';
 import { useAuthStore } from '@/store/authStore';
 
 const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop';
+  'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop';
 const FALLBACK_LOGO =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"%3E%3Crect fill="%23E5E7EB" width="64" height="64"/%3E%3Ctext fill="%236B7280" font-family="sans-serif" font-size="14" dy="5" font-weight="bold" x="50%" y="50%" text-anchor="middle"%3ELOGO%3C/text%3E%3C/svg%3E';
 
@@ -24,11 +26,13 @@ interface JobPost {
   id: string;
   title: string;
   cid: string;
+  detail: string;
   endDate: string;
+  active: number;
   company: {
     corpName: string;
-    totPsncnt: string;
     logo: string;
+    corpAddr: string;
   };
 }
 
@@ -54,16 +58,16 @@ const USER_QUICK_MENUS: QuickMenu[] = [
   { id: 3, title: '면접 예상 질문', icon: FileText, link: '/support/interview-template' },
   { id: 4, title: '이력서 첨삭', icon: Mic, link: '/support/resume-feedback' },
   { id: 5, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
-  { id: 6, title: '실시간 채용 알림', icon: Bell },
+  { id: 6, title: '글로벌 단위 변환기', icon: Globe, link: '/support/unit-converter' },
 ];
 
 const COMPANY_QUICK_MENUS: QuickMenu[] = [
   { id: 1, title: '캐파 계산기', icon: BarChart3, link: '/support/sprint-capacity' },
-  { id: 2, title: '실수령액 계산기', icon: Calculator, link: '/support/salary' },
+  { id: 2, title: '인건비 계산기', icon: TrendingUp, link: '/support/employer-cost' },
   { id: 3, title: '면접 평가지', icon: CheckSquare, link: '/support/interview-template' },
   { id: 4, title: '면접 질문 생성', icon: Mic, link: '/support/interview-generator' },
   { id: 5, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
-  { id: 6, title: '인재 실시간 알림', icon: Bell },
+  { id: 6, title: '글로벌 단위 변환기', icon: Globe, link: '/support/unit-converter' },
 ];
 
 const MOCK_TALENTS: Talent[] = [
@@ -109,66 +113,64 @@ const MOCK_TALENTS: Talent[] = [
   },
 ];
 
-const RECOMMENDATION_SETS = [
-  [
-    {
-      id: 1,
-      companyId: 1,
-      company: '신세계푸드',
-      title: '베이커리 제품 개발 경력',
-      deadline: '오늘마감',
-    },
-    { id: 2, companyId: 2, company: '삼성전자', title: '클라우드 아키텍트 채용', deadline: 'D-5' },
-    { id: 3, companyId: 3, company: '네이버', title: 'UI/UX 프로덕트 디자이너', deadline: '상시' },
-  ],
-  [
-    { id: 4, companyId: 4, company: '현대자동차', title: '자율주행 SW 개발', deadline: 'D-10' },
-    { id: 5, companyId: 5, company: '당근마켓', title: '백엔드 엔지니어', deadline: '상시' },
-    { id: 6, companyId: 6, company: '토스', title: '데이터 분석가', deadline: 'D-2' },
-  ],
-  [
-    { id: 7, companyId: 7, company: '쿠팡', title: '물류 시스템 기획자', deadline: 'D-14' },
-    { id: 8, companyId: 8, company: '라인플러스', title: '글로벌 서비스 기획', deadline: '상시' },
-    { id: 9, companyId: 9, company: '배달의민족', title: '프론트엔드 개발자', deadline: 'D-4' },
-  ],
-];
-
 function MainPage() {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAuthStore();
   const [trendIndex, setTrendIndex] = useState(0);
   const [jobPosts, setJobPosts] = useState<JobPost[]>([]);
+  const [trendPosts, setTrendPosts] = useState<JobPost[][]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement;
     if (navbarInput) navbarInput.value = '';
 
-    if (user?.role !== 'COMPANY') {
-      fetchJobPosts();
-    } else {
-      setLoading(false);
-    }
-  }, [user?.role]);
+    fetchJobPosts();
+  }, []);
 
   const fetchJobPosts = async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/job-postings');
       const json = await response.json();
-      if (json && Array.isArray(json.data)) setJobPosts(json.data);
+      if (json && Array.isArray(json.data)) {
+        const activePosts = json.data.filter((post: JobPost) => post.active === 1);
+        setJobPosts(activePosts);
+
+        const chunks: JobPost[][] = [];
+        const trendSource = activePosts.slice(0, 9);
+        for (let i = 0; i < trendSource.length; i += 3) {
+          chunks.push(trendSource.slice(i, i + 3));
+        }
+        setTrendPosts(chunks);
+      }
     } catch (error) {
       console.error(error);
       setJobPosts([]);
+      setTrendPosts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+  const calculateDDay = (endDate: string): string => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(endDate);
+    target.setHours(0, 0, 0, 0);
+
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return '오늘 마감';
+    if (diffDays < 0) return '마감됨';
+    return `D-${diffDays}`;
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     e.currentTarget.src = FALLBACK_IMAGE;
   };
-  const handleLogoError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+  const handleLogoError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     e.currentTarget.src = FALLBACK_LOGO;
   };
   const goToCompanyDetail = (e: React.MouseEvent, cid: string) => {
@@ -255,7 +257,7 @@ function MainPage() {
                 Trend Pick
               </h3>
               <div className="flex gap-2">
-                {[0, 1, 2].map((i) => (
+                {trendPosts.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setTrendIndex(i)}
@@ -274,20 +276,27 @@ function MainPage() {
                   transition={{ duration: 0.2 }}
                   className="space-y-2"
                 >
-                  {RECOMMENDATION_SETS[trendIndex].map((item) => (
-                    <div
-                      key={item.id}
-                      className="group flex cursor-pointer items-center justify-between rounded-xl border border-zinc-50 bg-zinc-50/30 p-3 transition-all hover:bg-white hover:shadow-sm"
-                      onClick={(e) => goToJobPostDetail(e, String(item.id))}
-                    >
-                      <p className="text-midnight-ink flex-1 truncate text-sm font-bold">
-                        {item.title}
-                      </p>
-                      <span className="text-point-blue ml-2 text-sm font-black">
-                        {item.deadline}
-                      </span>
-                    </div>
-                  ))}
+                  {trendPosts[trendIndex]?.map((item) => {
+                    const dDay = calculateDDay(item.endDate);
+                    return (
+                      <div
+                        key={item.id}
+                        className="group flex cursor-pointer items-center justify-between rounded-xl border border-zinc-50 bg-zinc-50/30 p-3 transition-all hover:bg-white hover:shadow-sm"
+                        onClick={(e) => goToJobPostDetail(e, item.id)}
+                      >
+                        <p className="text-midnight-ink flex-1 truncate text-sm font-bold">
+                          {item.title}
+                        </p>
+                        <span
+                          className={`ml-2 text-sm font-black ${
+                            dDay === '오늘 마감' ? 'text-red-600' : 'text-point-blue'
+                          }`}
+                        >
+                          {dDay}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -395,7 +404,7 @@ function MainPage() {
                         <div className="h-16 w-16 overflow-hidden rounded-xl border border-zinc-100 p-2">
                           <img
                             src={
-                              job.company?.logo === 'string' || !job.company?.logo
+                              !job.company?.logo || job.company.logo === 'string'
                                 ? FALLBACK_LOGO
                                 : job.company.logo
                             }
@@ -406,7 +415,7 @@ function MainPage() {
                         </div>
                       </div>
                       <div className="flex flex-1 flex-col p-5 pt-4">
-                        <div className="mb-4 space-y-2">
+                        <div className="mb-4 space-y-1">
                           <div className="flex">
                             <p
                               onClick={(e) => goToCompanyDetail(e, job.cid)}
@@ -415,15 +424,17 @@ function MainPage() {
                               <span className="truncate">{job.company?.corpName || '기업명'}</span>
                             </p>
                           </div>
-                          <h3 className="text-midnight-ink group-hover:text-point-blue line-clamp-2 h-10 text-base leading-tight font-black transition-colors">
+                          <h3 className="text-midnight-ink group-hover:text-point-blue line-clamp-2 min-h-10 text-base leading-tight font-black transition-colors">
                             {job.title}
                           </h3>
                         </div>
                         <div className="mt-auto flex items-center justify-between border-t border-zinc-50 pt-4">
-                          <span className="max-w-25 truncate text-sm font-bold text-zinc-400">
-                            {job.company?.totPsncnt || '지역 미정'}
+                          <span className="max-w-35 truncate text-sm font-bold text-zinc-400">
+                            {job.company?.corpAddr || '지역 미정'}
                           </span>
-                          <span className="text-sm font-black text-zinc-800">{job.endDate}</span>
+                          <span className="text-point-blue text-sm font-black whitespace-nowrap">
+                            {calculateDDay(job.endDate)}
+                          </span>
                         </div>
                       </div>
                     </motion.div>

@@ -40,12 +40,14 @@ import CompanyProfileEditPage from './pages/company/CompanyProfileEditPage';
 import RecommendCandidatesPage from './pages/company/RecommendCandidatesPage';
 
 import SalaryCalculatorPage from './pages/support/SalaryCalculatorPage';
+import EmployerCostCalculatorPage from './pages/support/EmployerCostCalculatorPage';
 import ScheduleManagementPage from './pages/support/ScheduleManagementPage';
 import InterviewTemplatePage from './pages/support/InterviewTemplatePage';
 import ResumeFeedbackPage from './pages/support/ResumeFeedbackPage';
 import InterviewQuestionGeneratorPage from './pages/support/InterviewQuestionGeneratorPage';
 import InterviewSpeechTimerPage from './pages/support/InterviewSpeechTimerPage';
 import SprintCapacityCalculatorPage from './pages/support/SprintCapacityCalculatorPage';
+import UnitConverterPage from './pages/support/UnitConverterPage';
 
 import NoticePage from './pages/admin/NoticePage';
 import NoticeManagementPage from './pages/admin/NoticeManagementPage';
@@ -279,6 +281,14 @@ const router = createBrowserRouter([
             element: <SalaryCalculatorPage />,
           },
           {
+            path: 'employer-cost',
+            element: (
+              <AuthGuard mode="COMPANY">
+                <EmployerCostCalculatorPage />
+              </AuthGuard>
+            ),
+          },
+          {
             path: 'schedule',
             element: <ScheduleManagementPage />,
           },
@@ -297,6 +307,10 @@ const router = createBrowserRouter([
                 <SprintCapacityCalculatorPage />
               </AuthGuard>
             ),
+          },
+          {
+            path: 'unit-converter',
+            element: <UnitConverterPage />,
           },
           {
             path: 'resume-feedback',

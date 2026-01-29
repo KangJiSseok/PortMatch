@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Star, Users } from 'lucide-react';
 import Button from '../../components/Button/Button';
 
 interface Application {
@@ -113,13 +114,13 @@ const JobApplicationManagementPage = () => {
                             e.stopPropagation();
                             toggleScrap(app.id);
                           }}
-                          className={`shrink-0 text-3xl transition-colors ${
+                          className={`shrink-0 transition-colors ${
                             app.isScrapped
                               ? 'text-yellow-400'
                               : 'text-cloud-dancer group-hover:text-silver-mist'
                           }`}
                         >
-                          {app.isScrapped ? '★' : '☆'}
+                          <Star size={28} fill={app.isScrapped ? 'currentColor' : 'none'} />
                         </motion.button>
 
                         <div className="flex flex-col gap-2">
@@ -172,8 +173,8 @@ const JobApplicationManagementPage = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="border-silver-mist bg-pure-white flex flex-col items-center justify-center rounded-[40px] border-2 border-dashed py-32 text-center"
               >
-                <div className="bg-cloud-dancer mb-6 flex h-24 w-24 items-center justify-center rounded-3xl text-5xl">
-                  👥
+                <div className="bg-cloud-dancer mb-6 flex h-24 w-24 items-center justify-center rounded-3xl">
+                  <Users size={48} className="text-midnight-ink opacity-20" />
                 </div>
                 <h3 className="text-midnight-ink mb-2 text-2xl font-black whitespace-nowrap">
                   지원자가 없습니다
