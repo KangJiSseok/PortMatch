@@ -4,9 +4,12 @@ import com.portmatch.domain.auth.dto.AuthApiResponses;
 import com.portmatch.domain.auth.dto.request.LoginRequest;
 import com.portmatch.domain.auth.dto.request.ApplicantSignUpRequest;
 import com.portmatch.domain.auth.dto.request.CompanySignUpRequest;
+import com.portmatch.domain.auth.dto.request.LoginRequest;
 import com.portmatch.domain.auth.dto.response.LoginResponse;
+import com.portmatch.domain.auth.dto.response.MeResponse;
 import com.portmatch.domain.auth.security.UserPrincipal;
 import com.portmatch.domain.auth.service.AuthResponseMapper;
+import com.portmatch.domain.auth.service.AuthMeService;
 import com.portmatch.domain.auth.service.AuthSessionService;
 import com.portmatch.domain.auth.service.AuthSignUpService;
 import com.portmatch.global.api.BaseApiResponse;
@@ -98,10 +101,10 @@ public class AuthController {
             content = @Content(schema = @Schema(implementation = AuthApiResponses.AuthMeApiResponse.class))
     )
     @GetMapping("/me")
-    public BaseApiResponse<LoginResponse> me(@AuthenticationPrincipal UserPrincipal user) {
+    public BaseApiResponse<MeResponse> me(@AuthenticationPrincipal UserPrincipal user) {
         if (user == null) {
             return BaseApiResponse.error(ResponseCode.UNAUTHORIZED);
         }
-        return BaseApiResponse.ok(authResponseMapper.toLoginResponse(user.getUser()));
+        return BaseApiResponse.ok(authMeService.getMe(user.getUser()));
     }
 }
