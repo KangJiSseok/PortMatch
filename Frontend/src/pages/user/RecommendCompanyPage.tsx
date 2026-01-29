@@ -6,6 +6,7 @@ import {
   fetchPortfolioRecommendedCompanies,
   fetchCompanyMatchExplanation,
 } from '@/api/recommendCompany';
+import { fetchJobPostingsByCompany } from '@/api/jobPostings';
 import type {
   CompanyRecommendationResponse,
   ExplanationMatchSection,
@@ -497,6 +498,43 @@ function ReasonModal({
   loading?: boolean;
   error?: string | null;
 }) {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!loading) {
+      setProgress(0);
+      return;
+    }
+
+    let mounted = true;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    setProgress(0);
+
+    const schedule = (intervalMs: number, stepMin: number, stepMax: number) => {
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => {
+        setProgress((prev) => {
+          if (!mounted) return prev;
+          const step = stepMin + Math.floor(Math.random() * (stepMax - stepMin + 1));
+          const next = Math.min(96, prev + step);
+          return next;
+        });
+      }, intervalMs);
+    };
+
+    // 빠르게 70%까지 상승, 이후 완만하게
+    schedule(160, 4, 8);
+
+    const phaseTimer = setTimeout(() => {
+      schedule(260, 2, 5);
+    }, 1200);
+
+    return () => {
+      mounted = false;
+      if (timer) clearInterval(timer);
+      clearTimeout(phaseTimer);
+    };
+  }, [loading]);
   useEffect(() => {
     lockBodyScroll(open);
     return () => lockBodyScroll(false);
@@ -589,13 +627,132 @@ function ReasonModal({
               </h3>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-7 py-8 sm:px-10 sm:py-10">
+            <div
+              className={`flex-1 px-7 py-6 sm:px-10 sm:py-8 ${
+                loading
+                  ? 'flex items-center justify-center overflow-hidden'
+                  : 'overflow-y-auto soft-scrollbar'
+              }`}
+              style={
+                loading
+                  ? undefined
+                  : { scrollbarWidth: 'thin', scrollbarColor: 'rgba(15,23,42,0.22) transparent' }
+              }
+            >
+              <style>
+                {`
+                  .soft-scrollbar::-webkit-scrollbar { width: 8px; }
+                  .soft-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                  .soft-scrollbar::-webkit-scrollbar-thumb {
+                    background: rgba(15,23,42,0.18);
+                    border-radius: 999px;
+                  }
+                  .soft-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: rgba(15,23,42,0.28);
+                  }
+                `}
+              </style>
               <div className="space-y-12">
                 {loading && (
-                  <div className="rounded-2xl border border-gray-100 bg-white px-5 py-4 text-[13px] font-bold text-gray-500">
-                    Loading report...
+            <div className="relative w-full max-w-[720px] max-h-[62vh] overflow-hidden rounded-[24px] border border-slate-100 bg-white/60 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-2xl">
+              <style>
+                {`
+                  @keyframes scanLine {
+                    0% { transform: translateY(-10%); opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { transform: translateY(110%); opacity: 0; }
+                  }
+                  @keyframes shimmer {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                  }
+                `}
+              </style>
+
+              {/* 상단 장식 요소 - 은은한 글로우 */}
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-50/50 blur-3xl" />
+              <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-50/40 blur-3xl" />
+
+              <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-slate-900">
+                    전략 리포트 스캔
+                  </h3>
+                  <p className="mt-1.5 text-sm font-medium text-slate-500">
+                    AI가 포트폴리오의 핵심 역량을 정밀하게 분석하고 있습니다
+                  </p>
+                </div>
+
+              </div>
+
+              <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_220px]">
+                {/* 메인 스캔 프리뷰 영역 */}
+                <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+                  {/* 스캐닝 라인 애니메이션 */}
+                  <div 
+                    className="absolute inset-x-0 z-10 h-12 w-full bg-gradient-to-b from-transparent via-blue-500/10 to-transparent"
+                    style={{ animation: 'scanLine 3s ease-in-out infinite' }}
+                  />
+                  
+                  <div className="space-y-3 opacity-40">
+                    <div className="h-4 w-1/3 rounded-md bg-slate-200" />
+                    <div className="space-y-2">
+                      <div className="h-2 w-full rounded-md bg-slate-200" />
+                      <div className="h-2 w-11/12 rounded-md bg-slate-200" />
+                      <div className="h-2 w-10/12 rounded-md bg-slate-200" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 pt-2">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="h-12 rounded-lg bg-slate-200" />
+                      ))}
+                    </div>
                   </div>
-                )}
+                </div>
+
+                {/* 우측 체크리스트 영역 */}
+                <div className="flex flex-col justify-center space-y-3 rounded-2xl bg-slate-50/50 p-4 border border-slate-100">
+                  <p className="text-[13px] font-bold text-slate-800">분석 프로세스</p>
+                  <div className="space-y-3">
+                    {[
+                      { t: 30, l: '데이터 정밀 대조' },
+                      { t: 60, l: '역량 구조 정합 확인' },
+                      { t: 90, l: '최종 리포트 생성' }
+                    ].map((step, idx) => {
+                      const done = progress >= step.t;
+                      const active = progress >= step.t - 30 && progress < step.t;
+                      return (
+                        <div key={idx} className={`flex items-center gap-3 transition-opacity duration-300 ${done || active ? 'opacity-100' : 'opacity-40'}`}>
+                          <div className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
+                            done ? 'bg-slate-800 border-slate-800' : 'border-slate-300'
+                          }`}>
+                            {done && <span className="text-[10px] text-white">✓</span>}
+                            {active && <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-800" />}
+                          </div>
+                          <span className={`text-xs font-medium ${done ? 'text-slate-900' : 'text-slate-500'}`}>
+                            {step.l}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 하단 진행바 */}
+              <div className="mt-6">
+                <div className="flex justify-between mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">System Status</span>
+                  <span className="text-[11px] font-bold text-slate-400">Processing...</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-slate-800 transition-all duration-500 ease-out"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
                 {error && (
                   <div className="rounded-2xl border border-red-100 bg-red-50/70 px-5 py-4 text-[13px] font-bold text-red-600">
@@ -603,6 +760,8 @@ function ReasonModal({
                   </div>
                 )}
 
+                {!loading && (
+                  <>
                 {/* 1 */}
                 <div>
                   <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
@@ -655,6 +814,8 @@ function ReasonModal({
                     </p>
                   </div>
                 </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -690,6 +851,7 @@ export default function RecommendCompanyPage() {
   >({});
   const [explanationLoadingId, setExplanationLoadingId] = useState<number | null>(null);
   const [explanationError, setExplanationError] = useState<string | null>(null);
+  const [openingsCountMap, setOpeningsCountMap] = useState<Record<number, number>>({});
 
   // ✅ 8개(4*2) 페이지네이션
   const PAGE_SIZE = 8;
@@ -782,7 +944,7 @@ export default function RecommendCompanyPage() {
       } catch (err) {
         if (!ignore) {
           setApiCompanies([]);
-          setLoadError('異붿쿇 湲곗뾽??遺덈윭?ㅼ? 紐삵뻽?듬땲??.');
+          setLoadError('추천 기업 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
         }
       } finally {
         if (!ignore) setIsLoading(false);
@@ -796,9 +958,59 @@ export default function RecommendCompanyPage() {
     };
   }, [portfolioId]);
 
+
   const hasValidPortfolioId = Boolean(portfolioId) && !Number.isNaN(portfolioId);
   const useMockFallback = hasValidPortfolioId && Boolean(loadError) && import.meta.env.DEV;
   const companies = useMockFallback ? MOCK_COMPANIES : apiCompanies;
+
+  const companiesWithCounts = useMemo(
+    () =>
+      companies.map((company) => ({
+        ...company,
+        openingsCount:
+          openingsCountMap[company.companyId] ??
+          company.openingsCount ??
+          0,
+      })),
+    [companies, openingsCountMap],
+  );
+
+  useEffect(() => {
+    if (useMockFallback || companies.length === 0) return;
+    const uniqueIds = Array.from(new Set(companies.map((c) => c.companyId)));
+    const missing = uniqueIds.filter((id) => openingsCountMap[id] === undefined);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    const run = async () => {
+      const results = await Promise.all(
+        missing.map(async (id) => {
+          try {
+            const res = await fetchJobPostingsByCompany(String(id));
+            const count = Array.isArray(res.data) ? res.data.length : 0;
+            return [id, count] as const;
+          } catch {
+            return [id, 0] as const;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+      setOpeningsCountMap((prev) => {
+        const next = { ...prev };
+        results.forEach(([id, count]) => {
+          next[id] = count;
+        });
+        return next;
+      });
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companies, openingsCountMap, useMockFallback]);
 
   const handleOpenReason = async (company: Company) => {
     setReasonTarget(company);
@@ -846,8 +1058,8 @@ export default function RecommendCompanyPage() {
   };
 
   const sortedCompanies = useMemo(() => {
-    return [...companies].sort((a, b) => b[sortBy] - a[sortBy]);
-  }, [companies, sortBy]);
+    return [...companiesWithCounts].sort((a, b) => b[sortBy] - a[sortBy]);
+  }, [companiesWithCounts, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(sortedCompanies.length / PAGE_SIZE));
 
@@ -892,7 +1104,7 @@ export default function RecommendCompanyPage() {
 
         {isLoading && (
           <div className="mb-6 rounded-2xl border border-gray-100 bg-white px-6 py-4 text-[13px] font-bold text-gray-500">
-            異붿쿇 湲곗뾽??遺덈윭?ㅼ? 吏꾪뻾 以묒엯?덈떎...
+            추천 기업 데이터를 분석 중입니다…
           </div>
         )}
 

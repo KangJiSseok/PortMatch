@@ -8,3 +8,10 @@ export async function fetchJobPostings() {
   const res = await axios.get<ApiResponse<JobPostingDto[]>>(`${apiBase}/api/job-postings`);
   return res.data;
 }
+
+export async function fetchJobPostingsByCompany(cid: string) {
+  const res = await axios.get<ApiResponse<JobPostingDto[]>>(
+    `${apiBase}/api/job-postings/company/${cid}`,
+  );
+  return res.data;
+}

@@ -447,7 +447,13 @@ function Pagination({ page, totalPages, onChangePage }: PaginationProps) {
 // -------------------- Page --------------------
 function JobPostingsPage() {
   const navigate = useNavigate();
-  const { data, isLoading, isError, refetch } = useJobPostings();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // ✅ companyId -> cid 로 변경
+  const cid = searchParams.get('cid') ?? '';
+  const companyName = searchParams.get('companyName') ?? '';
+
+  const { data, isLoading, isError, refetch } = useJobPostings(cid || undefined);
 
   const SERVER_JOBS: JobPosting[] = useMemo(() => (data?.data ?? []).map(mapDtoToUiJob), [data]);
 
@@ -459,11 +465,6 @@ function JobPostingsPage() {
   }, [SERVER_JOBS]);
 
   const stackNameMap = useStackNames(allStackIdsOnPage);
-
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // ✅ companyId -> cid 로 변경
-  const cid = searchParams.get('cid') ?? '';
 
   const rawKeyword = searchParams.get('keyword') ?? '';
   const keyword = useMemo(() => {
@@ -651,8 +652,9 @@ function JobPostingsPage() {
   const headerTitle = useMemo(() => {
     if (!cid && !keyword) return '전체 공고 조회';
     if (keyword) return `'${keyword}' 공고 조회`;
+    if (companyName) return `${companyName} 공고 조회`;
     return '해당 기업 공고 조회';
-  }, [cid, keyword]);
+  }, [cid, keyword, companyName]);
 
   return (
     <div className="bg-pure-white min-h-screen overflow-x-auto pt-32 pb-32">
