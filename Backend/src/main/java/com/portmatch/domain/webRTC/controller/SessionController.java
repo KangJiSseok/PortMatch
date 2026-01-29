@@ -81,12 +81,15 @@ public class SessionController {
 
             Connection connection = session.createConnection(properties);
 
+            // 1. 원본 토큰 가져오기 (예: ws://localhost:4443/openvidu?sessionId=...)
             String originalToken = connection.getToken();
 
-            // localhost, openvidu-server 등 모든 경우 처리
-            String fixedToken = originalToken
-                    .replaceAll("ws://[^/?]+", "wss://i14d205.p.ssafy.io/openvidu")
-                    .replaceAll("wss://[^/?]+", "wss://i14d205.p.ssafy.io/openvidu");
+            // 2. '?' 기점을 찾아서 그 뒷부분(파라미터)만 추출
+            // lastIndexOf를 쓰면 주소가 어떻게 생겼든 상관없이 파라미터만 딱 가져와!
+            String queryString = originalToken.substring(originalToken.lastIndexOf('?'));
+
+            // 3. 우리 도메인 + /openvidu 뒤에 파라미터를 붙여서 리턴
+            String fixedToken = "wss://i14d205.p.ssafy.io/openvidu" + queryString;
 
             return new ResponseEntity<>(fixedToken, HttpStatus.OK);
 
