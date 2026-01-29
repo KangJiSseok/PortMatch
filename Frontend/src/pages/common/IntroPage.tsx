@@ -10,8 +10,8 @@ import {
 } from 'framer-motion';
 import { ArrowRight, User, Building2, Cpu, FileSearch, Share2 } from 'lucide-react';
 
-import imgS3Applicant from '../../assets/images/intro/s3-applicant.avif';
-import imgS3Company from '../../assets/images/intro/s3-company.avif';
+import imgApplicant from '../../assets/images/intro/applicant.avif';
+import imgCompany from '../../assets/images/intro/company.avif';
 
 const PARTICLE_COUNT = 240;
 
@@ -169,6 +169,12 @@ function IntroPage() {
   const [activeSection, setActiveSection] = useState(0);
   const navigate = useNavigate();
 
+  const [logoKey, setLogoKey] = useState(0);
+  const logoPart1 = 'PORT'.split('');
+  const logoPart2 = 'MATCH'.split('');
+  const charDuration = 0.05;
+  const groupPause = 0.4;
+
   useEffect(() => {
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
@@ -206,10 +212,18 @@ function IntroPage() {
       top: (containerRef.current.scrollHeight - window.innerHeight) * targets[index],
       behavior: 'smooth',
     });
+    if (index === 0) setLogoKey((prev) => prev + 1);
   };
 
   return (
     <div ref={containerRef} className="relative w-full bg-[#020205]" style={{ height: '700vh' }}>
+      <style>{`
+        @keyframes logo-appear {
+          from { opacity: 0; transform: translateY(20px); filter: blur(10px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+      `}</style>
+
       <div className="sticky top-0 flex h-screen w-full flex-col overflow-hidden">
         <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,#121225_0%,#020205_100%)]" />
 
@@ -220,12 +234,41 @@ function IntroPage() {
         </div>
 
         <nav className="absolute top-0 left-0 z-50 flex w-full items-center justify-between p-10 mix-blend-difference">
-          <h1
-            className="cursor-pointer text-3xl font-black tracking-tighter text-white uppercase italic"
+          <div
             onClick={() => handleScrollToSection(0)}
+            className="flex cursor-pointer text-3xl font-black tracking-tighter text-white uppercase"
           >
-            Portmatch
-          </h1>
+            <div key={logoKey} className="flex">
+              <span className="flex">
+                {logoPart1.map((char, idx) => (
+                  <span
+                    key={`nav-p1-${idx}`}
+                    style={{
+                      opacity: 0,
+                      animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
+                      animationDelay: `${idx * charDuration}s`,
+                    }}
+                  >
+                    {char}
+                  </span>
+                ))}
+              </span>
+              <span className="flex">
+                {logoPart2.map((char, idx) => (
+                  <span
+                    key={`nav-p2-${idx}`}
+                    style={{
+                      opacity: 0,
+                      animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
+                      animationDelay: `${logoPart1.length * charDuration + groupPause + idx * charDuration}s`,
+                    }}
+                  >
+                    {char}
+                  </span>
+                ))}
+              </span>
+            </div>
+          </div>
           <button
             onClick={() => navigate('/main')}
             className="rounded-full border border-white/20 bg-white/10 px-8 py-3 text-xs font-bold tracking-widest text-white uppercase backdrop-blur-xl transition-all hover:bg-white hover:text-black"
@@ -246,24 +289,65 @@ function IntroPage() {
 
         <div className="pointer-events-none relative z-30 flex flex-1 items-center justify-center">
           <SectionWrapper show={activeSection === 0}>
-            <div className="text-center">
-              <h2 className="text-[12vw] leading-none font-black tracking-tighter text-white uppercase">
-                Portmatch
-              </h2>
-              <p className="mt-4 text-xl font-medium tracking-[0.4em] text-indigo-400 uppercase">
-                AI Talent Matching Hub
-              </p>
+            <div className="flex flex-col items-center text-center">
+              <div
+                key={activeSection === 0 ? `main-logo-${logoKey}` : 'main-logo-hidden'}
+                className="flex text-[12vw] leading-none font-black tracking-tighter text-white uppercase"
+              >
+                <span className="flex">
+                  {logoPart1.map((char, idx) => (
+                    <span
+                      key={`main-p1-${idx}`}
+                      style={{
+                        opacity: 0,
+                        animation:
+                          activeSection === 0
+                            ? `logo-appear 1s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`
+                            : 'none',
+                        animationDelay: `${idx * 0.1}s`,
+                      }}
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </span>
+                <span className="flex">
+                  {logoPart2.map((char, idx) => (
+                    <span
+                      key={`main-p2-${idx}`}
+                      style={{
+                        opacity: 0,
+                        animation:
+                          activeSection === 0
+                            ? `logo-appear 1s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`
+                            : 'none',
+                        animationDelay: `${logoPart1.length * 0.1 + 0.3 + idx * 0.1}s`,
+                      }}
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </span>
+              </div>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={activeSection === 0 ? { opacity: 1, y: 0 } : { opacity: 0 }}
+                transition={{ delay: 1.2, duration: 0.8 }}
+                className="mt-4 text-xl font-medium tracking-[0.4em] text-indigo-400 uppercase"
+              >
+                AI Portfolio Matching Hub
+              </motion.p>
             </div>
           </SectionWrapper>
 
           <SectionWrapper show={activeSection === 1}>
-            <div className="max-w-4xl px-6 text-center break-keep">
+            <div className="max-w-5xl px-6 text-center break-keep">
               <FileSearch size={48} className="mx-auto mb-8 text-indigo-400" />
               <h2 className="text-5xl font-bold tracking-tight text-white md:text-6xl">
-                텍스트 속 잠재력을 데이터로
+                포트폴리오 속 잠재력을 데이터로
               </h2>
               <p className="mt-8 text-xl leading-relaxed text-white/90">
-                이력서와 포트폴리오를 분석하여
+                포트폴리오 속 이미지와 텍스트를 분석하여
                 <br />
                 단순 스펙이 아닌 실제 역량 프로필을 추출합니다.
               </p>
@@ -306,14 +390,14 @@ function IntroPage() {
               type="APPLICANT"
               title="Individual"
               desc="나의 역량을 데이터로 증명하고 취업의 기회를 찾으세요"
-              img={imgS3Applicant}
+              img={imgApplicant}
               onClick={() => navigate('/login', { state: { userType: 'APPLICANT' } })}
             />
             <Panel
               type="COMPANY"
               title="Business"
               desc="고도화된 필터링으로 팀에 가장 필요한 인재를 만나세요"
-              img={imgS3Company}
+              img={imgCompany}
               onClick={() => navigate('/login', { state: { userType: 'COMPANY' } })}
             />
           </motion.div>
@@ -399,7 +483,7 @@ interface PanelProps {
 const Panel = ({ title, desc, img, onClick, type }: PanelProps) => (
   <div
     onClick={onClick}
-    className="group relative flex-1 cursor-pointer overflow-hidden rounded-none bg-white/2 transition-all duration-700 hover:bg-white/[0.05]"
+    className="group relative flex-1 cursor-pointer overflow-hidden rounded-none bg-white/2 transition-all duration-700 hover:bg-white/5"
   >
     <div
       className="absolute inset-0 bg-cover bg-center opacity-0 brightness-50 grayscale transition-all duration-1000 group-hover:scale-110 group-hover:opacity-20"
