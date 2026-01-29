@@ -1,10 +1,12 @@
 from typing import List, Optional
 import os
 
-from fastapi import HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from web.services.gemini_embeddings import embed_texts
+
+router = APIRouter()
 
 
 class EmbeddingsRequest(BaseModel):
@@ -50,3 +52,8 @@ def run_embeddings(texts: List[str], model: Optional[str]) -> EmbeddingsResponse
         raise HTTPException(status_code=502, detail="embedding failed: empty vectors")
 
     return EmbeddingsResponse(model=resolved_model, dim=len(vectors[0]), vectors=vectors)
+
+
+@router.post("/embeddings/gemini", response_model=EmbeddingsResponse)
+def gemini_embeddings(payload: EmbeddingsRequest) -> EmbeddingsResponse:
+    return run_embeddings(payload.texts, payload.model)

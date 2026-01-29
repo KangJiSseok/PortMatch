@@ -1,4 +1,5 @@
-from typing import Any
+from typing import Any, List, Optional
+import os
 
 from dotenv import load_dotenv
 
