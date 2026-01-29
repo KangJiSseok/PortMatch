@@ -26,7 +26,7 @@ public class ScrapController {
     @PostMapping
     public BaseApiResponse<Boolean> toggleScrap(
             @Parameter(description = "사용자 고유 ID", example = "1") @RequestParam("uid") Long uid,
-            @Parameter(description = "채용 공고 고유 ID (pid)", example = "job_001") @RequestParam("pid") String pid) {
+            @Parameter(description = "채용 공고 고유 ID (pid)", example = "job_001") @RequestParam("pid") Long pid) {
 
         log.info("스크랩 토글 요청 - UID: {}, PID: {}", uid, pid);
         boolean isScraped = scrapService.toggleScrap(uid, pid);
@@ -47,7 +47,7 @@ public class ScrapController {
     @GetMapping("/check")
     public BaseApiResponse<Boolean> checkScrapStatus(
             @Parameter(description = "사용자 고유 ID", example = "1") @RequestParam("uid") Long uid,
-            @Parameter(description = "채용 공고 고유 ID (pid)", example = "job_001") @RequestParam("pid") String pid) {
+            @Parameter(description = "채용 공고 고유 ID (pid)", example = "job_001") @RequestParam("pid") Long pid) {
 
         log.info("스크랩 여부 확인 요청 - UID: {}, PID: {}", uid, pid);
         boolean status = scrapService.isScraped(uid, pid);

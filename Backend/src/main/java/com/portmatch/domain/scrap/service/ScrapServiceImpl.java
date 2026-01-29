@@ -21,7 +21,7 @@ public class ScrapServiceImpl implements ScrapService {
      * @return true면 스크랩 등록, false면 스크랩 해제
      */
     @Transactional
-    public boolean toggleScrap(Long uid, String pid) {
+    public boolean toggleScrap(Long uid, Long pid) {
         // 1. 이미 스크랩 했는지 확인
         return scrapRepository.findByUidAndPid(uid, pid)
                 .map(scrap -> {
@@ -41,7 +41,7 @@ public class ScrapServiceImpl implements ScrapService {
     }
 
     @Override
-    public boolean isScraped(Long uid, String pid) {
+    public boolean isScraped(Long uid, Long pid) {
         return scrapRepository.existsByUidAndPid(uid, pid);
     }
 

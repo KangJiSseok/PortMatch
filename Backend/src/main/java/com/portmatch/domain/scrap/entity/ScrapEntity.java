@@ -25,5 +25,5 @@ public class ScrapEntity extends BaseTimeEntity {
     private Long uid;
 
     @Column(nullable = false)
-    private String pid; // Posting ID
+    private Long pid; // Posting ID
 }
