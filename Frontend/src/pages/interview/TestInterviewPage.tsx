@@ -38,6 +38,15 @@ function stopStreamTracks(sm: StreamManager | null) {
   }
 }
 
+function getStreamId(sm: StreamManager | null): string {
+  try {
+    const anySm = sm as unknown as { stream?: { streamId?: string } } | null;
+    return anySm?.stream?.streamId ?? '';
+  } catch {
+    return '';
+  }
+}
+
 function StreamVideo({
   streamManager,
   muted,
@@ -97,38 +106,50 @@ async function fetchOpenViduToken(sessionId: string): Promise<string> {
 }
 
 /**
- * ✅ 백엔드가 토큰을 wss://localhost/... 또는 ws://localhost/... 로 내려줄 때,
- *    프론트에서 VITE_OPENVIDU_PUBLIC_URL 기준으로 host/protocol을 교체하는 임시 패치.
+ * ✅ 백엔드가 토큰을 wss://localhost/... 또는 ws://openvidu-server:4443/... 처럼 내려줄 때
+ *    프론트에서 "외부에서 접속 가능한 주소"로 host/protocol/path를 교체하는 패치.
  *
- * publicUrl 예시:
- *  - http://i14d205.p.ssafy.io:8443  -> token protocol을 ws: 로
- *  - https://i14d205.p.ssafy.io:5443 -> token protocol을 wss: 로
- *  - ws://i14d205.p.ssafy.io:8443   -> token protocol을 ws: 로 (실수 방지)
- *  - wss://i14d205.p.ssafy.io:5443  -> token protocol을 wss: 로 (실수 방지)
+ * 권장 env:
+ *  - VITE_OPENVIDU_PUBLIC_URL=https://i14d205.p.ssafy.io/openvidu
+ *
+ * 토큰 예시(목표):
+ *  - wss://i14d205.p.ssafy.io/openvidu?sessionId=...&token=...
  */
 function patchOpenViduToken(token: string): string {
   const publicUrl = (import.meta.env.VITE_OPENVIDU_PUBLIC_URL as string | undefined) ?? '';
   if (!publicUrl) return token;
 
+  // tok_ 로만 오는 형태면(URL 아님) 패치 불가 → 그대로 사용
+  if (token.startsWith('tok_')) return token;
+
   try {
     const t = new URL(token);
     const p = new URL(publicUrl);
 
-    // ✅ publicUrl이 http/https/ws/wss 뭐든 들어와도 정상 처리
+    // ✅ https 페이지면 ws는 혼종(혼합 콘텐츠)으로 막힐 수 있으니 wss 강제
+    const pageProto = window.location.protocol; // http: | https:
     const toWsProtocol = (proto: string) => {
+      if (pageProto === 'https:') return 'wss:';
       if (proto === 'https:' || proto === 'wss:') return 'wss:';
       if (proto === 'http:' || proto === 'ws:') return 'ws:';
-      return t.protocol; // 알 수 없으면 원래 토큰 유지
+      return t.protocol;
     };
 
     t.protocol = toWsProtocol(p.protocol);
 
-    // ✅ 도메인 + 포트 교체
+    // ✅ 도메인(+포트) 교체
     t.host = p.host;
+
+    // ✅ publicUrl에 /openvidu 같은 path가 있으면 path도 맞춰준다
+    const normalizedPath = (path: string) => {
+      if (!path || path === '/') return '';
+      return path.replace(/\/+$/, ''); // trailing slash 제거
+    };
+    const pPath = normalizedPath(p.pathname);
+    if (pPath) t.pathname = pPath;
 
     return t.toString();
   } catch {
-    // token이 URL 형태가 아닐 수도 있음(그런 경우엔 그대로 반환)
     return token;
   }
 }
@@ -229,11 +250,18 @@ export default function TestInterviewPage() {
 
       session.on('streamCreated', (event) => {
         const sub = session.subscribe(event.stream, undefined);
-        setSubscribers((prev) => [...prev, sub]);
+        const newId = getStreamId(sub);
+
+        setSubscribers((prev) => {
+          if (!newId) return [...prev, sub];
+          if (prev.some((p) => getStreamId(p) === newId)) return prev; // 중복 방지
+          return [...prev, sub];
+        });
       });
 
       session.on('streamDestroyed', (event) => {
-        setSubscribers((prev) => prev.filter((s) => s !== event.stream.streamManager));
+        const deadId = event.stream.streamId;
+        setSubscribers((prev) => prev.filter((s) => getStreamId(s) !== deadId));
       });
 
       session.on('exception', (event) => {
@@ -459,7 +487,8 @@ export default function TestInterviewPage() {
                   {errorMessage}
                 </p>
                 <p className="mt-2 text-xs font-semibold text-red-600/70">
-                  토큰 URL(host/port/protocol) + OpenVidu(8443) 외부 오픈부터 확인해요.
+                  토큰 URL(host/port/protocol/path) + OpenVidu(WebSocket 업그레이드) 오픈부터
+                  확인해요.
                 </p>
               </div>
             ) : null}
@@ -578,16 +607,19 @@ export default function TestInterviewPage() {
               <div className="mt-4 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
                 <p className="text-sm font-black text-zinc-700">추가 참가자</p>
                 <div className="mt-3 grid grid-cols-3 gap-3">
-                  {remoteRest.map((s, idx) => (
-                    <div
-                      key={`sub-${idx}`}
-                      className="bg-midnight-ink/90 overflow-hidden rounded-3xl border border-zinc-100"
-                    >
-                      <div className="h-40">
-                        <StreamVideo streamManager={s} />
+                  {remoteRest.map((s) => {
+                    const id = getStreamId(s);
+                    return (
+                      <div
+                        key={id || `sub-${Math.random()}`}
+                        className="bg-midnight-ink/90 overflow-hidden rounded-3xl border border-zinc-100"
+                      >
+                        <div className="h-40">
+                          <StreamVideo streamManager={s} />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : null}

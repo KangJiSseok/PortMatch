@@ -59,6 +59,7 @@ import { useAuthStore } from './store/authStore';
 import CompanyInterviewSchedulePage from './pages/company/CompanyInterviewSchedulePage';
 import TestInterviewLobbyPage from './pages/interview/TestInterviewLobbyPage';
 import TestInterviewPage from './pages/interview/TestInterviewPage';
+import ProfileEditPage from './pages/user/ProfileEditPage';
 
 const RootLayout = () => {
   const location = useLocation();
