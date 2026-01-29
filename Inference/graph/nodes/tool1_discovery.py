@@ -122,6 +122,7 @@ def _parse_projects(text: str) -> List[Dict[str, Any]]:
             {
                 # "name" is a discovery anchor, not a real project name.
                 "name": str(item.get("name", "")).strip(),
+                "domain": None,
                 "problem": None,
                 "solution": None,
                 "tech": [],
@@ -135,6 +136,7 @@ def _fallback_projects(company_name: str) -> List[Dict[str, Any]]:
         {
             # "name" is a discovery anchor, not a real project name.
             "name": f"{company_name} core product",
+            "domain": None,
             "problem": None,
             "solution": None,
             "tech": [],
@@ -142,6 +144,7 @@ def _fallback_projects(company_name: str) -> List[Dict[str, Any]]:
         {
             # "name" is a discovery anchor, not a real project name.
             "name": f"{company_name} platform upgrade",
+            "domain": None,
             "problem": None,
             "solution": None,
             "tech": [],
