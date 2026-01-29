@@ -28,7 +28,6 @@ def embed_texts(
 
     model_name = _normalize_model(model)
     url = f"{base_url.rstrip('/')}/v1beta/{model_name}:batchEmbedContents"
-    print(f"[gemini] base_url={base_url} model={model_name} url={url} texts={len(texts)}")
     requests_payload = []
     for text in texts:
         req = {
@@ -43,8 +42,6 @@ def embed_texts(
 
     response = requests.post(url, json=payload, headers=headers, timeout=30)
     if response.status_code >= 400:
-        body_preview = response.text[:1000] if response.text else ""
-        print(f"[gemini] error status={response.status_code} body={body_preview}")
         raise RuntimeError(f"Gemini embeddings request failed: {response.status_code} {response.text}")
 
     data = response.json()

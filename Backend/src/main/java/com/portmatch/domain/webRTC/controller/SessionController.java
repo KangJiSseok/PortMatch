@@ -68,7 +68,9 @@ public class SessionController {
                                                    @RequestBody ConnectionRequestDto request) {
         try {
             Session session = openVidu.getActiveSession(sessionId);
-            if (session == null) return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            if (session == null) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
 
             OpenViduRole role = "INTERVIEWER".equals(request.role())
                     ? OpenViduRole.MODERATOR
@@ -80,14 +82,20 @@ public class SessionController {
                     .build();
 
             Connection connection = session.createConnection(properties);
-
             String originalToken = connection.getToken();
+            // 원래 값 예시: ws://localhost:4443?sessionId=...&token=tok_XXXX
 
-            // localhost, openvidu-server 등 모든 경우 처리
-            String fixedToken = originalToken
-                    .replaceAll("ws://[^/]+:\\d+", "wss://i14d205.p.ssafy.io")  // ws://호스트:포트 → wss://도메인
-                    .replaceAll("wss://[^/]+:\\d+", "wss://i14d205.p.ssafy.io") // wss://호스트:포트 → wss://도메인
-                    .replace("/openvidu", "/openvidu");  // 경로는 유지
+            // 1. 토큰 문자열에서 'token=' 뒤에 오는 진짜 인증 키만 추출해.
+            // (라이브러리 버전에 따라 주소 형식이 다를 수 있어서 이게 제일 안전해!)
+            String tokenValue = originalToken.contains("token=")
+                    ? originalToken.substring(originalToken.indexOf("token=") + 6)
+                    : originalToken;
+
+            // 2. 우리 서버 도메인과 Nginx 경로(/openvidu)를 합쳐서 다시 조립해.
+            // 프론트가 8443 포트 없이 접속할 수 있게 만드는 마법의 주소야.
+            String fixedToken = "wss://i14d205.p.ssafy.io/openvidu?sessionId=" + sessionId + "&token=" + tokenValue;
+
+            System.out.println("최종 전달 토큰: " + fixedToken);
 
             return new ResponseEntity<>(fixedToken, HttpStatus.OK);
 

@@ -107,6 +107,7 @@ public class CompanyProjectAnalysisService {
                     CompanyProjectAnalysisProject entity = new CompanyProjectAnalysisProject(
                             analysis,
                             project.projectName(),
+                            project.domain(),
                             project.problem(),
                             project.solution()
                     );

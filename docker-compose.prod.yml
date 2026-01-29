@@ -86,9 +86,12 @@ services:
     container_name: openvidu-server
     restart: always
     ports:
+      - "5443:5443"
       - "8443:4443"
     environment:
       - OPENVIDU_SECRET=MY_SECRET
+      - DOMAIN_OR_PUBLIC_IP=i14d205.p.ssafy.io
+      - OPENVIDU_HTTPS_PORT=443
       - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900       
       - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=3600     
       - OPENVIDU_SESSIONS_GARBAGE_INTERVAL_LAST_PARTICIPANT=900

@@ -7,7 +7,6 @@ import {
   FileText,
   Mic,
   Calendar,
-  Bell,
   BarChart3,
   CheckSquare,
   Globe,

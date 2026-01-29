@@ -3,10 +3,43 @@ package com.portmatch.domain.companyproject.recommendation.dto;
 public record CompanyRecommendationResponse(
         Long companyId,
         double distance,
-        double similarity
+        double similarity,
+        Long portfolioProjectId,
+        Long companyProjectId,
+        String portfolioContent,
+        String companyContent,
+        double projectDistance,
+        double domainDistance,
+        double problemDistance,
+        double solutionDistance,
+        double techDistance
 ) {
-    public static CompanyRecommendationResponse of(Long companyId, double distance) {
-        // distance(0~2 근처) → similarity(1 - distance)로 간단 변환 (MVP용)
-        return new CompanyRecommendationResponse(companyId, distance, 1.0 - distance);
+    public static CompanyRecommendationResponse of(
+            Long companyId,
+            double distance,
+            Long portfolioProjectId,
+            Long companyProjectId,
+            String portfolioContent,
+            String companyContent,
+            double projectDistance,
+            double domainDistance,
+            double problemDistance,
+            double solutionDistance,
+            double techDistance
+    ) {
+        return new CompanyRecommendationResponse(
+                companyId,
+                distance,
+                1.0 - distance,
+                portfolioProjectId,
+                companyProjectId,
+                portfolioContent,
+                companyContent,
+                projectDistance,
+                domainDistance,
+                problemDistance,
+                solutionDistance,
+                techDistance
+        );
     }
 }

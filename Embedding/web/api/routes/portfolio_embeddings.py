@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from .common import EmbeddingsResponse, run_embeddings
+from .gemini_embeddings import EmbeddingsResponse, run_embeddings
 
 router = APIRouter()
 
@@ -21,7 +21,10 @@ def sha256_hex(text: str) -> str:
 
 @router.post("/embeddings/portfolio")
 def portfolio_embeddings(payload: PortfolioEmbeddingsRequest):
-    model = (payload.model or os.getenv("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")).strip()
+    requested_model = (payload.model or "").strip()
+    model = (requested_model or os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")).strip()
+    if requested_model:
+        print(f"[embeddings] requested_model={requested_model} resolved_model={model}")
 
     texts = payload.texts
     if not isinstance(texts, list) or not texts:

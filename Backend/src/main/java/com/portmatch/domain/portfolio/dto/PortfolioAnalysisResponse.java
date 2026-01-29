@@ -6,6 +6,7 @@ public record PortfolioAnalysisResponse(List<Project> projects) {
 
     public record Project(
             String name,
+            String domain,
             String problem,
             String solution,
             List<String> tech

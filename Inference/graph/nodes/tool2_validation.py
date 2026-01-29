@@ -21,6 +21,9 @@ def _build_prompt() -> "ChatPromptTemplate":
         "- If the candidate describes market expansion, partnerships, or general business strategy rather than a project,\n"
         "  mark is_valid=false.\n"
         "- project_statement must be a single Korean sentence.\n"
+        "- domain must be a short label for the project domain "
+        "(e.g., healthcare, education, security, fintech, commerce). "
+        "Use an empty string if unknown.\n"
         "- problem must be a single Korean sentence describing a real-world issue, limitation, or goal.\n"
         "- problem should focus on the situation or need, not on technical implementation details.\n"
         "- solution must be a single Korean sentence describing how the problem was addressed.\n"
@@ -39,6 +42,7 @@ def _build_prompt() -> "ChatPromptTemplate":
         "Output schema:\n"
         "[{{"
         "\"project_statement\": str,"
+        "\"domain\": str,"
         "\"problem\": str,"
         "\"solution\": str,"
         "\"tech\": [str],"
@@ -287,6 +291,7 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
         anchor_name = str(project.get("name", ""))
         llm_item = parsed[idx] if idx < len(parsed) else {}
         project_statement = str(llm_item.get("project_statement", "")).strip()
+        domain = str(llm_item.get("domain", "")).strip()
         problem = str(llm_item.get("problem", "")).strip()
         solution = str(llm_item.get("solution", "")).strip()
         tech = _normalize_tech(llm_item.get("tech"))
@@ -319,6 +324,7 @@ def validation_node(state: CompanyGraphState) -> Dict[str, Any]:
                 "source_unknown": candidate_unknown,
                 # Tool2 provides the real, human-readable statement.
                 "project_statement": project_statement,
+                "domain": domain,
                 "problem": problem,
                 "solution": solution,
                 "tech": tech,

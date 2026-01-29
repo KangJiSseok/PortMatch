@@ -57,6 +57,7 @@ import { AuthGuard } from './routes/RouteGuard';
 import MypageGate from './routes/MyPageGate';
 import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
+import CompanyInterviewSchedulePage from './pages/company/CompanyInterviewSchedulePage';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -246,6 +247,14 @@ const router = createBrowserRouter([
         element: (
           <AuthGuard mode="COMPANY">
             <JobApplicationManagementPage />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: 'company/jobs/:jobPostId/applicants/:applicationId/schedule',
+        element: (
+          <AuthGuard mode="COMPANY">
+            <CompanyInterviewSchedulePage />
           </AuthGuard>
         ),
       },

@@ -17,14 +17,51 @@ public interface CompanyProjectEmbeddingRepository extends JpaRepository<Company
     @Transactional
     @Query(value = """
         INSERT INTO company_project_embeddings
-            (company_id, analysis_id, project_id, content, embedding, created_at, updated_at)
+            (
+                company_id,
+                analysis_id,
+                project_id,
+                content,
+                project_embedding,
+                domain_embedding,
+                problem_embedding,
+                solution_embedding,
+                tech_embedding,
+                problem_missing,
+                solution_missing,
+                tech_missing,
+                created_at,
+                updated_at
+            )
         VALUES
-            (:companyId, :analysisId, :projectId, :content, CAST(:embedding AS vector), now(), now())
+            (
+                :companyId,
+                :analysisId,
+                :projectId,
+                :content,
+                CAST(:projectEmbedding AS vector),
+                CAST(:domainEmbedding AS vector),
+                CAST(:problemEmbedding AS vector),
+                CAST(:solutionEmbedding AS vector),
+                CAST(:techEmbedding AS vector),
+                :problemMissing,
+                :solutionMissing,
+                :techMissing,
+                now(),
+                now()
+            )
         ON CONFLICT (project_id) DO UPDATE SET
             company_id = EXCLUDED.company_id,
             analysis_id = EXCLUDED.analysis_id,
             content = EXCLUDED.content,
-            embedding = EXCLUDED.embedding,
+            project_embedding = EXCLUDED.project_embedding,
+            domain_embedding = EXCLUDED.domain_embedding,
+            problem_embedding = EXCLUDED.problem_embedding,
+            solution_embedding = EXCLUDED.solution_embedding,
+            tech_embedding = EXCLUDED.tech_embedding,
+            problem_missing = EXCLUDED.problem_missing,
+            solution_missing = EXCLUDED.solution_missing,
+            tech_missing = EXCLUDED.tech_missing,
             updated_at = now()
         """, nativeQuery = true)
     void upsertByProjectId(
@@ -32,13 +69,20 @@ public interface CompanyProjectEmbeddingRepository extends JpaRepository<Company
             @Param("analysisId") Long analysisId,
             @Param("projectId") Long projectId,
             @Param("content") String content,
-            @Param("embedding") String embedding
+            @Param("projectEmbedding") String projectEmbedding,
+            @Param("domainEmbedding") String domainEmbedding,
+            @Param("problemEmbedding") String problemEmbedding,
+            @Param("solutionEmbedding") String solutionEmbedding,
+            @Param("techEmbedding") String techEmbedding,
+            @Param("problemMissing") boolean problemMissing,
+            @Param("solutionMissing") boolean solutionMissing,
+            @Param("techMissing") boolean techMissing
     );
 
     @Query(value = """
-    SELECT *, 1 - (embedding <=> CAST(:queryVector AS vector)) AS similarity
+    SELECT *, 1 - (project_embedding <=> CAST(:queryVector AS vector)) AS similarity
     FROM company_project_embeddings
-    ORDER BY embedding <=> CAST(:queryVector AS vector)
+    ORDER BY project_embedding <=> CAST(:queryVector AS vector)
     LIMIT :limit
     """, nativeQuery = true)
     List<Object[]> findSimilarProjects(

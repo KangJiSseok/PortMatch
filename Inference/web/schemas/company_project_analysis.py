@@ -9,6 +9,7 @@ class CompanyProjectAnalysisRequest(BaseModel):
 
 class ProjectResult(BaseModel):
     project_name: str
+    domain: str
     problem: str
     solution: str
     tech: List[str]
