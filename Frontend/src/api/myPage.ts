@@ -1,9 +1,4 @@
-// src/api/mockData.ts
-// 개인 MVP용 최소 더미데이터 (ERD 기반)
-// - MyPage (스크랩/다가오는 면접/캘린더용)
-// - InterviewListPage (예정/완료 리스트)
-// - InterviewLobbyPage (세션 상세/room_id)
-// - InterviewRoomPage (세션 id/room_id 기반 입장 UI)
+// src/api/myPage.ts
 
 export type UserRole = 'APPLICANT' | 'COMPANY';
 
@@ -13,13 +8,13 @@ export type UserRow = {
   name: string;
   email: string;
   role: UserRole;
-  created_at: string; // ISO
+  created_at: string;
 };
 
 export type ApplicantRow = {
   id: number;
   user_id: number;
-  birth_date?: string; // YYYY-MM-DD
+  birth_date?: string;
   gender?: string;
   total_experience_years?: number;
 };
@@ -38,10 +33,10 @@ export type JobPostRow = {
   id: number;
   company_id: number;
   title: string;
-  required_stacks?: string[]; // ERD jsonb → FE에서는 배열로 사용
-  deadline?: string; // YYYY-MM-DD
+  required_stacks?: string[];
+  deadline?: string;
   status: JobPostStatus;
-  created_at: string; // ISO
+  created_at: string;
 };
 
 export type ResumeRow = {
@@ -49,7 +44,7 @@ export type ResumeRow = {
   applicant_id: number;
   title: string;
   file_url?: string;
-  created_at: string; // ISO
+  created_at: string;
 };
 
 export type ApplicationStatus = 'APPLIED' | 'INTERVIEW_SCHEDULED' | 'REJECTED' | 'HIRED';
@@ -59,7 +54,7 @@ export type ApplicationRow = {
   applicant_id: number;
   resume_id: number;
   status: ApplicationStatus;
-  applied_at: string; // ISO
+  applied_at: string;
 };
 
 export type InterviewStatus = 'SCHEDULED' | 'DONE' | 'CANCELLED';
@@ -67,7 +62,7 @@ export type InterviewRow = {
   id: number;
   application_id: number;
   room_id: string;
-  scheduled_at: string; // ISO
+  scheduled_at: string;
   status: InterviewStatus;
 };
 
@@ -75,14 +70,12 @@ export type ScrapRow = {
   id: number;
   applicant_id: number;
   job_post_id: number;
-  created_at: string; // ISO
+  created_at: string;
 };
 
-// ===== 로그인한 현재 사용자(개인) =====
 export const CURRENT_USER_ID = 1;
 export const CURRENT_APPLICANT_ID = 1;
 
-// ===== 원본 테이블 더미 =====
 export const USERS: UserRow[] = [
   {
     id: 1,
@@ -179,7 +172,6 @@ export const RESUMES: ResumeRow[] = [
   },
 ];
 
-// applications: applicant가 job_post에 지원한 기록
 export const APPLICATIONS: ApplicationRow[] = [
   {
     id: 7001,
@@ -207,9 +199,7 @@ export const APPLICATIONS: ApplicationRow[] = [
   },
 ];
 
-// interviews: applications(0..1) → interviews
 export const INTERVIEWS: InterviewRow[] = [
-  // ✅ 완료(과거)
   {
     id: 9003,
     application_id: 7001,
@@ -231,8 +221,6 @@ export const INTERVIEWS: InterviewRow[] = [
     scheduled_at: '2026-01-23T10:30:00',
     status: 'DONE',
   },
-
-  // ✅ 2026-01-26 (5개)
   {
     id: 9100,
     application_id: 7001,
@@ -245,212 +233,6 @@ export const INTERVIEWS: InterviewRow[] = [
     application_id: 7002,
     room_id: 'room_web_dev_9101',
     scheduled_at: '2026-01-26T11:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9102,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9102',
-    scheduled_at: '2026-01-26T13:30:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9103,
-    application_id: 7002,
-    room_id: 'room_web_dev_9103',
-    scheduled_at: '2026-01-26T15:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9000,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9000',
-    scheduled_at: '2026-01-26T17:00:00',
-    status: 'SCHEDULED',
-  },
-
-  // ✅ 2026-01-27 (5개)
-  {
-    id: 9104,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9104',
-    scheduled_at: '2026-01-27T10:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9105,
-    application_id: 7002,
-    room_id: 'room_web_dev_9105',
-    scheduled_at: '2026-01-27T11:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9106,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9106',
-    scheduled_at: '2026-01-27T13:30:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9107,
-    application_id: 7002,
-    room_id: 'room_web_dev_9107',
-    scheduled_at: '2026-01-27T15:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9108,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9108',
-    scheduled_at: '2026-01-27T17:00:00',
-    status: 'SCHEDULED',
-  },
-
-  // ✅ 2026-01-28 (5개)
-  {
-    id: 9109,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9109',
-    scheduled_at: '2026-01-28T10:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9110,
-    application_id: 7002,
-    room_id: 'room_web_dev_9110',
-    scheduled_at: '2026-01-28T11:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9111,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9111',
-    scheduled_at: '2026-01-28T13:30:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9112,
-    application_id: 7002,
-    room_id: 'room_web_dev_9112',
-    scheduled_at: '2026-01-28T15:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9113,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9113',
-    scheduled_at: '2026-01-28T17:00:00',
-    status: 'SCHEDULED',
-  },
-
-  // ✅ 2026-01-29 (5개)
-  {
-    id: 9114,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9114',
-    scheduled_at: '2026-01-29T10:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9115,
-    application_id: 7002,
-    room_id: 'room_web_dev_9115',
-    scheduled_at: '2026-01-29T11:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9116,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9116',
-    scheduled_at: '2026-01-29T13:30:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9117,
-    application_id: 7002,
-    room_id: 'room_web_dev_9117',
-    scheduled_at: '2026-01-29T15:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9118,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9118',
-    scheduled_at: '2026-01-29T17:00:00',
-    status: 'SCHEDULED',
-  },
-
-  // ✅ 2026-01-30 (5개)
-  {
-    id: 9119,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9119',
-    scheduled_at: '2026-01-30T10:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9120,
-    application_id: 7002,
-    room_id: 'room_web_dev_9120',
-    scheduled_at: '2026-01-30T11:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9121,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9121',
-    scheduled_at: '2026-01-30T13:30:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9122,
-    application_id: 7002,
-    room_id: 'room_web_dev_9122',
-    scheduled_at: '2026-01-30T15:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9123,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9123',
-    scheduled_at: '2026-01-30T17:00:00',
-    status: 'SCHEDULED',
-  },
-
-  // ✅ 2026-01-31 (5개)
-  {
-    id: 9124,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9124',
-    scheduled_at: '2026-01-31T10:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9125,
-    application_id: 7002,
-    room_id: 'room_web_dev_9125',
-    scheduled_at: '2026-01-31T11:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9126,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9126',
-    scheduled_at: '2026-01-31T13:30:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9127,
-    application_id: 7002,
-    room_id: 'room_web_dev_9127',
-    scheduled_at: '2026-01-31T15:00:00',
-    status: 'SCHEDULED',
-  },
-  {
-    id: 9128,
-    application_id: 7001,
-    room_id: 'room_frontend_intern_9128',
-    scheduled_at: '2026-01-31T17:00:00',
     status: 'SCHEDULED',
   },
 ];
@@ -474,57 +256,22 @@ export const SCRAPS: ScrapRow[] = [
     job_post_id: 1003,
     created_at: '2026-01-04T10:15:00',
   },
-  {
-    id: 8004,
-    applicant_id: CURRENT_APPLICANT_ID,
-    job_post_id: 1001,
-    created_at: '2026-01-05T13:27:48',
-  },
-  {
-    id: 8005,
-    applicant_id: CURRENT_APPLICANT_ID,
-    job_post_id: 1002,
-    created_at: '2026-01-06T09:11:33',
-  },
-  {
-    id: 8006,
-    applicant_id: CURRENT_APPLICANT_ID,
-    job_post_id: 1003,
-    created_at: '2026-01-08T19:02:10',
-  },
-  {
-    id: 8007,
-    applicant_id: CURRENT_APPLICANT_ID,
-    job_post_id: 1001,
-    created_at: '2026-01-12T07:58:41',
-  },
-  {
-    id: 8008,
-    applicant_id: CURRENT_APPLICANT_ID,
-    job_post_id: 1002,
-    created_at: '2026-01-15T16:39:22',
-  },
-  {
-    id: 8009,
-    applicant_id: CURRENT_APPLICANT_ID,
-    job_post_id: 1003,
-    created_at: '2026-01-21T23:14:09',
-  },
 ];
 
-// ====== 페이지에서 쓰기 쉬운 "뷰 모델" ======
-
+// ===== View Models =====
 export type InterviewListStatus = 'UPCOMING' | 'DONE';
 
 export type InterviewSessionView = {
-  interview_id: number; // interviews.id
-  application_id: number; // interviews.application_id
+  interview_id: number;
+  application_id: number;
   room_id: string;
-  scheduledAt: string; // interviews.scheduled_at
+  scheduledAt: string;
 
   job_post_id: number;
-  postingTitle: string; // job_posts.title
-  companyName: string; // companies.companies_name
+  postingTitle: string;
+  companyName: string;
+
+  applicantName?: string;
 
   status: InterviewListStatus;
 };
@@ -541,15 +288,196 @@ function interviewStatusToListStatus(s: InterviewStatus): InterviewListStatus {
   return s === 'DONE' ? 'DONE' : 'UPCOMING';
 }
 
-// ===== 조인 유틸 (ERD 관계대로 묶어줌) =====
+/* =====================================================================================
+   ✅ localStorage: 기업이 만든 면접 일정 (백엔드 없을 때)
+   ===================================================================================== */
 
+export type CreateExtraInterviewArgs = {
+  application_id: number;
+  job_post_id: number;
+  postingTitle: string;
+  companyName: string;
+  scheduledAt: string; // ISO
+  applicantName?: string;
+  room_id?: string;
+};
+
+type ExtraInterviewPersisted = {
+  interview_id: number;
+  application_id: number;
+  room_id: string;
+  scheduledAt: string;
+  job_post_id: number;
+  postingTitle: string;
+  companyName: string;
+  applicantName?: string;
+  status: InterviewListStatus;
+  createdAt: string;
+};
+
+const EXTRA_KEY = 'pm_extra_interviews_v1';
+const EXTRA_NEXT_ID_KEY = 'pm_extra_interviews_next_id_v1';
+
+function isBrowser() {
+  return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+}
+
+function safeJsonParse<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function readExtras(): ExtraInterviewPersisted[] {
+  if (!isBrowser()) return [];
+  return safeJsonParse<ExtraInterviewPersisted[]>(localStorage.getItem(EXTRA_KEY), []);
+}
+
+function writeExtras(items: ExtraInterviewPersisted[]) {
+  if (!isBrowser()) return;
+  localStorage.setItem(EXTRA_KEY, JSON.stringify(items));
+}
+
+function nextExtraId(): number {
+  if (!isBrowser()) return Math.floor(Math.random() * 1_000_000) + 100_000;
+
+  const raw = localStorage.getItem(EXTRA_NEXT_ID_KEY);
+  const current = raw ? Number(raw) : 100_000;
+  const safe = Number.isFinite(current) && current > 0 ? current : 100_000;
+
+  const next = safe + 1;
+  localStorage.setItem(EXTRA_NEXT_ID_KEY, String(next));
+  return safe;
+}
+
+function statusFromTime(iso: string): InterviewListStatus {
+  const t = new Date(iso).getTime();
+  const now = Date.now();
+  if (!Number.isFinite(t)) return 'UPCOMING';
+  return t < now ? 'DONE' : 'UPCOMING';
+}
+
+function toView(e: ExtraInterviewPersisted): InterviewSessionView {
+  return {
+    interview_id: e.interview_id,
+    application_id: e.application_id,
+    room_id: e.room_id,
+    scheduledAt: e.scheduledAt,
+    job_post_id: e.job_post_id,
+    postingTitle: e.postingTitle,
+    companyName: e.companyName,
+    applicantName: e.applicantName,
+    status: e.status,
+  };
+}
+
+function buildExtraInterviewViews(): InterviewSessionView[] {
+  const extras = readExtras();
+  return extras.map(toView);
+}
+
+export function getExtraInterviewViews(): InterviewSessionView[] {
+  return buildExtraInterviewViews();
+}
+
+export function getExtraInterviewViewByApplicationId(
+  applicationId: number,
+): InterviewSessionView | undefined {
+  return buildExtraInterviewViews().find((v) => v.application_id === applicationId);
+}
+
+/** ✅ 생성 */
+export function createExtraInterviewView(args: CreateExtraInterviewArgs): InterviewSessionView {
+  const interviewId = nextExtraId();
+  const roomId =
+    args.room_id?.trim() ||
+    `room_${args.job_post_id}_${args.application_id}_${String(interviewId)}`;
+
+  const status = statusFromTime(args.scheduledAt);
+
+  const persisted: ExtraInterviewPersisted = {
+    interview_id: interviewId,
+    application_id: args.application_id,
+    room_id: roomId,
+    scheduledAt: args.scheduledAt,
+    job_post_id: args.job_post_id,
+    postingTitle: args.postingTitle,
+    companyName: args.companyName,
+    applicantName: args.applicantName,
+    status,
+    createdAt: new Date().toISOString(),
+  };
+
+  const prev = readExtras();
+  writeExtras([persisted, ...prev]);
+
+  return toView(persisted);
+}
+
+/** ✅ 수정(면접ID 기준) */
+export function updateExtraInterviewScheduledAt(interviewId: number, nextIso: string): boolean {
+  const prev = readExtras();
+  const idx = prev.findIndex((p) => p.interview_id === interviewId);
+  if (idx < 0) return false;
+
+  const next = [...prev];
+  const target = next[idx];
+
+  next[idx] = {
+    ...target,
+    scheduledAt: nextIso,
+    status: statusFromTime(nextIso),
+  };
+
+  writeExtras(next);
+  return true;
+}
+
+/** ✅ 업서트(지원서ID 기준): 없으면 생성, 있으면 수정 */
+export function upsertExtraInterviewView(args: CreateExtraInterviewArgs): InterviewSessionView {
+  const prev = readExtras();
+  const idx = prev.findIndex((p) => p.application_id === args.application_id);
+
+  if (idx < 0) return createExtraInterviewView(args);
+
+  const target = prev[idx];
+  const roomId = args.room_id?.trim() || target.room_id;
+  const status = statusFromTime(args.scheduledAt);
+
+  const updated: ExtraInterviewPersisted = {
+    ...target,
+    room_id: roomId,
+    scheduledAt: args.scheduledAt,
+    job_post_id: args.job_post_id,
+    postingTitle: args.postingTitle,
+    companyName: args.companyName,
+    applicantName: args.applicantName ?? target.applicantName,
+    status,
+  };
+
+  const next = [...prev];
+  next[idx] = updated;
+  writeExtras(next);
+
+  return toView(updated);
+}
+
+export function clearExtraInterviewViews() {
+  if (!isBrowser()) return;
+  localStorage.removeItem(EXTRA_KEY);
+  localStorage.removeItem(EXTRA_NEXT_ID_KEY);
+}
+
+// ===== joins for applicant-side mock =====
 export function buildMyInterviewViews(
   applicantId: number = CURRENT_APPLICANT_ID,
 ): InterviewSessionView[] {
   const myApps = APPLICATIONS.filter((a) => a.applicant_id === applicantId);
 
   const views: InterviewSessionView[] = [];
-
   for (const iv of INTERVIEWS) {
     const app = myApps.find((a) => a.id === iv.application_id);
     if (!app) continue;
@@ -565,11 +493,9 @@ export function buildMyInterviewViews(
       application_id: app.id,
       room_id: iv.room_id,
       scheduledAt: iv.scheduled_at,
-
       job_post_id: post.id,
       postingTitle: post.title,
       companyName: company.companies_name,
-
       status: interviewStatusToListStatus(iv.status),
     });
   }
@@ -577,21 +503,31 @@ export function buildMyInterviewViews(
   return views.sort((a, b) => (a.scheduledAt > b.scheduledAt ? 1 : -1));
 }
 
+export function buildAllInterviewViews(applicantId: number = CURRENT_APPLICANT_ID) {
+  const base = buildMyInterviewViews(applicantId);
+  const extra = buildExtraInterviewViews();
+
+  const map = new Map<number, InterviewSessionView>();
+  for (const b of base) map.set(b.interview_id, b);
+  for (const e of extra) map.set(e.interview_id, e);
+
+  return Array.from(map.values()).sort((a, b) => (a.scheduledAt > b.scheduledAt ? 1 : -1));
+}
+
 export function getMyUpcomingInterviewViews(limit = 2): InterviewSessionView[] {
-  // ✅ "상태(UPCOMING)"뿐 아니라 "시간 기준(미래)"도 같이 반영해두면 더 자연스러움
   const nowMs = Date.now();
-  return buildMyInterviewViews()
+  return buildAllInterviewViews()
     .filter((v) => v.status === 'UPCOMING')
     .filter((v) => new Date(v.scheduledAt).getTime() >= nowMs)
     .slice(0, limit);
 }
 
 export function getMyInterviewViewsByStatus(status: InterviewListStatus): InterviewSessionView[] {
-  return buildMyInterviewViews().filter((v) => v.status === status);
+  return buildAllInterviewViews().filter((v) => v.status === status);
 }
 
 export function getMyInterviewViewById(interviewId: number): InterviewSessionView | undefined {
-  return buildMyInterviewViews().find((v) => v.interview_id === interviewId);
+  return buildAllInterviewViews().find((v) => v.interview_id === interviewId);
 }
 
 export function buildMyScrapViews(applicantId: number = CURRENT_APPLICANT_ID): ScrapView[] {
@@ -616,26 +552,21 @@ export function buildMyScrapViews(applicantId: number = CURRENT_APPLICANT_ID): S
     .filter(Boolean) as ScrapView[];
 }
 
-/* =======================================================================
-   ✅ MyPage에서 "파일 안에 더미를 넣지 않기" 위한 추가 mock API 레이어
-   - 나중에 실제 API/React Query 붙일 때 여기 함수들만 교체하면 됨
-   ======================================================================= */
-
+// ===== mock fetch layer =====
 export type PortfolioReport = {
   id: number;
   filename: string;
-  analyzedAt: string; // ISO
+  analyzedAt: string;
   highlights: string[];
 };
 
 export type NotificationItem = {
   id: number;
   message: string;
-  createdAt: string; // ISO
+  createdAt: string;
   read: boolean;
 };
 
-// ✅ MyPage용 더미 데이터는 mockData.ts 안에만 둠
 export const PORTFOLIO_REPORT: PortfolioReport = {
   id: 55,
   filename: 'portfolio.pdf',
@@ -652,61 +583,23 @@ export const NOTIFICATIONS: NotificationItem[] = [
     createdAt: '2026-01-18T22:06:00',
     read: true,
   },
-  {
-    id: 4,
-    message: '포트폴리오 분석 리포트가 생성됐어요.',
-    createdAt: '2026-01-18T22:06:00',
-    read: true,
-  },
-  {
-    id: 5,
-    message: '포트폴리오 분석 리포트가 생성됐어요.',
-    createdAt: '2026-01-18T22:06:00',
-    read: true,
-  },
-  {
-    id: 6,
-    message: '포트폴리오 분석 리포트가 생성됐어요.',
-    createdAt: '2026-01-18T22:06:00',
-    read: true,
-  },
-  {
-    id: 7,
-    message: '포트폴리오 분석 리포트가 생성됐어요.',
-    createdAt: '2026-01-18T22:06:00',
-    read: true,
-  },
-  {
-    id: 8,
-    message: '포트폴리오 분석 리포트가 생성됐어요.',
-    createdAt: '2026-01-18T22:06:00',
-    read: true,
-  },
 ];
 
-type FetchOptions = {
-  delayMs?: number;
-  shouldFail?: boolean; // 상태 UI 테스트용
-};
+type FetchOptions = { delayMs?: number; shouldFail?: boolean };
 
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
 }
 
 async function mockFetch<T>(value: T, options?: FetchOptions): Promise<T> {
-  const delay = options?.delayMs ?? 500;
+  const delay = options?.delayMs ?? 300;
   await sleep(delay);
-
-  if (options?.shouldFail) {
-    throw new Error('네트워크 오류가 발생했어요. 다시 시도해 주세요.');
-  }
-
+  if (options?.shouldFail) throw new Error('네트워크 오류가 발생했어요. 다시 시도해 주세요.');
   return value;
 }
 
-// ✅ “API처럼” 쓰는 함수들 (MyPage는 이걸로만 가져감)
 export function fetchMyInterviewViews(options?: FetchOptions): Promise<InterviewSessionView[]> {
-  return mockFetch(buildMyInterviewViews(), options);
+  return mockFetch(buildAllInterviewViews(), options);
 }
 
 export function fetchMyUpcomingInterviewViews(
