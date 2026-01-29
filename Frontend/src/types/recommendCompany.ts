@@ -40,3 +40,65 @@ export type SortBy = 'score' | 'hiring';
  * UI 뷰 상태 타입
  */
 export type ViewState = 'ok' | 'loading' | 'empty' | 'error';
+
+/**
+ * 포트폴리오 기반 기업 추천 API 응답 타입
+ * - GET /api/portfolios/{portfolioId}/recommendations/companies
+ */
+export interface CompanyRecommendationResponse {
+  companyId: number;
+  companyName: string;
+  distance: number;
+  similarity: number;
+  portfolioProjectId: number;
+  companyProjectId: number;
+  portfolioContent: string;
+  companyContent: string;
+  projectDistance: number;
+  domainDistance: number;
+  problemDistance: number;
+  solutionDistance: number;
+  techDistance: number;
+}
+
+export interface BaseApiResponse<T> {
+  status: boolean;
+  code: number;
+  message: string;
+  data: T;
+}
+
+export interface ExplanationMatchRequestItem {
+  companyId: number;
+  portfolioProjectId: number;
+  companyProjectId: number;
+}
+
+export interface ExplanationMatchHeadline {
+  line1: string;
+  highlight: string;
+  line2: string;
+  line3: string;
+}
+
+export interface ExplanationMatchSection {
+  key: string;
+  title: string;
+  text?: string | null;
+  tags?: string[] | null;
+}
+
+export interface ExplanationMatchPayload {
+  companyName: string;
+  headline: ExplanationMatchHeadline;
+  sections: ExplanationMatchSection[];
+}
+
+export interface ExplanationMatchResponseItem {
+  companyId: number;
+  portfolioProjectId: number;
+  companyProjectId: number;
+  success: boolean;
+  payload?: ExplanationMatchPayload | null;
+  error?: string | null;
+}
