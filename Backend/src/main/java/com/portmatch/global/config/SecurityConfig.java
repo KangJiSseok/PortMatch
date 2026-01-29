@@ -39,7 +39,6 @@ public class SecurityConfig {
 
                 // ✅ CSRF: API 개발 편의상 /api/** 만 무시 (전체 disable 보다 안전)
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
-
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) -> res.sendError(401))
                         .accessDeniedHandler((req, res, e) -> res.sendError(403))
@@ -59,6 +58,7 @@ public class SecurityConfig {
                                 "/api/companies/**",
                                 "/api/interview/sessions/**",
                                 "/api/stacks/**",
+                                "/api/interview/webhook",
 
                                 // ✅ Swagger / OpenAPI 허용 (springdoc 기본 경로)
                                 "/v3/api-docs/**",

@@ -89,11 +89,14 @@ services:
       - "8443:4443"
     environment:
       - OPENVIDU_SECRET=MY_SECRET
-      - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=60
-      - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=1200
+      - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900       
+      - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=3600     
+      - OPENVIDU_SESSIONS_GARBAGE_INTERVAL_LAST_PARTICIPANT=900
       - OPENVIDU_WEBHOOK=true
       - OPENVIDU_WEBHOOK_ENDPOINT=http://portmatch-backend-prod:8080/api/interview/webhook
-      - OPENVIDU_WEBHOOK_EVENTS=[sessionDestroyed]
+      - OPENVIDU_WEBHOOK_EVENTS=["sessionDestroyed","participantJoined","participantLeft"]
+      - OPENVIDU_WEBHOOK_HEADERS=["Content-Type: application/json"]
+      
 
   certbot:
     image: certbot/certbot:latest
