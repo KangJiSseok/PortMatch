@@ -54,19 +54,19 @@ interface QuickMenu {
 const USER_QUICK_MENUS: QuickMenu[] = [
   { id: 1, title: '스피치 타이머', icon: Timer, link: '/support/speech-timer' },
   { id: 2, title: '실수령액 계산기', icon: Calculator, link: '/support/salary' },
-  { id: 3, title: '면접 예상 질문', icon: FileText, link: '/support/interview-template' },
-  { id: 4, title: '이력서 첨삭', icon: Mic, link: '/support/resume-feedback' },
-  { id: 5, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
-  { id: 6, title: '글로벌 단위 변환기', icon: Globe, link: '/support/unit-converter' },
+  { id: 3, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
+  { id: 4, title: '글로벌 단위 변환기', icon: Globe, link: '/support/unit-converter' },
+  { id: 5, title: '면접 예상 질문', icon: FileText, link: '/support/interview-template' },
+  { id: 6, title: '이력서 첨삭', icon: Mic, link: '/support/resume-feedback' },
 ];
 
 const COMPANY_QUICK_MENUS: QuickMenu[] = [
   { id: 1, title: '캐파 계산기', icon: BarChart3, link: '/support/sprint-capacity' },
   { id: 2, title: '인건비 계산기', icon: TrendingUp, link: '/support/employer-cost' },
-  { id: 3, title: '면접 평가지', icon: CheckSquare, link: '/support/interview-template' },
-  { id: 4, title: '면접 질문 생성', icon: Mic, link: '/support/interview-generator' },
-  { id: 5, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
-  { id: 6, title: '글로벌 단위 변환기', icon: Globe, link: '/support/unit-converter' },
+  { id: 3, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
+  { id: 4, title: '글로벌 단위 변환기', icon: Globe, link: '/support/unit-converter' },
+  { id: 5, title: '면접 평가지', icon: CheckSquare, link: '/support/interview-template' },
+  { id: 6, title: '면접 질문 생성', icon: Mic, link: '/support/interview-generator' },
 ];
 
 const MOCK_TALENTS: Talent[] = [
@@ -326,7 +326,7 @@ function MainPage() {
               새로운 AI 매칭 엔진 v2.0 업데이트 안내 (2026.01.22)
             </p>
             <button
-              onClick={() => navigate('/support/notices')}
+              onClick={() => navigate('/notices')}
               className="group hover:text-point-blue relative py-1 text-sm font-black text-zinc-400 transition-colors duration-300"
             >
               더보기

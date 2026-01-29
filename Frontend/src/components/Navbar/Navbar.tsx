@@ -47,7 +47,7 @@ const NavAction = ({ to, onClick, children, isError, mobile }: NavActionProps) =
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isLoggedIn, setAuth, clearAuth } = useAuthStore();
+  const { user, isLoggedIn } = useAuthStore();
   const { mutate: performLogout } = useLogout();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -63,27 +63,17 @@ function Navbar() {
     setIsMenuOpen(false);
   }
 
-  const handleLogout = () => {
-    performLogout();
-    setIsMenuOpen(false);
+  const handleLogout = async () => {
+    navigate('/login', { replace: true });
+
+    setTimeout(() => {
+      performLogout();
+      setIsMenuOpen(false);
+    }, 0);
   };
 
   const handleLogoClick = () => {
     setLogoKey((prev) => prev + 1);
-  };
-
-  const handleDevRoleSwitch = (role: 'GUEST' | 'APPLICANT' | 'COMPANY') => {
-    if (role === 'GUEST') {
-      clearAuth();
-    } else {
-      setAuth({
-        userId: 999,
-        email: 'test@portmatch.com',
-        name: role === 'APPLICANT' ? '테스트개인' : '테스트기업',
-        role: role,
-      });
-    }
-    setIsMenuOpen(false);
   };
 
   const handleSearch = () => {
@@ -315,30 +305,6 @@ function Navbar() {
           </div>
         </div>
       )}
-
-      <div className="bg-midnight-ink/90 absolute top-20 left-6 flex items-center gap-1 rounded-b-md border border-white/10 p-1 shadow-lg backdrop-blur-md">
-        <button
-          onClick={() => handleDevRoleSwitch('GUEST')}
-          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${!isLoggedIn ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
-        >
-          GUEST
-        </button>
-        <button
-          onClick={() => handleDevRoleSwitch('APPLICANT')}
-          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${user?.role === 'APPLICANT' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
-        >
-          INDIVIDUAL
-        </button>
-        <button
-          onClick={() => handleDevRoleSwitch('COMPANY')}
-          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${user?.role === 'COMPANY' ? 'bg-pure-white text-midnight-ink' : 'text-white/60 hover:text-white'}`}
-        >
-          CORPORATE
-        </button>
-        {isLoggedIn && (
-          <span className="ml-2 text-[10px] font-bold text-white/80">{user?.name}</span>
-        )}
-      </div>
     </nav>
   );
 }

@@ -81,7 +81,7 @@ const JobApplicationManagementPage = () => {
       map.set(it.application_id, true);
     });
     return map;
-  }, [applications]);
+  }, []);
 
   const toggleScrap = (applicationId: number) => {
     setApplications((prev) =>
