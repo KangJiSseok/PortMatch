@@ -94,9 +94,7 @@ services:
       - OPENVIDU_SESSIONS_GARBAGE_INTERVAL_LAST_PARTICIPANT=900
       - OPENVIDU_WEBHOOK=true
       - OPENVIDU_WEBHOOK_ENDPOINT=http://portmatch-backend-prod:8080/api/interview/webhook
-      - OPENVIDU_WEBHOOK_EVENTS=["sessionDestroyed","participantJoined","participantLeft"]
-      - OPENVIDU_WEBHOOK_HEADERS=["Content-Type: application/json"]
-      
+      - OPENVIDU_WEBHOOK_EVENTS=["sessionDestroyed","participantJoined","participantLeft"]      
 
   certbot:
     image: certbot/certbot:latest
