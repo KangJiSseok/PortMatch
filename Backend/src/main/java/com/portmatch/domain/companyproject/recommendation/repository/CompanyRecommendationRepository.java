@@ -69,6 +69,7 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
         )
         SELECT
             company_id AS companyId,
+            companies.companies_name As companyName,
             distance,
             portfolio_project_id AS portfolioProjectId,
             company_project_id AS companyProjectId,
@@ -79,7 +80,7 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
             problem_distance AS problemDistance,
             solution_distance AS solutionDistance,
             tech_distance AS techDistance
-        FROM ranked
+        FROM ranked JOIN companies ON ranked.company_id=companies.id
         WHERE rn = 1
         ORDER BY distance ASC
         LIMIT :limit
