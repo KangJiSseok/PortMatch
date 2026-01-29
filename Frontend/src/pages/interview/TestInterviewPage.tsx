@@ -38,15 +38,6 @@ function stopStreamTracks(sm: StreamManager | null) {
   }
 }
 
-function getStreamId(sm: StreamManager | null): string {
-  try {
-    const anySm = sm as unknown as { stream?: { streamId?: string } } | null;
-    return anySm?.stream?.streamId ?? '';
-  } catch {
-    return '';
-  }
-}
-
 function StreamVideo({
   streamManager,
   muted,
@@ -106,52 +97,76 @@ async function fetchOpenViduToken(sessionId: string): Promise<string> {
 }
 
 /**
- * ✅ 백엔드가 토큰을 wss://localhost/... 또는 ws://openvidu-server:4443/... 처럼 내려줄 때
- *    프론트에서 "외부에서 접속 가능한 주소"로 host/protocol/path를 교체하는 패치.
+ * ✅ 토큰이 이미 외부 공개 주소(wss://i14d205.../openvidu...)면 그대로 쓴다.
+ * ✅ localhost 등으로 오면 VITE_OPENVIDU_PUBLIC_URL 기준으로 host/protocol/path를 맞춘다.
  *
- * 권장 env:
- *  - VITE_OPENVIDU_PUBLIC_URL=https://i14d205.p.ssafy.io/openvidu
- *
- * 토큰 예시(목표):
- *  - wss://i14d205.p.ssafy.io/openvidu?sessionId=...&token=...
+ * VITE_OPENVIDU_PUBLIC_URL 예시:
+ *  - https://i14d205.p.ssafy.io           (추천)
+ *  - https://i14d205.p.ssafy.io/openvidu  (가능)
+ *  - http://i14d205.p.ssafy.io:8443       (가능)
  */
-function patchOpenViduToken(token: string): string {
+function normalizeOpenViduToken(raw: string): string {
   const publicUrl = (import.meta.env.VITE_OPENVIDU_PUBLIC_URL as string | undefined) ?? '';
-  if (!publicUrl) return token;
+  if (!publicUrl) return raw;
 
-  // tok_ 로만 오는 형태면(URL 아님) 패치 불가 → 그대로 사용
-  if (token.startsWith('tok_')) return token;
+  // 이미 i14d205로 잘 내려오면 그냥 둔다 (불필요한 변형 방지)
+  if (raw.includes('i14d205.p.ssafy.io')) return raw;
 
   try {
-    const t = new URL(token);
+    const t = new URL(raw);
+
+    // raw가 ws/wss URL이 아니면 그대로
+    if (t.protocol !== 'ws:' && t.protocol !== 'wss:') return raw;
+
     const p = new URL(publicUrl);
 
-    // ✅ https 페이지면 ws는 혼종(혼합 콘텐츠)으로 막힐 수 있으니 wss 강제
-    const pageProto = window.location.protocol; // http: | https:
     const toWsProtocol = (proto: string) => {
-      if (pageProto === 'https:') return 'wss:';
       if (proto === 'https:' || proto === 'wss:') return 'wss:';
       if (proto === 'http:' || proto === 'ws:') return 'ws:';
       return t.protocol;
     };
 
+    // protocol/host 교체
     t.protocol = toWsProtocol(p.protocol);
-
-    // ✅ 도메인(+포트) 교체
     t.host = p.host;
 
-    // ✅ publicUrl에 /openvidu 같은 path가 있으면 path도 맞춰준다
-    const normalizedPath = (path: string) => {
-      if (!path || path === '/') return '';
-      return path.replace(/\/+$/, ''); // trailing slash 제거
-    };
-    const pPath = normalizedPath(p.pathname);
-    if (pPath) t.pathname = pPath;
+    // path 보정: 토큰 URL에 path가 없거나 '/'면 publicUrl의 pathname or '/openvidu'로 맞춘다
+    const desiredPath = p.pathname && p.pathname !== '/' ? p.pathname : '/openvidu';
+
+    if (!t.pathname || t.pathname === '/') {
+      t.pathname = desiredPath;
+    }
 
     return t.toString();
   } catch {
-    return token;
+    return raw;
   }
+}
+
+function toHumanError(err: unknown): string {
+  // axios 에러
+  if (axios.isAxiosError(err)) {
+    const http = err.response?.status;
+    const msg =
+      (typeof err.response?.data === 'string' && err.response.data) ||
+      (err.response?.data as { message?: string } | undefined)?.message ||
+      err.message;
+    return http ? `(${http}) ${msg}` : msg;
+  }
+
+  // OpenVidu connect 에러(대충 이런 형태로 떨어짐)
+  const anyErr = err as Record<string, unknown> | null;
+  const msg =
+    (typeof anyErr?.message === 'string' && anyErr.message) ||
+    (typeof anyErr?.error === 'string' && anyErr.error) ||
+    (typeof anyErr?.reason === 'string' && anyErr.reason) ||
+    '';
+
+  if (msg.includes('Token') && msg.includes('401')) {
+    return `OpenVidu 토큰 인증 실패(401): 토큰 발급한 OpenVidu 인스턴스와 지금 접속한 OpenVidu 인스턴스가 같은지(nginx 라우팅/포트/secret) 확인 필요`;
+  }
+
+  return msg || (err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
 }
 
 export default function TestInterviewPage() {
@@ -230,16 +245,16 @@ export default function TestInterviewPage() {
     const opId = ++connectOpRef.current;
 
     try {
-      // 1) 토큰 받기 + 패치
+      // 1) 토큰 받기 + 필요할 때만 보정
       const token = await fetchOpenViduToken(sid);
-      const patched = patchOpenViduToken(token);
+      const normalized = normalizeOpenViduToken(token);
 
       // eslint-disable-next-line no-console
-      console.log('OV TOKEN   =', token);
+      console.log('OV TOKEN    =', token);
       // eslint-disable-next-line no-console
-      console.log('OV PATCHED =', patched);
+      console.log('OV NORMAL   =', normalized);
       // eslint-disable-next-line no-console
-      console.log('OV PUBLIC  =', import.meta.env.VITE_OPENVIDU_PUBLIC_URL);
+      console.log('OV PUBLIC   =', import.meta.env.VITE_OPENVIDU_PUBLIC_URL);
 
       if (opId !== connectOpRef.current) return;
 
@@ -250,18 +265,12 @@ export default function TestInterviewPage() {
 
       session.on('streamCreated', (event) => {
         const sub = session.subscribe(event.stream, undefined);
-        const newId = getStreamId(sub);
-
-        setSubscribers((prev) => {
-          if (!newId) return [...prev, sub];
-          if (prev.some((p) => getStreamId(p) === newId)) return prev; // 중복 방지
-          return [...prev, sub];
-        });
+        setSubscribers((prev) => [...prev, sub]);
       });
 
       session.on('streamDestroyed', (event) => {
         const deadId = event.stream.streamId;
-        setSubscribers((prev) => prev.filter((s) => getStreamId(s) !== deadId));
+        setSubscribers((prev) => prev.filter((s) => s.stream.streamId !== deadId));
       });
 
       session.on('exception', (event) => {
@@ -269,8 +278,8 @@ export default function TestInterviewPage() {
         console.warn('OpenVidu exception:', event);
       });
 
-      // 3) connect
-      await session.connect(patched, {
+      // 3) connect (여기서 토큰이 서버로 넘어가고, joinRoom 시도함)
+      await session.connect(normalized, {
         clientData: isCorporate ? 'corporate' : role,
       });
 
@@ -298,21 +307,8 @@ export default function TestInterviewPage() {
       setStatus('connected');
     } catch (err) {
       cleanupSession();
-
-      if (axios.isAxiosError(err)) {
-        const http = err.response?.status;
-        const msg =
-          (typeof err.response?.data === 'string' && err.response.data) ||
-          (err.response?.data as { message?: string } | undefined)?.message ||
-          err.message;
-
-        setStatus('error');
-        setErrorMessage(http ? `(${http}) ${msg}` : msg);
-        return;
-      }
-
       setStatus('error');
-      setErrorMessage(err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
+      setErrorMessage(toHumanError(err));
     }
   }, [camOn, cleanupSession, isCorporate, micOn, role, sessionIdInput, showToast]);
 
@@ -325,7 +321,6 @@ export default function TestInterviewPage() {
   useEffect(() => {
     const p = publisherRef.current;
     if (!p) return;
-
     try {
       p.publishAudio(micOn);
     } catch {
@@ -336,7 +331,6 @@ export default function TestInterviewPage() {
   useEffect(() => {
     const p = publisherRef.current;
     if (!p) return;
-
     try {
       p.publishVideo(camOn);
     } catch {
@@ -487,8 +481,8 @@ export default function TestInterviewPage() {
                   {errorMessage}
                 </p>
                 <p className="mt-2 text-xs font-semibold text-red-600/70">
-                  토큰 URL(host/port/protocol/path) + OpenVidu(WebSocket 업그레이드) 오픈부터
-                  확인해요.
+                  (특히 401이면) 토큰 발급 OpenVidu와 접속 OpenVidu가 동일한지(nginx
+                  라우팅/포트/secret) 확인!
                 </p>
               </div>
             ) : null}
@@ -607,19 +601,16 @@ export default function TestInterviewPage() {
               <div className="mt-4 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
                 <p className="text-sm font-black text-zinc-700">추가 참가자</p>
                 <div className="mt-3 grid grid-cols-3 gap-3">
-                  {remoteRest.map((s) => {
-                    const id = getStreamId(s);
-                    return (
-                      <div
-                        key={id || `sub-${Math.random()}`}
-                        className="bg-midnight-ink/90 overflow-hidden rounded-3xl border border-zinc-100"
-                      >
-                        <div className="h-40">
-                          <StreamVideo streamManager={s} />
-                        </div>
+                  {remoteRest.map((s, idx) => (
+                    <div
+                      key={`sub-${idx}`}
+                      className="bg-midnight-ink/90 overflow-hidden rounded-3xl border border-zinc-100"
+                    >
+                      <div className="h-40">
+                        <StreamVideo streamManager={s} />
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : null}

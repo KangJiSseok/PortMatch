@@ -1,4 +1,4 @@
-import axiosInstance from '@/api/axiosInstance';
+import axiosInstance from './axiosInstance';
 
 export type InterviewRole =
   | 'interviewer'
@@ -14,6 +14,7 @@ type CreateConnectionBody = {
   nickname: string;
 };
 
+// API 기본 경로
 const BASE = '/interview/sessions';
 
 const TEXT_CONFIG = {
@@ -30,11 +31,13 @@ function ensureText(data: unknown): string {
   return typeof data === 'string' ? data : '';
 }
 
+// 1. 세션 생성 (방 만들기)
 export async function createInterviewSession(): Promise<string> {
   const res = await axiosInstance.post<string>(BASE, undefined, TEXT_CONFIG);
   return ensureText(res.data);
 }
 
+// 2. 세션 연결 (토큰 발급) - 수정됨
 export async function createInterviewConnection(params: {
   sessionId: string;
   role: InterviewRole;
@@ -47,15 +50,15 @@ export async function createInterviewConnection(params: {
     nickname,
   };
 
-  const res = await axiosInstance.post<string>(
-    `${BASE}/${encodeURIComponent(sessionId)}/connections`,
-    body,
-    TEXT_CONFIG,
-  );
+  // [수정] URL 경로에 sessionId와 connections를 명시
+  // 백엔드 API가 /interview/sessions/{sessionId}/connections 라고 가정
+  const url = `${BASE}/${sessionId}/connections`;
 
-  return ensureText(res.data);
-}
-
-export async function deleteInterviewSession(sessionId: string): Promise<void> {
-  await axiosInstance.delete(`${BASE}/${encodeURIComponent(sessionId)}`, TEXT_CONFIG);
+  try {
+    const res = await axiosInstance.post<string>(url, body, TEXT_CONFIG);
+    return ensureText(res.data);
+  } catch (error) {
+    console.error('토큰 발급 실패:', error);
+    throw error;
+  }
 }
