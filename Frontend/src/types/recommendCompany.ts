@@ -40,3 +40,23 @@ export type SortBy = 'score' | 'hiring';
  * UI 뷰 상태 타입
  */
 export type ViewState = 'ok' | 'loading' | 'empty' | 'error';
+
+/**
+ * 포트폴리오 기반 기업 추천 API 응답 타입
+ * - GET /api/portfolios/{portfolioId}/recommendations/companies
+ */
+export interface CompanyRecommendationResponse {
+  companyId: number;
+  companyName: string;
+  distance: number;
+  similarity: number;
+  portfolioProjectId: number;
+  companyProjectId: number;
+  portfolioContent: string;
+  companyContent: string;
+  projectDistance: number;
+  domainDistance: number;
+  problemDistance: number;
+  solutionDistance: number;
+  techDistance: number;
+}

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sparkles, KeyRound, Puzzle, X, Info } from 'lucide-react';
+import { fetchPortfolioRecommendedCompanies } from '@/api/recommendCompany';
+import type { CompanyRecommendationResponse } from '@/types/recommendCompany';
 
 /** ---------------- Types ---------------- **/
 
@@ -655,13 +657,79 @@ type SortBy = 'matchScore' | 'openingsCount';
 export default function RecommendCompanyPage() {
   const [sortBy, setSortBy] = useState<SortBy>('matchScore');
   const [reasonTarget, setReasonTarget] = useState<Company | null>(null);
+  const [searchParams] = useSearchParams();
+  const [apiCompanies, setApiCompanies] = useState<Company[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // ✅ 8개(4*2) 페이지네이션
   const PAGE_SIZE = 8;
   const [page, setPage] = useState(1);
 
+  const portfolioIdParam = searchParams.get('portfolioId');
+  const portfolioId = portfolioIdParam ? Number(portfolioIdParam) : null;
+
   // TODO: 실제 API로 교체 시, companies를 fetch로 받아서 setCompanies 하면 됨
-  const companies = MOCK_COMPANIES;
+  useEffect(() => {
+    if (!portfolioId || Number.isNaN(portfolioId)) {
+      setApiCompanies([]);
+      setIsLoading(false);
+      setLoadError('?ы듃?대━??ID媛 ?꾩슂?⑸땲??. ?ы듃?대━??遺꾩꽍 ?섏씠吏?먯꽌 ?대룞?댁＜?몄슂.');
+      return;
+    }
+
+    let ignore = false;
+    const run = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const data = await fetchPortfolioRecommendedCompanies(portfolioId);
+        if (ignore) return;
+
+        const mapped = data.map((item: CompanyRecommendationResponse, idx) => {
+          const distByFactor: Record<Factor, number> = {
+            [FACTOR_ORDER[0]]: item.projectDistance,
+            [FACTOR_ORDER[1]]: item.domainDistance,
+            [FACTOR_ORDER[2]]: item.problemDistance,
+            [FACTOR_ORDER[3]]: item.solutionDistance,
+            [FACTOR_ORDER[4]]: item.techDistance,
+          };
+
+          const weights = distancesToWeights(distByFactor);
+          const topFactors = pickTopFactors(weights, 2);
+
+          return {
+            id: idx + 1,
+            companyId: item.companyId,
+            name: item.companyName,
+            matchScore: Math.round((item.similarity ?? 0) * 100),
+            openingsCount: 0,
+            weights,
+            topFactors,
+          };
+        });
+
+        setApiCompanies(mapped);
+      } catch (err) {
+        if (!ignore) {
+          setApiCompanies([]);
+          setLoadError('異붿쿇 湲곗뾽??遺덈윭?ㅼ? 紐삵뻽?듬땲??.');
+        }
+      } finally {
+        if (!ignore) setIsLoading(false);
+      }
+    };
+
+    run();
+
+    return () => {
+      ignore = true;
+    };
+  }, [portfolioId]);
+
+  const hasValidPortfolioId = Boolean(portfolioId) && !Number.isNaN(portfolioId);
+  const useMockFallback = hasValidPortfolioId && Boolean(loadError) && import.meta.env.DEV;
+  const companies = useMockFallback ? MOCK_COMPANIES : apiCompanies;
 
   const sortedCompanies = useMemo(() => {
     return [...companies].sort((a, b) => b[sortBy] - a[sortBy]);
@@ -707,6 +775,18 @@ export default function RecommendCompanyPage() {
 
         {/* ✅ 평가 기준: 모달 밖에서 1번만 */}
         <EvaluationCriteria />
+
+        {isLoading && (
+          <div className="mb-6 rounded-2xl border border-gray-100 bg-white px-6 py-4 text-[13px] font-bold text-gray-500">
+            異붿쿇 湲곗뾽??遺덈윭?ㅼ? 吏꾪뻾 以묒엯?덈떎...
+          </div>
+        )}
+
+        {loadError && (
+          <div className="mb-6 rounded-2xl border border-red-100 bg-red-50/70 px-6 py-4 text-[13px] font-bold text-red-600">
+            {loadError}
+          </div>
+        )}
 
         <div className="mb-10 flex items-center justify-between gap-4 pl-6">
           <div className="flex items-center gap-2">

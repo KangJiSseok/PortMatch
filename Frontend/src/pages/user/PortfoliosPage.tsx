@@ -886,7 +886,10 @@ function PortfoliosPage() {
                     variant="blue"
                     size="xl"
                     className="shadow-point-blue/20 flex-2 rounded-2xl py-6! text-xl! font-black shadow-xl"
-                    onClick={() => navigate('/recommend/companies')}
+                    onClick={() => {
+                      if (!selectedPortfolioId) return;
+                      navigate(`/recommend/companies?portfolioId=${selectedPortfolioId}`);
+                    }}
                   >
                     이 역량으로 맞춤 공고 확인하기
                   </Button>
