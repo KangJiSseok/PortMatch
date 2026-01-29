@@ -1,6 +1,20 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  FileText,
+  Plus,
+  ChevronDown,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  AlertTriangle,
+  CheckCircle2,
+  Sparkles,
+  Upload,
+  Camera,
+} from 'lucide-react';
 import Button from '../../components/Button/Button';
 
 interface Portfolio {
@@ -140,8 +154,9 @@ function ResumeDetailPage() {
 
   const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
 
-  const isEmpty = Object.keys(allResumes).length === 0;
-  const targetId = resumeId || Object.keys(allResumes)[0];
+  const allResumeKeys = Object.keys(allResumes);
+  const isEmpty = allResumeKeys.length === 0;
+  const targetId = resumeId || allResumeKeys[0];
   const resume = allResumes[targetId];
 
   const [isEditing, setIsEditing] = useState(false);
@@ -149,7 +164,10 @@ function ResumeDetailPage() {
   const [showPortfolioList, setShowPortfolioList] = useState(false);
   const [showSelfIntroList, setShowSelfIntroList] = useState(false);
   const [innerEditingIntro, setInnerEditingIntro] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'spark' | 'warn';
+  } | null>(null);
   const [errorFields, setErrorFields] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -182,11 +200,11 @@ function ResumeDetailPage() {
   );
 
   useEffect(() => {
-    if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 3000);
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
       return () => clearTimeout(timer);
     }
-  }, [toastMessage]);
+  }, [toast]);
 
   const updateCurrentResume = (updates: Partial<ResumeData>) => {
     setAllResumes((prev) => ({
@@ -195,7 +213,8 @@ function ResumeDetailPage() {
     }));
   };
 
-  const showToast = (msg: string) => setToastMessage(msg);
+  const showToast = (message: string, type: 'success' | 'error' | 'spark' | 'warn' = 'success') =>
+    setToast({ message, type });
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (ref.current) {
@@ -206,6 +225,10 @@ function ResumeDetailPage() {
   };
 
   const handleCreateResume = () => {
+    if (isEditing) return;
+
+    setResumeSnapshot({ ...allResumes });
+
     const baseTitle = '새로운 이력서';
     let finalTitle = baseTitle;
     let counter = 1;
@@ -232,16 +255,17 @@ function ResumeDetailPage() {
     };
 
     const updated = { ...allResumes, [newId]: newResume };
-    setIsEditing(false);
     setAllResumes(updated);
-    localStorage.setItem('resumes', JSON.stringify(updated));
     navigate(`/resumes/${newId}`, { replace: true });
-    setTimeout(() => setIsEditing(true), 0);
-    showToast(`✨ ${finalTitle}가 생성되었습니다.`);
+
+    setTimeout(() => {
+      setIsEditing(true);
+      showToast(`${finalTitle} 작성을 시작합니다.`);
+    }, 0);
   };
 
   const toggleEditMode = () => {
-    setResumeSnapshot(allResumes);
+    setResumeSnapshot({ ...allResumes });
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setIsEditing(true);
   };
@@ -249,7 +273,17 @@ function ResumeDetailPage() {
   const handleCancelEdit = () => {
     if (resumeSnapshot) {
       setAllResumes(resumeSnapshot);
+
+      if (!resumeSnapshot[targetId]) {
+        const firstId = Object.keys(resumeSnapshot)[0];
+        if (firstId) {
+          navigate(`/resumes/${firstId}`, { replace: true });
+        } else {
+          navigate('/portfolios', { replace: true });
+        }
+      }
     }
+
     const savedP = localStorage.getItem('portfolios');
     const savedS = localStorage.getItem('selfIntros');
     if (savedP) setPortfolios(JSON.parse(savedP));
@@ -264,7 +298,7 @@ function ResumeDetailPage() {
   const validateAndSave = () => {
     const errors: string[] = [];
     if (innerEditingIntro) {
-      showToast("⚠️ 상단의 '내용 저장' 버튼을 먼저 눌러주세요!");
+      showToast("상단의 '내용 저장' 버튼을 먼저 눌러주세요!", 'warn');
       scrollToSection(selfIntroRef);
       return;
     }
@@ -284,13 +318,13 @@ function ResumeDetailPage() {
     if (errors.length > 0) {
       setErrorFields(errors);
       if (errors.includes('title') || errors.includes('name')) {
-        showToast('⚠️ 이력서 제목과 성함을 입력해주세요!');
+        showToast('이력서 제목과 성함을 입력해주세요!', 'warn');
         scrollToSection(infoRef);
       } else if (errors.some((e) => e.startsWith('exp'))) {
-        showToast('⚠️ 경력 사항의 필수 항목을 모두 입력해주세요!');
+        showToast('경력 사항의 필수 항목을 모두 입력해주세요!', 'warn');
         scrollToSection(expRef);
       } else if (errors.some((e) => e.startsWith('edu'))) {
-        showToast('⚠️ 학력 사항의 필수 항목을 모두 입력해주세요!');
+        showToast('학력 사항의 필수 항목을 모두 입력해주세요!', 'warn');
         scrollToSection(eduRef);
       }
       setTimeout(() => setErrorFields([]), 2500);
@@ -302,7 +336,7 @@ function ResumeDetailPage() {
     localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
     setResumeSnapshot(null);
     setIsEditing(false);
-    showToast('✅ 모든 정보가 안전하게 저장되었습니다!');
+    showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
   };
 
   const handlePeriodChange = (
@@ -327,7 +361,7 @@ function ResumeDetailPage() {
     const startDate = parseInt(`${updated.startYear}${updated.startMonth}`);
     const endDate = parseInt(`${updated.endYear}${updated.endMonth}`);
     if (startDate > endDate) {
-      showToast('⚠️ 시작일은 종료일보다 빨라야 합니다.');
+      showToast('시작일은 종료일보다 빨라야 합니다.', 'warn');
       return;
     }
     const updatedPeriod = `${updated.startYear}.${updated.startMonth} - ${updated.endYear}.${updated.endMonth}`;
@@ -344,12 +378,12 @@ function ResumeDetailPage() {
 
   const handlePortfolioUpload = (file: File) => {
     if (file.type !== 'application/pdf') {
-      showToast('⚠️ PDF 형식의 파일만 업로드 가능합니다.');
+      showToast('PDF 형식의 파일만 업로드 가능합니다.', 'warn');
       return;
     }
     const isDuplicate = portfolios.some((p) => p.name === file.name);
     if (isDuplicate) {
-      showToast('⚠️ 이미 등록된 파일 이름입니다.');
+      showToast('이미 등록된 파일 이름입니다.', 'warn');
       return;
     }
     const newP = { id: Date.now(), name: file.name };
@@ -453,19 +487,29 @@ function ResumeDetailPage() {
   return (
     <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
       <AnimatePresence>
-        {toastMessage && (
+        {toast && (
           <motion.div
             key="toast-msg"
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
             className={`${
-              toastMessage.startsWith('✅') || toastMessage.startsWith('✨')
+              toast.type === 'success' || toast.type === 'spark'
                 ? 'bg-blue-600'
-                : 'bg-red-500'
+                : toast.type === 'warn'
+                  ? 'bg-amber-500'
+                  : 'bg-red-500'
             } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
           >
-            {toastMessage}
+            {toast.type === 'success' && <CheckCircle2 size={24} />}
+            {toast.type === 'spark' && <Sparkles size={24} />}
+            {toast.type === 'warn' && <AlertTriangle size={24} />}
+            {toast.type === 'error' && (
+              <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white">
+                <span className="text-sm">!</span>
+              </div>
+            )}
+            {toast.message}
           </motion.div>
         )}
       </AnimatePresence>
@@ -477,8 +521,8 @@ function ResumeDetailPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center pt-20 text-center"
           >
-            <div className="mb-8 flex h-40 w-40 items-center justify-center rounded-full bg-slate-50 text-6xl shadow-inner">
-              📄
+            <div className="mb-8 flex h-40 w-40 items-center justify-center rounded-full bg-slate-50 text-slate-200 shadow-inner">
+              <FileText size={80} strokeWidth={1.5} />
             </div>
             <h1 className="mb-4 text-4xl font-black text-slate-900">작성된 이력서가 없습니다</h1>
             <p className="mb-10 text-xl font-bold text-slate-400">
@@ -490,6 +534,7 @@ function ResumeDetailPage() {
               className="min-w-64 rounded-3xl px-12 py-6 font-black shadow-2xl shadow-blue-600/30"
               onClick={handleCreateResume}
             >
+              <Plus size={24} className="mr-2" />
               이력서 새로 만들기
             </Button>
           </motion.div>
@@ -505,7 +550,9 @@ function ResumeDetailPage() {
                     <h1 className="truncate text-4xl font-black tracking-tighter text-slate-900 uppercase">
                       {resume?.title || 'My Resume'}
                     </h1>
-                    <span className="shrink-0 text-2xl text-blue-600">▾</span>
+                    <ChevronDown
+                      className={`shrink-0 text-blue-600 transition-transform ${showResumeList ? 'rotate-180' : ''}`}
+                    />
                   </button>
                   <AnimatePresence>
                     {showResumeList && (
@@ -531,7 +578,13 @@ function ResumeDetailPage() {
                                 key={r.id}
                                 className={`flex cursor-pointer items-center justify-between border-b border-slate-50 px-6 py-4 transition-colors last:border-0 hover:bg-slate-50 ${r.id === targetId ? 'bg-blue-50/30' : ''}`}
                                 onClick={() => {
-                                  setIsEditing(false);
+                                  if (isEditing) {
+                                    showToast(
+                                      '수정 중에는 다른 이력서로 이동할 수 없습니다.',
+                                      'warn',
+                                    );
+                                    return;
+                                  }
                                   navigate(`/resumes/${r.id}`, { replace: true });
                                   setShowResumeList(false);
                                 }}
@@ -544,7 +597,6 @@ function ResumeDetailPage() {
                                 <Button
                                   variant="close"
                                   size="sm"
-                                  className="shrink-0"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setDeleteConfirm({ type: 'resume', id: r.id });
@@ -552,15 +604,17 @@ function ResumeDetailPage() {
                                 />
                               </div>
                             ))}
-                            <div
-                              className="flex cursor-pointer items-center justify-center bg-slate-50 px-6 py-4 text-sm font-black text-blue-600 transition-colors hover:bg-blue-600 hover:text-white"
-                              onClick={() => {
-                                handleCreateResume();
-                                setShowResumeList(false);
-                              }}
-                            >
-                              + 새 이력서 추가
-                            </div>
+                            {!isEditing && (
+                              <div
+                                className="flex cursor-pointer items-center justify-center gap-2 bg-slate-50 px-6 py-4 text-sm font-black text-blue-600 transition-colors hover:bg-blue-600 hover:text-white"
+                                onClick={() => {
+                                  handleCreateResume();
+                                  setShowResumeList(false);
+                                }}
+                              >
+                                <Plus size={16} /> 새 이력서 추가
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       </div>
@@ -604,24 +658,15 @@ function ResumeDetailPage() {
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-slate-200">
-                          <svg
-                            width="64"
-                            height="64"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                          >
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                            <circle cx="12" cy="7" r="4" />
-                          </svg>
+                          <User size={64} strokeWidth={1.5} />
                         </div>
                       )}
                       {isEditing && (
                         <button
                           onClick={() => profileImgRef.current?.click()}
-                          className="absolute inset-0 flex items-center justify-center bg-slate-900/40 text-sm font-black text-white opacity-0 transition-opacity hover:opacity-100"
+                          className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/40 text-sm font-black text-white opacity-0 transition-opacity hover:opacity-100"
                         >
+                          <Camera size={24} className="mb-2" />
                           사진 변경
                         </button>
                       )}
@@ -632,7 +677,9 @@ function ResumeDetailPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-4 w-48 rounded-xl border border-slate-100 bg-white p-3 shadow-sm"
                       >
-                        <h4 className="mb-1 text-xs font-black text-blue-600">📷 사진 규격 안내</h4>
+                        <h4 className="mb-1 flex items-center text-xs font-black text-blue-600">
+                          <Camera size={12} className="mr-1" /> 사진 규격 안내
+                        </h4>
                         <ul className="space-y-0.5 text-[10px] leading-tight font-bold text-slate-400">
                           <li>• 권장: 35 x 45 mm</li>
                           <li>• 형식: JPG, PNG</li>
@@ -672,8 +719,8 @@ function ResumeDetailPage() {
                         </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                           <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-5">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
-                              📞
+                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
+                              <Phone size={20} />
                             </span>
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-black tracking-widest text-slate-400 uppercase">
@@ -685,8 +732,8 @@ function ResumeDetailPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-5">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
-                              ✉️
+                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
+                              <Mail size={20} />
                             </span>
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-black tracking-widest text-slate-400 uppercase">
@@ -698,8 +745,8 @@ function ResumeDetailPage() {
                             </div>
                           </div>
                           <div className="col-span-1 flex items-center gap-4 rounded-2xl bg-slate-50 p-5 md:col-span-2">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
-                              📍
+                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
+                              <MapPin size={20} />
                             </span>
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-black tracking-widest text-slate-400 uppercase">
@@ -824,7 +871,7 @@ function ResumeDetailPage() {
                           }
                         }}
                       >
-                        추가
+                        <Plus size={16} className="mr-1" /> 추가
                       </Button>
                     )
                   }
@@ -1066,12 +1113,23 @@ function ResumeDetailPage() {
                             : 'border-slate-100 bg-slate-50'
                         }`}
                       >
-                        <span
-                          className={`truncate text-lg font-bold ${currentPortfolio ? 'text-blue-600' : 'text-slate-400'}`}
-                        >
-                          {currentPortfolio?.name || '등록된 포트폴리오가 없습니다.'}
-                        </span>
-                        {isEditing && <span className="ml-2 shrink-0 text-blue-600">▾</span>}
+                        <div className="flex items-center gap-2 truncate">
+                          <FileText
+                            size={20}
+                            className={currentPortfolio ? 'text-blue-600' : 'text-slate-300'}
+                          />
+                          <span
+                            className={`truncate text-lg font-bold ${currentPortfolio ? 'text-blue-600' : 'text-slate-400'}`}
+                          >
+                            {currentPortfolio?.name || '등록된 포트폴리오가 없습니다.'}
+                          </span>
+                        </div>
+                        {isEditing && (
+                          <ChevronDown
+                            size={20}
+                            className={`text-blue-600 transition-transform ${showPortfolioList ? 'rotate-180' : ''}`}
+                          />
+                        )}
                       </div>
                       <AnimatePresence>
                         {showPortfolioList && isEditing && (
@@ -1125,7 +1183,7 @@ function ResumeDetailPage() {
                         className="min-w-35 rounded-2xl border-2 font-black whitespace-nowrap"
                         onClick={() => fileInputRef.current?.click()}
                       >
-                        파일 업로드
+                        <Upload size={18} className="mr-2" /> 파일 업로드
                       </Button>
                     )}
                     <input
@@ -1142,8 +1200,9 @@ function ResumeDetailPage() {
 
                   {isEditing && (
                     <div className="space-y-3">
-                      <p className="px-2 text-sm font-bold text-slate-500 italic">
-                        * PDF 형식의 파일만 업로드 가능합니다.
+                      <p className="flex items-center px-2 text-sm font-bold text-slate-500 italic">
+                        <AlertTriangle size={14} className="mr-1" /> PDF 형식의 파일만 업로드
+                        가능합니다.
                       </p>
                     </div>
                   )}
@@ -1169,7 +1228,7 @@ function ResumeDetailPage() {
                               setInnerEditingIntro(true);
                             }}
                           >
-                            추가
+                            <Plus size={16} className="mr-1" /> 추가
                           </Button>
                           <Button
                             variant="outline"
@@ -1179,7 +1238,7 @@ function ResumeDetailPage() {
                               if (selfIntros.length > 0) setShowSelfIntroList(!showSelfIntroList);
                             }}
                           >
-                            자기소개 선택
+                            자기소개 선택 <ChevronDown size={16} className="ml-1" />
                           </Button>
                           <Button
                             variant="blue"
@@ -1220,12 +1279,12 @@ function ResumeDetailPage() {
                                 (s) => s.id === resume?.selectedSelfIntroId,
                               );
                               if (!current?.title?.trim() || !current?.content?.trim()) {
-                                showToast('⚠️ 제목과 내용을 모두 입력해주세요!');
+                                showToast('제목과 내용을 모두 입력해주세요!', 'warn');
                                 return;
                               }
                               localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
                               setInnerEditingIntro(false);
-                              showToast('✅ 자기소개 내용이 저장되었습니다.');
+                              showToast('자기소개 내용이 저장되었습니다.', 'success');
                             }}
                           >
                             내용 저장
@@ -1251,7 +1310,11 @@ function ResumeDetailPage() {
                           : 'border-slate-100 bg-slate-50'
                       }`}
                     >
-                      <div className="mr-4 flex min-w-0 flex-1 items-center">
+                      <div className="mr-4 flex min-w-0 flex-1 items-center gap-2">
+                        <FileText
+                          size={20}
+                          className={currentSelfIntro ? 'text-blue-600' : 'text-slate-300'}
+                        />
                         {innerEditingIntro ? (
                           <input
                             className="w-full bg-transparent text-xl font-black text-blue-600 outline-none"
@@ -1278,7 +1341,10 @@ function ResumeDetailPage() {
                         )}
                       </div>
                       {isEditing && !innerEditingIntro && (
-                        <span className="ml-2 shrink-0 text-blue-600">▾</span>
+                        <ChevronDown
+                          size={20}
+                          className={`text-blue-600 transition-transform ${showSelfIntroList ? 'rotate-180' : ''}`}
+                        />
                       )}
                       {innerEditingIntro && (
                         <span className="text-[10px] font-black whitespace-nowrap text-blue-300">
@@ -1419,6 +1485,9 @@ function ResumeDetailPage() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative w-full max-w-md rounded-[40px] bg-white p-10 text-center shadow-2xl"
             >
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-50 text-red-500">
+                <AlertTriangle size={40} />
+              </div>
               <h3 className="mb-2 text-2xl font-black text-slate-900">
                 {deleteConfirm ? '정말 삭제할까요?' : '수정 사항을 취소할까요?'}
               </h3>

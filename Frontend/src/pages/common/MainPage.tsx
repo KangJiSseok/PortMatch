@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Timer,
+  Calculator,
+  FileText,
+  Mic,
+  Calendar,
+  Bell,
+  BarChart3,
+  CheckSquare,
+} from 'lucide-react';
 import Button from '../../components/Button/Button';
 import heroBg from '../../assets/images/main/HERO_BG.avif';
 import { useAuthStore } from '@/store/authStore';
@@ -34,57 +44,26 @@ interface Talent {
 interface QuickMenu {
   id: number;
   title: string;
-  icon: string;
-  color: string;
+  icon: React.ElementType;
   link?: string;
 }
 
 const USER_QUICK_MENUS: QuickMenu[] = [
-  { id: 1, title: '스피치 타이머', icon: '⏱️', color: 'bg-blue-50', link: '/support/speech-timer' },
-  { id: 2, title: '실수령액 계산기', icon: '💰', color: 'bg-emerald-50', link: '/support/salary' },
-  {
-    id: 3,
-    title: '면접 예상 질문 템플릿',
-    icon: '📋',
-    color: 'bg-indigo-50',
-    link: '/support/interview-template',
-  },
-  {
-    id: 4,
-    title: '맞춤형 이력서 첨삭',
-    icon: '🎙️',
-    color: 'bg-orange-50',
-    link: '/support/resume-feedback',
-  },
-  { id: 5, title: '협업 일정 관리', icon: '📅', color: 'bg-pink-50', link: '/support/schedule' },
-  { id: 6, title: '실시간 채용 알림', icon: '🔔', color: 'bg-amber-50' },
+  { id: 1, title: '스피치 타이머', icon: Timer, link: '/support/speech-timer' },
+  { id: 2, title: '실수령액 계산기', icon: Calculator, link: '/support/salary' },
+  { id: 3, title: '면접 예상 질문', icon: FileText, link: '/support/interview-template' },
+  { id: 4, title: '이력서 첨삭', icon: Mic, link: '/support/resume-feedback' },
+  { id: 5, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
+  { id: 6, title: '실시간 채용 알림', icon: Bell },
 ];
 
 const COMPANY_QUICK_MENUS: QuickMenu[] = [
-  {
-    id: 1,
-    title: '스프린트 캐파 계산기',
-    icon: '🔢',
-    color: 'bg-blue-50',
-    link: '/support/sprint-capacity',
-  },
-  { id: 2, title: '실수령액 계산기', icon: '💰', color: 'bg-emerald-50', link: '/support/salary' },
-  {
-    id: 3,
-    title: '면접 평가지 템플릿',
-    icon: '📋',
-    color: 'bg-indigo-50',
-    link: '/support/interview-template',
-  },
-  {
-    id: 4,
-    title: '맞춤형 면접 질문 생성',
-    icon: '🎙️',
-    color: 'bg-orange-50',
-    link: '/support/interview-generator',
-  },
-  { id: 5, title: '협업 일정 관리', icon: '📅', color: 'bg-pink-50', link: '/support/schedule' },
-  { id: 6, title: '신규 인재 실시간 알림', icon: '🔔', color: 'bg-amber-50' },
+  { id: 1, title: '캐파 계산기', icon: BarChart3, link: '/support/sprint-capacity' },
+  { id: 2, title: '실수령액 계산기', icon: Calculator, link: '/support/salary' },
+  { id: 3, title: '면접 평가지', icon: CheckSquare, link: '/support/interview-template' },
+  { id: 4, title: '면접 질문 생성', icon: Mic, link: '/support/interview-generator' },
+  { id: 5, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
+  { id: 6, title: '인재 실시간 알림', icon: Bell },
 ];
 
 const MOCK_TALENTS: Talent[] = [
@@ -319,13 +298,13 @@ function MainPage() {
           {quickMenus.map((menu) => (
             <div
               key={menu.id}
-              className={`group cursor-pointer rounded-2xl border border-transparent p-6 transition-all hover:border-zinc-100 hover:shadow-md ${menu.color}`}
+              className="group hover:border-point-blue/30 hover:bg-point-blue/5 cursor-pointer rounded-2xl border border-zinc-100 bg-white p-6 transition-all hover:shadow-md"
               onClick={() => menu.link && navigate(menu.link)}
             >
-              <div className="mb-3 text-3xl">{menu.icon}</div>
-              <p className="group-hover:text-midnight-ink text-sm font-black text-zinc-700">
-                {menu.title}
-              </p>
+              <div className="text-point-blue mb-3 transition-transform duration-300 group-hover:-translate-y-1">
+                <menu.icon size={28} strokeWidth={2.5} />
+              </div>
+              <p className="text-midnight-ink text-sm font-black">{menu.title}</p>
             </div>
           ))}
         </section>
