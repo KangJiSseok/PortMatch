@@ -10,6 +10,7 @@ variables:
   PORTFOLIO_IMAGE: "$DOCKERHUB_USERNAME/portmatch-portfolio-analysis"
   FRONTEND_IMAGE: "$DOCKERHUB_USERNAME/portmatch-frontend"
   EMBEDDING_IMAGE: "$DOCKERHUB_USERNAME/portmatch-embedding"
+  EXPLANATION_IMAGE: "$DOCKERHUB_USERNAME/portmatch-explanation-llm"
 
 build:
   stage: build
@@ -20,7 +21,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "ai-refactor/prompt-change"'
+    - if: '$CI_COMMIT_BRANCH == "ai-feat/match-explanation-llm"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -39,6 +40,9 @@ build:
     - docker build -f Embedding/Dockerfile -t "$EMBEDDING_IMAGE:$IMAGE_TAG" -t "$EMBEDDING_IMAGE:latest" Embedding
     - docker push "$EMBEDDING_IMAGE:$IMAGE_TAG"
     - docker push "$EMBEDDING_IMAGE:latest"
+    - docker build -f Explanation-LLM/Dockerfile -t "$EXPLANATION_IMAGE:$IMAGE_TAG" -t "$EXPLANATION_IMAGE:latest" Explanation-LLM
+    - docker push "$EXPLANATION_IMAGE:$IMAGE_TAG"
+    - docker push "$EXPLANATION_IMAGE:latest"
 
 deploy:
   stage: deploy
@@ -46,7 +50,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "ai-refactor/prompt-change"'
+    - if: '$CI_COMMIT_BRANCH == "ai-feat/match-explanation-llm"'
 
   script:
     - set -e
@@ -103,6 +107,7 @@ deploy:
       PORTFOLIO_ANALYSIS_URL=${PORTFOLIO_ANALYSIS_URL}
       COMPANY_PROJECT_ANALYSIS_URL=${COMPANY_PROJECT_ANALYSIS_URL}
       EMBEDDING_URL=${EMBEDDING_URL}
+      EXPLANATION_URL=${EXPLANATION_URL}
       MINERU_ENDPOINT=${MINERU_ENDPOINT}
 
       # ---------- Frontend ----------

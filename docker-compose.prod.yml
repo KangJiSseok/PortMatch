@@ -29,6 +29,7 @@ services:
       - db
       - portfolio-analysis
       - inference
+      - explanation-llm
 
   inference:
     image: ${INFERENCE_IMAGE:-kangjiseok/portmatch-inference:latest}
@@ -47,8 +48,6 @@ services:
     restart: always
     env_file:
       - .env.prod
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "8103:8000"
     depends_on:
@@ -60,10 +59,19 @@ services:
     restart: always
     env_file:
       - .env.prod
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "8105:8002"
+    depends_on:
+      - db
+
+  explanation-llm:
+    image: ${EXPLANATION_IMAGE:-kangjiseok/portmatch-explanation-llm:latest}
+    container_name: portmatch-explanation-llm-prod
+    restart: always
+    env_file:
+      - .env.prod
+    ports:
+      - "8106:8003"
     depends_on:
       - db
 
