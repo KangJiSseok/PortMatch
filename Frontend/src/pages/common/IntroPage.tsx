@@ -1,330 +1,426 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useScroll, useTransform, useMotionValueEvent, useSpring } from 'framer-motion';
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionValueEvent,
+  MotionValue,
+} from 'framer-motion';
+import { ArrowRight, User, Building2, Cpu, FileSearch, Share2 } from 'lucide-react';
 
-import imgS1Top from '../../assets/images/intro/s1-top.avif';
-import imgS1Bottom from '../../assets/images/intro/s1-bottom.avif';
-import imgS2 from '../../assets/images/intro/s2-ai.avif';
 import imgS3Applicant from '../../assets/images/intro/s3-applicant.avif';
 import imgS3Company from '../../assets/images/intro/s3-company.avif';
 
-const mockCodeSnippet = `function analyzePortfolio(data) {
-  const skills = extractSkills(data.techStack);
-  const contribution = calculateImpact(data.commits);
-  const visualization = generateGraph(skills, contribution);
-  return visualization;
-}
-// AI Parsing Engine Initiated...
-// Extracting Nodes... Verifying Data...`;
+const PARTICLE_COUNT = 240;
 
-const mockAnalysisData = [
-  { skill: 'React/FE Architecture', score: 92 },
-  { skill: 'Node.js Backend', score: 85 },
-  { skill: 'System Design', score: 78 },
-  { skill: 'Data Visualization', score: 88 },
-];
+interface Point {
+  x: number;
+  y: number;
+}
+interface ParticleData {
+  id: number;
+  s0: Point;
+  s1: Point;
+  s2: Point;
+  s3: Point;
+  s4: Point;
+}
+
+const getLayoutConstants = () => {
+  const isMobile = window.innerWidth < 768;
+  const padding = isMobile ? 48 : 96;
+  const gap = 48;
+  const availableWidth = window.innerWidth - padding * 2;
+  const panelWidth = (availableWidth - gap) / 2;
+  const panelHeight = window.innerHeight - padding * 2;
+  const offsetX = panelWidth / 2 + gap / 2;
+
+  return { panelWidth, panelHeight, offsetX };
+};
+
+const getBorderPoint = (index: number, isLeft: boolean) => {
+  const { panelWidth, panelHeight, offsetX } = getLayoutConstants();
+  const halfCount = PARTICLE_COUNT / 2;
+  const pIndex = index % halfCount;
+
+  const w = panelWidth;
+  const h = panelHeight;
+  const totalPerimeter = (w + h) * 2;
+  const step = totalPerimeter / (halfCount - 1);
+  const dist = pIndex * step;
+
+  let x = 0,
+    y = 0;
+  if (dist <= w) {
+    x = dist - w / 2;
+    y = -h / 2;
+  } else if (dist <= w + h) {
+    x = w / 2;
+    y = dist - w - h / 2;
+  } else if (dist <= w * 2 + h) {
+    x = w / 2 - (dist - (w + h));
+    y = h / 2;
+  } else {
+    x = -w / 2;
+    y = h / 2 - (dist - (w * 2 + h));
+  }
+  return { x: x + (isLeft ? -offsetX : offsetX), y };
+};
+
+const STATIC_PARTICLES: ParticleData[] = Array.from({ length: PARTICLE_COUNT }).map((_, i) => {
+  const isLeft = i < PARTICLE_COUNT / 2;
+  const screenMin = Math.min(window.innerWidth, window.innerHeight);
+  const screenMax = Math.max(window.innerWidth, window.innerHeight);
+
+  const s0Radius = screenMin * 0.4;
+  const s0 = {
+    x: Math.cos((i / PARTICLE_COUNT) * Math.PI * 2) * s0Radius,
+    y: Math.sin((i / PARTICLE_COUNT) * Math.PI * 2) * s0Radius,
+  };
+
+  const cols = 20;
+  const rows = Math.ceil(PARTICLE_COUNT / cols);
+  const col = i % cols;
+  const row = Math.floor(i / cols);
+  const gridSpacingX = window.innerWidth / (cols + 5);
+  const gridSpacingY = window.innerHeight / (rows + 5);
+  const s1 = {
+    x: (col - cols / 2 + 0.5) * gridSpacingX,
+    y: (row - rows / 2 + 0.5) * gridSpacingY,
+  };
+
+  const brainAngle = (i % (PARTICLE_COUNT / 2)) * 0.15;
+  const brainRadiusVar = Math.sin(i * 0.8) * 25;
+  const brainBaseRadius = screenMin * 0.25;
+  const brainBaseX = isLeft ? -screenMin * 0.15 : screenMin * 0.15;
+  const s2 = {
+    x: brainBaseX + Math.cos(brainAngle) * (brainBaseRadius + brainRadiusVar),
+    y: Math.sin(brainAngle) * (brainBaseRadius + brainRadiusVar) * 1.2,
+  };
+
+  let s3x = 0;
+  let s3y = 0;
+  const arrowGroupSize = PARTICLE_COUNT / 2;
+  const idxInGroup = i % arrowGroupSize;
+  const splitPoint = Math.floor(arrowGroupSize * 0.65);
+
+  const arrowTotalLength = screenMax * 0.5;
+  const arrowHeadLength = arrowTotalLength * 0.3;
+  const arrowShaftLength = arrowTotalLength - arrowHeadLength;
+  const shaftHalfWidth = 10;
+  const headBaseHalfWidth = 35;
+  const centerYOffset = screenMax * 0.12;
+
+  const getPerpendicularOffset = (idx: number, maxHalfWidth: number) => {
+    const lane = idx % 5;
+    const normalizedPos = (lane - 2) / 2;
+    return normalizedPos * maxHalfWidth;
+  };
+
+  if (isLeft) {
+    const axisY = -centerYOffset;
+    const tipX = -screenMin * 0.05;
+    const joinX = tipX + arrowHeadLength;
+    const endX = joinX + arrowShaftLength;
+
+    if (idxInGroup < splitPoint) {
+      const progress = idxInGroup / splitPoint;
+      s3x = endX - progress * arrowShaftLength;
+      s3y = axisY + getPerpendicularOffset(idxInGroup, shaftHalfWidth);
+    } else {
+      const headProgress = (idxInGroup - splitPoint) / (arrowGroupSize - splitPoint);
+      s3x = joinX - headProgress * arrowHeadLength;
+      const currentHalfWidth = headBaseHalfWidth * (1 - headProgress);
+      s3y = axisY + getPerpendicularOffset(idxInGroup, currentHalfWidth);
+    }
+  } else {
+    const axisY = centerYOffset;
+    const tipX = screenMin * 0.05;
+    const joinX = tipX - arrowHeadLength;
+    const startX = joinX - arrowShaftLength;
+
+    if (idxInGroup < splitPoint) {
+      const progress = idxInGroup / splitPoint;
+      s3x = startX + progress * arrowShaftLength;
+      s3y = axisY + getPerpendicularOffset(idxInGroup, shaftHalfWidth);
+    } else {
+      const headProgress = (idxInGroup - splitPoint) / (arrowGroupSize - splitPoint);
+      s3x = joinX + headProgress * arrowHeadLength;
+      const currentHalfWidth = headBaseHalfWidth * (1 - headProgress);
+      s3y = axisY + getPerpendicularOffset(idxInGroup, currentHalfWidth);
+    }
+  }
+  const s3 = { x: s3x, y: s3y };
+
+  return {
+    id: i,
+    s0,
+    s1,
+    s2,
+    s3,
+    s4: getBorderPoint(i, isLeft),
+  };
+});
 
 function IntroPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState(0);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+
+    return () => {
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'auto';
+      }
+    };
+  }, []);
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ['start start', 'end end'],
   });
 
-  const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 100,
-    damping: 30,
-    restDelta: 0.001,
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 45, damping: 30 });
+
+  useMotionValueEvent(smoothProgress, 'change', (latest) => {
+    if (latest < 0.2) setActiveSection(0);
+    else if (latest < 0.4) setActiveSection(1);
+    else if (latest < 0.6) setActiveSection(2);
+    else if (latest < 0.8) setActiveSection(3);
+    else setActiveSection(4);
   });
 
-  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
-    if (latest < 0.25) setActiveSection(0);
-    else if (latest < 0.5) setActiveSection(1);
-    else if (latest < 0.75) setActiveSection(2);
-    else setActiveSection(3);
-  });
-
-  const section1Opacity = useTransform(smoothProgress, [0.2, 0.25], [1, 0]);
-  const section1TopX = useTransform(smoothProgress, [0, 0.15, 0.25], ['0%', '0%', '-100%']);
-  const section1BottomX = useTransform(smoothProgress, [0, 0.15, 0.25], ['0%', '0%', '100%']);
-
-  const section2Opacity = useTransform(smoothProgress, [0.25, 0.35, 0.45, 0.5], [0, 1, 1, 0]);
-  const section2Y = useTransform(smoothProgress, [0.25, 0.35, 0.45, 0.5], [80, 0, 0, -80]);
-
-  const section3Opacity = useTransform(smoothProgress, [0.5, 0.6, 0.7, 0.75], [0, 1, 1, 0]);
-  const section3Y = useTransform(smoothProgress, [0.5, 0.6, 0.7, 0.75], [80, 0, 0, -80]);
-
-  const section4Opacity = useTransform(smoothProgress, [0.75, 0.85], [0, 1]);
-
-  const bgScale = useTransform(smoothProgress, [0, 1], [1, 1.3]);
+  const finalReveal = useTransform(smoothProgress, [0.85, 0.95], [0, 1]);
 
   const handleScrollToSection = (index: number) => {
     if (!containerRef.current) return;
-    const scrollHeight = containerRef.current.scrollHeight;
-    const viewportHeight = window.innerHeight;
-    const scrollableHeight = scrollHeight - viewportHeight;
-    const targets = [0, 0.38, 0.65, 1];
-    window.scrollTo({ top: scrollableHeight * targets[index], behavior: 'smooth' });
-  };
-
-  const handleLoginRedirect = (type: 'APPLICANT' | 'COMPANY') => {
-    navigate('/login', { state: { userType: type } });
+    const targets = [0.02, 0.28, 0.48, 0.68, 0.98];
+    window.scrollTo({
+      top: (containerRef.current.scrollHeight - window.innerHeight) * targets[index],
+      behavior: 'smooth',
+    });
   };
 
   return (
-    <div ref={containerRef} className="bg-midnight-ink relative h-[500vh] min-w-5xl">
-      <motion.button
-        onClick={() => handleScrollToSection(activeSection + 1)}
-        animate={{ y: [0, 10, 0], opacity: activeSection === 3 ? 0 : 1 }}
-        transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-        className="group fixed bottom-10 left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2 text-white mix-blend-difference outline-none"
-      >
-        <span className="text-[13px] font-bold tracking-[0.3em] uppercase opacity-60 group-hover:opacity-100">
-          Scroll Down
-        </span>
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="opacity-60 group-hover:opacity-100"
-        >
-          <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
-        </svg>
-      </motion.button>
+    <div ref={containerRef} className="relative w-full bg-[#020205]" style={{ height: '700vh' }}>
+      <div className="sticky top-0 flex h-screen w-full flex-col overflow-hidden">
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,#121225_0%,#020205_100%)]" />
 
-      <div className="fixed top-1/2 right-8 z-[100] flex -translate-y-1/2 flex-col gap-8 rounded-full border border-white/10 bg-white/5 px-5 py-8 mix-blend-difference shadow-2xl backdrop-blur-xl">
-        {[0, 1, 2, 3].map((idx) => (
+        <div className="pointer-events-none absolute inset-0 z-10">
+          {STATIC_PARTICLES.map((p) => (
+            <Particle key={p.id} data={p} progress={smoothProgress} />
+          ))}
+        </div>
+
+        <nav className="absolute top-0 left-0 z-50 flex w-full items-center justify-between p-10 mix-blend-difference">
+          <h1
+            className="cursor-pointer text-3xl font-black tracking-tighter text-white uppercase italic"
+            onClick={() => handleScrollToSection(0)}
+          >
+            Portmatch
+          </h1>
           <button
-            key={idx}
-            onClick={() => handleScrollToSection(idx)}
-            className="group flex flex-col items-center gap-3 outline-none"
+            onClick={() => navigate('/main')}
+            className="rounded-full border border-white/20 bg-white/10 px-8 py-3 text-xs font-bold tracking-widest text-white uppercase backdrop-blur-xl transition-all hover:bg-white hover:text-black"
           >
-            <span
-              className={`text-sm font-black transition-all duration-300 ${activeSection === idx ? 'scale-110 text-white opacity-100' : 'scale-90 text-white/30 group-hover:text-white/60'}`}
-            >
-              0{idx + 1}
-            </span>
-            <div
-              className={`rounded-full transition-all duration-500 ${activeSection === idx ? 'h-10 w-1.5 bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]' : 'h-1.5 w-1.5 bg-white opacity-20 group-hover:opacity-40'}`}
-            />
+            Skip
           </button>
-        ))}
-      </div>
+        </nav>
 
-      <div className="sticky top-0 h-screen w-full overflow-hidden">
-        <motion.section
-          style={{ opacity: section1Opacity }}
-          className={`absolute inset-0 flex flex-col ${activeSection === 0 ? 'pointer-events-auto z-30' : 'pointer-events-none'}`}
-        >
-          <motion.div
-            style={{ x: section1TopX }}
-            className="relative flex-1 overflow-hidden border-b border-white/10"
-          >
-            <motion.div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${imgS1Top})`, scale: bgScale }}
-            >
-              <div className="bg-midnight-ink/80 absolute inset-0" />
-            </motion.div>
-            <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
-              <motion.span
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="text-cloud-dancer mb-4 text-sm font-bold tracking-[0.4em] uppercase"
-              >
-                Individual
-              </motion.span>
-              <motion.h2
-                initial={{ opacity: 0, filter: 'blur(20px)', y: 20 }}
-                animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-                transition={{ duration: 1.2, delay: 0.4, ease: 'easeOut' }}
-                className="text-pure-white text-5xl leading-tight font-black"
-              >
-                내 강점을 증명할 방법이
-                <br />
-                막막하신가요?
-              </motion.h2>
-            </div>
-          </motion.div>
-          <motion.div style={{ x: section1BottomX }} className="relative flex-1 overflow-hidden">
-            <motion.div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${imgS1Bottom})`, scale: bgScale }}
-            >
-              <div className="bg-pure-white/90 absolute inset-0" />
-            </motion.div>
-            <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
-              <motion.span
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="text-slate-gray mb-4 text-sm font-bold tracking-[0.4em] uppercase"
-              >
-                Company
-              </motion.span>
-              <motion.h2
-                initial={{ opacity: 0, filter: 'blur(20px)', y: 20 }}
-                animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-                transition={{ duration: 1.2, delay: 0.4, ease: 'easeOut' }}
-                className="text-midnight-ink text-5xl leading-tight font-black"
-              >
-                수많은 포트폴리오 속에서
-                <br />
-                원하는 인재를 찾기 힘드신가요?
-              </motion.h2>
-            </div>
-          </motion.div>
-        </motion.section>
+        <div className="absolute top-1/2 right-10 z-50 flex -translate-y-1/2 flex-col gap-6">
+          {[0, 1, 2, 3, 4].map((idx) => (
+            <div
+              key={idx}
+              onClick={() => handleScrollToSection(idx)}
+              className={`w-1 cursor-pointer transition-all duration-500 ${activeSection === idx ? 'h-10 bg-indigo-500 shadow-[0_0_10px_#6366f1]' : 'h-4 bg-white/20 hover:bg-white/50'}`}
+            />
+          ))}
+        </div>
 
-        <motion.section
-          style={{ opacity: section2Opacity, y: section2Y }}
-          className={`absolute inset-0 flex items-center justify-center px-10 text-center ${activeSection === 1 ? 'pointer-events-auto z-30' : 'pointer-events-none'}`}
-        >
-          <motion.div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${imgS2})`, scale: bgScale }}
-          >
-            <div className="bg-midnight-ink/90 absolute inset-0" />
-          </motion.div>
-          <div className="relative z-20">
-            <span className="text-cloud-dancer mb-6 block text-sm font-bold tracking-[0.5em] uppercase">
-              AI-Powered Analysis
-            </span>
-            <h2 className="text-pure-white mb-8 text-8xl font-black tracking-tighter uppercase">
-              Portmatch
-            </h2>
-            <p className="text-silver-mist text-2xl leading-relaxed font-light">
-              숨겨진 잠재력까지 파악하는
-              <br />
-              <span className="font-semibold text-blue-400">입체적 역량 분석 솔루션</span>입니다.
-            </p>
-          </div>
-        </motion.section>
-
-        <motion.section
-          style={{ opacity: section3Opacity, y: section3Y }}
-          className={`absolute inset-0 flex items-center justify-center px-10 ${activeSection === 2 ? 'pointer-events-auto z-30' : 'pointer-events-none'}`}
-        >
-          <div className="relative z-20 flex w-full max-w-6xl flex-col items-stretch justify-center gap-10 md:flex-row">
-            <div className="group relative flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/40 p-8 backdrop-blur-xl">
-              <div className="animate-scan absolute top-0 left-0 z-30 h-1 w-full bg-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.6)]"></div>
-              <div className="mb-6">
-                <span className="text-xs font-bold tracking-widest text-blue-400 uppercase">
-                  STEP 01
-                </span>
-                <h3 className="text-pure-white mt-2 text-3xl font-bold">Deep Parsing</h3>
-              </div>
-              <div className="relative h-64 overflow-hidden rounded-xl bg-[#111111] p-4 font-mono text-xs text-green-400/70 opacity-80">
-                <motion.div
-                  animate={{ y: ['0%', '-50%'] }}
-                  transition={{ repeat: Infinity, duration: 10, ease: 'linear' }}
-                  className="whitespace-pre"
-                >
-                  {mockCodeSnippet.repeat(5)}
-                </motion.div>
-              </div>
-            </div>
-            <div className="relative flex-1 rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
-              <div className="mb-8">
-                <span className="text-xs font-bold tracking-widest text-green-400 uppercase">
-                  STEP 02
-                </span>
-                <h3 className="text-pure-white mt-2 text-3xl font-bold">Insight Result</h3>
-              </div>
-              <div className="flex flex-col gap-6 pl-2">
-                {mockAnalysisData.map((item, index) => (
-                  <div key={index}>
-                    <div className="mb-2 flex justify-between">
-                      <span className="text-pure-white text-sm font-medium">{item.skill}</span>
-                      <span className="text-sm font-bold text-blue-400">{item.score}%</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${item.score}%` }}
-                        transition={{ duration: 1.2, delay: 0.5 + index * 0.1 }}
-                        className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.section>
-
-        <motion.section
-          style={{ opacity: section4Opacity }}
-          className={`absolute inset-0 flex overflow-hidden ${activeSection === 3 ? 'pointer-events-auto z-40' : 'pointer-events-none'}`}
-        >
-          <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center text-white mix-blend-difference select-none">
-            <h2 className="text-[10rem] font-black tracking-tighter uppercase opacity-5">
-              PORTMATCH
-            </h2>
-          </div>
-
-          <motion.div
-            initial={{ x: '-100%' }}
-            animate={{ x: activeSection === 3 ? '0%' : '-100%' }}
-            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-            whileHover={{ flexGrow: 1.5 }}
-            className="group relative z-20 h-full flex-1 cursor-pointer overflow-hidden border-r border-white/5 bg-[#111111]"
-            onClick={() => handleLoginRedirect('APPLICANT')}
-          >
-            <div className="absolute inset-0 opacity-20 transition-opacity duration-500 group-hover:opacity-100">
-              <div
-                className="h-full w-full bg-cover bg-center"
-                style={{ backgroundImage: `url(${imgS3Applicant})` }}
-              />
-              <div className="absolute inset-0 bg-black/60"></div>
-            </div>
-            <div className="relative z-30 flex h-full flex-col items-center justify-center p-12 text-center">
-              <h2 className="text-pure-white mb-6 text-6xl font-black transition-transform duration-500 group-hover:scale-110">
-                개인
+        <div className="pointer-events-none relative z-30 flex flex-1 items-center justify-center">
+          <SectionWrapper show={activeSection === 0}>
+            <div className="text-center">
+              <h2 className="text-[12vw] leading-none font-black tracking-tighter text-white uppercase">
+                Portmatch
               </h2>
-              <p className="text-cloud-dancer translate-y-4 text-xl opacity-40 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
-                분석 레포트 확인 및 맞춤형 공고 지원
+              <p className="mt-4 text-xl font-medium tracking-[0.4em] text-indigo-400 uppercase">
+                AI Talent Matching Hub
               </p>
             </div>
-          </motion.div>
+          </SectionWrapper>
 
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: activeSection === 3 ? '0%' : '100%' }}
-            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-            whileHover={{ flexGrow: 1.5 }}
-            className="group relative z-20 h-full flex-1 cursor-pointer overflow-hidden bg-white"
-            onClick={() => handleLoginRedirect('COMPANY')}
-          >
-            <div className="absolute inset-0 opacity-20 transition-opacity duration-500 group-hover:opacity-100">
-              <div
-                className="h-full w-full bg-cover bg-center"
-                style={{ backgroundImage: `url(${imgS3Company})` }}
-              />
-              <div className="absolute inset-0 bg-white/60"></div>
-            </div>
-            <div className="text-midnight-ink relative z-30 flex h-full flex-col items-center justify-center p-12 text-center">
-              <h2 className="mb-6 text-6xl font-black transition-transform duration-500 group-hover:scale-110">
-                기업
+          <SectionWrapper show={activeSection === 1}>
+            <div className="max-w-4xl px-6 text-center break-keep">
+              <FileSearch size={48} className="mx-auto mb-8 text-indigo-400" />
+              <h2 className="text-5xl font-bold tracking-tight text-white md:text-6xl">
+                텍스트 속 잠재력을 데이터로
               </h2>
-              <p className="text-slate-gray translate-y-4 text-xl opacity-60 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
-                AI 검증 인재 서칭 및 채용
+              <p className="mt-8 text-xl leading-relaxed text-white/90">
+                이력서와 포트폴리오를 분석하여
+                <br />
+                단순 스펙이 아닌 실제 역량 프로필을 추출합니다.
               </p>
             </div>
+          </SectionWrapper>
+
+          <SectionWrapper show={activeSection === 2}>
+            <div className="max-w-4xl px-6 text-center break-keep">
+              <Cpu size={48} className="mx-auto mb-8 text-purple-400" />
+              <h2 className="text-5xl font-bold tracking-tight text-white md:text-6xl">
+                조건을 넘어선 정밀 매칭
+              </h2>
+              <p className="mt-8 text-xl leading-relaxed text-white/90">
+                AI 엔진이 도메인 관심사와 문제 해결 방식을 분석하여
+                <br />
+                당신에게 최적화된 공고와 인재를 연결합니다.
+              </p>
+            </div>
+          </SectionWrapper>
+
+          <SectionWrapper show={activeSection === 3}>
+            <div className="max-w-4xl px-6 text-center break-keep">
+              <Share2 size={48} className="mx-auto mb-8 text-emerald-400" />
+              <h2 className="text-5xl font-bold tracking-tight text-white md:text-6xl">
+                양방향 채용의 새로운 기준
+              </h2>
+              <p className="mt-8 text-xl leading-relaxed text-white/90">
+                구직자에게는 맞춤형 큐레이션을,
+                <br />
+                기업에게는 고도화된 인재 필터링을 제공합니다.
+              </p>
+            </div>
+          </SectionWrapper>
+
+          <motion.div
+            style={{ opacity: finalReveal }}
+            className={`absolute inset-0 z-40 flex items-stretch gap-12 p-12 md:p-24 ${activeSection === 4 ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          >
+            <Panel
+              type="APPLICANT"
+              title="Individual"
+              desc="나의 역량을 데이터로 증명하고 취업의 기회를 찾으세요"
+              img={imgS3Applicant}
+              onClick={() => navigate('/login', { state: { userType: 'APPLICANT' } })}
+            />
+            <Panel
+              type="COMPANY"
+              title="Business"
+              desc="고도화된 필터링으로 팀에 가장 필요한 인재를 만나세요"
+              img={imgS3Company}
+              onClick={() => navigate('/login', { state: { userType: 'COMPANY' } })}
+            />
           </motion.div>
-        </motion.section>
+        </div>
       </div>
     </div>
   );
 }
+
+const Particle = ({ data, progress }: { data: ParticleData; progress: MotionValue<number> }) => {
+  const isLeft = data.id < PARTICLE_COUNT / 2;
+  const inputRange = [0, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.95, 1];
+  const x = useTransform(progress, inputRange, [
+    data.s0.x,
+    data.s0.x,
+    data.s1.x,
+    data.s1.x,
+    data.s2.x,
+    data.s2.x,
+    data.s3.x,
+    data.s3.x,
+    data.s4.x,
+    data.s4.x,
+  ]);
+  const y = useTransform(progress, inputRange, [
+    data.s0.y,
+    data.s0.y,
+    data.s1.y,
+    data.s1.y,
+    data.s2.y,
+    data.s2.y,
+    data.s3.y,
+    data.s3.y,
+    data.s4.y,
+    data.s4.y,
+  ]);
+
+  const scale = useTransform(progress, [0.85, 0.95, 1], [1, 1.2, 1]);
+  const baseColor = isLeft ? '#6366f1' : '#a855f7';
+  const color = useTransform(progress, [0.85, 0.95], ['#ffffff', baseColor]);
+  const opacity = useTransform(progress, [0.85, 0.95], [0.3, 0.8]);
+
+  return (
+    <motion.div
+      style={{
+        x,
+        y,
+        scale,
+        opacity,
+        backgroundColor: color,
+        borderRadius: '50%',
+        left: '50%',
+        top: '50%',
+      }}
+      className="absolute h-1 w-1"
+    />
+  );
+};
+
+const SectionWrapper = ({ children, show }: { children: React.ReactNode; show: boolean }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+    animate={
+      show
+        ? { opacity: 1, y: 0, filter: 'blur(0px)' }
+        : { opacity: 0, y: -20, filter: 'blur(10px)' }
+    }
+    transition={{ duration: 0.6 }}
+    className="pointer-events-none absolute flex w-full flex-col items-center justify-center"
+  >
+    {children}
+  </motion.div>
+);
+
+interface PanelProps {
+  title: string;
+  desc: string;
+  img: string;
+  onClick: () => void;
+  type: 'APPLICANT' | 'COMPANY';
+}
+
+const Panel = ({ title, desc, img, onClick, type }: PanelProps) => (
+  <div
+    onClick={onClick}
+    className="group relative flex-1 cursor-pointer overflow-hidden rounded-none bg-white/2 transition-all duration-700 hover:bg-white/[0.05]"
+  >
+    <div
+      className="absolute inset-0 bg-cover bg-center opacity-0 brightness-50 grayscale transition-all duration-1000 group-hover:scale-110 group-hover:opacity-20"
+      style={{ backgroundImage: `url(${img})` }}
+    />
+    <div className="relative z-10 flex h-full flex-col items-center justify-end p-16 text-center break-keep">
+      <div
+        className={`mb-10 rounded-2xl bg-white/5 p-5 transition-all duration-500 group-hover:scale-110 ${type === 'APPLICANT' ? 'text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white' : 'text-purple-400 group-hover:bg-purple-500 group-hover:text-white'}`}
+      >
+        {type === 'APPLICANT' ? <User size={48} /> : <Building2 size={48} />}
+      </div>
+      <h3 className="mb-6 text-5xl font-black tracking-tighter text-white uppercase transition-transform group-hover:-translate-y-2">
+        {title}
+      </h3>
+      <p className="max-w-70 text-lg leading-relaxed font-medium text-white/60">{desc}</p>
+      <div className="mt-12 flex translate-y-4 items-center gap-4 rounded-full bg-white/10 px-8 py-4 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
+        <span className="text-xs font-black tracking-widest text-white uppercase">Get Started</span>
+        <ArrowRight size={18} className="text-white" />
+      </div>
+    </div>
+  </div>
+);
 
 export default IntroPage;
