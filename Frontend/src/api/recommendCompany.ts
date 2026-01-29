@@ -1,5 +1,11 @@
 import axiosInstance from '@/api/axiosInstance';
-import type { RecommendedCompany, CompanyRecommendationResponse } from '@/types/recommendCompany';
+import type {
+  RecommendedCompany,
+  CompanyRecommendationResponse,
+  ExplanationMatchRequestItem,
+  ExplanationMatchResponseItem,
+  BaseApiResponse,
+} from '@/types/recommendCompany';
 
 /**
  * Mock 데이터 (개발용)
@@ -49,6 +55,21 @@ export async function fetchPortfolioRecommendedCompanies(
     `/portfolios/${portfolioId}/recommendations/companies`,
   );
   return res.data;
+}
+
+export async function fetchCompanyMatchExplanation(
+  request: ExplanationMatchRequestItem,
+): Promise<ExplanationMatchResponseItem> {
+  const res = await axiosInstance.post<BaseApiResponse<ExplanationMatchResponseItem>>(
+    '/company-projects/analysis/explanations',
+    request,
+  );
+
+  if (!res.data?.status) {
+    throw new Error(res.data?.message || '합격전략리포트를 불러오지 못했습니다.');
+  }
+
+  return res.data.data;
 }
 
 /**

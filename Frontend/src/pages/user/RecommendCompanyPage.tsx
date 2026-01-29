@@ -2,8 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sparkles, KeyRound, Puzzle, X, Info } from 'lucide-react';
-import { fetchPortfolioRecommendedCompanies } from '@/api/recommendCompany';
-import type { CompanyRecommendationResponse } from '@/types/recommendCompany';
+import {
+  fetchPortfolioRecommendedCompanies,
+  fetchCompanyMatchExplanation,
+} from '@/api/recommendCompany';
+import type {
+  CompanyRecommendationResponse,
+  ExplanationMatchSection,
+} from '@/types/recommendCompany';
 
 /** ---------------- Types ---------------- **/
 
@@ -25,6 +31,8 @@ type Section =
 type Company = {
   id: number;
   companyId: number;
+  portfolioProjectId: number;
+  companyProjectId: number;
   name: string;
   matchScore: number; // 0~100
   openingsCount: number;
@@ -480,10 +488,14 @@ function ReasonModal({
   open,
   company,
   onClose,
+  loading,
+  error,
 }: {
   open: boolean;
   company: Company | null;
   onClose: () => void;
+  loading?: boolean;
+  error?: string | null;
 }) {
   useEffect(() => {
     lockBodyScroll(open);
@@ -579,6 +591,18 @@ function ReasonModal({
 
             <div className="flex-1 overflow-y-auto px-7 py-8 sm:px-10 sm:py-10">
               <div className="space-y-12">
+                {loading && (
+                  <div className="rounded-2xl border border-gray-100 bg-white px-5 py-4 text-[13px] font-bold text-gray-500">
+                    Loading report...
+                  </div>
+                )}
+
+                {error && (
+                  <div className="rounded-2xl border border-red-100 bg-red-50/70 px-5 py-4 text-[13px] font-bold text-red-600">
+                    {error}
+                  </div>
+                )}
+
                 {/* 1 */}
                 <div>
                   <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
@@ -661,6 +685,11 @@ export default function RecommendCompanyPage() {
   const [apiCompanies, setApiCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [explanationCache, setExplanationCache] = useState<
+    Record<number, { headline: Headline; sections: Section[] }>
+  >({});
+  const [explanationLoadingId, setExplanationLoadingId] = useState<number | null>(null);
+  const [explanationError, setExplanationError] = useState<string | null>(null);
 
   // ✅ 8개(4*2) 페이지네이션
   const PAGE_SIZE = 8;
@@ -668,6 +697,44 @@ export default function RecommendCompanyPage() {
 
   const portfolioIdParam = searchParams.get('portfolioId');
   const portfolioId = portfolioIdParam ? Number(portfolioIdParam) : null;
+
+  const mapExplanationSections = (sections: ExplanationMatchSection[] = []): Section[] =>
+    sections.map((section) => {
+      if (section.key === 'writingCheats') {
+        return {
+          key: 'writingCheats',
+          title: section.title || 'Writing Cheats',
+          tags: section.tags ?? [],
+        };
+      }
+      if (section.key === 'portfolioFocus') {
+        return {
+          key: 'portfolioFocus',
+          title: section.title || 'Portfolio Focus',
+          text: section.text ?? '',
+        };
+      }
+      if (section.key === 'strategyGuide') {
+        return {
+          key: 'strategyGuide',
+          title: section.title || 'Strategy Guide',
+          text: section.text ?? '',
+        };
+      }
+      if (section.tags && section.tags.length > 0) {
+        return {
+          key: 'writingCheats',
+          title: section.title || 'Writing Cheats',
+          tags: section.tags,
+        };
+      }
+      return {
+        key: 'strategyGuide',
+        title: section.title || 'Strategy Guide',
+        text: section.text ?? '',
+      };
+    });
+
 
   // TODO: 실제 API로 교체 시, companies를 fetch로 받아서 setCompanies 하면 됨
   useEffect(() => {
@@ -701,6 +768,8 @@ export default function RecommendCompanyPage() {
           return {
             id: idx + 1,
             companyId: item.companyId,
+            portfolioProjectId: item.portfolioProjectId,
+            companyProjectId: item.companyProjectId,
             name: item.companyName,
             matchScore: Math.round((item.similarity ?? 0) * 100),
             openingsCount: 0,
@@ -730,6 +799,51 @@ export default function RecommendCompanyPage() {
   const hasValidPortfolioId = Boolean(portfolioId) && !Number.isNaN(portfolioId);
   const useMockFallback = hasValidPortfolioId && Boolean(loadError) && import.meta.env.DEV;
   const companies = useMockFallback ? MOCK_COMPANIES : apiCompanies;
+
+  const handleOpenReason = async (company: Company) => {
+    setReasonTarget(company);
+    setExplanationError(null);
+
+    if (!company.portfolioProjectId || !company.companyProjectId) {
+      setExplanationError('Missing analysis ids for explanation.');
+      return;
+    }
+
+    const cached = explanationCache[company.companyId];
+    if (cached) {
+      setReasonTarget((prev) =>
+        prev && prev.companyId === company.companyId ? { ...prev, ...cached } : prev,
+      );
+      return;
+    }
+
+    try {
+      setExplanationLoadingId(company.companyId);
+      const response = await fetchCompanyMatchExplanation({
+        companyId: company.companyId,
+        portfolioProjectId: company.portfolioProjectId,
+        companyProjectId: company.companyProjectId,
+      });
+
+      if (!response.success || !response.payload) {
+        throw new Error(response.error || 'Failed to load explanation.');
+      }
+
+      const mapped = {
+        headline: response.payload.headline,
+        sections: mapExplanationSections(response.payload.sections ?? []),
+      };
+
+      setExplanationCache((prev) => ({ ...prev, [company.companyId]: mapped }));
+      setReasonTarget((prev) =>
+        prev && prev.companyId === company.companyId ? { ...prev, ...mapped } : prev,
+      );
+    } catch (err) {
+      setExplanationError(err instanceof Error ? err.message : 'Failed to load explanation.');
+    } finally {
+      setExplanationLoadingId(null);
+    }
+  };
 
   const sortedCompanies = useMemo(() => {
     return [...companies].sort((a, b) => b[sortBy] - a[sortBy]);
@@ -836,7 +950,7 @@ export default function RecommendCompanyPage() {
           <div className="min-w-[1200px]"> */}
         <div className="grid grid-cols-4 gap-7">
           {pagedCompanies.map((c) => (
-            <CompanyCard key={c.id} company={c} onOpenReason={setReasonTarget} />
+            <CompanyCard key={c.id} company={c} onOpenReason={handleOpenReason} />
           ))}
         </div>
       </div>
@@ -846,7 +960,12 @@ export default function RecommendCompanyPage() {
       <ReasonModal
         open={!!reasonTarget}
         company={reasonTarget}
-        onClose={() => setReasonTarget(null)}
+        loading={!!reasonTarget && explanationLoadingId === reasonTarget.companyId}
+        error={explanationError}
+        onClose={() => {
+          setReasonTarget(null);
+          setExplanationError(null);
+        }}
       />
     </div>
   );
@@ -859,6 +978,8 @@ type ApiCompanyRec = {
   companyName: string;
   similarity: number; // 0~1
   openingsCount?: number;
+  portfolioProjectId: number;
+  companyProjectId: number;
 
   projectDistance: number;
   domainDistance: number;
@@ -875,6 +996,8 @@ const MOCK_API: ApiCompanyRec[] = Array.from({ length: 15 }).map((_, i) => ({
   companyName: ['삼성전자', '네이버', '카카오', '토스', '쿠팡', '라인', '현대차', '배민'][i % 8],
   similarity: [0.92, 0.88, 0.85, 0.83, 0.81, 0.79, 0.77, 0.75][i % 8],
   openingsCount: [2, 0, 5, 1, 3, 4, 2, 1][i % 8],
+  portfolioProjectId: 5000 + i + 1,
+  companyProjectId: 9000 + i + 1,
 
   projectDistance: [0.19, 0.23, 0.25, 0.28, 0.31, 0.33, 0.36, 0.38][i % 8],
   domainDistance: [0.16, 0.24, 0.27, 0.29, 0.33, 0.35, 0.37, 0.4][i % 8],
@@ -911,6 +1034,8 @@ const MOCK_COMPANIES: Company[] = MOCK_API.map((a, idx) => {
   return {
     id: idx + 1,
     companyId: a.companyId,
+    portfolioProjectId: a.portfolioProjectId,
+    companyProjectId: a.companyProjectId,
     name: a.companyName,
     matchScore: Math.round((a.similarity ?? 0) * 100),
     openingsCount: a.openingsCount ?? 0,
