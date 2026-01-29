@@ -14,9 +14,18 @@ export const useLogin = () => {
   const setAuth = useAuthStore((state) => state.setAuth);
 
   return useMutation({
-    mutationFn: (data: LoginRequest) => login(data),
-    onSuccess: (response) => {
+    mutationFn: (data: LoginRequest & { rememberMe: boolean }) => login(data),
+    onSuccess: (response, variables) => {
       setAuth(response.data);
+
+      if (!variables.rememberMe) {
+        const authData = localStorage.getItem('auth-storage');
+        if (authData) {
+          sessionStorage.setItem('auth-storage', authData);
+          localStorage.removeItem('auth-storage');
+        }
+      }
+
       navigate('/main');
     },
   });

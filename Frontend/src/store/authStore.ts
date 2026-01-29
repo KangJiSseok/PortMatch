@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import type { AuthState, UserData } from '../types/auth';
 
 export const useAuthStore = create<AuthState>()(
@@ -8,11 +8,32 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isLoggedIn: false,
       setAuth: (user: UserData) => set({ user, isLoggedIn: true }),
-      clearAuth: () => set({ user: null, isLoggedIn: false }),
+      clearAuth: () => {
+        set({ user: null, isLoggedIn: false });
+        localStorage.removeItem('auth-storage');
+        sessionStorage.removeItem('auth-storage');
+      },
     }),
     {
       name: 'auth-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: {
+        getItem: (name) => {
+          const item = localStorage.getItem(name) || sessionStorage.getItem(name);
+          return item ? JSON.parse(item) : null;
+        },
+        setItem: (name, value) => {
+          const isRemembered = !sessionStorage.getItem(name);
+          if (isRemembered) {
+            localStorage.setItem(name, JSON.stringify(value));
+          } else {
+            sessionStorage.setItem(name, JSON.stringify(value));
+          }
+        },
+        removeItem: (name) => {
+          localStorage.removeItem(name);
+          sessionStorage.removeItem(name);
+        },
+      },
     },
   ),
 );

@@ -256,48 +256,63 @@ function MainPage() {
                 Trend Pick
               </h3>
               <div className="flex gap-2">
-                {trendPosts.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setTrendIndex(i)}
-                    className={`h-2.5 w-2.5 rounded-full transition-all ${i === trendIndex ? 'bg-midnight-ink' : 'bg-zinc-200'}`}
-                  />
-                ))}
+                {loading
+                  ? [1, 2, 3].map((i) => (
+                      <div key={i} className="h-2.5 w-2.5 rounded-full bg-zinc-100" />
+                    ))
+                  : trendPosts.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setTrendIndex(i)}
+                        className={`h-2.5 w-2.5 rounded-full transition-all ${i === trendIndex ? 'bg-midnight-ink' : 'bg-zinc-200'}`}
+                      />
+                    ))}
               </div>
             </div>
-            <div className="h-30">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={trendIndex}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-2"
-                >
-                  {trendPosts[trendIndex]?.map((item) => {
-                    const dDay = calculateDDay(item.endDate);
-                    return (
-                      <div
-                        key={item.id}
-                        className="group flex cursor-pointer items-center justify-between rounded-xl border border-zinc-50 bg-zinc-50/30 p-3 transition-all hover:bg-white hover:shadow-sm"
-                        onClick={(e) => goToJobPostDetail(e, item.id)}
-                      >
-                        <p className="text-midnight-ink flex-1 truncate text-sm font-bold">
-                          {item.title}
-                        </p>
-                        <span
-                          className={`ml-2 text-sm font-black ${
-                            dDay === '오늘 마감' ? 'text-red-600' : 'text-point-blue'
-                          }`}
+            <div className="h-38">
+              {loading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="h-11 w-full animate-pulse rounded-xl border border-zinc-50 bg-zinc-50/50"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={trendIndex}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-2"
+                  >
+                    {trendPosts[trendIndex]?.map((item) => {
+                      const dDay = calculateDDay(item.endDate);
+                      return (
+                        <div
+                          key={item.id}
+                          className="group flex cursor-pointer items-center justify-between rounded-xl border border-zinc-50 bg-zinc-50/30 p-3 transition-all hover:bg-white hover:shadow-sm"
+                          onClick={(e) => goToJobPostDetail(e, item.id)}
                         >
-                          {dDay}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </motion.div>
-              </AnimatePresence>
+                          <p className="text-midnight-ink flex-1 truncate text-sm font-bold">
+                            {item.title}
+                          </p>
+                          <span
+                            className={`ml-2 text-sm font-black ${
+                              dDay === '오늘 마감' ? 'text-red-600' : 'text-point-blue'
+                            }`}
+                          >
+                            {dDay}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                </AnimatePresence>
+              )}
             </div>
           </div>
         </section>
@@ -357,13 +372,24 @@ function MainPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-5 gap-6">
+          <div className="grid min-h-80 grid-cols-5 gap-6">
             {loading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-64 animate-pulse rounded-3xl border border-zinc-100 bg-zinc-50"
-                  />
+                    className="flex flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm"
+                  >
+                    <div className="mb-4 h-16 w-16 animate-pulse rounded-xl bg-zinc-100" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-2/3 animate-pulse rounded bg-zinc-100" />
+                      <div className="h-6 w-full animate-pulse rounded bg-zinc-100" />
+                      <div className="h-6 w-full animate-pulse rounded bg-zinc-100" />
+                    </div>
+                    <div className="mt-auto flex justify-between border-t border-zinc-50 pt-4">
+                      <div className="h-4 w-1/3 animate-pulse rounded bg-zinc-100" />
+                      <div className="h-4 w-1/4 animate-pulse rounded bg-zinc-100" />
+                    </div>
+                  </div>
                 ))
               : user?.role === 'COMPANY'
                 ? MOCK_TALENTS.map((talent) => (

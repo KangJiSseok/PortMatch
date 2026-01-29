@@ -8,20 +8,20 @@ interface NavActionProps {
   onClick?: () => void;
   children: React.ReactNode;
   isError?: boolean;
-  mobile?: boolean;
+  noDefaultUnderline?: boolean;
 }
 
-const NavAction = ({ to, onClick, children, isError, mobile }: NavActionProps) => {
-  const baseClassName = `group relative py-2 text-lg font-bold whitespace-nowrap transition-colors duration-300 cursor-pointer ${
-    mobile ? 'w-full text-left px-4' : ''
-  } ${isError ? 'hover:text-point-blue text-midnight-ink' : 'text-midnight-ink'}`;
+const NavAction = ({ to, onClick, children, isError, noDefaultUnderline }: NavActionProps) => {
+  const baseClassName = `group relative py-2 text-lg font-bold transition-colors duration-300 cursor-pointer ${
+    isError ? 'hover:text-point-blue text-midnight-ink' : 'text-midnight-ink'
+  }`;
 
   const underlineColor = isError ? 'bg-point-blue' : 'bg-midnight-ink';
 
   const content = (
     <>
-      {children}
-      {!mobile && (
+      <div className="flex items-center gap-1">{children}</div>
+      {!noDefaultUnderline && (
         <span
           className={`${underlineColor} absolute bottom-0 left-0 h-0.5 w-0 transition-all duration-300 group-hover:w-full`}
         />
@@ -50,7 +50,6 @@ function Navbar() {
   const { user, isLoggedIn } = useAuthStore();
   const { mutate: performLogout } = useLogout();
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [logoKey, setLogoKey] = useState(0);
 
@@ -60,15 +59,12 @@ function Navbar() {
   if (prevPath !== currentPath) {
     setPrevPath(currentPath);
     setSearchKeyword('');
-    setIsMenuOpen(false);
   }
 
   const handleLogout = async () => {
     navigate('/login', { replace: true });
-
     setTimeout(() => {
       performLogout();
-      setIsMenuOpen(false);
     }, 0);
   };
 
@@ -82,7 +78,6 @@ function Navbar() {
       navigate('/job-postings');
       return;
     }
-
     navigate(`/job-postings?keyword=${encodeURIComponent(trimmed)}`);
   };
 
@@ -97,7 +92,7 @@ function Navbar() {
   return (
     <nav
       id="app-navbar"
-      className="bg-pure-white/70 border-soft-pebble fixed top-0 z-100 w-full border-b backdrop-blur-xl transition-all duration-300"
+      className="bg-pure-white/70 border-soft-pebble sticky top-0 z-100 -mb-20 w-full min-w-max border-b backdrop-blur-xl transition-all duration-300"
     >
       <style>{`
         @keyframes logo-appear {
@@ -114,8 +109,8 @@ function Navbar() {
         }
       `}</style>
 
-      <div className="relative mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-        <div className="z-10 flex items-center gap-8 xl:gap-12">
+      <div className="relative mx-auto flex h-20 w-350 items-center justify-between px-6">
+        <div className="z-10 ml-12 flex items-center gap-12">
           <Link
             to="/main"
             onClick={handleLogoClick}
@@ -153,13 +148,13 @@ function Navbar() {
             </div>
           </Link>
 
-          <div className="hidden items-center gap-6 lg:flex xl:gap-8">
+          <div className="flex items-center gap-8">
             {user?.role === 'APPLICANT' && <NavAction to="/resumes/me">이력서 관리</NavAction>}
             {user?.role === 'COMPANY' && <NavAction to="/company/jobs">공고 관리</NavAction>}
           </div>
         </div>
 
-        <div className="group absolute left-1/2 hidden w-full max-w-50 shrink-0 -translate-x-1/2 lg:block xl:max-w-sm">
+        <div className="absolute left-1/2 w-full max-w-sm -translate-x-1/2">
           <input
             id="navbar-search-input"
             type="text"
@@ -193,118 +188,32 @@ function Navbar() {
           </button>
         </div>
 
-        <div className="z-10 flex items-center gap-6 xl:gap-10">
-          <div className="hidden items-center gap-6 lg:flex xl:gap-10">
-            {!isLoggedIn ? (
-              <>
-                <NavAction to="/login" isError>
-                  로그인
-                </NavAction>
-                <NavAction to="/signup">회원가입</NavAction>
-              </>
-            ) : (
-              <>
-                <NavAction onClick={handleLogout} isError>
-                  로그아웃
-                </NavAction>
-                <NavAction to="/mypage">마이페이지</NavAction>
-              </>
-            )}
-          </div>
-
-          <button
-            className="text-midnight-ink block lg:hidden"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {isMenuOpen ? (
-                <path d="M18 6L6 18M6 6l12 12" />
-              ) : (
-                <path d="M3 12h18M3 6h18M3 18h18" />
-              )}
-            </svg>
-          </button>
+        <div className="z-10 mr-12 flex items-center gap-10">
+          {!isLoggedIn ? (
+            <>
+              <NavAction to="/login" isError>
+                로그인
+              </NavAction>
+              <NavAction to="/signup">회원가입</NavAction>
+            </>
+          ) : (
+            <>
+              <NavAction onClick={handleLogout} isError>
+                로그아웃
+              </NavAction>
+              <NavAction to="/mypage" noDefaultUnderline>
+                <div className="flex items-center">
+                  <span className="relative block max-w-20 truncate" title={user?.name}>
+                    {user?.name}
+                    <span className="bg-midnight-ink absolute bottom-0 left-0 h-0.5 w-0 transition-all duration-300 group-hover:w-full" />
+                  </span>
+                  <span className="ml-0.5 shrink-0">님</span>
+                </div>
+              </NavAction>
+            </>
+          )}
         </div>
       </div>
-
-      {isMenuOpen && (
-        <div className="bg-pure-white border-soft-pebble absolute top-20 left-0 w-full border-b p-6 shadow-xl lg:hidden">
-          <div className="flex flex-col gap-4">
-            <div className="relative mb-2">
-              <input
-                type="text"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder={searchPlaceholder}
-                className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"
-              />
-              <button
-                onClick={handleSearch}
-                className={`absolute top-1/2 right-5 transition-colors duration-300 ${
-                  isSearchActive
-                    ? 'text-point-blue animate-search-active'
-                    : 'text-slate-gray -translate-y-1/2'
-                }`}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-              </button>
-            </div>
-
-            {user?.role === 'APPLICANT' && (
-              <NavAction to="/resumes/me" mobile>
-                이력서 관리
-              </NavAction>
-            )}
-            {user?.role === 'COMPANY' && (
-              <NavAction to="/company/jobs" mobile>
-                공고 관리
-              </NavAction>
-            )}
-            <hr className="border-soft-pebble my-2" />
-            {!isLoggedIn ? (
-              <>
-                <NavAction to="/login" isError mobile>
-                  로그인
-                </NavAction>
-                <NavAction to="/signup" mobile>
-                  회원가입
-                </NavAction>
-              </>
-            ) : (
-              <>
-                <NavAction onClick={handleLogout} isError mobile>
-                  로그아웃
-                </NavAction>
-                <NavAction to="/mypage" mobile>
-                  마이페이지
-                </NavAction>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </nav>
   );
 }

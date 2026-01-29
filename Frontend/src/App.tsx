@@ -5,6 +5,7 @@ import {
   Navigate,
   useLocation,
   Outlet,
+  ScrollRestoration,
 } from 'react-router-dom';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
@@ -73,6 +74,7 @@ const RootLayout = () => {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <ScrollRestoration />
       {!shouldHideLayout && <Navbar />}
       <div className="flex-1">
         <Outlet />
@@ -98,11 +100,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'intro',
-        element: (
-          <AuthGuard mode="PUBLIC">
-            <IntroPage />
-          </AuthGuard>
-        ),
+        element: <IntroPage />,
       },
       {
         path: 'login',

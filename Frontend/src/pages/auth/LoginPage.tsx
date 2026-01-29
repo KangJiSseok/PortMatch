@@ -80,7 +80,12 @@ function LoginPage() {
     }
 
     loginMutate(
-      { email: formData.email, password: formData.password, expectedRole: userType },
+      {
+        email: formData.email,
+        password: formData.password,
+        expectedRole: userType,
+        rememberMe,
+      },
       {
         onSuccess: () => navigate('/main'),
         onError: (error: unknown) => {
@@ -238,12 +243,6 @@ function LoginPage() {
               checked={rememberMe}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRememberMe(e.target.checked)}
             />
-            <button
-              type="button"
-              className="text-slate-gray hover:text-point-blue text-sm font-bold transition-colors"
-            >
-              비밀번호 찾기
-            </button>
           </div>
 
           <div className="pt-2">
