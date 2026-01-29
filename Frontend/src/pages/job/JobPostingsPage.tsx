@@ -11,6 +11,7 @@ import EmptyState from '@/components/states/EmptyState';
 import ErrorState from '@/components/states/ErrorState';
 
 import { useJobPostings } from '@/hooks/useJobPostings';
+import { fetchJobPostingStacks } from '@/api/jobPostings';
 import { useStackNames } from '@/hooks/useStackNames';
 import type { JobPostingDto } from '@/types/backendJobPosting';
 
@@ -93,7 +94,7 @@ function deadlineSortKey(deadline: string) {
 }
 
 function Divider() {
-  return <div className="border-silver-mist/70 mt-5 w-full border-t" />;
+  return <div className="border-silver-mist/20 mt-5 w-full border-t" />;
 }
 
 function formatDeadlineLabel(endDate: string) {
@@ -182,7 +183,7 @@ function CollapsibleSection({
             transition={{ duration: 0.18 }}
             className="overflow-hidden"
           >
-            <div className="border-silver-mist/70 bg-pure-white rounded-xl border p-3">{children}</div>
+            <div className="border-silver-mist/20 bg-pure-white rounded-xl border p-3">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -232,7 +233,7 @@ function FilterPanel({
     ) : null;
 
   return (
-    <div className="border-silver-mist bg-pure-white rounded-4xl border p-6 shadow-sm">
+    <div className="border-silver-mist/20 bg-pure-white rounded-4xl border p-6 shadow-sm">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-midnight-ink flex items-center gap-2 text-lg font-black tracking-tight">
           <FilterIcon />
@@ -466,6 +467,9 @@ function JobPostingsPage() {
 
   const stackNameMap = useStackNames(allStackIdsOnPage);
 
+  const [postingStackMap, setPostingStackMap] = useState<Record<number, string[]>>({});
+  const postingStackInFlight = useRef<Set<number>>(new Set());
+
   const rawKeyword = searchParams.get('keyword') ?? '';
   const keyword = useMemo(() => {
     try {
@@ -629,6 +633,34 @@ function JobPostingsPage() {
     return filteredSortedJobs.slice(start, start + PAGE_SIZE);
   }, [filteredSortedJobs, page, totalPages]);
 
+  useEffect(() => {
+    const targets = pagedJobs.filter(
+      (job) => (job.stackIds ?? []).length === 0 && !postingStackMap[job.id],
+    );
+    if (targets.length === 0) return;
+
+    targets.forEach((job) => {
+      if (postingStackInFlight.current.has(job.id)) return;
+      postingStackInFlight.current.add(job.id);
+
+      fetchJobPostingStacks(job.id)
+        .then((res) => {
+          const names =
+            res.data?.map((stack) => stack.stack_name || (stack as { stackName?: string }).stackName) ??
+            [];
+          if (names.length > 0) {
+            setPostingStackMap((prev) => ({ ...prev, [job.id]: names }));
+          }
+        })
+        .catch(() => {
+          // ignore; fallback rendering handles empty
+        })
+        .finally(() => {
+          postingStackInFlight.current.delete(job.id);
+        });
+    });
+  }, [pagedJobs, postingStackMap]);
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedStackIds.length > 0) count += 1;
@@ -665,12 +697,12 @@ function JobPostingsPage() {
               <motion.h1
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase"
+                className="text-midnight-ink text-[42px] leading-[1.05] font-black tracking-tighter whitespace-nowrap uppercase"
               >
                 {headerTitle}
               </motion.h1>
 
-              <p className="text-slate-gray mt-2 text-lg font-bold italic opacity-60">
+              <p className="text-slate-gray mt-2 text-[17px] font-semibold italic opacity-70">
                 조건에 맞는{' '}
                 <span className="relative inline-block">
                   <span className="absolute inset-x-0 bottom-1 -z-10 h-3 rounded-sm bg-yellow-200/80" />
@@ -686,7 +718,12 @@ function JobPostingsPage() {
                   variant={sort === 'latest' ? 'dark' : 'outline'}
                   size="lg"
                   onClick={() => changeSort('latest')}
-                  className="rounded-2xl px-8 font-bold shadow-xl"
+                  className={[
+                    'rounded-2xl px-8 shadow-sm',
+                    sort === 'latest'
+                      ? 'tracking-tighter'
+                      : 'border-silver-mist/30 bg-pure-white text-slate-gray hover:bg-soft-pebble/40',
+                  ].join(' ')}
                 >
                   최신순
                 </Button>
@@ -695,7 +732,12 @@ function JobPostingsPage() {
                   variant={sort === 'deadline' ? 'dark' : 'outline'}
                   size="lg"
                   onClick={() => changeSort('deadline')}
-                  className="rounded-2xl px-8 font-bold shadow-xl"
+                  className={[
+                    'rounded-2xl px-8 shadow-sm',
+                    sort === 'deadline'
+                      ? 'tracking-tighter'
+                      : 'border-silver-mist/30 bg-pure-white text-slate-gray hover:bg-soft-pebble/40',
+                  ].join(' ')}
                 >
                   마감일순
                 </Button>
@@ -743,111 +785,132 @@ function JobPostingsPage() {
               {!isLoading && !isError && (
                 <>
                   <section className="grid gap-5">
-                    {pagedJobs.length > 0 ? (
-                      pagedJobs.map((job) => {
-                        const isUrgent = getUrgent(job.deadline);
+                    <AnimatePresence mode="wait">
+                      {pagedJobs.length > 0 ? (
+                        pagedJobs.map((job) => {
+                          const isUrgent = getUrgent(job.deadline);
 
-                        return (
-                          <motion.div
-                            key={job.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            whileHover={{ y: -4 }}
-                            className={[
-                              'border-silver-mist bg-pure-white flex items-center gap-6 rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50',
-                              isUrgent ? 'ring-1 ring-red-200' : '',
-                            ].join(' ')}
-                          >
-                            <div className="border-silver-mist bg-pure-white flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border p-2">
-                              {job.logo ? (
-                                <img
-                                  src={job.logo}
-                                  alt={job.company}
-                                  className="h-full w-full object-contain"
-                                  referrerPolicy="no-referrer"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                  }}
-                                />
-                              ) : (
-                                <span className="text-slate-gray text-xl font-black">{job.company?.[0] ?? '?'}</span>
-                              )}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="mb-4 flex flex-wrap items-center gap-3">
-                                <span className="text-slate-gray text-xs font-black opacity-70">{job.company}</span>
-
-                                <span className="border-silver-mist bg-cloud-dancer text-slate-gray rounded-xl border px-3 py-1 text-[11px] font-black tracking-tight">
-                                  {job.type}
-                                </span>
-
-                                {isUrgent && (
-                                  <span className="rounded-xl bg-red-50 px-3 py-1 text-[11px] font-black text-red-600">
-                                    마감 임박
+                          return (
+                            <motion.div
+                              key={job.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 20 }}
+                              whileHover={{ y: -4 }}
+                              className={[
+                                'border-silver-mist/20 bg-pure-white flex items-center gap-6 rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/40',
+                                isUrgent ? 'ring-1 ring-red-200' : '',
+                              ].join(' ')}
+                            >
+                              <div className="border-silver-mist/20 bg-pure-white flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border p-2">
+                                {job.logo ? (
+                                  <img
+                                    src={job.logo}
+                                    alt={job.company}
+                                    className="h-full w-full object-contain"
+                                    referrerPolicy="no-referrer"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <span className="text-slate-gray text-xl font-black">
+                                    {job.company?.[0] ?? '?'}
                                   </span>
                                 )}
                               </div>
 
-                              <h3 className="text-midnight-ink hover:text-point-blue truncate text-2xl font-black tracking-tight transition-colors">
-                                {job.title}
-                              </h3>
-
-                              {/* ✅ stackId -> stackName 표시 */}
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {(job.stackIds ?? []).map((id) => (
-                                  <span
-                                    key={`${job.id}-${id}`}
-                                    className="border-silver-mist bg-cloud-dancer text-slate-gray rounded-full border px-3 py-1 text-[11px] font-black tracking-tight"
-                                  >
-                                    {stackNameMap[id] ?? `#${id}`}
+                              <div className="min-w-0 flex-1">
+                                <div className="mb-4 flex flex-wrap items-center gap-3">
+                                  <span className="text-slate-gray text-xs font-black opacity-70">
+                                    {job.company}
                                   </span>
-                                ))}
+
+                                  <span className="border-silver-mist/20 text-slate-gray rounded-xl border px-3 py-1 text-[11px] font-black tracking-tight">
+                                    {job.type}
+                                  </span>
+
+                                  {isUrgent && (
+                                    <span className="rounded-xl bg-red-50/70 px-3 py-1 text-[11px] font-black text-red-600">
+                                      마감 임박
+                                    </span>
+                                  )}
+                                </div>
+
+                                <h3 className="text-midnight-ink hover:text-point-blue truncate text-2xl font-black tracking-tight transition-colors">
+                                  {job.title}
+                                </h3>
+
+                                {/* ✅ stackId -> stackName 표시 */}
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {(job.stackIds ?? []).length > 0
+                                    ? (job.stackIds ?? []).map((id) => (
+                                        <span
+                                          key={`${job.id}-${id}`}
+                                          className="border-silver-mist/20 bg-cloud-dancer/30 text-slate-gray rounded-full border px-3 py-1 text-[11px] font-black tracking-tight"
+                                        >
+                                          {stackNameMap[id] ?? `#${id}`}
+                                        </span>
+                                      ))
+                                    : (postingStackMap[job.id] ?? []).map((name) => (
+                                        <span
+                                          key={`${job.id}-${name}`}
+                                          className="border-silver-mist/20 bg-cloud-dancer/30 text-slate-gray rounded-full border px-3 py-1 text-[11px] font-black tracking-tight"
+                                        >
+                                          {name}
+                                        </span>
+                                      ))}
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="border-silver-mist flex w-[170px] shrink-0 flex-col items-center gap-4 border-l pl-6">
-                              <div className="flex flex-col items-center text-center">
-                                <span className="text-slate-gray text-[11px] font-black tracking-widest uppercase opacity-50">
-                                  Deadline
-                                </span>
+                              <div className="border-silver-mist/20 flex w-[170px] shrink-0 flex-col items-center gap-4 border-l pl-6">
+                                <div className="flex flex-col items-center text-center">
+                                  <span className="text-slate-gray text-[11px] font-black tracking-widest uppercase opacity-50">
+                                    Deadline
+                                  </span>
 
-                                <span
-                                  className={[
-                                    'text-2xl font-black tabular-nums',
-                                    isUrgent ? 'text-red-600' : 'text-midnight-ink',
-                                  ].join(' ')}
+                                  <span
+                                    className={[
+                                      'text-2xl font-black tabular-nums',
+                                      isUrgent ? 'text-red-600' : 'text-midnight-ink',
+                                    ].join(' ')}
+                                  >
+                                    {job.deadline}
+                                  </span>
+                                </div>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/job-posts/${job.id}`)}
+                                  className="hover:text-point-blue rounded-2xl px-6 font-bold shadow-md hover:bg-soft-pebble/30"
                                 >
-                                  {job.deadline}
-                                </span>
+                                  공고 보기
+                                </Button>
                               </div>
-
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigate(`/job-posts/${job.id}`)}
-
-                                className="hover:text-point-blue rounded-2xl px-6 font-bold shadow-md hover:bg-slate-50"
-                              >
-                                공고 보기
-                              </Button>
-                            </div>
-                          </motion.div>
-                        );
-                      })
-                    ) : (
-                      <div className="border-silver-mist bg-pure-white rounded-4xl border border-dashed p-10">
-                        <EmptyState
-                          title="조건에 맞는 공고가 없습니다"
-                          description="필터 조건을 변경하거나 초기화해보세요."
-                          actionLabel={activeFilterCount > 0 ? '필터 초기화' : '뒤로 가기'}
-                          onAction={() =>
-                            activeFilterCount > 0 ? clearAllFilters() : window.history.back()
-                          }
-                        />
-                      </div>
-                    )}
+                            </motion.div>
+                          );
+                        })
+                      ) : (
+                        <motion.div
+                          key="empty"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 20 }}
+                          className="border-silver-mist/20 bg-pure-white rounded-4xl border border-dashed p-10"
+                        >
+                          <EmptyState
+                            title="조건에 맞는 공고가 없습니다"
+                            description="필터 조건을 변경하거나 초기화해보세요."
+                            actionLabel={activeFilterCount > 0 ? '필터 초기화' : '뒤로 가기'}
+                            onAction={() =>
+                              activeFilterCount > 0 ? clearAllFilters() : window.history.back()
+                            }
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </section>
 
                   {totalCount > 0 && (

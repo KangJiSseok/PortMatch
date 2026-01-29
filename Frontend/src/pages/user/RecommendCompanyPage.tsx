@@ -616,7 +616,7 @@ function ReasonModal({
               </button>
 
               {/* ✅ 백엔드 headline 기반 3줄 */}
-              <h3 className="text-[22px] leading-[1.15] font-black tracking-tight sm:text-[26px]">
+              <h4 className="text-[20px] leading-[1.2] font-black tracking-tight sm:text-[22px]">
                 {headline.line1}
                 <br />
                 <span className="text-blue-400">
@@ -624,7 +624,7 @@ function ReasonModal({
                 </span>
                 <br />
                 {headline.line3}
-              </h3>
+              </h4>
             </div>
 
             <div
