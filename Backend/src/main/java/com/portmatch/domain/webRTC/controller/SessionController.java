@@ -85,9 +85,8 @@ public class SessionController {
 
             // localhost, openvidu-server 등 모든 경우 처리
             String fixedToken = originalToken
-                    .replaceAll("ws://[^/]+:\\d+", "wss://i14d205.p.ssafy.io")  // ws://호스트:포트 → wss://도메인
-                    .replaceAll("wss://[^/]+:\\d+", "wss://i14d205.p.ssafy.io") // wss://호스트:포트 → wss://도메인
-                    .replace("/openvidu", "/openvidu");  // 경로는 유지
+                    .replaceAll("ws://[^/?]+", "wss://i14d205.p.ssafy.io/openvidu")
+                    .replaceAll("wss://[^/?]+", "wss://i14d205.p.ssafy.io/openvidu");
 
             return new ResponseEntity<>(fixedToken, HttpStatus.OK);
 
