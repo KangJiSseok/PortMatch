@@ -1,57 +1,52 @@
 from typing import List, Optional
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
-from web.services.gemini_embeddings import embed_texts_gemini
-
-router = APIRouter()
+from web.services.gemini_embeddings import embed_texts
 
 
-class GeminiEmbeddingsRequest(BaseModel):
+class EmbeddingsRequest(BaseModel):
     texts: List[str] = Field(..., min_length=1)
     model: Optional[str] = None
 
 
-class GeminiEmbeddingsResponse(BaseModel):
+class EmbeddingsResponse(BaseModel):
     model: str
     dim: int
     vectors: List[List[float]]
 
 
-def run_embeddings(texts: List[str], model: Optional[str]) -> "GeminiEmbeddingsResponse":
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GMS_KEY")
-    if not api_key:
+def run_embeddings(texts: List[str], model: Optional[str]) -> EmbeddingsResponse:
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not set")
 
-    resolved_model = (model or "models/gemini-embedding-001").strip()
-    output_dim = int(os.getenv("GEMINI_OUTPUT_DIMENSIONS", "1536"))
-    cleaned_texts = [(t or "").strip() for t in texts]
-    if not cleaned_texts or any(not t for t in cleaned_texts):
+    requested_model = (model or "").strip()
+    resolved_model = (requested_model or os.getenv("GEMINI_EMBEDDING_MODEL", "models/gemini-embedding-001")).strip()
+    print(
+        f"[embeddings] requested_model={requested_model or None} "
+        f"resolved_model={resolved_model} texts={len(texts)}"
+    )
+
+    normalized = [(t or "").strip() for t in texts]
+    if not normalized or any(not t for t in normalized):
         raise HTTPException(status_code=400, detail="texts contains empty string")
 
+    output_dim = int(os.getenv("GEMINI_OUTPUT_DIMENSIONS", "1536"))
     try:
-        vectors = embed_texts_gemini(
-            api_key=api_key,
-            texts=cleaned_texts,
+        vectors = embed_texts(
+            api_key=gemini_key,
+            texts=normalized,
             model=resolved_model,
             output_dimensionality=output_dim,
         )
     except Exception as exc:
+        print(f"[embeddings][error] {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=502, detail=f"embedding failed: {type(exc).__name__}: {exc}") from exc
 
     if not vectors or not vectors[0]:
         raise HTTPException(status_code=502, detail="embedding failed: empty vectors")
 
-    return GeminiEmbeddingsResponse(model=resolved_model, dim=len(vectors[0]), vectors=vectors)
-
-
-@router.post("/embeddings/gemini", response_model=GeminiEmbeddingsResponse)
-def gemini_embeddings(payload: GeminiEmbeddingsRequest) -> GeminiEmbeddingsResponse:
-    return run_embeddings(payload.texts, payload.model)
-
-
-# Backward-compatible aliases for existing imports.
-EmbeddingsRequest = GeminiEmbeddingsRequest
-EmbeddingsResponse = GeminiEmbeddingsResponse
+    return EmbeddingsResponse(model=resolved_model, dim=len(vectors[0]), vectors=vectors)
