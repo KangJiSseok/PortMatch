@@ -113,27 +113,31 @@ public class SessionController {
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-    /**
-     * OpenVidu 서버에서 날아오는 Webhook 처리
-     * 세션이 자동으로 종료(sessionDestroyed)될 때 DB 상태를 업데이트함
-     */
-    /**
-     * OpenVidu Webhook 처리
-     * 주의: yml에 적은 주소(http://.../api/webhook)와 일치해야 함!
-     */
-    @PostMapping(value = "/webhook") // @RequestMapping이 /api/interview 라면 최종 주소는 /api/interview/webhook 이 됨!
+    @PostMapping(value = "/webhook")
     @Transactional
     public ResponseEntity<Void> handleOpenViduWebhook(@RequestBody Map<String, Object> callbackData) {
+        // 전체 Webhook 데이터 로깅
+        System.out.println("=== OpenVidu Webhook 수신 ===");
+        System.out.println("전체 데이터: " + callbackData);
+
         String event = (String) callbackData.get("event");
+        System.out.println("이벤트 타입: " + event);
 
         if ("sessionDestroyed".equals(event)) {
             String sessionId = (String) callbackData.get("sessionId");
-            System.out.println("WebHook 수신 - 세션 종료됨: " + sessionId);
+            System.out.println("세션 종료 감지 - sessionId: " + sessionId);
 
-            interviewRepository.findBySessionId(sessionId).ifPresent(session -> {
-                session.finish();
-                interviewRepository.save(session);
-            });
+            interviewRepository.findBySessionId(sessionId).ifPresentOrElse(
+                    session -> {
+                        System.out.println("DB에서 세션 찾음: " + sessionId);
+                        session.finish();
+                        interviewRepository.save(session);
+                        System.out.println("세션 상태 업데이트 완료: " + sessionId);
+                    },
+                    () -> System.out.println("DB에서 세션을 찾을 수 없음: " + sessionId)
+            );
+        } else {
+            System.out.println("무시된 이벤트: " + event);
         }
 
         return new ResponseEntity<>(HttpStatus.OK);
