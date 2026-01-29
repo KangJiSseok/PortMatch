@@ -1,5 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  FileText,
+  Sparkles,
+  PenTool,
+  ClipboardCheck,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 
@@ -57,8 +65,9 @@ const ResumeFeedbackPage = () => {
           >
             <div className="mb-6 flex items-center gap-2">
               <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+              <PenTool size={20} className="text-midnight-ink" />
               <h2 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap uppercase">
-                Input Details
+                입력 정보
               </h2>
             </div>
 
@@ -85,10 +94,11 @@ const ResumeFeedbackPage = () => {
               <Button
                 variant="blue"
                 size="md"
-                className="rounded-xl py-4 text-lg font-black whitespace-nowrap shadow-md"
+                className="flex items-center justify-center gap-2 rounded-xl py-4 text-lg font-black whitespace-nowrap shadow-md"
                 onClick={handleAnalyze}
                 disabled={isLoading}
               >
+                <Sparkles size={20} />
                 {isLoading ? '분석 중...' : 'AI 첨삭 시작하기'}
               </Button>
             </div>
@@ -102,8 +112,9 @@ const ResumeFeedbackPage = () => {
           >
             <div className="mb-6 flex items-center gap-2">
               <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+              <ClipboardCheck size={20} className="text-midnight-ink" />
               <h2 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap uppercase">
-                Analysis Result
+                분석 결과
               </h2>
             </div>
 
@@ -117,14 +128,15 @@ const ResumeFeedbackPage = () => {
                     className="flex flex-col gap-8"
                   >
                     <div>
-                      <h4 className="text-point-blue mb-3 text-sm font-black tracking-widest uppercase">
-                        Strengths
+                      <h4 className="text-point-blue mb-4 flex items-center gap-2 text-sm font-black tracking-widest uppercase">
+                        <CheckCircle2 size={16} />
+                        핵심 강점
                       </h4>
-                      <div className="flex flex-col gap-2.5">
+                      <div className="flex flex-col gap-3">
                         {result.strengths.map((s, i) => (
                           <div
                             key={i}
-                            className="bg-point-blue/5 text-midnight-ink border-point-blue rounded-xl border-l-4 p-4 text-sm leading-relaxed font-bold"
+                            className="bg-point-blue/5 text-midnight-ink border-point-blue/20 rounded-2xl border-l-4 p-5 text-[15px] leading-relaxed font-semibold break-keep whitespace-pre-wrap shadow-sm"
                           >
                             {s}
                           </div>
@@ -133,14 +145,15 @@ const ResumeFeedbackPage = () => {
                     </div>
 
                     <div>
-                      <h4 className="text-error mb-3 text-sm font-black tracking-widest uppercase">
-                        Needs Improvement
+                      <h4 className="text-error mb-4 flex items-center gap-2 text-sm font-black tracking-widest uppercase">
+                        <AlertCircle size={16} />
+                        보완이 필요한 점
                       </h4>
-                      <div className="flex flex-col gap-2.5">
+                      <div className="flex flex-col gap-3">
                         {result.weaknesses.map((w, i) => (
                           <div
                             key={i}
-                            className="bg-error/5 text-midnight-ink border-error rounded-xl border-l-4 p-4 text-sm leading-relaxed font-bold"
+                            className="bg-error/5 text-midnight-ink border-error/20 rounded-2xl border-l-4 p-5 text-[15px] leading-relaxed font-semibold break-keep whitespace-pre-wrap shadow-sm"
                           >
                             {w}
                           </div>
@@ -150,7 +163,7 @@ const ResumeFeedbackPage = () => {
                   </motion.div>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center opacity-20">
-                    <div className="mb-4 text-5xl">📄</div>
+                    <FileText size={64} className="text-midnight-ink mb-4" />
                     <p className="text-center text-lg leading-relaxed font-bold whitespace-nowrap italic">
                       분석 결과가 여기에 표시됩니다.
                     </p>

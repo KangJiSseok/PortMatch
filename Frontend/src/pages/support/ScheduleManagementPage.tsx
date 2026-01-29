@@ -1,5 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  RotateCcw,
+  CalendarClock,
+  Users,
+  Trophy,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Check,
+  Star,
+  UserX,
+  UserCheck,
+  Filter,
+} from 'lucide-react';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 
@@ -10,36 +24,44 @@ type TimeSlot = {
   votes: string[];
 };
 
-type ModalType = 'ERROR' | 'SUCCESS' | 'RESET_CONFIRM';
+type ModalType = 'ERROR' | 'SUCCESS' | 'RESET_CONFIRM' | 'DUPLICATE_NAME';
 
 const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-const STORAGE_KEY = 'local_schedule_data_v2';
+const MAX_NAME_LENGTH = 10;
 
 const ScheduleManagementPage = () => {
-  const [allVotes, setAllVotes] = useState<TimeSlot[]>(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    if (savedData) {
-      try {
-        return JSON.parse(savedData);
-      } catch (err) {
-        console.error('데이터 로드 실패', err);
-      }
-    }
-    const initialSlots: TimeSlot[] = [];
+  const createInitialSlots = () => {
+    const slots: TimeSlot[] = [];
     DAYS.forEach((day) => {
       HOURS.forEach((time) => {
-        initialSlots.push({ id: `${day}-${time}`, day, time, votes: [] });
+        slots.push({ id: `${day}-${time}`, day, time, votes: [] });
       });
     });
-    return initialSlots;
-  });
+    return slots;
+  };
 
+  const [allVotes, setAllVotes] = useState<TimeSlot[]>(createInitialSlots());
   const [userName, setUserName] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [dragMode, setDragMode] = useState<'select' | 'deselect'>('select');
   const [modal, setModal] = useState<{ type: ModalType; message?: string } | null>(null);
+  const [selectedParticipant, setSelectedParticipant] = useState<string | null>(null);
+
+  const [nameError, setNameError] = useState(false);
+  const [timeError, setTimeError] = useState(false);
+
+  const nameSectionRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  const scrollToSection = (ref: React.RefObject<HTMLElement | null>) => {
+    if (ref.current) {
+      const yOffset = -200;
+      const y = ref.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
 
   const analysis = useMemo(() => {
     let max = 0;
@@ -51,11 +73,15 @@ const ScheduleManagementPage = () => {
       .filter((s) => s.votes.length > 0)
       .sort((a, b) => b.votes.length - a.votes.length)
       .slice(0, 3);
-    return { max, topIds, sortedSlots };
+
+    const participants = [...new Set(allVotes.flatMap((slot) => slot.votes))];
+
+    return { max, topIds, sortedSlots, participants };
   }, [allVotes]);
 
   const handleMouseDown = (id: string) => {
     setIsDragging(true);
+    setTimeError(false);
     const mode = availableSlots.includes(id) ? 'deselect' : 'select';
     setDragMode(mode);
     updateSelection(id, mode);
@@ -74,42 +100,63 @@ const ScheduleManagementPage = () => {
   };
 
   const submitVotes = () => {
-    if (!userName || availableSlots.length === 0) {
-      setModal({ type: 'ERROR', message: '이름과 시간을 확인해주세요.' });
+    const trimmedName = userName.trim();
+    if (!trimmedName) {
+      setNameError(true);
+      setModal({ type: 'ERROR', message: '참여자 이름을 입력해주세요.' });
+      scrollToSection(nameSectionRef);
+      nameInputRef.current?.focus();
       return;
     }
+
+    const isDuplicate = allVotes.some((slot) => slot.votes.includes(trimmedName));
+    if (isDuplicate) {
+      setNameError(true);
+      setModal({ type: 'DUPLICATE_NAME', message: `'${trimmedName}'님은 이미 등록되어 있습니다.` });
+      return;
+    }
+
+    if (availableSlots.length === 0) {
+      setTimeError(true);
+      setModal({ type: 'ERROR', message: '가능한 시간대를 그리드에서 선택해주세요.' });
+      return;
+    }
+
     const updatedVotes = allVotes.map((slot) =>
       availableSlots.includes(slot.id)
-        ? { ...slot, votes: [...new Set([...slot.votes, userName])] }
+        ? { ...slot, votes: [...new Set([...slot.votes, trimmedName])] }
         : slot,
     );
     setAllVotes(updatedVotes);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedVotes));
 
-    const submittedName = userName;
     setUserName('');
     setAvailableSlots([]);
+    setNameError(false);
+    setTimeError(false);
     setModal({
       type: 'SUCCESS',
-      message: `${submittedName}님의 일정이 성공적으로 반영되었습니다.`,
+      message: `${trimmedName}님의 일정이 성공적으로 반영되었습니다.`,
     });
   };
 
   const executeReset = () => {
-    const initialSlots: TimeSlot[] = [];
-    DAYS.forEach((day) => {
-      HOURS.forEach((time) => {
-        initialSlots.push({ id: `${day}-${time}`, day, time, votes: [] });
-      });
-    });
-    setAllVotes(initialSlots);
-    localStorage.removeItem(STORAGE_KEY);
+    setAllVotes(createInitialSlots());
     setModal(null);
+    setSelectedParticipant(null);
   };
 
-  const getIntensityStyle = (count: number) => {
+  const getIntensityStyle = (slot: TimeSlot, isTop: boolean) => {
+    const count = slot.votes.length;
     if (count === 0) return { backgroundColor: 'transparent' };
-    const opacity = Math.min(count * 0.15, 1);
+
+    if (selectedParticipant) {
+      return slot.votes.includes(selectedParticipant)
+        ? { backgroundColor: '#5151e7' }
+        : { backgroundColor: 'rgba(81, 81, 231, 0.05)' };
+    }
+
+    if (isTop) return { backgroundColor: '#5151e7' };
+    const opacity = Math.min(count * 0.15, 0.7);
     return { backgroundColor: `rgba(81, 81, 231, ${opacity})` };
   };
 
@@ -119,7 +166,7 @@ const ScheduleManagementPage = () => {
       onMouseUp={() => setIsDragging(false)}
       onMouseLeave={() => setIsDragging(false)}
     >
-      <div className="w-5xl px-6">
+      <div className="mx-auto w-5xl px-6">
         <header className="border-point-blue mb-12 flex items-end justify-between border-l-4 pl-6">
           <div className="min-w-0 flex-1">
             <motion.h1
@@ -138,30 +185,52 @@ const ScheduleManagementPage = () => {
           <Button
             variant="outline"
             onClick={() => setModal({ type: 'RESET_CONFIRM' })}
-            className="border-midnight-ink text-midnight-ink shrink-0 rounded-xl px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-gray-50"
+            className="border-midnight-ink text-midnight-ink flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-gray-50"
           >
+            <RotateCcw size={16} />
             초기화
           </Button>
         </header>
 
-        {/* items-stretch를 통해 좌우 섹션 높이를 강제로 통일 */}
-        <div className="flex items-stretch gap-7">
+        <div className="flex items-stretch justify-center gap-7">
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-pure-white flex w-md shrink-0 flex-col rounded-3xl border border-gray-100 p-7 shadow-lg"
           >
             <div className="flex flex-1 flex-col gap-5">
-              <div className="space-y-3">
-                <h3 className="text-midnight-ink text-lg font-black whitespace-nowrap">
-                  1. 내 시간 선택
-                </h3>
-                <Input
-                  label="참여자 이름"
-                  placeholder="이름을 입력하세요"
-                  value={userName}
-                  onChange={({ target }) => setUserName(target.value)}
-                />
+              <div className="space-y-3" ref={nameSectionRef}>
+                <div className="flex items-center gap-2">
+                  <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+                  <CalendarClock size={20} className="text-midnight-ink" />
+                  <h3 className="text-midnight-ink text-lg font-black whitespace-nowrap uppercase">
+                    내 시간 선택
+                  </h3>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute top-0 right-0 flex items-center gap-1 pt-1">
+                    <span
+                      className={`text-xs font-black ${userName.length >= MAX_NAME_LENGTH ? 'text-error' : 'text-silver-mist'}`}
+                    >
+                      {userName.length}
+                    </span>
+                    <span className="text-silver-mist text-xs font-bold">/ {MAX_NAME_LENGTH}</span>
+                  </div>
+                  <Input
+                    ref={nameInputRef}
+                    label="참여자 이름"
+                    placeholder="이름을 입력하세요"
+                    value={userName}
+                    error={nameError ? ' ' : undefined}
+                    onChange={({ target }) => {
+                      if (target.value.length <= MAX_NAME_LENGTH) {
+                        setUserName(target.value);
+                        if (nameError) setNameError(false);
+                      }
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="flex shrink-0 flex-col">
@@ -169,16 +238,15 @@ const ScheduleManagementPage = () => {
                   <div />
                   <div className="grid grid-cols-7 text-center">
                     {DAYS.map((day) => (
-                      <span
-                        key={day}
-                        className="text-point-blue text-[11px] font-black whitespace-nowrap uppercase"
-                      >
+                      <span key={day} className="text-point-blue text-[11px] font-black uppercase">
                         {day}
                       </span>
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-[45px_1fr]">
+                <div
+                  className={`grid grid-cols-[45px_1fr] rounded-xl transition-all duration-300 ${timeError ? 'ring-error/50 bg-error/5 ring-2' : ''}`}
+                >
                   <div className="flex flex-col">
                     {HOURS.map((hour) => (
                       <div
@@ -199,11 +267,7 @@ const ScheduleManagementPage = () => {
                               key={id}
                               onMouseDown={() => handleMouseDown(id)}
                               onMouseEnter={() => handleMouseEnter(id)}
-                              className={`h-4.5 cursor-pointer border-b border-gray-50 transition-colors duration-75 ${
-                                availableSlots.includes(id)
-                                  ? 'bg-point-blue shadow-inner'
-                                  : 'hover:bg-gray-50'
-                              }`}
+                              className={`h-4.5 cursor-pointer border-b border-gray-50 transition-colors duration-75 ${availableSlots.includes(id) ? 'bg-point-blue shadow-inner' : 'hover:bg-gray-50'}`}
                             />
                           );
                         })}
@@ -213,15 +277,14 @@ const ScheduleManagementPage = () => {
                 </div>
               </div>
             </div>
-            {/* 하단 버튼 위치 고정 */}
             <Button
               variant="blue"
               size="md"
               fullWidth
-              className="shadow-point-blue/20 mt-7 rounded-xl py-4 text-base font-black whitespace-nowrap shadow-md active:scale-[0.98]"
+              className="shadow-point-blue/20 mt-7 flex items-center justify-center gap-2 rounded-xl py-4 text-base font-black whitespace-nowrap shadow-md active:scale-[0.98]"
               onClick={submitVotes}
             >
-              내 시간 결과에 반영하기
+              <Check size={20} />내 시간 결과에 반영하기
             </Button>
           </motion.section>
 
@@ -233,20 +296,39 @@ const ScheduleManagementPage = () => {
           >
             <div className="flex flex-1 flex-col gap-5">
               <div className="flex items-center justify-between">
-                <h3 className="text-midnight-ink text-lg font-black whitespace-nowrap">
-                  2. 일정 종합 현황
-                </h3>
-                {analysis.max > 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-point-blue/10 text-point-blue rounded-lg px-2 py-1 text-[9px] font-black whitespace-nowrap"
-                  >
-                    🏆 최다 {analysis.max}명 가능
-                  </motion.div>
-                ) : (
-                  <div className="h-5.25" />
-                )}
+                <div className="flex items-center gap-2">
+                  <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+                  <Users size={20} className="text-midnight-ink" />
+                  <h3 className="text-midnight-ink text-lg font-black whitespace-nowrap uppercase">
+                    일정 종합 현황
+                  </h3>
+                </div>
+                <AnimatePresence mode="wait">
+                  {selectedParticipant ? (
+                    <motion.div
+                      key="filter-badge"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      className="bg-point-blue flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-black whitespace-nowrap text-white shadow-sm"
+                    >
+                      <Filter size={10} />
+                      {selectedParticipant}님 확인 중
+                    </motion.div>
+                  ) : analysis.max > 0 ? (
+                    <motion.div
+                      key="best-badge"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-2.5 py-1 text-[10px] font-black whitespace-nowrap text-white shadow-sm"
+                    >
+                      <Star size={10} fill="currentColor" />
+                      최적의 시간: {analysis.max}명 가능
+                    </motion.div>
+                  ) : (
+                    <div className="h-5.25" />
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="flex shrink-0 flex-col">
@@ -254,10 +336,7 @@ const ScheduleManagementPage = () => {
                   <div />
                   <div className="grid grid-cols-7 text-center">
                     {DAYS.map((day) => (
-                      <span
-                        key={day}
-                        className="text-point-blue text-[11px] font-black whitespace-nowrap uppercase"
-                      >
+                      <span key={day} className="text-point-blue text-[11px] font-black uppercase">
                         {day}
                       </span>
                     ))}
@@ -278,20 +357,23 @@ const ScheduleManagementPage = () => {
                     {DAYS.map((day) => (
                       <div key={day} className="flex flex-col border-r border-gray-100">
                         {HOURS.map((hour) => {
-                          const slot = allVotes.find((s) => s.id === `${day}-${hour}`);
-                          const voteCount = slot?.votes.length || 0;
-                          const isTop = analysis.topIds.includes(slot?.id || '');
+                          const slot = allVotes.find((s) => s.id === `${day}-${hour}`)!;
+                          const voteCount = slot.votes.length;
+                          const isTop = !selectedParticipant && analysis.topIds.includes(slot.id);
                           return (
                             <div
                               key={`${day}-${hour}-res`}
-                              style={getIntensityStyle(voteCount)}
-                              className={`group relative h-4.5 border-b border-gray-50 transition-all duration-300 ${
-                                isTop ? 'z-20 ring-1 ring-amber-400 ring-inset' : ''
-                              }`}
+                              style={getIntensityStyle(slot, isTop)}
+                              className={`group relative h-4.5 border-b border-gray-50 transition-all duration-300 ${isTop ? 'z-20 shadow-[0_0_10px_rgba(81,81,231,0.5)]' : ''}`}
                             >
+                              {isTop && (
+                                <div className="absolute inset-0 flex items-center justify-center opacity-40">
+                                  <Trophy size={10} className="text-white" fill="currentColor" />
+                                </div>
+                              )}
                               {voteCount > 0 && (
                                 <div className="bg-midnight-ink/90 pointer-events-none absolute inset-0 z-10 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-                                  <span className="text-[9px] font-black whitespace-nowrap text-white">
+                                  <span className="text-[9px] font-black text-white">
                                     {voteCount}명
                                   </span>
                                 </div>
@@ -305,34 +387,64 @@ const ScheduleManagementPage = () => {
                 </div>
               </div>
 
-              {/* mt-auto를 통해 결과 박스를 항상 섹션 최하단으로 밀어냄 */}
-              <div className="mt-auto shrink-0 border-t border-gray-100 pt-6">
-                <h4 className="text-midnight-ink mb-4 text-xs font-black tracking-wider whitespace-nowrap uppercase opacity-40">
-                  Best 3 Recommended
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {analysis.sortedSlots.length > 0 ? (
-                    analysis.sortedSlots.map((slot, index) => (
-                      <div
-                        key={slot.id}
-                        className="flex shrink-0 flex-col items-center rounded-xl border border-gray-100 bg-gray-50 p-3"
-                      >
-                        <span className="text-point-blue mb-0.5 text-[9px] font-black whitespace-nowrap">
-                          TOP {index + 1}
-                        </span>
-                        <span className="text-midnight-ink text-center text-[11px] font-black whitespace-nowrap">
-                          {slot.day} {slot.time}
-                        </span>
-                        <span className="text-midnight-ink/50 mt-0.5 text-[9px] font-bold whitespace-nowrap">
-                          {slot.votes.length}명
-                        </span>
+              <div className="mt-auto flex flex-col gap-6 border-t border-gray-100 pt-6">
+                <div>
+                  <h4 className="text-midnight-ink mb-3 flex items-center gap-1.5 text-[11px] font-black tracking-wider uppercase opacity-40">
+                    <Trophy size={12} /> 추천 베스트 일정
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    {analysis.sortedSlots.length > 0 ? (
+                      analysis.sortedSlots.map((slot, index) => (
+                        <div
+                          key={slot.id}
+                          className="flex shrink-0 flex-col items-center rounded-xl border border-gray-100 bg-white p-3 shadow-sm"
+                        >
+                          <span className="text-point-blue mb-0.5 text-[9px] font-black uppercase">
+                            TOP {index + 1}
+                          </span>
+                          <span className="text-midnight-ink text-center text-[11px] font-black whitespace-nowrap">
+                            {slot.day} {slot.time}
+                          </span>
+                          <span className="text-midnight-ink/50 mt-0.5 text-[9px] font-bold">
+                            {slot.votes.length}명 가능
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-midnight-ink/30 col-span-3 flex h-15.5 items-center justify-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 text-xs font-bold">
+                        <Clock size={14} /> 데이터 대기 중...
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-midnight-ink/30 col-span-3 flex h-15.5 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-xs font-bold whitespace-nowrap">
-                      데이터 대기 중...
-                    </div>
-                  )}
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-midnight-ink mb-3 flex items-center gap-1.5 text-[11px] font-black tracking-wider uppercase opacity-40">
+                    <UserCheck size={12} /> 참여 인원 ({analysis.participants.length}명)
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {analysis.participants.length > 0 ? (
+                      analysis.participants.map((name) => (
+                        <button
+                          key={name}
+                          onClick={() =>
+                            setSelectedParticipant((prev) => (prev === name ? null : name))
+                          }
+                          className={`rounded-full border px-3 py-1 text-[10px] font-bold shadow-sm transition-all ${
+                            selectedParticipant === name
+                              ? 'bg-point-blue border-point-blue text-white'
+                              : 'text-midnight-ink hover:border-point-blue/50 border-gray-200 bg-gray-100'
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      ))
+                    ) : (
+                      <span className="text-midnight-ink/30 text-[10px] font-bold italic">
+                        아직 참여자가 없습니다.
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -356,14 +468,28 @@ const ScheduleManagementPage = () => {
               exit={{ opacity: 0, scale: 0.9, y: 15 }}
               className="bg-pure-white relative w-full max-w-sm overflow-hidden rounded-3xl p-9 text-center shadow-2xl"
             >
-              <h3 className="text-midnight-ink mb-2 text-xl font-black whitespace-nowrap">
+              <div className="mb-4 flex justify-center">
+                {modal.type === 'SUCCESS' ? (
+                  <CheckCircle2 size={48} className="text-point-blue" />
+                ) : modal.type === 'DUPLICATE_NAME' ? (
+                  <UserX size={48} className="text-error" />
+                ) : (
+                  <AlertTriangle
+                    size={48}
+                    className={modal.type === 'ERROR' ? 'text-error' : 'text-amber-500'}
+                  />
+                )}
+              </div>
+              <h3 className="text-midnight-ink mb-2 text-xl font-black">
                 {modal.type === 'ERROR'
                   ? '확인 필요'
                   : modal.type === 'SUCCESS'
                     ? '반영 완료'
-                    : '정말 초기화할까요?'}
+                    : modal.type === 'DUPLICATE_NAME'
+                      ? '이름 중복'
+                      : '정말 초기화할까요?'}
               </h3>
-              <p className="text-silver-mist text-base leading-relaxed font-bold">
+              <p className="text-silver-mist text-base font-bold break-keep">
                 {modal.message ||
                   (modal.type === 'RESET_CONFIRM' &&
                     '모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.')}

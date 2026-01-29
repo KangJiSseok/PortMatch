@@ -2,13 +2,23 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Heart } from 'lucide-react';
 import Button from '../../components/Button/Button';
+
+interface Project {
+  id: number;
+  title: string;
+  period: string;
+  description: string;
+}
 
 interface JobPosting {
   id: number;
   title: string;
-  deadline: string;
-  tags: string[];
+  startDate: string;
+  endDate: string;
+  detail: string;
+  jobType: number;
 }
 
 interface CompanyDetails {
@@ -24,12 +34,7 @@ interface CompanyDetails {
   isScrapped: boolean;
   scrapCount: number;
   enterpriseType: string;
-  projects: {
-    id: number;
-    title: string;
-    period: string;
-    description: string;
-  }[];
+  projects: Project[];
 }
 
 interface ApiResponse<T> {
@@ -50,16 +55,35 @@ interface CompanyBackendData {
   logo: string;
   scrapCount?: number;
   isScrapped?: boolean;
-  projects?: {
-    id: number;
-    title: string;
-    period: string;
-    description: string;
-  }[];
+  projects?: Project[];
 }
 
 const DEFAULT_LOGO =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Logo%3C/text%3E%3C/svg%3E";
+
+const calculateDDay = (endDate: string): string => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(endDate);
+  target.setHours(0, 0, 0, 0);
+  const diffTime = target.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return '오늘 마감';
+  if (diffDays < 0) return '마감됨';
+  return `D-${diffDays}`;
+};
+
+const formatRevenue = (value: string | number) => {
+  if (!value || value === '0') return '-';
+  const num = typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, ''), 10) : value;
+  if (isNaN(num)) return value.toString();
+  if (num >= 100000000) {
+    const billion = Math.floor(num / 100000000);
+    const million = Math.floor((num % 100000000) / 10000000);
+    return million > 0 ? `${billion}억 ${million}천만원` : `${billion}억원`;
+  }
+  return `${Math.floor(num / 10000000)}천만원`;
+};
 
 function CompanyDetailsPage() {
   const { companyId: paramId } = useParams<{ companyId: string }>();
@@ -74,54 +98,44 @@ function CompanyDetailsPage() {
     visible: false,
   });
 
-  const getRoleFromStorage = () => {
+  const isApplicant = (() => {
     try {
       const authData = localStorage.getItem('auth-storage');
       if (authData) {
         const parsed = JSON.parse(authData);
-        return parsed.state?.user?.role || 'APPLICANT';
+        return parsed.state?.user?.role?.toUpperCase() === 'APPLICANT';
       }
-    } catch (error) {
-      console.error(error);
-      return 'APPLICANT';
+    } catch {
+      return false;
     }
-    return 'APPLICANT';
-  };
-
-  const userRole = getRoleFromStorage();
-  const isApplicant = userRole.toUpperCase() === 'APPLICANT';
+    return false;
+  })();
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
-
-  useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
         const token = localStorage.getItem('accessToken');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
         let targetId = paramId;
-        if (!targetId || targetId === 'undefined' || targetId === '1') {
+
+        if (!targetId || targetId === 'undefined') {
           const listRes = await axios.get<ApiResponse<CompanyBackendData[]>>('/api/companies', {
             headers,
           });
-          if (listRes.data.code === 1000 && listRes.data.data.length > 0) {
+          if (listRes.data.code === 1000 && listRes.data.data.length > 0)
             targetId = listRes.data.data[0].cid;
-          }
         }
-
-        if (!targetId) {
-          setIsLoading(false);
-          return;
-        }
+        if (!targetId) return;
 
         const [companyRes, jobsRes] = await Promise.all([
           axios.get<ApiResponse<CompanyBackendData>>(`/api/companies/${targetId}`, { headers }),
           axios
-            .get<JobPosting[]>(`/api/job-postings/company/${targetId}`, { headers })
-            .catch(() => ({ data: [] })),
+            .get<ApiResponse<JobPosting[]>>(`/api/job-postings/company/${targetId}`, { headers })
+            .catch(() => ({
+              data: { code: 0, message: '', data: [] } as ApiResponse<JobPosting[]>,
+            })),
         ]);
 
         if (companyRes.data.code === 1000) {
@@ -129,12 +143,12 @@ function CompanyDetailsPage() {
           setCompany({
             id: b.cid,
             name: b.corpName,
-            logo: b.logo === 'string' || !b.logo ? DEFAULT_LOGO : b.logo,
+            logo: b.logo && b.logo !== 'string' ? b.logo : DEFAULT_LOGO,
             description: b.busiCont,
-            location: b.corpAddr === 'string' ? b.totPsncnt : b.corpAddr,
+            location: b.corpAddr || '-',
             industry: 'IT / 소프트웨어 개발',
-            employeeCount: b.totPsncnt,
-            revenue: b.yrSalesAmt,
+            employeeCount: b.totPsncnt ? `${Number(b.totPsncnt).toLocaleString()}명` : '-',
+            revenue: formatRevenue(b.yrSalesAmt),
             website: b.homePg,
             enterpriseType: b.busiSize,
             isScrapped: b.isScrapped || false,
@@ -142,30 +156,23 @@ function CompanyDetailsPage() {
             projects: b.projects || [],
           });
         }
-
-        const rawJobsData = (jobsRes as { data?: JobPosting[] }).data;
-        if (Array.isArray(rawJobsData)) {
-          setJobPostings(rawJobsData);
-        } else if (Array.isArray(jobsRes)) {
-          setJobPostings(jobsRes);
-        }
+        setJobPostings(jobsRes.data.data || []);
       } catch (error) {
         console.error(error);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, [paramId]);
 
   const scrollToId = (id: string) => {
     const element = document.getElementById(id);
-    if (element) {
-      const top =
-        element.getBoundingClientRect().top - document.body.getBoundingClientRect().top - 120;
-      window.scrollTo({ top, behavior: 'smooth' });
-    }
+    if (element)
+      window.scrollTo({
+        top: element.getBoundingClientRect().top + window.scrollY - 120,
+        behavior: 'smooth',
+      });
   };
 
   const showToastMessage = (msg: React.ReactNode) => {
@@ -175,18 +182,23 @@ function CompanyDetailsPage() {
 
   const handleScrap = async () => {
     if (!company || isScraping || !isApplicant) return;
-    const prev = company.isScrapped;
+
+    const prevScrapped = company.isScrapped;
+    const prevCount = company.scrapCount;
+
     setIsScraping(true);
+
     setCompany({
       ...company,
-      isScrapped: !prev,
-      scrapCount: prev ? company.scrapCount - 1 : company.scrapCount + 1,
+      isScrapped: !prevScrapped,
+      scrapCount: prevScrapped ? prevCount - 1 : prevCount + 1,
     });
 
     try {
       const token = localStorage.getItem('accessToken');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      if (prev) {
+
+      if (prevScrapped) {
         await axios.delete(`/api/companies/${company.id}/scrap`, { headers });
       } else {
         await axios.post(`/api/companies/${company.id}/scrap`, {}, { headers });
@@ -202,7 +214,11 @@ function CompanyDetailsPage() {
       }
     } catch (error) {
       console.error(error);
-      setCompany({ ...company, isScrapped: prev, scrapCount: company.scrapCount });
+      setCompany({
+        ...company,
+        isScrapped: prevScrapped,
+        scrapCount: prevCount,
+      });
       alert('스크랩 처리 중 오류가 발생했습니다.');
     } finally {
       setIsScraping(false);
@@ -232,24 +248,13 @@ function CompanyDetailsPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading)
     return (
       <div className="bg-pure-white flex min-h-screen items-center justify-center">
         <div className="border-point-blue h-12 w-12 animate-spin rounded-full border-4 border-t-transparent" />
       </div>
     );
-  }
-
-  if (!company) {
-    return (
-      <div className="bg-pure-white flex min-h-screen flex-col items-center justify-center">
-        <p className="text-midnight-ink mb-4 text-xl font-bold">
-          등록된 기업 정보를 찾을 수 없습니다.
-        </p>
-        <Button onClick={() => navigate(-1)}>뒤로 가기</Button>
-      </div>
-    );
-  }
+  if (!company) return null;
 
   return (
     <AnimatePresence>
@@ -261,8 +266,10 @@ function CompanyDetailsPage() {
       >
         <div className="fixed top-24 right-8 z-50">
           <Button
+            variant="dark"
+            size="sm"
             onClick={() => setHasJobPostings(!hasJobPostings)}
-            className="bg-midnight-ink text-pure-white rounded-full px-6 text-sm font-black shadow-2xl transition-all active:scale-95"
+            className="rounded-full px-6 shadow-2xl active:scale-95"
           >
             {hasJobPostings ? '공고 모드 ON' : '공고 모드 OFF'}
           </Button>
@@ -273,71 +280,57 @@ function CompanyDetailsPage() {
           <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col px-8">
             <div className="flex flex-row items-end gap-12">
               <div
-                className={`border-pure-white bg-pure-white h-40 w-40 shrink-0 overflow-hidden rounded-3xl border-4 shadow-xl transition-all ${!hasJobPostings && 'opacity-50 grayscale'}`}
+                className={`border-pure-white bg-pure-white h-40 w-40 shrink-0 overflow-hidden rounded-3xl border-4 shadow-xl transition-all duration-300 ${!hasJobPostings && 'opacity-50 grayscale'}`}
               >
-                <img
-                  src={company.logo}
-                  className="h-full w-full object-contain p-4"
-                  alt="logo"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = DEFAULT_LOGO;
-                  }}
-                />
+                <img src={company.logo} className="h-full w-full object-contain p-4" alt="logo" />
               </div>
               <div className="flex w-full min-w-0 flex-1 flex-col items-start">
                 <div className="mb-4 flex items-center justify-start gap-2">
                   <span
-                    className={`${hasJobPostings ? 'bg-point-blue' : 'bg-white/20'} text-pure-white rounded-md px-4 py-1.5 text-sm font-black uppercase shadow-xl ring-1 ring-white/10 backdrop-blur-sm`}
+                    className={`${hasJobPostings ? 'bg-point-blue' : 'bg-white/20'} text-pure-white rounded-md px-4 py-1.5 text-sm font-black ring-1 ring-white/10 backdrop-blur-sm transition-colors duration-300`}
                   >
                     {hasJobPostings ? '채용중' : '채용 없음'}
                   </span>
-                  {company.enterpriseType && (
-                    <span className="text-pure-white flex items-center gap-1 rounded-md bg-black/60 px-4 py-1.5 text-sm font-bold whitespace-nowrap shadow-xl ring-1 ring-white/30 backdrop-blur-sm">
-                      {company.enterpriseType}
-                    </span>
-                  )}
+                  <span className="text-pure-white rounded-md bg-black/60 px-4 py-1.5 text-sm font-bold ring-1 ring-white/30 backdrop-blur-sm">
+                    {company.enterpriseType}
+                  </span>
                 </div>
-                <h1 className="text-pure-white line-clamp-2 text-left text-4xl font-black tracking-tighter">
+                <h1 className="text-pure-white line-clamp-1 text-left text-4xl font-black tracking-tighter">
                   {company.name}
                 </h1>
                 <p className="text-pure-white mt-4 text-left text-lg font-bold opacity-90">
                   {company.industry}
                 </p>
               </div>
-
               <div className="flex shrink-0 items-center justify-end gap-3">
                 <Button
+                  variant="light"
                   size="lg"
-                  className="bg-pure-white text-midnight-ink h-14 rounded-2xl px-6 text-base font-black shadow-lg transition-all hover:scale-105"
+                  className="h-14 rounded-2xl px-6"
                   onClick={() => window.open(company.website, '_blank')}
                 >
                   기업 홈페이지 〉
                 </Button>
-
                 <motion.button
                   disabled={!isApplicant || isScraping}
                   onClick={handleScrap}
                   whileHover={isApplicant && !isScraping ? { scale: 1.05 } : {}}
                   whileTap={isApplicant && !isScraping ? { scale: 0.95 } : {}}
-                  className={`flex h-14 min-w-14 flex-col items-center justify-center gap-0.5 rounded-2xl border-2 px-3 shadow-xl transition-all ${
+                  className={`flex h-14 min-w-14 flex-col items-center justify-center rounded-2xl border-2 shadow-xl transition-colors duration-300 ${
                     !isApplicant
-                      ? 'text-pure-white cursor-not-allowed border-transparent bg-white/10 opacity-40 grayscale'
+                      ? 'cursor-not-allowed border-transparent bg-white/10 text-white opacity-40 grayscale'
                       : company.isScrapped
-                        ? 'bg-pure-white border-red-500 text-red-500'
-                        : 'bg-pure-white text-midnight-ink border-zinc-100'
+                        ? 'border-red-500 bg-white text-red-500'
+                        : 'text-midnight-ink border-zinc-100 bg-white'
                   }`}
                 >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
+                  <Heart
+                    size={20}
                     fill={company.isScrapped ? '#ef4444' : 'none'}
                     stroke={company.isScrapped ? '#ef4444' : 'currentColor'}
-                    strokeWidth="2.5"
-                  >
-                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.505 3.975 3 5.5l7 7Z" />
-                  </svg>
-                  <span className="text-[11px] leading-none font-black">{company.scrapCount}</span>
+                    strokeWidth={2.5}
+                  />
+                  <span className="text-[11px] font-black">{company.scrapCount}</span>
                 </motion.button>
               </div>
             </div>
@@ -364,17 +357,18 @@ function CompanyDetailsPage() {
                   ].map((item) => (
                     <div
                       key={item.label}
-                      className="border-silver-mist/40 flex items-center justify-between border-b pb-4"
+                      className="border-silver-mist/40 flex items-center justify-between gap-6 border-b pb-4"
                     >
-                      <span className="text-slate-gray text-base font-bold">{item.label}</span>
-                      <span className="text-midnight-ink text-right text-lg font-black">
-                        {item.value || '-'}
+                      <span className="text-slate-gray shrink-0 text-base font-bold">
+                        {item.label}
+                      </span>
+                      <span className="text-midnight-ink truncate text-right text-lg font-black">
+                        {item.value}
                       </span>
                     </div>
                   ))}
                 </div>
               </section>
-
               <section
                 id="section-projects"
                 className="border-silver-mist bg-pure-white rounded-[40px] border p-12 shadow-sm"
@@ -390,14 +384,12 @@ function CompanyDetailsPage() {
                         className="border-silver-mist bg-cloud-dancer/30 rounded-3xl border p-8"
                       >
                         <div className="mb-3 flex flex-row items-center justify-between gap-4">
-                          <h3 className="min-w-0 flex-1 text-xl font-black break-keep">
-                            {p.title}
-                          </h3>
-                          <span className="bg-pure-white text-slate-gray border-silver-mist/50 shrink-0 rounded-lg border px-3 py-1 text-xs font-black">
+                          <h3 className="min-w-0 flex-1 truncate text-xl font-black">{p.title}</h3>
+                          <span className="bg-pure-white text-slate-gray rounded-lg border px-3 py-1 text-xs font-black">
                             {p.period}
                           </span>
                         </div>
-                        <p className="text-slate-gray text-base leading-relaxed font-medium break-keep">
+                        <p className="text-slate-gray line-clamp-2 text-base font-medium">
                           {p.description}
                         </p>
                       </div>
@@ -409,7 +401,6 @@ function CompanyDetailsPage() {
                   )}
                 </div>
               </section>
-
               <section
                 id="section-jobs"
                 className="border-silver-mist bg-pure-white rounded-[40px] border p-12 shadow-sm"
@@ -417,47 +408,53 @@ function CompanyDetailsPage() {
                 <h2 className="border-point-blue text-midnight-ink mb-10 border-l-8 pl-6 text-3xl font-black tracking-tighter">
                   채용 중인 공고
                 </h2>
-                {jobPostings.length > 0 ? (
-                  <div className="divide-silver-mist divide-y">
-                    {jobPostings.map((job) => (
-                      <div
-                        key={job.id}
-                        className="group flex cursor-pointer items-center justify-between py-8 first:pt-0 last:pb-0"
-                        onClick={() => navigate(`/job-posts/${job.id}`)}
-                      >
-                        <div className="space-y-3">
-                          <h4 className="group-hover:text-point-blue text-2xl font-black transition-colors">
-                            {job.title}
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {job.tags?.map((t) => (
-                              <span
-                                key={t}
-                                className="bg-cloud-dancer text-slate-gray border-silver-mist/30 rounded-lg border px-3 py-1 text-xs font-bold"
-                              >
-                                {t}
-                              </span>
-                            ))}
+                <div className="grid grid-cols-1 gap-4">
+                  {jobPostings.length > 0 ? (
+                    <>
+                      {jobPostings.map((job) => (
+                        <motion.div
+                          key={job.id}
+                          whileHover={{
+                            y: -8,
+                            transition: { type: 'spring', stiffness: 300, damping: 20 },
+                          }}
+                          className="border-silver-mist group flex cursor-pointer flex-col rounded-3xl border bg-zinc-50/30 p-8 transition-shadow duration-300 hover:bg-white hover:shadow-2xl"
+                          onClick={() => navigate(`/job-posts/${job.id}`)}
+                        >
+                          <div className="mb-4 space-y-2">
+                            <h4 className="text-midnight-ink group-hover:text-point-blue line-clamp-1 text-2xl font-black transition-colors duration-300">
+                              {job.title}
+                            </h4>
+                            <p className="text-slate-gray line-clamp-2 text-sm font-medium opacity-70">
+                              {job.detail}
+                            </p>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="mb-2 text-lg font-black text-red-500">{job.deadline}</p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-xl text-sm font-black"
-                          >
-                            상세보기
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-slate-gray py-16 text-center text-xl font-bold">
-                    진행 중인 공고가 없습니다.
-                  </div>
-                )}
+                          <div className="flex items-center justify-between border-t border-zinc-100 pt-6">
+                            <span className="text-slate-gray max-w-60 truncate text-sm font-bold">
+                              {company.location}
+                            </span>
+                            <span className="text-point-blue text-sm font-black">
+                              {calculateDDay(job.endDate)}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))}
+                      <Button
+                        variant="outline"
+                        fullWidth
+                        size="lg"
+                        className="mt-6 rounded-3xl border-2 border-dashed opacity-60 transition-all duration-300 hover:opacity-100"
+                        onClick={() => navigate(`/job-postings?keyword=${company.name}`)}
+                      >
+                        {company.name}의 모든 공고 보기
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="text-slate-gray py-20 text-center text-xl font-bold">
+                      진행 중인 공고가 없습니다.
+                    </div>
+                  )}
+                </div>
               </section>
             </div>
 
@@ -467,7 +464,7 @@ function CompanyDetailsPage() {
                   <h3 className="text-midnight-ink text-md mb-6 font-black tracking-widest uppercase opacity-40">
                     Quick Menu
                   </h3>
-                  <nav className="space-y-4">
+                  <nav className="mb-8 space-y-4">
                     {[
                       { id: 'section-info', label: '기업 정보' },
                       { id: 'section-projects', label: '프로젝트 내역' },
@@ -476,27 +473,29 @@ function CompanyDetailsPage() {
                       <button
                         key={item.id}
                         onClick={() => scrollToId(item.id)}
-                        className="group flex w-full items-center transition-all active:scale-95"
+                        className="group flex w-full items-center transition-transform active:scale-95"
                       >
                         <div className="bg-point-blue h-4 w-1 rounded-full" />
-                        <span className="text-midnight-ink group-hover:text-point-blue px-4 font-bold">
+                        <span className="text-midnight-ink group-hover:text-point-blue px-4 font-bold transition-colors">
                           {item.label}
                         </span>
                       </button>
                     ))}
                   </nav>
-                  <div className="mt-6 space-y-2 border-t border-zinc-50">
+                  <div className="space-y-2 border-t border-zinc-50 pt-6">
                     <Button
                       variant="outline"
+                      fullWidth
                       onClick={handleShare}
-                      className="w-full rounded-xl border-zinc-200 py-3 text-sm font-black transition-all hover:border-zinc-900 hover:bg-zinc-900 hover:text-white"
+                      className="rounded-xl py-3"
                     >
                       공유하기
                     </Button>
                     <Button
                       variant="blue"
+                      fullWidth
                       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      className="w-full rounded-xl py-3 text-sm font-black shadow-[0_8px_15px_rgba(0,119,255,0.1)] hover:scale-[1.01]"
+                      className="rounded-xl py-3 shadow-[0_8px_15px_rgba(0,119,255,0.1)]"
                     >
                       맨 위로 이동
                     </Button>

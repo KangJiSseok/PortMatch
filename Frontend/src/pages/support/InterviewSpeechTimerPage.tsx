@@ -1,5 +1,19 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Timer,
+  Target,
+  Scissors,
+  PencilLine,
+  Settings2,
+  FileText,
+  ClipboardList,
+  BarChart3,
+  Play,
+  Square,
+  RotateCcw,
+  PenLine,
+} from 'lucide-react';
 import Button from '../../components/Button/Button';
 
 const NORMAL_SPEED = 6;
@@ -28,7 +42,7 @@ const InterviewSpeechTimerPage = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isTimerRunning) return;
-      if (e.code === 'Space' || e.code === 'Enter') {
+      if (e.code === 'Space' || e.key === 'Enter') {
         e.preventDefault();
         handleStop();
       }
@@ -85,7 +99,7 @@ const InterviewSpeechTimerPage = () => {
         desc: `목표 시간과 거의 일치하게 마쳤습니다. 현재 속도(${actualSpeed}자/초)를 유지하세요.`,
         color: 'text-emerald-600',
         bg: 'bg-emerald-50',
-        icon: '🎯',
+        icon: <Target size={26} />,
         actualSpeed,
       };
     } else if (diff > 5) {
@@ -95,7 +109,7 @@ const InterviewSpeechTimerPage = () => {
         desc: `목표보다 ${diff}초 초과되었습니다. 현재 속도 기준 약 ${overChars}자 정도 내용을 줄여야 합니다.`,
         color: 'text-error',
         bg: 'bg-red-50',
-        icon: '✂️',
+        icon: <Scissors size={26} />,
         actualSpeed,
       };
     } else {
@@ -105,7 +119,7 @@ const InterviewSpeechTimerPage = () => {
         desc: `목표보다 ${Math.abs(diff)}초 일찍 끝났습니다. 약 ${lackChars}자 정도의 내용을 더 보강해보세요.`,
         color: 'text-amber-600',
         bg: 'bg-amber-50',
-        icon: '✍️',
+        icon: <PencilLine size={26} />,
         actualSpeed,
       };
     }
@@ -140,13 +154,25 @@ const InterviewSpeechTimerPage = () => {
             <div className="flex h-full flex-col gap-6">
               <div className="flex items-start justify-between">
                 <div className="flex flex-1 flex-col gap-6">
-                  <h3 className="text-midnight-ink text-xl font-black whitespace-nowrap">
-                    {isTimerRunning
-                      ? '📜 집중 읽기 모드'
-                      : isCompleted
-                        ? '📋 대본 확인'
-                        : '⚙️ 1. 스피치 설정 및 작성'}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+                    <span className="text-midnight-ink ml-1">
+                      {isTimerRunning ? (
+                        <FileText size={22} />
+                      ) : isCompleted ? (
+                        <ClipboardList size={22} />
+                      ) : (
+                        <Settings2 size={22} />
+                      )}
+                    </span>
+                    <h3 className="text-midnight-ink text-xl font-black whitespace-nowrap">
+                      {isTimerRunning
+                        ? '집중 읽기 모드'
+                        : isCompleted
+                          ? '대본 확인'
+                          : '스피치 설정 및 작성'}
+                    </h3>
+                  </div>
 
                   {!isTimerRunning && !isCompleted && (
                     <div className="flex shrink-0 gap-10">
@@ -206,9 +232,10 @@ const InterviewSpeechTimerPage = () => {
                           <Button
                             variant="blue"
                             size="md"
-                            className="h-12 rounded-xl px-6 text-base font-black shadow-md"
+                            className="flex h-12 items-center gap-2 rounded-xl px-6 text-base font-black shadow-md"
                             onClick={handleStop}
                           >
+                            <Square size={16} fill="currentColor" />
                             읽기 완료
                           </Button>
                           <span className="text-slate-gray text-[9px] leading-none font-bold tracking-tight opacity-40">
@@ -224,7 +251,8 @@ const InterviewSpeechTimerPage = () => {
                         className="flex flex-col items-end"
                       >
                         {!isCompleted && (
-                          <span className="text-point-blue bg-point-blue/5 mb-2 rounded-xl px-5 py-2 text-lg font-black">
+                          <span className="text-point-blue bg-point-blue/5 mb-2 flex items-center gap-2 rounded-xl px-5 py-2 text-lg font-black">
+                            <Timer size={20} />
                             예상 소요 시간: {formatTime(analysis.estimatedSeconds)}
                           </span>
                         )}
@@ -244,10 +272,8 @@ const InterviewSpeechTimerPage = () => {
                   </span>
                 </div>
                 <textarea
-                  className={`bg-cloud-dancer/10 border-soft-pebble/20 focus:border-point-blue/50 w-full flex-1 resize-none rounded-2xl border p-8 font-bold transition-all outline-none ${
-                    isTimerRunning
-                      ? 'text-midnight-ink text-xl leading-relaxed'
-                      : 'text-slate-gray text-base'
+                  className={`bg-cloud-dancer/10 border-soft-pebble/20 focus:border-point-blue/50 w-full flex-1 resize-none rounded-2xl border p-8 leading-relaxed font-bold break-keep transition-all outline-none ${
+                    isTimerRunning ? 'text-midnight-ink text-xl' : 'text-slate-gray text-base'
                   }`}
                   placeholder="발표할 내용을 입력하세요..."
                   value={script}
@@ -261,9 +287,10 @@ const InterviewSpeechTimerPage = () => {
                   <Button
                     variant="blue"
                     size="lg"
-                    className="w-full max-w-lg rounded-2xl py-5 text-xl font-black shadow-md"
+                    className="flex w-full max-w-lg items-center justify-center gap-3 rounded-2xl py-5 text-xl font-black shadow-md"
                     onClick={startPractice}
                   >
+                    <Play size={24} fill="currentColor" />
                     측정 시작하기
                   </Button>
                 </div>
@@ -279,10 +306,10 @@ const InterviewSpeechTimerPage = () => {
             >
               <section className="bg-pure-white flex h-full flex-col rounded-4xl border border-gray-100 p-8 shadow-lg">
                 <div className="flex h-full flex-col items-center justify-center text-center">
-                  <div className="text-slate-gray mb-3 text-base font-bold tracking-widest uppercase opacity-40">
+                  <div className="text-slate-gray mb-2 text-base font-bold tracking-widest uppercase opacity-40">
                     실제 측정 시간
                   </div>
-                  <div className="text-midnight-ink mb-8 text-7xl font-black tracking-tighter tabular-nums">
+                  <div className="text-midnight-ink mb-6 text-7xl font-black tracking-tighter tabular-nums">
                     {formatTime(elapsedTime)}
                   </div>
 
@@ -291,38 +318,45 @@ const InterviewSpeechTimerPage = () => {
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`${resultFeedback.bg} ${resultFeedback.color} mb-6 w-full rounded-2xl border border-current/10 p-5 text-left`}
+                        className={`${resultFeedback.bg} ${resultFeedback.color} mb-4 w-full rounded-3xl border border-current/10 p-6 text-left`}
                       >
-                        <div className="mb-2 flex items-center justify-between">
+                        <div className="mb-3 flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="text-xl">{resultFeedback.icon}</span>
-                            <h4 className="text-base font-black">📊 결과 분석</h4>
+                            {resultFeedback.icon}
+                            <h4 className="flex items-center gap-2 text-xl font-black">
+                              <BarChart3 size={20} />
+                              결과 분석
+                            </h4>
                           </div>
                         </div>
-                        <span className="mb-2 inline-block rounded-md bg-white/50 px-2 py-1 text-[10px] font-black">
+                        <span className="mb-3 inline-block rounded-md bg-white/60 px-2.5 py-1 text-xs font-black">
                           발화 속도: {resultFeedback.actualSpeed}자/초
                         </span>
-                        <p className="text-xs leading-relaxed font-bold">{resultFeedback.desc}</p>
+                        <p className="text-base leading-relaxed font-bold break-keep">
+                          {resultFeedback.desc}
+                        </p>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  <div className="mt-auto flex w-full flex-col gap-3">
+                  <div className="flex w-full flex-col gap-3">
                     <div className="grid grid-cols-2 gap-3">
                       <Button
                         variant="blue"
                         size="lg"
-                        className="rounded-xl py-4 text-lg font-black shadow-md"
+                        className="flex items-center justify-center gap-1.5 rounded-xl py-4 text-base font-black whitespace-nowrap shadow-md"
                         onClick={startPractice}
                       >
+                        <RotateCcw size={18} />
                         다시 측정
                       </Button>
                       <Button
                         variant="outline"
                         size="lg"
-                        className="rounded-xl py-4 text-lg font-black"
+                        className="flex items-center justify-center gap-1.5 rounded-xl py-4 text-base font-black whitespace-nowrap"
                         onClick={handleReset}
                       >
+                        <PenLine size={18} />
                         대본 수정
                       </Button>
                     </div>

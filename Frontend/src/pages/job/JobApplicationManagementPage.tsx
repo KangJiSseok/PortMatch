@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Star, Users } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
 import {
@@ -73,7 +74,6 @@ const JobApplicationManagementPage = () => {
     }
   }, [applications, sortBy]);
 
-  // ✅ localStorage에 저장된 “추가 면접 일정”들을 applicationId 기준으로 맵핑
   const interviewByApplicationId = useMemo(() => {
     const map = new Map<number, true>();
     const extras = getExtraInterviewViews();
@@ -185,7 +185,6 @@ const JobApplicationManagementPage = () => {
                           if (e.key === 'Enter' || e.key === ' ') goResume(app.resumeId);
                         }}
                       >
-                        {/* ✅ 왼쪽: flex-1 + min-w-0로 오른쪽 버튼 안 밀리게 */}
                         <div className="flex min-w-0 flex-1 items-center gap-8">
                           <motion.button
                             whileTap={{ scale: 1.3 }}
@@ -193,13 +192,13 @@ const JobApplicationManagementPage = () => {
                               e.stopPropagation();
                               toggleScrap(app.applicationId);
                             }}
-                            className={`shrink-0 text-3xl transition-colors ${
+                            className={`shrink-0 transition-colors ${
                               app.isScrapped
                                 ? 'text-yellow-400'
                                 : 'text-cloud-dancer group-hover:text-silver-mist'
                             }`}
                           >
-                            {app.isScrapped ? '★' : '☆'}
+                            <Star size={28} fill={app.isScrapped ? 'currentColor' : 'none'} />
                           </motion.button>
 
                           <div className="min-w-0">
@@ -239,7 +238,6 @@ const JobApplicationManagementPage = () => {
                           </div>
                         </div>
 
-                        {/* ✅ 오른쪽 버튼: 폭 고정(텍스트 바뀌어도 안 흔들림) */}
                         <div className="flex shrink-0 items-center gap-4">
                           <Button
                             variant="light"
@@ -253,7 +251,6 @@ const JobApplicationManagementPage = () => {
                             이력서 보기
                           </Button>
 
-                          {/* 🔥 여기 핵심: '면접 일정 잡기' 기준으로 고정폭 */}
                           {hasInterview ? (
                             <Button
                               variant="outline"
@@ -291,8 +288,8 @@ const JobApplicationManagementPage = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="border-silver-mist bg-pure-white flex flex-col items-center justify-center rounded-[40px] border-2 border-dashed py-32 text-center"
               >
-                <div className="bg-cloud-dancer mb-6 flex h-24 w-24 items-center justify-center rounded-3xl text-5xl">
-                  👥
+                <div className="bg-cloud-dancer mb-6 flex h-24 w-24 items-center justify-center rounded-3xl">
+                  <Users size={48} className="text-midnight-ink opacity-20" />
                 </div>
                 <h3 className="text-midnight-ink mb-2 text-2xl font-black whitespace-nowrap">
                   {loading ? '불러오는 중…' : '지원자가 없습니다'}

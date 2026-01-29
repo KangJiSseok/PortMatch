@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, FileText, ListChecks } from 'lucide-react';
 import Button from '../../components/Button/Button';
 
 interface GeneratedQuestion {
@@ -56,6 +57,7 @@ const InterviewQuestionGeneratorPage = () => {
           >
             <div className="mb-6 flex items-center gap-2">
               <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+              <FileText size={20} className="text-midnight-ink" />
               <h2 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap uppercase">
                 Job JD / Requirement
               </h2>
@@ -76,10 +78,11 @@ const InterviewQuestionGeneratorPage = () => {
               <Button
                 variant="blue"
                 size="md"
-                className="rounded-xl py-4 text-lg font-black whitespace-nowrap shadow-md"
+                className="flex items-center justify-center gap-2 rounded-xl py-4 text-lg font-black whitespace-nowrap shadow-md"
                 onClick={handleGenerate}
                 disabled={isLoading}
               >
+                <Sparkles size={20} />
                 {isLoading ? '질문 생성 중...' : 'AI 추천 질문 생성'}
               </Button>
             </div>
@@ -94,6 +97,7 @@ const InterviewQuestionGeneratorPage = () => {
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+                <ListChecks size={20} className="text-midnight-ink" />
                 <h2 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap uppercase">
                   Recommendation
                 </h2>
@@ -138,7 +142,7 @@ const InterviewQuestionGeneratorPage = () => {
                   </div>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center opacity-20">
-                    <div className="mb-4 text-5xl">🎯</div>
+                    <Sparkles size={64} className="text-midnight-ink mb-4" />
                     <p className="text-center text-lg leading-relaxed font-bold whitespace-nowrap italic">
                       공고 정보를 입력하면
                       <br />

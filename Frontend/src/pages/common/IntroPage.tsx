@@ -8,7 +8,7 @@ import {
   useMotionValueEvent,
   MotionValue,
 } from 'framer-motion';
-import { ArrowRight, User, Building2, Cpu, FileSearch, Share2 } from 'lucide-react';
+import { ArrowRight, User, Building2, Cpu, FileSearch, Share2, ChevronsDown } from 'lucide-react';
 
 import imgApplicant from '../../assets/images/intro/applicant.avif';
 import imgCompany from '../../assets/images/intro/company.avif';
@@ -196,18 +196,15 @@ function IntroPage() {
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 45, damping: 30 });
 
   useMotionValueEvent(smoothProgress, 'change', (latest) => {
-    if (latest < 0.2) setActiveSection(0);
-    else if (latest < 0.4) setActiveSection(1);
-    else if (latest < 0.6) setActiveSection(2);
-    else if (latest < 0.8) setActiveSection(3);
-    else setActiveSection(4);
+    const section = Math.min(Math.floor(latest * 5), 4);
+    setActiveSection(section);
   });
 
-  const finalReveal = useTransform(smoothProgress, [0.85, 0.95], [0, 1]);
+  const finalReveal = useTransform(smoothProgress, [0.82, 0.9], [0, 1]);
 
   const handleScrollToSection = (index: number) => {
     if (!containerRef.current) return;
-    const targets = [0.02, 0.28, 0.48, 0.68, 0.98];
+    const targets = [0.1, 0.3, 0.5, 0.7, 0.9];
     window.scrollTo({
       top: (containerRef.current.scrollHeight - window.innerHeight) * targets[index],
       behavior: 'smooth',
@@ -269,12 +266,15 @@ function IntroPage() {
               </span>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/main')}
-            className="rounded-full border border-white/20 bg-white/10 px-8 py-3 text-xs font-bold tracking-widest text-white uppercase backdrop-blur-xl transition-all hover:bg-white hover:text-black"
-          >
-            Skip
-          </button>
+
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => navigate('/main')}
+              className="rounded-full border border-white/20 bg-white/10 px-8 py-3 text-xs font-bold tracking-widest text-white uppercase backdrop-blur-xl transition-all hover:bg-white hover:text-black"
+            >
+              Skip
+            </button>
+          </div>
         </nav>
 
         <div className="absolute top-1/2 right-10 z-50 flex -translate-y-1/2 flex-col gap-6">
@@ -338,6 +338,21 @@ function IntroPage() {
                 AI Portfolio Matching Hub
               </motion.p>
             </div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={activeSection === 0 ? { opacity: 1 } : { opacity: 0 }}
+              transition={{ delay: 1.8, duration: 0.8 }}
+              className="absolute bottom-12 left-1/2 flex -translate-x-1/2 flex-col items-center gap-3 text-white/50"
+            >
+              <span className="text-sm font-bold tracking-[0.3em] uppercase">Scroll Down</span>
+              <motion.div
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <ChevronsDown size={36} />
+              </motion.div>
+            </motion.div>
           </SectionWrapper>
 
           <SectionWrapper show={activeSection === 1}>
@@ -409,7 +424,9 @@ function IntroPage() {
 
 const Particle = ({ data, progress }: { data: ParticleData; progress: MotionValue<number> }) => {
   const isLeft = data.id < PARTICLE_COUNT / 2;
-  const inputRange = [0, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.95, 1];
+
+  const inputRange = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+
   const x = useTransform(progress, inputRange, [
     data.s0.x,
     data.s0.x,
@@ -421,7 +438,9 @@ const Particle = ({ data, progress }: { data: ParticleData; progress: MotionValu
     data.s3.x,
     data.s4.x,
     data.s4.x,
+    data.s4.x,
   ]);
+
   const y = useTransform(progress, inputRange, [
     data.s0.y,
     data.s0.y,
@@ -433,12 +452,13 @@ const Particle = ({ data, progress }: { data: ParticleData; progress: MotionValu
     data.s3.y,
     data.s4.y,
     data.s4.y,
+    data.s4.y,
   ]);
 
-  const scale = useTransform(progress, [0.85, 0.95, 1], [1, 1.2, 1]);
+  const scale = useTransform(progress, [0.8, 0.9, 1], [1, 1.2, 1]);
   const baseColor = isLeft ? '#6366f1' : '#a855f7';
-  const color = useTransform(progress, [0.85, 0.95], ['#ffffff', baseColor]);
-  const opacity = useTransform(progress, [0.85, 0.95], [0.3, 0.8]);
+  const color = useTransform(progress, [0.8, 0.9], ['#ffffff', baseColor]);
+  const opacity = useTransform(progress, [0.8, 0.9], [0.3, 0.8]);
 
   return (
     <motion.div
@@ -466,7 +486,7 @@ const SectionWrapper = ({ children, show }: { children: React.ReactNode; show: b
         : { opacity: 0, y: -20, filter: 'blur(10px)' }
     }
     transition={{ duration: 0.6 }}
-    className="pointer-events-none absolute flex w-full flex-col items-center justify-center"
+    className="pointer-events-none absolute inset-0 flex w-full flex-col items-center justify-center"
   >
     {children}
   </motion.div>

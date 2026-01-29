@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, AlertTriangle, X } from 'lucide-react';
 import Button from '../../components/Button/Button';
 
 interface JobPostForm {
@@ -95,12 +96,6 @@ const JobPostFormPage = () => {
   }, [dateParts.year, dateParts.month]);
 
   useEffect(() => {
-    if (dateParts.day && Number(dateParts.day) > maxDays) {
-      setDateParts((prev) => ({ ...prev, day: maxDays.toString() }));
-    }
-  }, [maxDays, dateParts.day]);
-
-  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
         e.preventDefault();
@@ -110,23 +105,6 @@ const JobPostFormPage = () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
-
-  useEffect(() => {
-    if (isAlwaysOpen) {
-      setForm((prev) => ({ ...prev, deadline: '상시채용' }));
-      setErrors((prev) => ({ ...prev, deadline: undefined }));
-    } else {
-      const { year, month, day } = dateParts;
-      if (year && month && day) {
-        setForm((prev) => ({
-          ...prev,
-          deadline: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
-        }));
-      } else {
-        setForm((prev) => ({ ...prev, deadline: '' }));
-      }
-    }
-  }, [isAlwaysOpen, dateParts]);
 
   const { isLoading } = useQuery({
     queryKey: ['jobPost', id],
@@ -164,6 +142,15 @@ const JobPostFormPage = () => {
       navigate('/company/jobs');
     },
   });
+
+  const getDeadlineString = (parts: typeof dateParts, alwaysOpen: boolean) => {
+    if (alwaysOpen) return '상시채용';
+    const { year, month, day } = parts;
+    if (year && month && day) {
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    return '';
+  };
 
   const scrollToError = (errorKeys: string[]) => {
     const firstErrorKey = errorKeys[0];
@@ -228,10 +215,42 @@ const JobPostFormPage = () => {
     }
   };
 
+  const handleAlwaysOpenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setIsAlwaysOpen(checked);
+    setIsDirty(true);
+
+    setForm((prev) => ({
+      ...prev,
+      deadline: getDeadlineString(dateParts, checked),
+    }));
+
+    if (errors.deadline) {
+      setErrors((prev) => ({ ...prev, deadline: undefined }));
+    }
+  };
+
   const handleDateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setDateParts((prev) => ({ ...prev, [name]: value }));
     setIsDirty(true);
+
+    setDateParts((prev) => {
+      const nextParts = { ...prev, [name]: value };
+
+      if (nextParts.year && nextParts.month) {
+        const currentMax = new Date(Number(nextParts.year), Number(nextParts.month), 0).getDate();
+        if (Number(nextParts.day) > currentMax) {
+          nextParts.day = currentMax.toString();
+        }
+      }
+
+      setForm((prevForm) => ({
+        ...prevForm,
+        deadline: getDeadlineString(nextParts, isAlwaysOpen),
+      }));
+
+      return nextParts;
+    });
 
     if (errors.deadline) {
       setErrors((prev) => ({ ...prev, deadline: undefined }));
@@ -275,12 +294,8 @@ const JobPostFormPage = () => {
     return (
       <div className="bg-pure-white flex min-h-screen min-w-80 items-center justify-center pt-32">
         <div className="text-center">
-          <div className="relative mx-auto mb-6 h-24 w-24">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              className="absolute inset-0 rounded-full border-t-4 border-b-4 border-blue-600"
-            />
+          <div className="mb-6 flex justify-center">
+            <Loader2 size={64} className="animate-spin text-blue-600" />
           </div>
           <p className="text-lg font-black whitespace-nowrap text-slate-400">
             데이터 불러오고 있습니다
@@ -472,7 +487,7 @@ const JobPostFormPage = () => {
                     <input
                       type="checkbox"
                       checked={isAlwaysOpen}
-                      onChange={(e) => setIsAlwaysOpen(e.target.checked)}
+                      onChange={handleAlwaysOpenChange}
                       className="h-4 w-4 rounded border-slate-300 accent-blue-600"
                     />
                     상시채용
@@ -592,7 +607,7 @@ const JobPostFormPage = () => {
                         onClick={() => removeStack(stack)}
                         className="text-blue-300 transition-colors hover:text-blue-600"
                       >
-                        ×
+                        <X size={14} />
                       </button>
                     </motion.span>
                   ))}
@@ -664,20 +679,7 @@ const JobPostFormPage = () => {
               className="relative w-full max-w-md overflow-hidden rounded-4xl bg-white p-10 text-center shadow-2xl"
             >
               <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-                <svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
+                <AlertTriangle size={32} />
               </div>
 
               <h3 className="mb-2 text-2xl font-black tracking-tight whitespace-nowrap text-slate-900">

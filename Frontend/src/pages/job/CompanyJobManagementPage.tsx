@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, FileText } from 'lucide-react';
 import Button from '../../components/Button/Button';
 
 interface JobPosting {
@@ -141,10 +142,10 @@ const CompanyJobManagementPage = () => {
             <Button
               variant="dark"
               size="lg"
-              className="shrink-0 rounded-2xl px-8 shadow-xl"
+              className="flex shrink-0 items-center rounded-2xl px-8 shadow-xl"
               onClick={() => navigate('/company/jobs/new')}
             >
-              <span className="mr-2 text-xl">+</span> 새 공고 등록하기
+              <Plus size={20} className="mr-2" /> 새 공고 등록하기
             </Button>
           </div>
 
@@ -231,7 +232,7 @@ const CompanyJobManagementPage = () => {
               ))
             ) : (
               <div className="border-silver-mist bg-pure-white rounded-[40px] border-2 border-dashed py-32 text-center">
-                <div className="mb-4 text-6xl opacity-20">📄</div>
+                <FileText size={64} className="text-midnight-ink mx-auto mb-4 opacity-20" />
                 <p className="text-soft-pebble text-xl font-black italic">
                   아직 등록된 공고가 없습니다.
                 </p>
