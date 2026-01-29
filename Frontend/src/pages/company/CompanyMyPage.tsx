@@ -1,6 +1,8 @@
 // src/pages/CorporateMyPage.tsx
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 import Button from '../../components/Button/Button';
 
 import CalendarPanel from '../../components/Calendar/CalendarPanel';
@@ -266,13 +268,15 @@ export default function CorporateMyPage() {
   const jobPostQuery = useQueryLike(fetchCompanyJobPosts, []);
   const interviewQuery = useQueryLike(fetchCompanyInterviews, []);
 
+  const authCompanyName = useAuthStore((state) => state.user?.name);
+
   // ✅ 부드러운 진입(깜빡임/급전개 완화)
   const [entered, setEntered] = useState(false);
   useEffect(() => {
     setEntered(true);
   }, []);
 
-  const companyName = profileQuery.data?.companyName ?? '기업';
+  const companyName = authCompanyName ?? profileQuery.data?.companyName ?? '기업';
   const managerName = profileQuery.data?.managerName ?? '-';
   const companyEmail = profileQuery.data?.email ?? '-';
 
@@ -407,7 +411,7 @@ export default function CorporateMyPage() {
                 <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
                   CORPORATE DASHBOARD
                 </p>
-                <h1 className="mt-2 text-4xl font-black tracking-tighter">
+                <h1 className="mt-2 text-4xl font-black tracking-wide">
                   {profileQuery.isLoading ? '불러오는 중…' : companyName}
                 </h1>
                 <p className="mt-3 text-sm font-semibold text-zinc-500">
@@ -439,7 +443,7 @@ export default function CorporateMyPage() {
 
           <div className="grid grid-cols-2 gap-5">
             {/* ✅ 공고 */}
-            <HubCard title="공고" onHeaderClick={() => navigate(ROUTES.jobPostManage)}>
+            <HubCard title="공고" onClick={() => navigate(ROUTES.jobPostManage)}>
               <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -509,7 +513,7 @@ export default function CorporateMyPage() {
             </HubCard>
 
             {/* ✅ 면접 */}
-            <HubCard title="면접" onHeaderClick={() => navigate(ROUTES.interviewManage)}>
+            <HubCard title="면접" onClick={() => navigate(ROUTES.interviewManage)}>
               <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -565,17 +569,6 @@ export default function CorporateMyPage() {
                       ))}
                     </div>
                   )}
-                </div>
-
-                <div className="mt-4 flex justify-end">
-                  <Button
-                    variant="dark"
-                    size="sm"
-                    onClick={() => navigate(ROUTES.interviewManage)}
-                    className="rounded-2xl shadow-md"
-                  >
-                    면접 리스트로 이동
-                  </Button>
                 </div>
               </div>
             </HubCard>
@@ -665,25 +658,41 @@ export default function CorporateMyPage() {
 
 function HubCard({
   title,
-  onHeaderClick,
+  onClick,
   children,
 }: {
   title: string;
-  onHeaderClick: () => void;
+  onClick: () => void;
   children: ReactNode;
 }) {
+  const handleCardClick = (e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const interactive = target.closest('button, a, input, select, textarea, [role="button"]');
+    if (interactive && interactive !== e.currentTarget) return;
+    onClick();
+  };
+
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={onHeaderClick}
-        className="flex w-full cursor-pointer items-center justify-between rounded-none border-x-0 border-t-0 border-b border-zinc-100 bg-transparent px-6 py-4 text-left text-base font-black hover:bg-zinc-50"
-      >
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className={[
+        'group flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition-all',
+        'hover:-translate-y-0.5 hover:shadow-md hover:ring-2 hover:ring-midnight-ink/20',
+        'focus:ring-2 focus:ring-midnight-ink/30 focus:outline-none',
+      ].join(' ')}
+    >
+      <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
         <p className="text-midnight-ink text-base font-black">{title}</p>
-        <span className="text-zinc-300">›</span>
-      </Button>
+        <ChevronRight className="text-zinc-300" size={18} aria-hidden />
+      </div>
 
       {children}
     </div>
