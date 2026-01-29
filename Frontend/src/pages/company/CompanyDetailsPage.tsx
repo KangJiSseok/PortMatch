@@ -92,7 +92,6 @@ function CompanyDetailsPage() {
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isScraping, setIsScraping] = useState(false);
-  const [hasJobPostings, setHasJobPostings] = useState(true);
   const [toast, setToast] = useState<{ message: React.ReactNode; visible: boolean }>({
     message: '',
     visible: false,
@@ -264,32 +263,19 @@ function CompanyDetailsPage() {
         exit={{ opacity: 0 }}
         className="bg-pure-white text-midnight-ink min-h-screen min-w-7xl pb-20"
       >
-        <div className="fixed top-24 right-8 z-50">
-          <Button
-            variant="dark"
-            size="sm"
-            onClick={() => setHasJobPostings(!hasJobPostings)}
-            className="rounded-full px-6 shadow-2xl active:scale-95"
-          >
-            {hasJobPostings ? '공고 모드 ON' : '공고 모드 OFF'}
-          </Button>
-        </div>
-
         <section className="bg-midnight-ink relative flex min-h-100 w-full flex-col justify-end overflow-hidden pb-16">
           <div className="from-point-blue/20 absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--tw-gradient-stops))] via-transparent to-transparent" />
           <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col px-8">
             <div className="flex flex-row items-end gap-12">
-              <div
-                className={`border-pure-white bg-pure-white h-40 w-40 shrink-0 overflow-hidden rounded-3xl border-4 shadow-xl transition-all duration-300 ${!hasJobPostings && 'opacity-50 grayscale'}`}
-              >
+              <div className="border-pure-white bg-pure-white h-40 w-40 shrink-0 overflow-hidden rounded-3xl border-4 shadow-xl transition-all duration-300">
                 <img src={company.logo} className="h-full w-full object-contain p-4" alt="logo" />
               </div>
               <div className="flex w-full min-w-0 flex-1 flex-col items-start">
                 <div className="mb-4 flex items-center justify-start gap-2">
                   <span
-                    className={`${hasJobPostings ? 'bg-point-blue' : 'bg-white/20'} text-pure-white rounded-md px-4 py-1.5 text-sm font-black ring-1 ring-white/10 backdrop-blur-sm transition-colors duration-300`}
+                    className={`${jobPostings.length > 0 ? 'bg-point-blue' : 'bg-white/20'} text-pure-white rounded-md px-4 py-1.5 text-sm font-black ring-1 ring-white/10 backdrop-blur-sm transition-colors duration-300`}
                   >
-                    {hasJobPostings ? '채용중' : '채용 없음'}
+                    {jobPostings.length > 0 ? '채용중' : '채용 없음'}
                   </span>
                   <span className="text-pure-white rounded-md bg-black/60 px-4 py-1.5 text-sm font-bold ring-1 ring-white/30 backdrop-blur-sm">
                     {company.enterpriseType}

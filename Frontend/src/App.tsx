@@ -14,7 +14,7 @@ import Footer from './components/Footer/Footer';
 
 import IntroPage from './pages/common/IntroPage';
 import MainPage from './pages/common/MainPage';
-import DesignSystemPage from './pages/common/DesignSystemPage';
+import NoticePage from './pages/common/NoticePage';
 
 import InterviewPage from './pages/interview/InterviewPage';
 import InterviewLobbyPage from './pages/interview/InterviewLobbyPage';
@@ -49,7 +49,6 @@ import InterviewSpeechTimerPage from './pages/support/InterviewSpeechTimerPage';
 import SprintCapacityCalculatorPage from './pages/support/SprintCapacityCalculatorPage';
 import UnitConverterPage from './pages/support/UnitConverterPage';
 
-import NoticePage from './pages/admin/NoticePage';
 import NoticeManagementPage from './pages/admin/NoticeManagementPage';
 import NoticeFormPage from './pages/admin/NoticeFormPage';
 
@@ -132,6 +131,10 @@ const router = createBrowserRouter([
       {
         path: 'main',
         element: <MainPage />,
+      },
+      {
+        path: 'notices',
+        element: <NoticePage />,
       },
       {
         path: 'mypage',
@@ -303,7 +306,11 @@ const router = createBrowserRouter([
           },
           {
             path: 'interview-template',
-            element: <InterviewTemplatePage />,
+            element: (
+              <AuthGuard mode="AUTHENTICATED">
+                <InterviewTemplatePage />
+              </AuthGuard>
+            ),
           },
           {
             path: 'speech-timer',
@@ -337,17 +344,13 @@ const router = createBrowserRouter([
               </AuthGuard>
             ),
           },
-          {
-            path: 'notices',
-            element: <NoticePage />,
-          },
         ],
       },
       {
         path: 'admin',
         children: [
           {
-            path: 'notices',
+            path: 'notices/manage',
             element: (
               <AuthGuard mode="ADMIN">
                 <NoticeManagementPage />
@@ -371,10 +374,6 @@ const router = createBrowserRouter([
             ),
           },
         ],
-      },
-      {
-        path: 'design',
-        element: <DesignSystemPage />,
       },
       {
         path: '*',

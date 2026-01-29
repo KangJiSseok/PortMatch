@@ -3,6 +3,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useCallback,
   type ReactNode,
   type ChangeEvent,
   type PointerEvent,
@@ -23,6 +24,8 @@ import {
   ListTodo,
   PenTool,
   Settings2,
+  Edit3,
+  Loader2,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import Button from '../../components/Button/Button';
@@ -30,26 +33,32 @@ import Input from '../../components/Input/Input';
 import Select from '../../components/Select/Select';
 
 interface Question {
-  id: string;
+  id: number | string;
   content: string;
-  importance: number;
-  userAnswer?: string;
-  intervieweeAnswer?: string;
-  score?: number;
+  orderIndex: number;
 }
 
-interface QuestionCategory {
-  categoryName: string;
+interface Topic {
+  id?: number | string;
+  name: string;
+  orderIndex: number;
   questions: Question[];
 }
 
 interface InterviewTemplate {
-  id: string;
+  id: number | string;
   title: string;
-  role: string;
-  categories: QuestionCategory[];
+  targetRole: string;
+  topics: Topic[];
   createdAt: string;
-  color: string;
+  updatedAt?: string;
+}
+
+interface ApiResponse<T> {
+  status: boolean;
+  code: number;
+  message: string;
+  data: T;
 }
 
 interface SectionCardProps {
@@ -62,25 +71,24 @@ interface SectionCardProps {
 }
 
 interface CategoryItemProps {
-  cat: QuestionCategory;
-  catIdx: number;
+  topic: Topic;
+  topicIdx: number;
   questionInput: string;
   setQuestionInput: (val: string) => void;
   onAddQuestion: () => void;
-  onRemoveCategory: () => void;
+  onRemoveTopic: () => void;
   onReorderQuestions: (newQuestions: Question[]) => void;
   onRemoveQuestion: (qIdx: number) => void;
-  questionsError: boolean;
+  inputError: boolean;
 }
 
-type ConfirmType = 'EXIT' | 'DELETE_TEMPLATE' | 'DELETE_CATEGORY' | 'DELETE_QUESTION';
+type ConfirmType = 'EXIT' | 'DELETE_TEMPLATE' | 'DELETE_TOPIC' | 'DELETE_QUESTION';
 
 interface ConfirmModalState {
   type: ConfirmType;
-  data?: string | number | { catIdx: number; qIdx: number };
+  data?: string | number | { topicIdx: number; qIdx: number };
 }
 
-const POINT_BLUE = '#5151e7';
 const MAX_CATEGORY_LENGTH = 20;
 
 const ROLE_OPTIONS = [
@@ -99,7 +107,14 @@ const ROLE_OPTIONS = [
   { value: 'other', label: '기타 (직접 입력)' },
 ];
 
-const STORAGE_KEY = 'giterra_interview_templates_v3';
+const API_BASE_URL = '/api/interview-templates';
+
+const shakeVariants = {
+  error: {
+    x: [0, -4, 4, -4, 4, 0],
+    transition: { duration: 0.4 },
+  },
+};
 
 const SectionCard = ({
   title,
@@ -133,25 +148,21 @@ const InterviewTemplatePage = () => {
   const { user } = useAuthStore();
   const isCorporate = user?.role === 'COMPANY';
 
-  const [templates, setTemplates] = useState<InterviewTemplate[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
-
+  const [templates, setTemplates] = useState<InterviewTemplate[]>([]);
+  const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'list' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | number | null>(null);
 
   const [title, setTitle] = useState('');
-  const [role, setRole] = useState('');
+  const [targetRole, setTargetRole] = useState('');
   const [customRole, setCustomRole] = useState('');
-  const [categoryNameInput, setCategoryNameInput] = useState('');
-  const [currentCategories, setCurrentCategories] = useState<QuestionCategory[]>([]);
+  const [topicNameInput, setTopicNameInput] = useState('');
+  const [currentTopics, setCurrentTopics] = useState<Topic[]>([]);
   const [questionInputs, setQuestionInputs] = useState<Record<number, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedViewTemplate, setSelectedViewTemplate] = useState<InterviewTemplate | null>(null);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
-
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null);
 
   const formRef = useRef<HTMLDivElement>(null);
@@ -160,14 +171,62 @@ const InterviewTemplatePage = () => {
   const isDirty = useMemo(() => {
     return (
       view === 'form' &&
-      (title.trim() !== '' || role !== '' || currentCategories.some((c) => c.questions.length > 0))
+      (title.trim() !== '' ||
+        targetRole !== '' ||
+        currentTopics.some((t) => t.questions.length > 0))
     );
-  }, [view, title, role, currentCategories]);
+  }, [view, title, targetRole, currentTopics]);
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       isDirty && !selectedViewTemplate && currentLocation.pathname !== nextLocation.pathname,
   );
+
+  const fetchTemplates = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(API_BASE_URL);
+      if (!response.ok) throw new Error();
+      const result: ApiResponse<InterviewTemplate[]> = await response.json();
+
+      if (result.status && Array.isArray(result.data)) {
+        const fullTemplates = await Promise.all(
+          result.data.map(async (baseItem) => {
+            try {
+              const detailResponse = await fetch(`${API_BASE_URL}/${baseItem.id}`);
+              const detailResult = await detailResponse.json();
+              return detailResult.status ? detailResult.data : baseItem;
+            } catch {
+              return baseItem;
+            }
+          }),
+        );
+        setTemplates(fullTemplates);
+      }
+    } catch {
+      setTemplates([]);
+      showToast('⚠️ 데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  const fetchTemplateDetail = useCallback(async (id: string | number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${id}`);
+      if (!response.ok) throw new Error();
+      const result: ApiResponse<InterviewTemplate> = await response.json();
+      if (result.status) {
+        setSelectedViewTemplate(result.data);
+      }
+    } catch {
+      showToast('⚠️ 상세 정보를 불러올 수 없습니다.');
+    }
+  }, []);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -199,8 +258,8 @@ const InterviewTemplatePage = () => {
 
   const filteredTemplates = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return templates.filter(
-      (t) => t.title.toLowerCase().includes(term) || t.role.toLowerCase().includes(term),
+    return (templates || []).filter(
+      (t) => t.title?.toLowerCase().includes(term) || t.targetRole?.toLowerCase().includes(term),
     );
   }, [templates, searchTerm]);
 
@@ -208,20 +267,20 @@ const InterviewTemplatePage = () => {
     if (template) {
       setEditingId(template.id);
       setTitle(template.title);
-      const isCustom = !ROLE_OPTIONS.some((opt) => opt.label === template.role);
-      setRole(
-        isCustom ? 'other' : ROLE_OPTIONS.find((o) => o.label === template.role)?.value || '',
+      const isCustom = !ROLE_OPTIONS.some((opt) => opt.label === template.targetRole);
+      setTargetRole(
+        isCustom ? 'other' : ROLE_OPTIONS.find((o) => o.label === template.targetRole)?.value || '',
       );
-      setCustomRole(isCustom ? template.role : '');
-      setCurrentCategories(template.categories);
+      setCustomRole(isCustom ? template.targetRole : '');
+      setCurrentTopics(template.topics || []);
     } else {
       setEditingId(null);
       setTitle('');
-      setRole('');
+      setTargetRole('');
       setCustomRole('');
-      setCurrentCategories([
-        { categoryName: isCorporate ? '직무 전문성' : '기술 질문', questions: [] },
-        { categoryName: isCorporate ? '공통 역량' : '기본 인성', questions: [] },
+      setCurrentTopics([
+        { name: isCorporate ? '직무 전문성' : '기술 질문', questions: [], orderIndex: 0 },
+        { name: isCorporate ? '공통 역량' : '기본 인성', questions: [], orderIndex: 1 },
       ]);
     }
     setView('form');
@@ -236,144 +295,141 @@ const InterviewTemplatePage = () => {
     }
   };
 
-  const handleUpdateDetailContent = <K extends keyof Question>(
-    templateId: string,
-    catIdx: number,
-    qIdx: number,
-    field: K,
-    value: Question[K],
-  ) => {
-    const updatedTemplates = templates.map((t) => {
-      if (t.id === templateId) {
-        const newCategories = [...t.categories];
-        const targetCategory = { ...newCategories[catIdx] };
-        const targetQuestions = [...targetCategory.questions];
-        targetQuestions[qIdx] = { ...targetQuestions[qIdx], [field]: value };
-        targetCategory.questions = targetQuestions;
-        newCategories[catIdx] = targetCategory;
-        return { ...t, categories: newCategories };
-      }
-      return t;
-    });
-
-    setTemplates(updatedTemplates);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTemplates));
-    const current = updatedTemplates.find((t) => t.id === templateId);
-    if (current) setSelectedViewTemplate(current);
-  };
-
-  const handleCategoryInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleTopicInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value.length <= MAX_CATEGORY_LENGTH) {
-      setCategoryNameInput(value);
+      setTopicNameInput(value);
+      setErrors((prev) => ({ ...prev, topicEmpty: false }));
     }
   };
 
-  const handleAddCategory = () => {
-    const name = categoryNameInput.trim();
+  const handleAddTopic = () => {
+    const name = topicNameInput.trim();
     if (!name) {
-      setErrors((prev) => ({ ...prev, categoryName: true }));
+      setErrors((prev) => ({ ...prev, topicEmpty: true }));
       return;
     }
-
-    const isDuplicate = currentCategories.some(
-      (cat) => cat.categoryName.toLowerCase() === name.toLowerCase(),
-    );
-
-    if (isDuplicate) {
+    if (currentTopics.some((t) => t.name.toLowerCase() === name.toLowerCase())) {
       showToast('⚠️ 이미 존재하는 주제 이름입니다.');
       return;
     }
-
-    setCurrentCategories([{ categoryName: name, questions: [] }, ...currentCategories]);
-    setCategoryNameInput('');
+    setCurrentTopics([{ name, questions: [], orderIndex: currentTopics.length }, ...currentTopics]);
+    setTopicNameInput('');
+    setErrors((prev) => ({ ...prev, topicEmpty: false }));
   };
 
-  const executeDeleteCategory = (index: number) => {
-    const updated = currentCategories.filter((_, i) => i !== index);
-    setCurrentCategories(updated);
+  const executeDeleteTopic = (index: number) => {
+    setCurrentTopics(currentTopics.filter((_, i) => i !== index));
     setConfirmModal(null);
   };
 
-  const handleAddQuestion = (catIdx: number) => {
-    const content = (questionInputs[catIdx] || '').trim();
-    if (!content) return;
+  const handleAddQuestion = (topicIdx: number) => {
+    const content = (questionInputs[topicIdx] || '').trim();
+    if (!content) {
+      setErrors((prev) => ({ ...prev, [`questionEmpty-${topicIdx}`]: true }));
+      return;
+    }
 
     const newQuestion: Question = {
       id: `q-${crypto.randomUUID()}`,
       content,
-      importance: 1,
+      orderIndex: currentTopics[topicIdx].questions.length,
     };
 
-    const updated = [...currentCategories];
-    updated[catIdx].questions = [newQuestion, ...updated[catIdx].questions];
-    setCurrentCategories(updated);
-    setQuestionInputs((prev) => ({ ...prev, [catIdx]: '' }));
+    const updated = [...currentTopics];
+    updated[topicIdx].questions = [newQuestion, ...updated[topicIdx].questions];
+    setCurrentTopics(updated);
+    setQuestionInputs((prev) => ({ ...prev, [topicIdx]: '' }));
+    setErrors((prev) => ({ ...prev, [`questionEmpty-${topicIdx}`]: false }));
   };
 
-  const executeDeleteQuestion = (catIdx: number, qIdx: number) => {
-    const updated = [...currentCategories];
-    updated[catIdx].questions.splice(qIdx, 1);
-    setCurrentCategories(updated);
+  const executeDeleteQuestion = (topicIdx: number, qIdx: number) => {
+    const updated = [...currentTopics];
+    updated[topicIdx].questions.splice(qIdx, 1);
+    setCurrentTopics(updated);
     setConfirmModal(null);
   };
 
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     const newErrors: Record<string, boolean> = {};
     if (!title.trim()) newErrors.title = true;
-    if (!role) newErrors.role = true;
-    if (role === 'other' && !customRole.trim()) newErrors.customRole = true;
-
-    const hasEmptyCategory = currentCategories.some((cat) => cat.questions.length === 0);
-    if (hasEmptyCategory) newErrors.questionsError = true;
+    if (!targetRole) newErrors.targetRole = true;
+    if (targetRole === 'other' && !customRole.trim()) newErrors.customRole = true;
+    if (currentTopics.some((t) => t.questions.length === 0)) newErrors.questionsError = true;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      const hasBasicError = newErrors.title || newErrors.role || newErrors.customRole;
-      if (hasBasicError) {
-        showToast('⚠️ 필수 항목을 확인해주세요.');
-        scrollToSection(formRef);
-      } else if (newErrors.questionsError) {
-        showToast('⚠️ 모든 주제에 최소 한 개 이상의 질문을 등록해야 합니다.');
-        scrollToSection(categoryInputRef);
-      }
+      showToast(
+        newErrors.questionsError
+          ? '⚠️ 모든 주제에 질문을 등록해야 합니다.'
+          : '⚠️ 필수 항목을 확인해주세요.',
+      );
+      scrollToSection(newErrors.questionsError ? categoryInputRef : formRef);
       return;
     }
 
     const finalRole =
-      role === 'other'
+      targetRole === 'other'
         ? customRole.trim()
-        : ROLE_OPTIONS.find((r) => r.value === role)?.label || role;
+        : ROLE_OPTIONS.find((r) => r.value === targetRole)?.label || targetRole;
 
-    const newTemplate: InterviewTemplate = {
-      id: editingId || crypto.randomUUID(),
-      title,
-      role: finalRole,
-      categories: currentCategories,
-      createdAt: new Date().toLocaleDateString(),
-      color: POINT_BLUE,
-    };
+    const mappedTopics = currentTopics.map((topic, tIdx) => ({
+      ...topic,
+      orderIndex: tIdx,
+      questions: topic.questions.map((q, qIdx) => ({
+        ...q,
+        orderIndex: qIdx,
+      })),
+    }));
 
-    let updated;
-    if (editingId) {
-      updated = templates.map((t) => (t.id === editingId ? newTemplate : t));
-    } else {
-      updated = [newTemplate, ...templates];
+    const templateData = { title, targetRole: finalRole, topics: mappedTopics };
+
+    try {
+      const url = editingId ? `${API_BASE_URL}/${editingId}` : API_BASE_URL;
+      const method = editingId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(templateData),
+      });
+
+      if (!response.ok) throw new Error();
+
+      showToast(editingId ? '✅ 템플릿이 수정되었습니다.' : '✅ 템플릿이 저장되었습니다.');
+      setView('list');
+      fetchTemplates();
+    } catch {
+      showToast('⚠️ 저장에 실패했습니다.');
     }
-
-    setTemplates(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    showToast(editingId ? '✅ 템플릿이 수정되었습니다.' : '✅ 템플릿이 저장되었습니다.');
-    setView('list');
   };
 
-  const executeDeleteTemplate = (id: string) => {
-    const updated = templates.filter((t) => t.id !== id);
-    setTemplates(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    setConfirmModal(null);
-    showToast('✨ 삭제되었습니다.');
+  const executeDeleteTemplate = async (id: string | number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error();
+      setTemplates(templates.filter((t) => t.id !== id));
+      setConfirmModal(null);
+      showToast('✨ 삭제되었습니다.');
+    } catch {
+      showToast('⚠️ 삭제에 실패했습니다.');
+    }
   };
+
+  if (loading && view === 'list' && templates.length === 0) {
+    return (
+      <div className="bg-pure-white flex min-h-screen min-w-350 items-center justify-center pt-32">
+        <div className="text-center">
+          <div className="mb-6 flex justify-center">
+            <Loader2 size={64} className="text-point-blue animate-spin" />
+          </div>
+          <p className="text-silver-mist text-lg font-black whitespace-nowrap">
+            데이터를 불러오고 있습니다
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32 select-none">
@@ -446,7 +502,11 @@ const InterviewTemplatePage = () => {
                   </div>
                 </div>
 
-                {filteredTemplates.length > 0 ? (
+                {loading ? (
+                  <div className="flex min-h-80 items-center justify-center">
+                    <Loader2 size={40} className="text-point-blue animate-spin" />
+                  </div>
+                ) : filteredTemplates.length > 0 ? (
                   <div className="grid grid-cols-3 gap-5">
                     {filteredTemplates.map((t) => (
                       <motion.div
@@ -455,21 +515,23 @@ const InterviewTemplatePage = () => {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className="group bg-pure-white relative flex h-full min-h-60 shrink-0 cursor-pointer flex-col overflow-hidden rounded-3xl border border-slate-100 p-5 shadow-sm transition-all hover:border-transparent hover:shadow-xl"
-                        onClick={() => setSelectedViewTemplate(t)}
+                        onClick={() => fetchTemplateDetail(t.id)}
                       >
                         <div className="bg-point-blue absolute top-0 bottom-0 left-0 w-1 transition-all group-hover:w-1.5" />
                         <div className="mb-4 flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1 pr-6 pl-2">
                             <div className="mb-0 flex flex-col items-start gap-1.5">
                               <span className="bg-point-blue text-pure-white max-w-full truncate rounded-md px-2.5 py-0.5 text-[11px] font-black tracking-wider whitespace-nowrap uppercase shadow-sm">
-                                {t.role}
+                                {t.targetRole}
                               </span>
                               <h4 className="text-midnight-ink w-full truncate text-xl leading-tight font-black break-keep">
                                 {t.title}
                               </h4>
                             </div>
                             <span className="text-silver-mist ml-1 text-[11px] font-bold whitespace-nowrap">
-                              {t.createdAt}
+                              {t.updatedAt || t.createdAt
+                                ? new Date(t.updatedAt || t.createdAt).toLocaleDateString()
+                                : '날짜 정보 없음'}
                             </span>
                           </div>
                           <button
@@ -484,33 +546,30 @@ const InterviewTemplatePage = () => {
                         </div>
 
                         <div className="relative mb-5 flex flex-wrap items-start gap-1 pl-2">
-                          {t.categories.slice(0, 4).map((c, i) => (
-                            <span
-                              key={i}
-                              className="bg-point-blue/10 text-point-blue rounded-md px-2 py-0.5 text-[10px] font-black whitespace-nowrap"
-                            >
-                              {c.categoryName} ({c.questions.length})
-                            </span>
-                          ))}
-                          {t.categories.length > 4 && (
-                            <span className="bg-point-blue/5 text-point-blue rounded-md px-2 py-0.5 text-[10px] font-black whitespace-nowrap italic">
-                              외 {t.categories.length - 4}개
+                          {Array.isArray(t.topics) && t.topics.length > 0 ? (
+                            <>
+                              {t.topics.slice(0, 4).map((topic, i) => (
+                                <span
+                                  key={i}
+                                  className="bg-point-blue/10 text-point-blue rounded-md px-2 py-0.5 text-[10px] font-black whitespace-nowrap"
+                                >
+                                  {topic.name} ({topic.questions?.length || 0})
+                                </span>
+                              ))}
+                              {t.topics.length > 4 && (
+                                <span className="bg-point-blue/5 text-point-blue rounded-md px-2 py-0.5 text-[10px] font-black whitespace-nowrap italic">
+                                  외 {t.topics.length - 4}건
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-silver-mist text-[10px] font-bold italic opacity-60">
+                              등록된 주제가 없습니다.
                             </span>
                           )}
                         </div>
 
-                        <div className="mt-auto flex shrink-0 items-center justify-between border-t border-slate-50 pt-3 pl-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-black whitespace-nowrap"
-                            onClick={(e: MouseEvent) => {
-                              e.stopPropagation();
-                              handleOpenForm(t);
-                            }}
-                          >
-                            수정
-                          </Button>
+                        <div className="mt-auto flex shrink-0 items-center justify-end border-t border-slate-50 pt-3 pl-2">
                           <div className="group/link relative flex items-center gap-1">
                             <span className="text-point-blue text-[11px] font-black whitespace-nowrap transition-transform group-hover/link:translate-x-1">
                               상세 보기
@@ -519,25 +578,17 @@ const InterviewTemplatePage = () => {
                               size={12}
                               className="text-point-blue transition-transform group-hover/link:translate-x-1"
                             />
-                            <div className="bg-point-blue absolute -bottom-1 left-0 h-0.5 w-0 transition-all duration-300 group-hover/link:w-full" />
                           </div>
                         </div>
                       </motion.div>
                     ))}
                   </div>
                 ) : (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8"
-                  >
+                  <motion.div className="flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8">
                     <SearchX size={48} className="text-silver-mist mb-4 opacity-30" />
                     <h3 className="text-midnight-ink mb-2 text-xl font-black whitespace-nowrap">
                       검색 결과가 없습니다
                     </h3>
-                    <p className="text-silver-mist text-base font-bold whitespace-nowrap">
-                      다른 검색어를 입력하거나 새로운 템플릿을 추가해 보세요.
-                    </p>
                   </motion.div>
                 )}
               </SectionCard>
@@ -579,12 +630,12 @@ const InterviewTemplatePage = () => {
                         <Select
                           label="대상 직무"
                           options={ROLE_OPTIONS}
-                          value={role}
-                          error={!!errors.role}
-                          onChange={(e) => setRole(e.target.value)}
+                          value={targetRole}
+                          error={!!errors.targetRole}
+                          onChange={(e) => setTargetRole(e.target.value)}
                         />
                         <AnimatePresence>
-                          {role === 'other' && (
+                          {targetRole === 'other' && (
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
@@ -605,29 +656,24 @@ const InterviewTemplatePage = () => {
 
                     <div className="flex shrink-0 flex-col space-y-4" ref={categoryInputRef}>
                       <div className="flex shrink-0 items-end gap-2">
-                        <div className="relative flex-1">
+                        <motion.div
+                          className="relative flex-1"
+                          animate={errors.topicEmpty ? 'error' : ''}
+                          variants={shakeVariants}
+                        >
                           <Input
                             label="새 주제 추가"
                             placeholder="예: 프로젝트 경험, 지원 동기"
-                            value={categoryNameInput}
-                            onChange={handleCategoryInputChange}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+                            value={topicNameInput}
+                            onChange={handleTopicInputChange}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddTopic()}
+                            error={errors.topicEmpty ? ' ' : undefined}
                           />
-                          <div className="absolute top-0 right-0 flex items-center gap-1 pt-1">
-                            <span
-                              className={`text-xs font-black ${categoryNameInput.length >= MAX_CATEGORY_LENGTH ? 'text-error' : 'text-silver-mist'}`}
-                            >
-                              {categoryNameInput.length}
-                            </span>
-                            <span className="text-silver-mist text-xs font-bold">
-                              / {MAX_CATEGORY_LENGTH}
-                            </span>
-                          </div>
-                        </div>
+                        </motion.div>
                         <Button
                           variant="outline"
                           className="flex h-11 shrink-0 items-center gap-2 rounded-xl px-6 font-black whitespace-nowrap"
-                          onClick={handleAddCategory}
+                          onClick={handleAddTopic}
                         >
                           <Plus size={18} />
                           주제 추가
@@ -636,36 +682,36 @@ const InterviewTemplatePage = () => {
 
                       <Reorder.Group
                         axis="y"
-                        values={currentCategories}
-                        onReorder={setCurrentCategories}
+                        values={currentTopics}
+                        onReorder={setCurrentTopics}
                         className="grid shrink-0 grid-cols-1 gap-6"
                       >
-                        {currentCategories.map((cat, catIdx) => (
+                        {currentTopics.map((topic, topicIdx) => (
                           <CategoryItem
-                            key={cat.categoryName}
-                            cat={cat}
-                            catIdx={catIdx}
-                            questionInput={questionInputs[catIdx] || ''}
+                            key={topic.name}
+                            topic={topic}
+                            topicIdx={topicIdx}
+                            questionInput={questionInputs[topicIdx] || ''}
                             setQuestionInput={(val: string) =>
-                              setQuestionInputs((prev) => ({ ...prev, [catIdx]: val }))
+                              setQuestionInputs((prev) => ({ ...prev, [topicIdx]: val }))
                             }
-                            onAddQuestion={() => handleAddQuestion(catIdx)}
-                            onRemoveCategory={() => {
-                              if (currentCategories.length <= 1) {
+                            onAddQuestion={() => handleAddQuestion(topicIdx)}
+                            onRemoveTopic={() => {
+                              if (currentTopics.length <= 1) {
                                 showToast('⚠️ 최소 한 개의 주제는 유지되어야 합니다.');
                               } else {
-                                setConfirmModal({ type: 'DELETE_CATEGORY', data: catIdx });
+                                setConfirmModal({ type: 'DELETE_TOPIC', data: topicIdx });
                               }
                             }}
                             onReorderQuestions={(newQuestions: Question[]) => {
-                              const updated = [...currentCategories];
-                              updated[catIdx].questions = newQuestions;
-                              setCurrentCategories(updated);
+                              const updated = [...currentTopics];
+                              updated[topicIdx].questions = newQuestions;
+                              setCurrentTopics(updated);
                             }}
                             onRemoveQuestion={(qIdx: number) =>
-                              setConfirmModal({ type: 'DELETE_QUESTION', data: { catIdx, qIdx } })
+                              setConfirmModal({ type: 'DELETE_QUESTION', data: { topicIdx, qIdx } })
                             }
-                            questionsError={errors.questionsError && cat.questions.length === 0}
+                            inputError={!!errors[`questionEmpty-${topicIdx}`]}
                           />
                         ))}
                       </Reorder.Group>
@@ -699,65 +745,65 @@ const InterviewTemplatePage = () => {
 
       <AnimatePresence>
         {selectedViewTemplate && (
-          <div className="bg-midnight-ink/60 fixed inset-0 z-7000 flex items-start justify-center p-5 backdrop-blur-xl">
+          <div className="bg-midnight-ink/60 fixed inset-0 z-7000 flex items-start justify-center backdrop-blur-xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-pure-white relative mt-10 flex max-h-[calc(100vh-80px)] w-full max-w-4xl flex-col overflow-hidden rounded-4xl px-7 pt-16 pb-7 shadow-2xl"
+              className="bg-pure-white relative mt-10 flex max-h-[calc(100vh-80px)] w-full max-w-4xl flex-col overflow-hidden rounded-4xl px-7 pt-6 pb-7 shadow-2xl"
             >
               <div className="mb-5 flex shrink-0 items-start justify-between">
                 <div>
-                  <span className="bg-point-blue text-pure-white rounded-lg px-3 py-1 text-[10px] font-black whitespace-nowrap uppercase">
-                    {selectedViewTemplate.role}
+                  <span className="bg-point-blue text-pure-white rounded-lg px-3 py-1 text-sm font-black whitespace-nowrap uppercase">
+                    {selectedViewTemplate.targetRole}
                   </span>
                   <h3 className="text-midnight-ink mt-2 truncate text-2xl leading-tight font-black break-keep">
                     {selectedViewTemplate.title}
                   </h3>
                 </div>
-                <button
-                  onClick={() => setSelectedViewTemplate(null)}
-                  className="text-silver-mist hover:text-midnight-ink transition-colors"
-                >
-                  <X size={28} />
-                </button>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1.5 rounded-xl px-4 font-black"
+                    onClick={() => {
+                      const t = selectedViewTemplate;
+                      setSelectedViewTemplate(null);
+                      handleOpenForm(t);
+                    }}
+                  >
+                    <Edit3 size={16} /> 수정하기
+                  </Button>
+                  <button
+                    onClick={() => setSelectedViewTemplate(null)}
+                    className="text-silver-mist hover:text-midnight-ink transition-colors"
+                  >
+                    <X size={28} />
+                  </button>
+                </div>
               </div>
 
               <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto pr-3">
-                {selectedViewTemplate.categories.map((cat, cIdx) => (
-                  <div key={cIdx} className="space-y-3">
+                {(selectedViewTemplate.topics || []).map((topic, tIdx) => (
+                  <div key={tIdx} className="space-y-3">
                     <div className="flex items-center gap-2">
                       <div className="bg-point-blue h-3.5 w-1 rounded-full" />
                       <span className="text-midnight-ink text-lg font-black tracking-tight whitespace-nowrap uppercase">
-                        {cat.categoryName}
+                        {topic.name}
                       </span>
                     </div>
                     <div className="grid gap-3">
-                      {cat.questions.map((q, qIdx) => (
+                      {(topic.questions || []).map((q, qIdx) => (
                         <div
                           key={q.id}
                           className="border-soft-pebble/30 bg-cloud-dancer/10 rounded-2xl border p-5 shadow-sm"
                         >
-                          <p className="text-midnight-ink mb-4 text-[15px] leading-relaxed font-bold break-keep">
+                          <p className="text-midnight-ink text-[15px] leading-relaxed font-bold break-keep">
                             <span className="text-point-blue/30 mr-3 font-black whitespace-nowrap">
                               Q{qIdx + 1}
                             </span>
                             {q.content}
                           </p>
-                          <textarea
-                            className="bg-pure-white border-soft-pebble/50 focus:border-point-blue min-h-20 w-full rounded-xl border p-4 text-sm leading-relaxed font-semibold break-keep whitespace-pre-wrap outline-none"
-                            placeholder="이곳에 메모나 가이드 답변을 작성하세요."
-                            value={(isCorporate ? q.intervieweeAnswer : q.userAnswer) || ''}
-                            onChange={(e) =>
-                              handleUpdateDetailContent(
-                                selectedViewTemplate.id,
-                                cIdx,
-                                qIdx,
-                                isCorporate ? 'intervieweeAnswer' : 'userAnswer',
-                                e.target.value,
-                              )
-                            }
-                          />
                         </div>
                       ))}
                     </div>
@@ -772,7 +818,7 @@ const InterviewTemplatePage = () => {
                   className="shrink-0 rounded-xl px-10 font-black whitespace-nowrap shadow-lg"
                   onClick={() => setSelectedViewTemplate(null)}
                 >
-                  작성 완료
+                  닫기
                 </Button>
               </div>
             </motion.div>
@@ -844,12 +890,12 @@ const InterviewTemplatePage = () => {
                       case 'DELETE_TEMPLATE':
                         executeDeleteTemplate(confirmModal.data as string);
                         break;
-                      case 'DELETE_CATEGORY':
-                        executeDeleteCategory(confirmModal.data as number);
+                      case 'DELETE_TOPIC':
+                        executeDeleteTopic(confirmModal.data as number);
                         break;
                       case 'DELETE_QUESTION': {
-                        const d = confirmModal.data as { catIdx: number; qIdx: number };
-                        executeDeleteQuestion(d.catIdx, d.qIdx);
+                        const d = confirmModal.data as { topicIdx: number; qIdx: number };
+                        executeDeleteQuestion(d.topicIdx, d.qIdx);
                         break;
                       }
                     }
@@ -869,20 +915,20 @@ const InterviewTemplatePage = () => {
 };
 
 const CategoryItem = ({
-  cat,
+  topic,
   questionInput,
   setQuestionInput,
   onAddQuestion,
-  onRemoveCategory,
+  onRemoveTopic,
   onReorderQuestions,
   onRemoveQuestion,
-  questionsError,
+  inputError,
 }: CategoryItemProps) => {
   const dragControls = useDragControls();
   return (
     <Reorder.Item
-      key={cat.categoryName}
-      value={cat}
+      key={topic.name}
+      value={topic}
       dragListener={false}
       dragControls={dragControls}
       layout
@@ -899,11 +945,11 @@ const CategoryItem = ({
           </div>
           <div className="bg-point-blue h-4 w-1 shrink-0 rounded-full" />
           <span className="text-midnight-ink truncate text-lg font-black whitespace-nowrap">
-            {cat.categoryName}
+            {topic.name}
           </span>
         </div>
         <button
-          onClick={onRemoveCategory}
+          onClick={onRemoveTopic}
           className="bg-error text-pure-white hover:bg-pure-white hover:text-error hover:border-error flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-xs font-black whitespace-nowrap transition-all"
         >
           <Trash2 size={12} />
@@ -911,9 +957,14 @@ const CategoryItem = ({
         </button>
       </motion.div>
 
-      <motion.div layout="position" className="mb-6 flex shrink-0 gap-2">
+      <motion.div
+        layout="position"
+        className="mb-6 flex shrink-0 gap-2"
+        animate={inputError ? 'error' : ''}
+        variants={shakeVariants}
+      >
         <input
-          className={`bg-pure-white focus:border-point-blue flex-1 rounded-xl border px-4 py-3 text-sm font-bold transition-all outline-none ${questionsError ? 'border-error shadow-error/10 shadow-sm' : 'border-soft-pebble/50'}`}
+          className={`bg-pure-white focus:border-point-blue flex-1 rounded-xl border px-4 py-3 text-sm font-bold transition-all outline-none ${inputError ? 'border-error shadow-error/10' : 'border-soft-pebble/50'}`}
           placeholder="질문을 입력하세요"
           value={questionInput}
           onChange={(e) => setQuestionInput(e.target.value)}
@@ -932,12 +983,12 @@ const CategoryItem = ({
       <div className="flex flex-col">
         <Reorder.Group
           axis="y"
-          values={cat.questions}
+          values={topic.questions || []}
           onReorder={onReorderQuestions}
           className="space-y-3"
         >
           <AnimatePresence initial={false}>
-            {cat.questions.map((q: Question, qIdx: number) => (
+            {(topic.questions || []).map((q: Question, qIdx: number) => (
               <QuestionItem key={q.id} q={q} qIdx={qIdx} onRemove={() => onRemoveQuestion(qIdx)} />
             ))}
           </AnimatePresence>
