@@ -52,7 +52,6 @@ function StreamVideo({
     if (!el || !streamManager) return;
 
     streamManager.addVideoElement(el);
-
     if (muted) el.muted = true;
 
     return () => {
@@ -77,7 +76,6 @@ function StreamVideo({
  */
 async function fetchOpenViduToken(sessionId: string): Promise<string> {
   const sid = encodeURIComponent(sessionId);
-
   const res = await axiosInstance.post(`/interview/sessions/${sid}/connections`, {});
 
   const payload = res.data as unknown;
@@ -99,13 +97,14 @@ async function fetchOpenViduToken(sessionId: string): Promise<string> {
 }
 
 /**
- * ✅ 백엔드가 토큰을 wss://localhost/... 로 내려줄 때,
+ * ✅ 백엔드가 토큰을 wss://localhost/... 또는 ws://localhost/... 로 내려줄 때,
  *    프론트에서 VITE_OPENVIDU_PUBLIC_URL 기준으로 host/protocol을 교체하는 임시 패치.
  *
- * 예)
- *  token:  wss://localhost/openvidu?sessionId=...&token=...
- *  env:    https://i14d205.p.ssafy.io:5443
- *  result: wss://i14d205.p.ssafy.io:5443/openvidu?sessionId=...&token=...
+ * publicUrl 예시:
+ *  - http://i14d205.p.ssafy.io:8443  -> token protocol을 ws: 로
+ *  - https://i14d205.p.ssafy.io:5443 -> token protocol을 wss: 로
+ *  - ws://i14d205.p.ssafy.io:8443   -> token protocol을 ws: 로 (실수 방지)
+ *  - wss://i14d205.p.ssafy.io:5443  -> token protocol을 wss: 로 (실수 방지)
  */
 function patchOpenViduToken(token: string): string {
   const publicUrl = (import.meta.env.VITE_OPENVIDU_PUBLIC_URL as string | undefined) ?? '';
@@ -115,11 +114,16 @@ function patchOpenViduToken(token: string): string {
     const t = new URL(token);
     const p = new URL(publicUrl);
 
-    // https -> wss, http -> ws
-    if (p.protocol === 'https:') t.protocol = 'wss:';
-    else if (p.protocol === 'http:') t.protocol = 'ws:';
+    // ✅ publicUrl이 http/https/ws/wss 뭐든 들어와도 정상 처리
+    const toWsProtocol = (proto: string) => {
+      if (proto === 'https:' || proto === 'wss:') return 'wss:';
+      if (proto === 'http:' || proto === 'ws:') return 'ws:';
+      return t.protocol; // 알 수 없으면 원래 토큰 유지
+    };
 
-    // 도메인 + 포트 교체
+    t.protocol = toWsProtocol(p.protocol);
+
+    // ✅ 도메인 + 포트 교체
     t.host = p.host;
 
     return t.toString();
@@ -205,7 +209,7 @@ export default function TestInterviewPage() {
     const opId = ++connectOpRef.current;
 
     try {
-      // 1) 토큰 받기
+      // 1) 토큰 받기 + 패치
       const token = await fetchOpenViduToken(sid);
       const patched = patchOpenViduToken(token);
 
@@ -289,6 +293,7 @@ export default function TestInterviewPage() {
     navigate(-1);
   }, [cleanupSession, navigate]);
 
+  // ✅ mic/cam 토글이 바뀌면 publisher에 반영
   useEffect(() => {
     const p = publisherRef.current;
     if (!p) return;
@@ -311,12 +316,14 @@ export default function TestInterviewPage() {
     }
   }, [camOn]);
 
+  // ✅ 페이지 닫힐 때 정리
   useEffect(() => {
     return () => {
       cleanupSession();
     };
   }, [cleanupSession]);
 
+  // ✅ 들어오자마자 sessionId가 있으면 자동 연결(테스트 편의)
   useEffect(() => {
     if (!navState.sessionId) return;
     const cleanup = defer(() => {
@@ -452,7 +459,7 @@ export default function TestInterviewPage() {
                   {errorMessage}
                 </p>
                 <p className="mt-2 text-xs font-semibold text-red-600/70">
-                  토큰 URL(host/port)랑 OpenVidu 서버 포트 오픈부터 확인해요.
+                  토큰 URL(host/port/protocol) + OpenVidu(8443) 외부 오픈부터 확인해요.
                 </p>
               </div>
             ) : null}
@@ -573,7 +580,6 @@ export default function TestInterviewPage() {
                 <div className="mt-3 grid grid-cols-3 gap-3">
                   {remoteRest.map((s, idx) => (
                     <div
-                      // eslint-disable-next-line react/no-array-index-key
                       key={`sub-${idx}`}
                       className="bg-midnight-ink/90 overflow-hidden rounded-3xl border border-zinc-100"
                     >
@@ -586,15 +592,6 @@ export default function TestInterviewPage() {
               </div>
             ) : null}
           </section>
-        </div>
-
-        <div className="rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm">
-          <p className="text-sm font-black text-zinc-700">체크 포인트</p>
-          <ul className="mt-3 space-y-2 text-sm font-semibold text-zinc-600">
-            <li>• 콘솔의 OV PATCHED가 서버 도메인으로 찍혀야 정상이에요.</li>
-            <li>• 그래도 연결 안 되면 OpenVidu 포트(보통 5443) 외부 오픈/프록시 확인!</li>
-            <li>• 백엔드가 토큰을 localhost로 주는 건 결국 백엔드 설정도 고쳐야 합니다.</li>
-          </ul>
         </div>
       </div>
     </div>
