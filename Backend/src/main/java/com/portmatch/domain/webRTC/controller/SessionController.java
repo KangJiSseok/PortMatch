@@ -65,12 +65,11 @@ public class SessionController {
      */
     @PostMapping("/sessions/{sessionId}/connections")
     public ResponseEntity<String> createConnection(@PathVariable("sessionId") String sessionId,
-                                                   @RequestBody ConnectionRequestDto request) { // Map 대신 DTO 사용!
+                                                   @RequestBody ConnectionRequestDto request) {
         try {
             Session session = openVidu.getActiveSession(sessionId);
             if (session == null) return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 
-            // 이제 request.role() 로 바로 꺼낼 수 있어!
             OpenViduRole role = "INTERVIEWER".equals(request.role())
                     ? OpenViduRole.MODERATOR
                     : OpenViduRole.PUBLISHER;
@@ -83,9 +82,12 @@ public class SessionController {
             Connection connection = session.createConnection(properties);
 
             String originalToken = connection.getToken();
+
+            // localhost, openvidu-server 등 모든 경우 처리
             String fixedToken = originalToken
-                    .replace("ws://", "wss://")     // 보안 연결로 변경
-                    .replace(":4443", "/openvidu"); // 포트를 떼고 Nginx 경로로 변경
+                    .replaceAll("ws://[^/]+:\\d+", "wss://i14d205.p.ssafy.io")  // ws://호스트:포트 → wss://도메인
+                    .replaceAll("wss://[^/]+:\\d+", "wss://i14d205.p.ssafy.io") // wss://호스트:포트 → wss://도메인
+                    .replace("/openvidu", "/openvidu");  // 경로는 유지
 
             return new ResponseEntity<>(fixedToken, HttpStatus.OK);
 
