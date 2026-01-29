@@ -12,12 +12,12 @@ def _build_prompt() -> "ChatPromptTemplate":
         "Rules:\n"
         "- Do NOT add markdown or bullet points.\n"
         "- Do NOT mention projects explicitly.\n"
-        "- Use polite, respectful Korean phrasing.\n"
-        "- Focus only on the 1-2 most central products/services.\n"
-        "- Prefer concise, high-level descriptions over exhaustive details.\n"
-        "- Include only widely known product/service names or technical terms.\n"
-        "- If not clearly known, omit rather than guess.\n"
-        "- Keep it to 2-3 sentences.\n"
+        "- Do NOT include founding year or company history.\n"
+        "- Do NOT include headquarters or office locations.\n"
+        "- Do NOT include revenue, sales figures, financial performance, or valuation.\n"
+        "- Do NOT include executives, ownership, or company size.\n"
+        "- Focus on what the company does, products, platforms, systems, services.\n"
+        "- Keep it to 2-4 sentences.\n"
         "Return plain text only."
     )
     return ChatPromptTemplate.from_messages(

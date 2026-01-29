@@ -14,12 +14,11 @@ def _format_tech(value: Any) -> str:
 def _format_project(project: Dict[str, Any]) -> str:
     # Use the real project statement; do not expose the discovery anchor.
     name = project.get("project_statement", "") or "정보 없음"
-    domain = project.get("domain", "") or ""
+    domain = project.get("domain", "") or "정보 없음"
     problem = project.get("problem", "") or "정보 없음"
     solution = project.get("solution", "") or "정보 없음"
     tech = _format_tech(project.get("tech")) or "정보 없음"
     lines = [
-        f"[domain] {domain}",
         f"[프로젝트명] {name}",
         f"[Domain] {domain}",
         f"[문제] {problem}",
@@ -39,7 +38,7 @@ def structuring_node(state: CompanyGraphState) -> Dict[str, Any]:
     structured_output = [
         {
             "project_name": project.get("project_statement", "") or "정보 없음",
-            "domain": project.get("domain", "") or "",
+            "domain": project.get("domain", "") or "정보 없음",
             "problem": project.get("problem", "") or "정보 없음",
             "solution": project.get("solution", "") or "정보 없음",
             "tech": project.get("tech", []) or [],
