@@ -960,8 +960,7 @@ export default function RecommendCompanyPage() {
 
 
   const hasValidPortfolioId = Boolean(portfolioId) && !Number.isNaN(portfolioId);
-  const useMockFallback = hasValidPortfolioId && Boolean(loadError) && import.meta.env.DEV;
-  const companies = useMockFallback ? MOCK_COMPANIES : apiCompanies;
+  const companies = apiCompanies;
 
   const companiesWithCounts = useMemo(
     () =>
@@ -976,7 +975,7 @@ export default function RecommendCompanyPage() {
   );
 
   useEffect(() => {
-    if (useMockFallback || companies.length === 0) return;
+    if (companies.length === 0) return;
     const uniqueIds = Array.from(new Set(companies.map((c) => c.companyId)));
     const missing = uniqueIds.filter((id) => openingsCountMap[id] === undefined);
     if (missing.length === 0) return;
@@ -1010,7 +1009,7 @@ export default function RecommendCompanyPage() {
     return () => {
       cancelled = true;
     };
-  }, [companies, openingsCountMap, useMockFallback]);
+  }, [companies, openingsCountMap]);
 
   const handleOpenReason = async (company: Company) => {
     setReasonTarget(company);
@@ -1183,77 +1182,3 @@ export default function RecommendCompanyPage() {
   );
 }
 
-/** ---------------- Mock (API 응답 -> Company 매핑 예시) ---------------- **/
-
-type ApiCompanyRec = {
-  companyId: number;
-  companyName: string;
-  similarity: number; // 0~1
-  openingsCount?: number;
-  portfolioProjectId: number;
-  companyProjectId: number;
-
-  projectDistance: number;
-  domainDistance: number;
-  problemDistance: number;
-  solutionDistance: number;
-  techDistance: number;
-
-  headline?: Headline;
-  sections?: Section[];
-};
-
-const MOCK_API: ApiCompanyRec[] = Array.from({ length: 15 }).map((_, i) => ({
-  companyId: 1000 + i + 1,
-  companyName: ['삼성전자', '네이버', '카카오', '토스', '쿠팡', '라인', '현대차', '배민'][i % 8],
-  similarity: [0.92, 0.88, 0.85, 0.83, 0.81, 0.79, 0.77, 0.75][i % 8],
-  openingsCount: [2, 0, 5, 1, 3, 4, 2, 1][i % 8],
-  portfolioProjectId: 5000 + i + 1,
-  companyProjectId: 9000 + i + 1,
-
-  projectDistance: [0.19, 0.23, 0.25, 0.28, 0.31, 0.33, 0.36, 0.38][i % 8],
-  domainDistance: [0.16, 0.24, 0.27, 0.29, 0.33, 0.35, 0.37, 0.4][i % 8],
-  problemDistance: [0.2, 0.23, 0.26, 0.27, 0.3, 0.33, 0.35, 0.39][i % 8],
-  solutionDistance: [0.18, 0.22, 0.24, 0.26, 0.29, 0.32, 0.34, 0.37][i % 8],
-  techDistance: [0.17, 0.2, 0.23, 0.25, 0.28, 0.31, 0.33, 0.36][i % 8],
-
-  // ✅ 백엔드 주는 구조 흉내
-  headline: {
-    line1: `${['삼성전자', '네이버', '카카오', '토스', '쿠팡', '라인', '현대차', '배민'][i % 8]} 기준, 당신의`,
-    highlight: ['#문제해결', '#도메인적합', '#기술깊이', '#문제정의'][i % 4],
-    line2: '역량이',
-    line3: '가장 강점으로 평가됐습니다.',
-  },
-  sections: [
-    { key: 'portfolioFocus', title: '포트폴리오 강조 포인트', text: '... (백엔드 text)' },
-    { key: 'writingCheats', title: '지원서 작성 치트키', tags: ['#도메인_맥락', '#수치기반_성과'] },
-    { key: 'strategyGuide', title: '합격 전략 가이드', text: '... (백엔드 text)' },
-  ],
-}));
-
-const MOCK_COMPANIES: Company[] = MOCK_API.map((a, idx) => {
-  const distByFactor: Record<Factor, number> = {
-    프로젝트: a.projectDistance,
-    도메인: a.domainDistance,
-    문제: a.problemDistance,
-    해결: a.solutionDistance,
-    기술스택: a.techDistance,
-  };
-
-  const weights = distancesToWeights(distByFactor);
-  const topFactors = pickTopFactors(weights, 2);
-
-  return {
-    id: idx + 1,
-    companyId: a.companyId,
-    portfolioProjectId: a.portfolioProjectId,
-    companyProjectId: a.companyProjectId,
-    name: a.companyName,
-    matchScore: Math.round((a.similarity ?? 0) * 100),
-    openingsCount: a.openingsCount ?? 0,
-    weights,
-    topFactors,
-    headline: a.headline,
-    sections: a.sections,
-  };
-});
