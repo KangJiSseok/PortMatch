@@ -1,32 +1,67 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import Button from '../../components/Button/Button';
 
-interface Application {
-  id: string;
-  applicantName: string;
-  experience: string;
-  experienceYears: number;
-  appliedDate: string;
-  isScrapped: boolean;
-  status: '미열람' | '열람함' | '합격' | '불합격';
+import Button from '../../components/Button/Button';
+import {
+  fetchCompanyApplications,
+  type CompanyApplicationView,
+} from '../../api/company/applications';
+
+function formatYmdDot(iso: string) {
+  const d = new Date(iso);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}.${mm}.${dd}`;
 }
 
 const JobApplicationManagementPage = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+
+  const jobPostId = Number(id);
+  const safeJobPostId = Number.isFinite(jobPostId) && jobPostId > 0 ? jobPostId : 1001;
 
   const [sortBy, setSortBy] = useState<'최신순' | '경력순' | '이름순'>('최신순');
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [applications, setApplications] = useState<CompanyApplicationView[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const data = await fetchCompanyApplications(safeJobPostId);
+        if (cancelled) return;
+        setApplications(data);
+      } catch (e) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : '지원자 목록을 불러오지 못했어요.');
+        setApplications([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [safeJobPostId]);
+
+  const postingTitle = applications[0]?.postingTitle ?? '지원자 관리';
 
   const sortedApplications = useMemo(() => {
     const list = [...applications];
     switch (sortBy) {
       case '최신순':
         return list.sort(
-          (a, b) =>
-            new Date(b.appliedDate.replace(/\./g, '-')).getTime() -
-            new Date(a.appliedDate.replace(/\./g, '-')).getTime(),
+          (a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime(),
         );
       case '경력순':
         return list.sort((a, b) => b.experienceYears - a.experienceYears);
@@ -37,10 +72,30 @@ const JobApplicationManagementPage = () => {
     }
   }, [applications, sortBy]);
 
-  const toggleScrap = (appId: string) => {
+  const toggleScrap = (applicationId: number) => {
     setApplications((prev) =>
-      prev.map((app) => (app.id === appId ? { ...app, isScrapped: !app.isScrapped } : app)),
+      prev.map((app) =>
+        app.applicationId === applicationId ? { ...app, isScrapped: !app.isScrapped } : app,
+      ),
     );
+  };
+
+  const goResume = (resumeId: string) => {
+    navigate(`/resumes/${resumeId}`);
+  };
+
+  const goSchedule = (app: CompanyApplicationView) => {
+    navigate(`/company/jobs/${safeJobPostId}/applicants/${app.applicationId}/schedule`, {
+      state: {
+        applicantName: app.applicantName,
+        resumeId: app.resumeId,
+        postingTitle: app.postingTitle,
+        companyName: app.companyName,
+        appliedAt: app.appliedAt,
+        experience: app.experience,
+        experienceYears: app.experienceYears,
+      },
+    });
   };
 
   return (
@@ -53,12 +108,16 @@ const JobApplicationManagementPage = () => {
               animate={{ opacity: 1, x: 0 }}
               className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap"
             >
-              시니어 프론트엔드 개발자 채용
+              {postingTitle}
             </motion.h1>
             <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
-              {applications.length > 0
-                ? `총 ${applications.length}명의 지원자가 합류를 기다리고 있습니다.`
-                : '아직 접수된 지원서가 없습니다.'}
+              {loading
+                ? '지원자 목록 불러오는 중…'
+                : error
+                  ? error
+                  : applications.length > 0
+                    ? `총 ${applications.length}명의 지원자가 합류를 기다리고 있습니다.`
+                    : '아직 접수된 지원서가 없습니다.'}
             </p>
           </div>
 
@@ -83,7 +142,7 @@ const JobApplicationManagementPage = () => {
                 지원자 현황
               </h2>
             </div>
-            {applications.length > 0 && (
+            {!loading && !error && applications.length > 0 && (
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as '최신순' | '경력순' | '이름순')}
@@ -97,21 +156,26 @@ const JobApplicationManagementPage = () => {
           </div>
 
           <div className="min-h-100">
-            {sortedApplications.length > 0 ? (
+            {!loading && !error && sortedApplications.length > 0 ? (
               <div className="border-silver-mist bg-pure-white overflow-hidden rounded-4xl border shadow-xl shadow-gray-200/50">
                 <div className="divide-cloud-dancer divide-y">
                   {sortedApplications.map((app) => (
                     <div
-                      key={app.id}
-                      className="group hover:bg-point-blue/5 flex cursor-pointer items-center justify-between p-8 transition-colors"
-                      onClick={() => navigate(`/resumes/${app.id}`)}
+                      key={app.applicationId}
+                      className="group hover:bg-point-blue/5 flex cursor-pointer items-center justify-between gap-6 p-8 transition-colors"
+                      onClick={() => goResume(app.resumeId)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') goResume(app.resumeId);
+                      }}
                     >
-                      <div className="flex items-center gap-8">
+                      <div className="flex min-w-0 items-center gap-8">
                         <motion.button
                           whileTap={{ scale: 1.3 }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleScrap(app.id);
+                            toggleScrap(app.applicationId);
                           }}
                           className={`shrink-0 text-3xl transition-colors ${
                             app.isScrapped
@@ -122,8 +186,8 @@ const JobApplicationManagementPage = () => {
                           {app.isScrapped ? '★' : '☆'}
                         </motion.button>
 
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-4">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-4">
                             <span className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
                               {app.applicantName}
                             </span>
@@ -141,10 +205,13 @@ const JobApplicationManagementPage = () => {
                               {app.status}
                             </span>
                           </div>
-                          <div className="text-slate-gray flex items-center gap-3 text-[15px] font-bold whitespace-nowrap opacity-40">
-                            <span>{app.experience}</span>
-                            <span className="bg-cloud-dancer h-1.5 w-1.5 rounded-full"></span>
-                            <span>지원일: {app.appliedDate}</span>
+
+                          <div className="text-slate-gray mt-2 flex flex-wrap items-center gap-3 text-[15px] font-bold opacity-40">
+                            <span className="whitespace-nowrap">{app.experience}</span>
+                            <span className="bg-cloud-dancer h-1.5 w-1.5 rounded-full" />
+                            <span className="whitespace-nowrap">
+                              지원일: {formatYmdDot(app.appliedAt)}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -156,10 +223,21 @@ const JobApplicationManagementPage = () => {
                           className="rounded-xl px-8"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/resumes/${app.id}`);
+                            goResume(app.resumeId);
                           }}
                         >
                           이력서 보기
+                        </Button>
+                        <Button
+                          variant="blue"
+                          size="md"
+                          className="rounded-xl px-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            goSchedule(app);
+                          }}
+                        >
+                          면접 일정 잡기
                         </Button>
                       </div>
                     </div>
@@ -176,12 +254,12 @@ const JobApplicationManagementPage = () => {
                   👥
                 </div>
                 <h3 className="text-midnight-ink mb-2 text-2xl font-black whitespace-nowrap">
-                  지원자가 없습니다
+                  {loading ? '불러오는 중…' : '지원자가 없습니다'}
                 </h3>
                 <p className="text-soft-pebble text-lg font-bold whitespace-nowrap italic">
-                  아직 이 공고에 지원한 인재가 없습니다.
-                  <br />
-                  공고 홍보를 통해 더 많은 지원자를 모집해보세요.
+                  {loading
+                    ? '지원자 목록을 가져오고 있어요.'
+                    : '아직 이 공고에 지원한 인재가 없습니다.\n공고 홍보를 통해 더 많은 지원자를 모집해보세요.'}
                 </p>
                 <Button
                   variant="dark"
