@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class ScrapDto {
     private Long id;
     private Long uid;               // 사용자 ID
-    private String pid;             // 공고 ID (사람인/외부 API ID)
+    private Long pid;             // 공고 ID (사람인/외부 API ID)
     private LocalDateTime createdAt; // BaseTimeEntity에서 물려받은 생성 시간
 
     /**
