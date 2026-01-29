@@ -1,21 +1,39 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, KeyRound, Puzzle, X } from 'lucide-react';
+import { Sparkles, KeyRound, Puzzle, X, Info } from 'lucide-react';
 
-// ✅ 타입 및 팔레트 정의
-type Factor = '프로젝트' | '문제' | '해결' | '기술스택';
-const FACTOR_ORDER: Factor[] = ['프로젝트', '문제', '해결', '기술스택'];
+/** ---------------- Types ---------------- **/
+
+type Factor = '프로젝트' | '도메인' | '문제' | '해결' | '기술스택';
+const FACTOR_ORDER: Factor[] = ['프로젝트', '도메인', '문제', '해결', '기술스택'];
+
+type Headline = {
+  line1: string;
+  highlight: string;
+  line2: string;
+  line3: string;
+};
+
+type Section =
+  | { key: 'portfolioFocus'; title: string; text: string }
+  | { key: 'writingCheats'; title: string; tags: string[] }
+  | { key: 'strategyGuide'; title: string; text: string };
 
 type Company = {
   id: number;
   companyId: number;
   name: string;
-  matchScore: number;
+  matchScore: number; // 0~100
   openingsCount: number;
-  weights: Record<Factor, number>;
+  weights: Record<Factor, number>; // % 합 100
   topFactors: Factor[];
+  // ✅ 백엔드가 주는 헤드라인/섹션
+  headline?: Headline;
+  sections?: Section[];
 };
+
+/** ---------------- Palette ---------------- **/
 
 const PALETTE = {
   pureWhite: '#fcfcfc',
@@ -26,8 +44,10 @@ const PALETTE = {
   silverMist: '#a3a3a3',
 };
 
+// ✅ 도메인 색: \
 const FACTOR_COLOR: Record<Factor, string> = {
   프로젝트: '#60A5FA',
+  도메인: '#F43F5E',
   문제: '#FB923C',
   해결: '#4ADE80',
   기술스택: '#C084FC',
@@ -36,7 +56,65 @@ const FACTOR_COLOR: Record<Factor, string> = {
 // ✅ 채도 낮춘 포인트 블루
 const POINT_BLUE = '#5563C1';
 
-// ---------------- UI Components ----------------
+/** ---------------- distance(0~1) -> weights(%) ---------------- **/
+
+function distancesToWeights(dist: Record<Factor, number>): Record<Factor, number> {
+  // distance 작을수록 좋음 → strength는 1-distance
+  const strengths: Record<Factor, number> = {
+    프로젝트: 1 - dist.프로젝트,
+    도메인: 1 - dist.도메인,
+    문제: 1 - dist.문제,
+    해결: 1 - dist.해결,
+    기술스택: 1 - dist.기술스택,
+  };
+
+  const sum = FACTOR_ORDER.reduce((acc, k) => acc + Math.max(0, strengths[k]), 0);
+
+  // 방어: sum이 0이면 균등 분배
+  if (sum <= 0) {
+    const even = Math.floor(100 / FACTOR_ORDER.length);
+    const base: Record<Factor, number> = {
+      프로젝트: even,
+      도메인: even,
+      문제: even,
+      해결: even,
+      기술스택: even,
+    };
+    const remain = 100 - even * FACTOR_ORDER.length;
+    if (remain > 0) base[FACTOR_ORDER[0]] += remain;
+    return base;
+  }
+
+  const raw = FACTOR_ORDER.map((k) => ({ k, v: (strengths[k] / sum) * 100 }));
+
+  const rounded: Record<Factor, number> = {
+    프로젝트: 0,
+    도메인: 0,
+    문제: 0,
+    해결: 0,
+    기술스택: 0,
+  };
+
+  raw.forEach(({ k, v }) => {
+    rounded[k] = Math.round(v);
+  });
+
+  const total = FACTOR_ORDER.reduce((acc, k) => acc + rounded[k], 0);
+  const diff = 100 - total;
+
+  if (diff !== 0) {
+    const maxKey = raw.sort((a, b) => b.v - a.v)[0]?.k ?? FACTOR_ORDER[0];
+    rounded[maxKey] = Math.max(0, rounded[maxKey] + diff);
+  }
+
+  return rounded;
+}
+
+function pickTopFactors(weights: Record<Factor, number>, n = 2): Factor[] {
+  return [...FACTOR_ORDER].sort((a, b) => weights[b] - weights[a]).slice(0, n);
+}
+
+/** ---------------- DonutChart (CI-safe) ---------------- **/
 
 function DonutChart({ weights, score }: { weights: Record<Factor, number>; score: number }) {
   const size = 120;
@@ -45,7 +123,6 @@ function DonutChart({ weights, score }: { weights: Record<Factor, number>; score
   const cx = size / 2;
   const cy = size / 2;
 
-  // ✅ accAngle 재할당 제거: 렌더 중 부수효과 없이 순수 계산으로 segments 생성
   type Segment = { key: Factor; angle: number; start: number; end: number };
 
   const segments: Segment[] = FACTOR_ORDER.reduce(
@@ -100,7 +177,7 @@ function DonutChart({ weights, score }: { weights: Record<Factor, number>; score
   );
 }
 
-// ---------------- Button Motion (Press + Lift + Focus) ----------------
+/** ---------------- Button Motion ---------------- **/
 
 const BTN_BASE =
   'relative w-full rounded-xl font-bold transition-all duration-200 outline-none cursor-pointer ' +
@@ -113,7 +190,7 @@ const BTN_INSET =
   'after:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-1px_0_rgba(0,0,0,0.06)] ' +
   'hover:after:opacity-100 focus-visible:after:opacity-100';
 
-// ---------------- Main Card ----------------
+/** ---------------- CompanyCard ---------------- **/
 
 function CompanyCard({
   company,
@@ -125,7 +202,7 @@ function CompanyCard({
   const navigate = useNavigate();
   const [isFlipped, setIsFlipped] = useState(false);
 
-  const goToPostings = (e: React.MouseEvent) => {
+  const goToPostings = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     navigate(
       `/job-postings?cid=${company.companyId}&companyName=${encodeURIComponent(company.name)}`,
@@ -136,7 +213,6 @@ function CompanyCard({
     <motion.div
       whileHover={{
         y: -6,
-        // ✅ 오른쪽/아래 방향 그림자 "확실히 보이게"
         boxShadow: '14px 18px 36px rgba(0,0,0,0.16), 6px 8px 16px rgba(0,0,0,0.10)',
       }}
       whileTap={{ y: -2 }}
@@ -146,11 +222,9 @@ function CompanyCard({
         'border border-gray-200/60 bg-white',
       ].join(' ')}
       style={{
-        // ✅ 기본 상태도 살짝
         boxShadow: '6px 8px 18px rgba(0,0,0,0.06)',
       }}
     >
-      {/* ✅ 테두리/인셋은 아주 미세하게만 */}
       <div
         className="pointer-events-none absolute inset-0 rounded-2xl"
         style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)' }}
@@ -165,7 +239,7 @@ function CompanyCard({
           animate={{ rotateY: isFlipped ? 180 : 0 }}
           transition={{ duration: 0.6 }}
         >
-          {/* 앞면 */}
+          {/* Front */}
           <div className="absolute inset-0 flex h-full flex-col p-6 [backface-visibility:hidden]">
             <div className="flex min-h-[44px] items-center justify-center pt-[8px]">
               <h3 className="w-full truncate text-center text-[17px] font-bold text-[#1a1a1a]">
@@ -177,7 +251,7 @@ function CompanyCard({
               <DonutChart weights={company.weights} score={company.matchScore} />
 
               <div className="mt-9 flex flex-wrap justify-center gap-2">
-                {company.topFactors.map((f: Factor) => (
+                {company.topFactors.map((f) => (
                   <span
                     key={f}
                     className="rounded-full px-3 py-1 text-[11px] font-bold"
@@ -205,7 +279,7 @@ function CompanyCard({
             </div>
           </div>
 
-          {/* 뒷면 */}
+          {/* Back */}
           <div
             className="absolute inset-0 flex h-full [transform:rotateY(180deg)] flex-col p-6 [backface-visibility:hidden]"
             style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #FBFBFB 100%)' }}
@@ -276,13 +350,109 @@ function CompanyCard({
   );
 }
 
-// ---------------- Reason Modal (UPDATED: spacing + line breaks + lucide + scroll lock) ----------------
+/** ---------------- Criteria (모달 밖에서 1번만) ---------------- **/
+
+import { ChevronDown } from 'lucide-react';
+
+function EvaluationCriteria() {
+  const [open, setOpen] = useState(false);
+
+  // ✅ 요청하신 세련된 컬러 팔레트와 매칭
+  const FACTOR_COLORS = {
+    프로젝트: '#60A5FA',
+    도메인: '#F43F5E',
+    문제: '#FB923C',
+    해결: '#4ADE80',
+    기술스택: '#C084FC',
+  };
+
+  const CRITERIA_DATA = [
+    {
+      id: '프로젝트',
+      desc: '실제로 구현한 제품의 성격, 대규모 트래픽 처리 등 구현 규모를 비교합니다.',
+    },
+    {
+      id: '도메인',
+      desc: '프로젝트가 어떤 산업·서비스 영역에서 진행되었는지, 환경적 유사성을 평가합니다.',
+    },
+    { id: '문제', desc: '프로젝트에서 해결하려 했던 과제의 본질(성능, 효율 등)에 집중합니다.' },
+    { id: '해결', desc: '문제를 풀기 위해 선택한 접근 방식과 사고 구조가 논리적인지 평가합니다.' },
+    {
+      id: '기술스택',
+      desc: '단순 사용 여부보다 기술이 활용된 맥락과 숙련도의 연관성을 고려합니다.',
+    },
+  ];
+
+  return (
+    <div className="mb-10 pl-6">
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        {/* Header (Toggle) */}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-gray-50/50"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0eee9] text-[#4a4a4a]">
+              <Info className="h-5 w-5" />
+            </span>
+            <div>
+              <h4 className="text-[17px] font-black text-[#1a1a1a]">기업 평가 지표</h4>
+              <p className="mt-0.5 text-[13px] font-medium text-gray-500">
+                AI가 당신의 포트폴리오를 분석하는 5가지 핵심 관점
+              </p>
+            </div>
+          </div>
+          <ChevronDown
+            className={`h-5 w-5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {/* Body */}
+        {open && (
+          <div className="border-t border-gray-100 bg-[#fcfcfc] px-6 py-8">
+            {/* Intro */}
+            <p className="mb-8 max-w-[80ch] text-[15px] leading-relaxed text-[#4a4a4a]">
+              이 리포트는 기업이 실제로 수행하는 프로젝트 내용을 기준으로,
+              <br />
+              <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
+                “어떤 맥락에서 어떤 문제를 어떻게 해결해왔는지”
+              </span>
+              가 얼마나 유사한지를 종합적으로 평가합니다.
+            </p>
+
+            {/* Criteria Grid */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              {CRITERIA_DATA.map((item) => (
+                <div
+                  key={item.id}
+                  className="relative rounded-xl border border-gray-100 bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:shadow-md"
+                >
+                  {/* 컬러 포인트 라인 (상단) */}
+                  <div
+                    className="absolute top-0 left-0 h-1 w-full rounded-t-xl"
+                    style={{
+                      backgroundColor: FACTOR_COLORS[item.id as keyof typeof FACTOR_COLORS],
+                    }}
+                  />
+                  <h5 className="mb-2 text-[14px] font-black text-[#1a1a1a]">{item.id}</h5>
+                  <p className="text-[12px] leading-[1.6] font-medium text-gray-500">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** ---------------- Reason Modal ---------------- **/
 
 function lockBodyScroll(lock: boolean) {
   const body = document.body;
 
   if (lock) {
-    // iOS 튐 방지 + 정확한 복구
     const y = window.scrollY || document.documentElement.scrollTop;
     body.dataset.scrollY = String(y);
     body.style.position = 'fixed';
@@ -318,7 +488,6 @@ function ReasonModal({
     return () => lockBodyScroll(false);
   }, [open]);
 
-  // ESC 닫기(선택)
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -330,10 +499,32 @@ function ReasonModal({
 
   if (!company) return null;
 
-  // ✅ 헤더 문장 줄바꿈 3줄
-  const line1 = `${company.name} 기준,`;
-  const line2 = '당신의 #문제해결 역량이';
-  const line3 = '가장 강점으로 평가됐습니다.';
+  // ✅ 백엔드 headline 사용 + fallback
+  const headline: Headline = company.headline ?? {
+    line1: `${company.name} 기준, 당신의`,
+    highlight: '#문제해결',
+    line2: '역량이',
+    line3: '가장 강점으로 평가됐습니다.',
+  };
+
+  // ✅ 섹션도 백엔드 응답 사용 + fallback
+  const sections: Section[] = company.sections ?? [
+    { key: 'portfolioFocus', title: '포트폴리오 강조 포인트', text: '...' },
+    { key: 'writingCheats', title: '지원서 작성 치트키', tags: ['#...'] },
+    { key: 'strategyGuide', title: '합격 전략 가이드', text: '...' },
+  ];
+
+  const portfolioFocus = sections.find((s) => s.key === 'portfolioFocus') as
+    | { key: 'portfolioFocus'; title: string; text: string }
+    | undefined;
+
+  const writingCheats = sections.find((s) => s.key === 'writingCheats') as
+    | { key: 'writingCheats'; title: string; tags: string[] }
+    | undefined;
+
+  const strategyGuide = sections.find((s) => s.key === 'strategyGuide') as
+    | { key: 'strategyGuide'; title: string; text: string }
+    | undefined;
 
   return (
     <AnimatePresence>
@@ -354,7 +545,6 @@ function ReasonModal({
             transition={{ type: 'spring', stiffness: 260, damping: 24 }}
             className="relative z-[201] flex max-h-[90vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
           >
-            {/* Header (덜 빽빽하게) */}
             <div
               style={{ backgroundColor: PALETTE.midnightInk }}
               className="relative px-7 py-7 text-white sm:px-10 sm:py-9"
@@ -363,20 +553,8 @@ function ReasonModal({
                 <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-black tracking-widest text-blue-300 uppercase">
                   AI INSIGHT REPORT
                 </span>
-
-                {/* ✅ confidence 안 쓰니까 주석처리 (삭제 X) */}
-                {/*
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-gray-400">Confidence</span>
-                  <div className="h-1.5 w-20 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full w-[95%] bg-blue-500" />
-                  </div>
-                  <span className="text-[11px] font-black text-blue-400">95%</span>
-                </div>
-                */}
               </div>
 
-              {/* close */}
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 rounded-xl p-2 text-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none"
@@ -385,22 +563,18 @@ function ReasonModal({
                 <X className="h-5 w-5" />
               </button>
 
-              {/* ✅ 줄바꿈 적용 */}
+              {/* ✅ 백엔드 headline 기반 3줄 */}
               <h3 className="text-[22px] leading-[1.15] font-black tracking-tight sm:text-[26px]">
-                {line1}
+                {headline.line1}
                 <br />
-                <span className="text-blue-400">{line2}</span>
+                <span className="text-blue-400">
+                  {headline.highlight} {headline.line2}
+                </span>
                 <br />
-                {line3}
+                {headline.line3}
               </h3>
-
-              {/* ✅ 숨통(설명 한 줄) */}
-              {/* <p className="mt-4 max-w-[58ch] text-[12.5px] leading-relaxed text-white/55">
-                아래 가이드는 포트폴리오/자소서/면접 답변에서 강점이 “눈에 띄게” 배치되도록 추천합니다.
-              </p> */}
             </div>
 
-            {/* Body (덜 꽉차게: padding/spacing/line-height/폭 조절) */}
             <div className="flex-1 overflow-y-auto px-7 py-8 sm:px-10 sm:py-10">
               <div className="space-y-12">
                 {/* 1 */}
@@ -409,15 +583,12 @@ function ReasonModal({
                     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                       <Sparkles className="h-5 w-5" />
                     </span>
-                    포트폴리오 강조 포인트
+                    {portfolioFocus?.title ?? '포트폴리오 강조 포인트'}
                   </h4>
 
                   <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
                     <p className="max-w-[62ch] text-[16px] leading-relaxed font-medium text-[#4a4a4a] sm:text-[17px]">
-                      최근 진행하신{' '}
-                      <span className="font-bold text-[#1a1a1a]">대규모 데이터 처리 프로젝트</span>
-                      의 트러블슈팅 과정을 이력서 최상단에 배치하세요. 이 기업은 레거시 개선 작업을
-                      진행 중이므로 당신의 ‘해결 로직’을 핵심 인재 요건으로 보고 있습니다.
+                      {portfolioFocus?.text ?? '...'}
                     </p>
                   </div>
                 </div>
@@ -428,20 +599,18 @@ function ReasonModal({
                     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
                       <KeyRound className="h-5 w-5" />
                     </span>
-                    지원서 작성 치트키
+                    {writingCheats?.title ?? '지원서 작성 치트키'}
                   </h4>
 
                   <div className="flex flex-wrap gap-2.5">
-                    {['#기술부채_해결', '#아키텍처_최적화', '#수치기반_성과', '#확장성_고려'].map(
-                      (tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-xl border-2 border-gray-100 bg-white px-4 py-2 text-[14px] font-bold text-gray-600 shadow-sm"
-                        >
-                          {tag}
-                        </span>
-                      ),
-                    )}
+                    {(writingCheats?.tags ?? ['#...']).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-xl border-2 border-gray-100 bg-white px-4 py-2 text-[14px] font-bold text-gray-600 shadow-sm"
+                      >
+                        {tag}
+                      </span>
+                    ))}
                   </div>
                 </div>
 
@@ -451,24 +620,18 @@ function ReasonModal({
                     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
                       <Puzzle className="h-5 w-5" />
                     </span>
-                    합격 전략 가이드
+                    {strategyGuide?.title ?? '합격 전략 가이드'}
                   </h4>
 
                   <div className="rounded-2xl border-2 border-dashed border-[#d6d2c4] bg-[#fcfcfc] p-6 sm:p-7">
                     <p className="max-w-[62ch] text-[16px] leading-loose font-medium text-[#4a4a4a] sm:text-[17px]">
-                      “면접 시 단순 기술 사용 경험보다,{' '}
-                      <span className="font-bold text-[#1a1a1a] underline">
-                        왜 그 기술을 선택했는지
-                      </span>
-                      에 대한 논리적 근거를 3가지 이상 준비하세요. 해당 팀 리더는 기술적 타당성을
-                      가장 중요하게 평가합니다.”
+                      {strategyGuide?.text ?? '...'}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Footer (호흡 확보) */}
             <div className="border-t border-gray-100 px-7 py-6 sm:px-10 sm:py-7">
               <button
                 onClick={onClose}
@@ -485,7 +648,7 @@ function ReasonModal({
   );
 }
 
-// ---------------- Main Page ----------------
+/** ---------------- Main Page ---------------- **/
 
 type SortBy = 'matchScore' | 'openingsCount';
 
@@ -493,8 +656,27 @@ export default function RecommendCompanyPage() {
   const [sortBy, setSortBy] = useState<SortBy>('matchScore');
   const [reasonTarget, setReasonTarget] = useState<Company | null>(null);
 
+  // ✅ 8개(4*2) 페이지네이션
+  const PAGE_SIZE = 8;
+  const [page, setPage] = useState(1);
+
+  // TODO: 실제 API로 교체 시, companies를 fetch로 받아서 setCompanies 하면 됨
+  const companies = MOCK_COMPANIES;
+
   const sortedCompanies = useMemo(() => {
-    return [...MOCK_COMPANIES].sort((a, b) => b[sortBy] - a[sortBy]);
+    return [...companies].sort((a, b) => b[sortBy] - a[sortBy]);
+  }, [companies, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedCompanies.length / PAGE_SIZE));
+
+  const pagedCompanies = useMemo(() => {
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const start = (safePage - 1) * PAGE_SIZE;
+    return sortedCompanies.slice(start, start + PAGE_SIZE);
+  }, [sortedCompanies, page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
   }, [sortBy]);
 
   const isScore = sortBy === 'matchScore';
@@ -506,6 +688,10 @@ export default function RecommendCompanyPage() {
 
   const sortBtnOn = 'bg-[#1a1a1a] text-white shadow-sm';
   const sortBtnOff = 'bg-[#f0eee9]/70 text-[#4a4a4a] hover:bg-[#f0eee9]';
+
+  const pagerBtn =
+    'h-10 w-10 rounded-xl border border-gray-200 bg-white text-[13px] font-black text-gray-600 ' +
+    'shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0';
 
   return (
     <div style={{ backgroundColor: PALETTE.pureWhite }} className="min-h-screen pt-32 pb-24">
@@ -519,30 +705,63 @@ export default function RecommendCompanyPage() {
           </p>
         </header>
 
-        {/* ✅ 정렬 버튼 2개 추가 */}
-        <div className="mb-10 flex items-center gap-2 pl-6">
-          <button
-            type="button"
-            onClick={() => setSortBy('matchScore')}
-            className={`${sortBtnBase} ${isScore ? sortBtnOn : sortBtnOff}`}
-          >
-            점수순
-          </button>
-          <button
-            type="button"
-            onClick={() => setSortBy('openingsCount')}
-            className={`${sortBtnBase} ${isOpenings ? sortBtnOn : sortBtnOff}`}
-          >
-            공고 많은 순
-          </button>
+        {/* ✅ 평가 기준: 모달 밖에서 1번만 */}
+        <EvaluationCriteria />
+
+        <div className="mb-10 flex items-center justify-between gap-4 pl-6">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSortBy('matchScore')}
+              className={`${sortBtnBase} ${isScore ? sortBtnOn : sortBtnOff}`}
+            >
+              점수순
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortBy('openingsCount')}
+              className={`${sortBtnBase} ${isOpenings ? sortBtnOn : sortBtnOff}`}
+            >
+              공고 많은 순
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className={pagerBtn}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              aria-label="prev"
+            >
+              ‹
+            </button>
+
+            <div className="min-w-[84px] text-center text-[12px] font-bold text-gray-500">
+              {page} / {totalPages}
+            </div>
+
+            <button
+              type="button"
+              className={pagerBtn}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="next"
+            >
+              ›
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {sortedCompanies.map((c) => (
+        {/* ✅ 4열 고정: 작은 화면에서도 4열 유지 (넘치면 가로 스크롤) */}
+        {/* <div className="overflow-x-auto">
+          <div className="min-w-[1200px]"> */}
+        <div className="grid grid-cols-4 gap-7">
+          {pagedCompanies.map((c) => (
             <CompanyCard key={c.id} company={c} onOpenReason={setReasonTarget} />
           ))}
         </div>
       </div>
+      {/* </div>
+      </div> */}
 
       <ReasonModal
         open={!!reasonTarget}
@@ -553,14 +772,71 @@ export default function RecommendCompanyPage() {
   );
 }
 
-// ---------------- Mock ----------------
+/** ---------------- Mock (API 응답 -> Company 매핑 예시) ---------------- **/
 
-const MOCK_COMPANIES = Array.from({ length: 15 }).map((_, i) => ({
-  id: i + 1,
+type ApiCompanyRec = {
+  companyId: number;
+  companyName: string;
+  similarity: number; // 0~1
+  openingsCount?: number;
+
+  projectDistance: number;
+  domainDistance: number;
+  problemDistance: number;
+  solutionDistance: number;
+  techDistance: number;
+
+  headline?: Headline;
+  sections?: Section[];
+};
+
+const MOCK_API: ApiCompanyRec[] = Array.from({ length: 15 }).map((_, i) => ({
   companyId: 1000 + i + 1,
-  name: ['삼성전자', '네이버', '카카오', '토스', '쿠팡', '라인', '현대차', '배민'][i % 8],
-  matchScore: [98, 92, 89, 86, 84, 81, 78, 76][i % 8],
+  companyName: ['삼성전자', '네이버', '카카오', '토스', '쿠팡', '라인', '현대차', '배민'][i % 8],
+  similarity: [0.92, 0.88, 0.85, 0.83, 0.81, 0.79, 0.77, 0.75][i % 8],
   openingsCount: [2, 0, 5, 1, 3, 4, 2, 1][i % 8],
-  weights: { 프로젝트: 40, 문제: 20, 해결: 20, 기술스택: 20 } as Record<Factor, number>,
-  topFactors: ['프로젝트', '문제'] as Factor[],
+
+  projectDistance: [0.19, 0.23, 0.25, 0.28, 0.31, 0.33, 0.36, 0.38][i % 8],
+  domainDistance: [0.16, 0.24, 0.27, 0.29, 0.33, 0.35, 0.37, 0.4][i % 8],
+  problemDistance: [0.2, 0.23, 0.26, 0.27, 0.3, 0.33, 0.35, 0.39][i % 8],
+  solutionDistance: [0.18, 0.22, 0.24, 0.26, 0.29, 0.32, 0.34, 0.37][i % 8],
+  techDistance: [0.17, 0.2, 0.23, 0.25, 0.28, 0.31, 0.33, 0.36][i % 8],
+
+  // ✅ 백엔드 주는 구조 흉내
+  headline: {
+    line1: `${['삼성전자', '네이버', '카카오', '토스', '쿠팡', '라인', '현대차', '배민'][i % 8]} 기준, 당신의`,
+    highlight: ['#문제해결', '#도메인적합', '#기술깊이', '#문제정의'][i % 4],
+    line2: '역량이',
+    line3: '가장 강점으로 평가됐습니다.',
+  },
+  sections: [
+    { key: 'portfolioFocus', title: '포트폴리오 강조 포인트', text: '... (백엔드 text)' },
+    { key: 'writingCheats', title: '지원서 작성 치트키', tags: ['#도메인_맥락', '#수치기반_성과'] },
+    { key: 'strategyGuide', title: '합격 전략 가이드', text: '... (백엔드 text)' },
+  ],
 }));
+
+const MOCK_COMPANIES: Company[] = MOCK_API.map((a, idx) => {
+  const distByFactor: Record<Factor, number> = {
+    프로젝트: a.projectDistance,
+    도메인: a.domainDistance,
+    문제: a.problemDistance,
+    해결: a.solutionDistance,
+    기술스택: a.techDistance,
+  };
+
+  const weights = distancesToWeights(distByFactor);
+  const topFactors = pickTopFactors(weights, 2);
+
+  return {
+    id: idx + 1,
+    companyId: a.companyId,
+    name: a.companyName,
+    matchScore: Math.round((a.similarity ?? 0) * 100),
+    openingsCount: a.openingsCount ?? 0,
+    weights,
+    topFactors,
+    headline: a.headline,
+    sections: a.sections,
+  };
+});
