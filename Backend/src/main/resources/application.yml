@@ -43,6 +43,9 @@ portfolio-analysis:
 company-project-analysis:
   base-url: ${COMPANY_PROJECT_ANALYSIS_URL:http://localhost:8001}
 
+explanation:
+  base-url: ${EXPLANATION_URL:http://localhost:8003}
+
 company-embedding:
   base-url: ${EMBEDDING_URL:http://localhost:8002}
   model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
