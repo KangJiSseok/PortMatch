@@ -85,15 +85,12 @@ public class SessionController {
             String originalToken = connection.getToken();
             // 원래 값 예시: ws://localhost:4443?sessionId=...&token=tok_XXXX
 
-            // 1. 토큰 문자열에서 'token=' 뒤에 오는 진짜 인증 키만 추출해.
-            // (라이브러리 버전에 따라 주소 형식이 다를 수 있어서 이게 제일 안전해!)
-            String tokenValue = originalToken.contains("token=")
-                    ? originalToken.substring(originalToken.indexOf("token=") + 6)
-                    : originalToken;
-
-            // 2. 우리 서버 도메인과 Nginx 경로(/openvidu)를 합쳐서 다시 조립해.
-            // 프론트가 8443 포트 없이 접속할 수 있게 만드는 마법의 주소야.
-            String fixedToken = "wss://i14d205.p.ssafy.io/openvidu?sessionId=" + sessionId + "&token=" + tokenValue;
+            // 1. OpenVidu가 준 주소에서 도메인/포트 부분만 내 서버 주소로 갈아끼우기
+            // originalToken: ws://localhost:4443/openvidu?sessionId=...&token=...
+            String fixedToken = originalToken
+                    .replace("ws://", "wss://")
+                    .replace("localhost:4443", "i14d205.p.ssafy.io") // 혹은 도메인 변수 사용
+                    .replace(":5443", "");
 
             System.out.println("최종 전달 토큰: " + fixedToken);
 

@@ -89,8 +89,11 @@ services:
       - "5443:5443"
       - "8443:4443"
     environment:
+      - HTTP_PORT=5443
+      - OPENVIDU_HTTPS_PORT=4443
       - OPENVIDU_SECRET=MY_SECRET
       - DOMAIN_OR_PUBLIC_IP=i14d205.p.ssafy.io
+      - WITH_KMS=http://localhost:8888/kurento
       - OPENVIDU_HTTPS_PORT=443
       - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900       
       - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=3600     
