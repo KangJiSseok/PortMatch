@@ -7,6 +7,7 @@ import {
   fetchCompanyApplications,
   type CompanyApplicationView,
 } from '../../api/company/applications';
+import { getExtraInterviewViews } from '../../api/myPage';
 
 function formatYmdDot(iso: string) {
   const d = new Date(iso);
@@ -71,6 +72,16 @@ const JobApplicationManagementPage = () => {
         return list;
     }
   }, [applications, sortBy]);
+
+  // ✅ localStorage에 저장된 “추가 면접 일정”들을 applicationId 기준으로 맵핑
+  const interviewByApplicationId = useMemo(() => {
+    const map = new Map<number, true>();
+    const extras = getExtraInterviewViews();
+    extras.forEach((it) => {
+      map.set(it.application_id, true);
+    });
+    return map;
+  }, [applications]);
 
   const toggleScrap = (applicationId: number) => {
     setApplications((prev) =>
@@ -142,6 +153,7 @@ const JobApplicationManagementPage = () => {
                 지원자 현황
               </h2>
             </div>
+
             {!loading && !error && applications.length > 0 && (
               <select
                 value={sortBy}
@@ -159,89 +171,118 @@ const JobApplicationManagementPage = () => {
             {!loading && !error && sortedApplications.length > 0 ? (
               <div className="border-silver-mist bg-pure-white overflow-hidden rounded-4xl border shadow-xl shadow-gray-200/50">
                 <div className="divide-cloud-dancer divide-y">
-                  {sortedApplications.map((app) => (
-                    <div
-                      key={app.applicationId}
-                      className="group hover:bg-point-blue/5 flex cursor-pointer items-center justify-between gap-6 p-8 transition-colors"
-                      onClick={() => goResume(app.resumeId)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') goResume(app.resumeId);
-                      }}
-                    >
-                      <div className="flex min-w-0 items-center gap-8">
-                        <motion.button
-                          whileTap={{ scale: 1.3 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleScrap(app.applicationId);
-                          }}
-                          className={`shrink-0 text-3xl transition-colors ${
-                            app.isScrapped
-                              ? 'text-yellow-400'
-                              : 'text-cloud-dancer group-hover:text-silver-mist'
-                          }`}
-                        >
-                          {app.isScrapped ? '★' : '☆'}
-                        </motion.button>
+                  {sortedApplications.map((app) => {
+                    const hasInterview = interviewByApplicationId.has(app.applicationId);
 
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-4">
-                            <span className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
-                              {app.applicantName}
-                            </span>
-                            <span
-                              className={`shrink-0 rounded-full px-4 py-1 text-[11px] font-black tracking-widest uppercase ${
-                                app.status === '미열람'
-                                  ? 'text-point-blue bg-blue-50'
-                                  : app.status === '합격'
-                                    ? 'bg-emerald-50 text-emerald-600'
-                                    : app.status === '불합격'
-                                      ? 'text-error bg-red-50'
-                                      : 'bg-cloud-dancer text-slate-gray'
-                              }`}
-                            >
-                              {app.status}
-                            </span>
-                          </div>
+                    return (
+                      <div
+                        key={app.applicationId}
+                        className="group hover:bg-point-blue/5 flex cursor-pointer items-center justify-between gap-6 p-8 transition-colors"
+                        onClick={() => goResume(app.resumeId)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') goResume(app.resumeId);
+                        }}
+                      >
+                        {/* ✅ 왼쪽: flex-1 + min-w-0로 오른쪽 버튼 안 밀리게 */}
+                        <div className="flex min-w-0 flex-1 items-center gap-8">
+                          <motion.button
+                            whileTap={{ scale: 1.3 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleScrap(app.applicationId);
+                            }}
+                            className={`shrink-0 text-3xl transition-colors ${
+                              app.isScrapped
+                                ? 'text-yellow-400'
+                                : 'text-cloud-dancer group-hover:text-silver-mist'
+                            }`}
+                          >
+                            {app.isScrapped ? '★' : '☆'}
+                          </motion.button>
 
-                          <div className="text-slate-gray mt-2 flex flex-wrap items-center gap-3 text-[15px] font-bold opacity-40">
-                            <span className="whitespace-nowrap">{app.experience}</span>
-                            <span className="bg-cloud-dancer h-1.5 w-1.5 rounded-full" />
-                            <span className="whitespace-nowrap">
-                              지원일: {formatYmdDot(app.appliedAt)}
-                            </span>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-4">
+                              <span className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
+                                {app.applicantName}
+                              </span>
+
+                              <span
+                                className={`shrink-0 rounded-full px-4 py-1 text-[11px] font-black tracking-widest whitespace-nowrap uppercase ${
+                                  app.status === '미열람'
+                                    ? 'text-point-blue bg-blue-50'
+                                    : app.status === '합격'
+                                      ? 'bg-emerald-50 text-emerald-600'
+                                      : app.status === '불합격'
+                                        ? 'text-error bg-red-50'
+                                        : 'bg-cloud-dancer text-slate-gray'
+                                }`}
+                              >
+                                {app.status}
+                              </span>
+
+                              {hasInterview && (
+                                <span className="bg-cloud-dancer text-slate-gray shrink-0 rounded-full px-4 py-1 text-[11px] font-black tracking-widest whitespace-nowrap uppercase">
+                                  INTERVIEW SET
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="text-slate-gray mt-2 flex flex-wrap items-center gap-3 text-[15px] font-bold opacity-40">
+                              <span className="whitespace-nowrap">{app.experience}</span>
+                              <span className="bg-cloud-dancer h-1.5 w-1.5 rounded-full" />
+                              <span className="whitespace-nowrap">
+                                지원일: {formatYmdDot(app.appliedAt)}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex shrink-0 items-center gap-4">
-                        <Button
-                          variant="light"
-                          size="md"
-                          className="rounded-xl px-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            goResume(app.resumeId);
-                          }}
-                        >
-                          이력서 보기
-                        </Button>
-                        <Button
-                          variant="blue"
-                          size="md"
-                          className="rounded-xl px-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            goSchedule(app);
-                          }}
-                        >
-                          면접 일정 잡기
-                        </Button>
+                        {/* ✅ 오른쪽 버튼: 폭 고정(텍스트 바뀌어도 안 흔들림) */}
+                        <div className="flex shrink-0 items-center gap-4">
+                          <Button
+                            variant="light"
+                            size="md"
+                            className="w-32 rounded-xl whitespace-nowrap"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              goResume(app.resumeId);
+                            }}
+                          >
+                            이력서 보기
+                          </Button>
+
+                          {/* 🔥 여기 핵심: '면접 일정 잡기' 기준으로 고정폭 */}
+                          {hasInterview ? (
+                            <Button
+                              variant="outline"
+                              size="md"
+                              className="w-40 rounded-xl whitespace-nowrap"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                goSchedule(app);
+                              }}
+                            >
+                              일정 수정
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="blue"
+                              size="md"
+                              className="w-40 rounded-xl whitespace-nowrap"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                goSchedule(app);
+                              }}
+                            >
+                              면접 일정 잡기
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (

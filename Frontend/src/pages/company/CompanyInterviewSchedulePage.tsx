@@ -1,10 +1,14 @@
 // src/pages/company/CompanyInterviewSchedulePage.tsx
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
-import { createExtraInterviewView } from '../../api/myPage';
+import {
+  getExtraInterviewViewByApplicationId,
+  type InterviewSessionView,
+  upsertExtraInterviewView,
+} from '../../api/myPage';
 
 type NavState = {
   applicantName?: string;
@@ -51,8 +55,19 @@ function plusMinutes(date: Date, minutes: number) {
   return d;
 }
 
+function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
+}
+
 const ROUTES = {
-  lobby: (id: number) => `/interviews/${id}/lobby`,
+  applicantList: (jobPostId: number) => `/company/jobs/${jobPostId}/applicants`,
+  lobby: (interviewId: number) => `/interviews/${interviewId}/lobby`,
 } as const;
 
 export default function CompanyInterviewSchedulePage() {
@@ -65,9 +80,9 @@ export default function CompanyInterviewSchedulePage() {
   const safeJobPostId = Number(jobPostId);
   const safeApplicationId = Number(applicationId);
 
-  const minValue = useMemo(() => nowLocalMinValue(), []);
+  const isParamValid = Number.isFinite(safeJobPostId) && Number.isFinite(safeApplicationId);
 
-  // ✅ 기본값: 지금 + 60분 (분 단위 내림/보정)
+  const minValue = useMemo(() => nowLocalMinValue(), []);
   const defaultLocalDateTime = useMemo(() => {
     const base = plusMinutes(new Date(), 60);
     base.setSeconds(0, 0);
@@ -79,6 +94,9 @@ export default function CompanyInterviewSchedulePage() {
   const [postingTitle, setPostingTitle] = useState<string>(navState.postingTitle ?? '');
   const [scheduledLocal, setScheduledLocal] = useState<string>(defaultLocalDateTime);
 
+  const [currentInterview, setCurrentInterview] = useState<InterviewSessionView | null>(null);
+  const [toast, setToast] = useState<string>('');
+
   const [errors, setErrors] = useState<{
     companyName?: string;
     applicantName?: string;
@@ -86,7 +104,26 @@ export default function CompanyInterviewSchedulePage() {
     scheduledLocal?: string;
   }>({});
 
-  const isParamValid = Number.isFinite(safeJobPostId) && Number.isFinite(safeApplicationId);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(''), 1800);
+  }, []);
+
+  // ✅ 기존 일정 있으면 자동으로 EDIT 모드로 세팅
+  useEffect(() => {
+    if (!isParamValid) return;
+
+    const existing = getExtraInterviewViewByApplicationId(safeApplicationId);
+    if (!existing) return;
+
+    setCurrentInterview(existing);
+    setCompanyName((v) => v || existing.companyName);
+    setPostingTitle((v) => v || existing.postingTitle);
+    setApplicantName((v) => v || existing.applicantName || '');
+    setScheduledLocal(toLocalInputValue(existing.scheduledAt));
+  }, [isParamValid, safeApplicationId]);
+
+  const modeLabel = currentInterview ? 'EDIT' : 'CREATE';
 
   const validate = useCallback(() => {
     const next: typeof errors = {};
@@ -119,36 +156,49 @@ export default function CompanyInterviewSchedulePage() {
 
     const scheduledAtIso = localInputToIso(scheduledLocal);
 
-    // ✅ interview 폴더/백엔드 없이도 "일정만" 저장
-    const created = createExtraInterviewView({
+    // ✅ 없으면 생성, 있으면 수정 (로비로 자동 이동 X)
+    const saved = upsertExtraInterviewView({
       application_id: safeApplicationId,
       job_post_id: safeJobPostId,
       companyName: companyName.trim(),
       postingTitle: postingTitle.trim(),
       applicantName: applicantName.trim(),
       scheduledAt: scheduledAtIso,
-      // room_id 안 주면 myPage.ts에서 알아서 만들어줌
     });
 
-    // ✅ 로비로 이동 (로비는 myPage.ts에서 조회함)
-    navigate(ROUTES.lobby(created.interview_id), {
-      state: {
-        sessionId: created.room_id,
-        initialMicOn: false,
-        initialCamOn: false,
-      },
-    });
+    setCurrentInterview(saved);
+    showToast(currentInterview ? '일정 수정 완료!' : '일정 등록 완료!');
   }, [
     applicantName,
     companyName,
+    currentInterview,
     isParamValid,
-    navigate,
     postingTitle,
     safeApplicationId,
     safeJobPostId,
     scheduledLocal,
+    showToast,
     validate,
   ]);
+
+  const goBackToList = useCallback(() => {
+    if (!Number.isFinite(safeJobPostId)) {
+      navigate(-1);
+      return;
+    }
+    navigate(ROUTES.applicantList(safeJobPostId));
+  }, [navigate, safeJobPostId]);
+
+  const goLobby = useCallback(() => {
+    if (!currentInterview) return;
+    navigate(ROUTES.lobby(currentInterview.interview_id), {
+      state: {
+        sessionId: currentInterview.room_id,
+        initialMicOn: false,
+        initialCamOn: false,
+      },
+    });
+  }, [currentInterview, navigate]);
 
   return (
     <div className="bg-pure-white text-midnight-ink min-h-screen min-w-350 pt-32 pb-32">
@@ -160,7 +210,7 @@ export default function CompanyInterviewSchedulePage() {
                 Interview Schedule
               </h1>
               <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
-                지원자 이력서를 확인하고 면접 일정을 등록하세요.
+                지원자 이력서를 확인하고 면접 일정을 {currentInterview ? '수정' : '등록'}하세요.
               </p>
 
               {!isParamValid && (
@@ -170,7 +220,10 @@ export default function CompanyInterviewSchedulePage() {
               )}
             </div>
 
-            <div className="shrink-0">
+            <div className="flex shrink-0 items-center gap-3">
+              <Button variant="outline" size="md" className="rounded-xl" onClick={goBackToList}>
+                목록
+              </Button>
               <Button isBack variant="outline" size="md" className="rounded-xl" />
             </div>
           </div>
@@ -183,9 +236,21 @@ export default function CompanyInterviewSchedulePage() {
               일정 정보
             </h2>
             <span className="text-soft-pebble text-sm font-black tracking-widest whitespace-nowrap uppercase">
-              CREATE
+              {modeLabel}
             </span>
           </div>
+
+          {currentInterview && (
+            <div className="bg-cloud-dancer/60 mb-8 rounded-3xl p-6">
+              <p className="text-midnight-ink text-sm font-black">현재 저장된 면접 일정</p>
+              <p className="text-slate-gray mt-2 text-lg font-black">
+                {formatDateTime(currentInterview.scheduledAt)}
+              </p>
+              <p className="text-slate-gray mt-2 text-xs font-bold opacity-50">
+                자동으로 로비로 안 보냅니다. 원하면 아래 버튼으로 이동하세요 😇
+              </p>
+            </div>
+          )}
 
           <div className="grid gap-6">
             <Input
@@ -215,7 +280,6 @@ export default function CompanyInterviewSchedulePage() {
               error={errors.applicantName}
             />
 
-            {/* datetime-local */}
             <div className="flex flex-col gap-2">
               <label htmlFor="scheduledAt" className="text-slate-gray text-sm font-bold">
                 면접 일시
@@ -237,21 +301,25 @@ export default function CompanyInterviewSchedulePage() {
               {errors.scheduledLocal && (
                 <span className="text-error mt-1 text-xs font-medium">{errors.scheduledLocal}</span>
               )}
-              <p className="text-slate-gray text-xs font-bold opacity-40">
-                (백엔드 연결 전이라 지금은 “일정 저장 + 로비 진입”까지만 됩니다.)
-              </p>
             </div>
           </div>
 
-          <div className="mt-10 flex justify-end gap-3">
+          <div className="mt-10 flex flex-wrap justify-end gap-3">
+            {currentInterview && (
+              <Button variant="outline" size="lg" className="rounded-2xl px-10" onClick={goLobby}>
+                로비로 이동
+              </Button>
+            )}
+
             <Button
               variant="outline"
               size="lg"
               className="rounded-2xl px-10"
-              onClick={() => navigate(-1)}
+              onClick={goBackToList}
             >
-              취소
+              목록으로
             </Button>
+
             <Button
               variant="blue"
               size="lg"
@@ -259,10 +327,16 @@ export default function CompanyInterviewSchedulePage() {
               onClick={onSubmit}
               disabled={!isParamValid}
             >
-              일정 등록
+              {currentInterview ? '일정 수정' : '일정 등록'}
             </Button>
           </div>
         </section>
+
+        {toast && (
+          <div className="bg-midnight-ink text-pure-white fixed right-10 bottom-10 z-50 rounded-2xl px-6 py-4 text-sm font-black shadow-2xl">
+            {toast}
+          </div>
+        )}
       </div>
     </div>
   );

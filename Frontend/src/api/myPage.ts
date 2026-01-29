@@ -1,9 +1,4 @@
 // src/api/myPage.ts
-// 개인 MVP용 최소 더미데이터 (ERD 기반)
-// - MyPage (스크랩/다가오는 면접/캘린더용)
-// - InterviewListPage (예정/완료 리스트)
-// - InterviewLobbyPage (세션 상세/room_id)
-// - InterviewRoomPage (세션 id/room_id 기반 입장 UI)
 
 export type UserRole = 'APPLICANT' | 'COMPANY';
 
@@ -13,13 +8,13 @@ export type UserRow = {
   name: string;
   email: string;
   role: UserRole;
-  created_at: string; // ISO
+  created_at: string;
 };
 
 export type ApplicantRow = {
   id: number;
   user_id: number;
-  birth_date?: string; // YYYY-MM-DD
+  birth_date?: string;
   gender?: string;
   total_experience_years?: number;
 };
@@ -38,10 +33,10 @@ export type JobPostRow = {
   id: number;
   company_id: number;
   title: string;
-  required_stacks?: string[]; // ERD jsonb → FE에서는 배열로 사용
-  deadline?: string; // YYYY-MM-DD
+  required_stacks?: string[];
+  deadline?: string;
   status: JobPostStatus;
-  created_at: string; // ISO
+  created_at: string;
 };
 
 export type ResumeRow = {
@@ -49,7 +44,7 @@ export type ResumeRow = {
   applicant_id: number;
   title: string;
   file_url?: string;
-  created_at: string; // ISO
+  created_at: string;
 };
 
 export type ApplicationStatus = 'APPLIED' | 'INTERVIEW_SCHEDULED' | 'REJECTED' | 'HIRED';
@@ -59,7 +54,7 @@ export type ApplicationRow = {
   applicant_id: number;
   resume_id: number;
   status: ApplicationStatus;
-  applied_at: string; // ISO
+  applied_at: string;
 };
 
 export type InterviewStatus = 'SCHEDULED' | 'DONE' | 'CANCELLED';
@@ -67,7 +62,7 @@ export type InterviewRow = {
   id: number;
   application_id: number;
   room_id: string;
-  scheduled_at: string; // ISO
+  scheduled_at: string;
   status: InterviewStatus;
 };
 
@@ -75,14 +70,12 @@ export type ScrapRow = {
   id: number;
   applicant_id: number;
   job_post_id: number;
-  created_at: string; // ISO
+  created_at: string;
 };
 
-// ===== 로그인한 현재 사용자(개인) =====
 export const CURRENT_USER_ID = 1;
 export const CURRENT_APPLICANT_ID = 1;
 
-// ===== 원본 테이블 더미 =====
 export const USERS: UserRow[] = [
   {
     id: 1,
@@ -179,7 +172,6 @@ export const RESUMES: ResumeRow[] = [
   },
 ];
 
-// applications: applicant가 job_post에 지원한 기록
 export const APPLICATIONS: ApplicationRow[] = [
   {
     id: 7001,
@@ -207,9 +199,7 @@ export const APPLICATIONS: ApplicationRow[] = [
   },
 ];
 
-// interviews: applications(0..1) → interviews
 export const INTERVIEWS: InterviewRow[] = [
-  // ✅ 완료(과거)
   {
     id: 9003,
     application_id: 7001,
@@ -231,8 +221,6 @@ export const INTERVIEWS: InterviewRow[] = [
     scheduled_at: '2026-01-23T10:30:00',
     status: 'DONE',
   },
-
-  // ✅ 예정 샘플
   {
     id: 9100,
     application_id: 7001,
@@ -270,21 +258,19 @@ export const SCRAPS: ScrapRow[] = [
   },
 ];
 
-// ====== 페이지에서 쓰기 쉬운 "뷰 모델" ======
-
+// ===== View Models =====
 export type InterviewListStatus = 'UPCOMING' | 'DONE';
 
 export type InterviewSessionView = {
-  interview_id: number; // interviews.id
-  application_id: number; // interviews.application_id
+  interview_id: number;
+  application_id: number;
   room_id: string;
-  scheduledAt: string; // interviews.scheduled_at
+  scheduledAt: string;
 
   job_post_id: number;
-  postingTitle: string; // job_posts.title
-  companyName: string; // companies.companies_name
+  postingTitle: string;
+  companyName: string;
 
-  // ✅ 기업 화면에서 표시용(없어도 됨)
   applicantName?: string;
 
   status: InterviewListStatus;
@@ -303,8 +289,7 @@ function interviewStatusToListStatus(s: InterviewStatus): InterviewListStatus {
 }
 
 /* =====================================================================================
-   ✅ [중요] 기업이 “일정만 잡는” 상태를 지원하기 위한 localStorage 오버레이
-   - interview 폴더(API) 없어도: createExtraInterviewView로 등록 → 리스트/로비에서 조회 가능
+   ✅ localStorage: 기업이 만든 면접 일정 (백엔드 없을 때)
    ===================================================================================== */
 
 export type CreateExtraInterviewArgs = {
@@ -375,25 +360,36 @@ function statusFromTime(iso: string): InterviewListStatus {
   return t < now ? 'DONE' : 'UPCOMING';
 }
 
-function buildExtraInterviewViews(): InterviewSessionView[] {
-  const extras = readExtras();
-  return extras.map((e) => ({
+function toView(e: ExtraInterviewPersisted): InterviewSessionView {
+  return {
     interview_id: e.interview_id,
     application_id: e.application_id,
     room_id: e.room_id,
     scheduledAt: e.scheduledAt,
-
     job_post_id: e.job_post_id,
     postingTitle: e.postingTitle,
     companyName: e.companyName,
-
     applicantName: e.applicantName,
-
     status: e.status,
-  }));
+  };
 }
 
-/** ✅ 기업이 일정 등록할 때 호출 */
+function buildExtraInterviewViews(): InterviewSessionView[] {
+  const extras = readExtras();
+  return extras.map(toView);
+}
+
+export function getExtraInterviewViews(): InterviewSessionView[] {
+  return buildExtraInterviewViews();
+}
+
+export function getExtraInterviewViewByApplicationId(
+  applicationId: number,
+): InterviewSessionView | undefined {
+  return buildExtraInterviewViews().find((v) => v.application_id === applicationId);
+}
+
+/** ✅ 생성 */
 export function createExtraInterviewView(args: CreateExtraInterviewArgs): InterviewSessionView {
   const interviewId = nextExtraId();
   const roomId =
@@ -407,13 +403,10 @@ export function createExtraInterviewView(args: CreateExtraInterviewArgs): Interv
     application_id: args.application_id,
     room_id: roomId,
     scheduledAt: args.scheduledAt,
-
     job_post_id: args.job_post_id,
     postingTitle: args.postingTitle,
     companyName: args.companyName,
-
     applicantName: args.applicantName,
-
     status,
     createdAt: new Date().toISOString(),
   };
@@ -421,23 +414,10 @@ export function createExtraInterviewView(args: CreateExtraInterviewArgs): Interv
   const prev = readExtras();
   writeExtras([persisted, ...prev]);
 
-  return {
-    interview_id: persisted.interview_id,
-    application_id: persisted.application_id,
-    room_id: persisted.room_id,
-    scheduledAt: persisted.scheduledAt,
-
-    job_post_id: persisted.job_post_id,
-    postingTitle: persisted.postingTitle,
-    companyName: persisted.companyName,
-
-    applicantName: persisted.applicantName,
-
-    status: persisted.status,
-  };
+  return toView(persisted);
 }
 
-/** (옵션) 일정 수정 같은 거 붙일 때 쓰라고 준비만 해둠 */
+/** ✅ 수정(면접ID 기준) */
 export function updateExtraInterviewScheduledAt(interviewId: number, nextIso: string): boolean {
   const prev = readExtras();
   const idx = prev.findIndex((p) => p.interview_id === interviewId);
@@ -456,22 +436,48 @@ export function updateExtraInterviewScheduledAt(interviewId: number, nextIso: st
   return true;
 }
 
-/** (옵션) 테스트/초기화 */
+/** ✅ 업서트(지원서ID 기준): 없으면 생성, 있으면 수정 */
+export function upsertExtraInterviewView(args: CreateExtraInterviewArgs): InterviewSessionView {
+  const prev = readExtras();
+  const idx = prev.findIndex((p) => p.application_id === args.application_id);
+
+  if (idx < 0) return createExtraInterviewView(args);
+
+  const target = prev[idx];
+  const roomId = args.room_id?.trim() || target.room_id;
+  const status = statusFromTime(args.scheduledAt);
+
+  const updated: ExtraInterviewPersisted = {
+    ...target,
+    room_id: roomId,
+    scheduledAt: args.scheduledAt,
+    job_post_id: args.job_post_id,
+    postingTitle: args.postingTitle,
+    companyName: args.companyName,
+    applicantName: args.applicantName ?? target.applicantName,
+    status,
+  };
+
+  const next = [...prev];
+  next[idx] = updated;
+  writeExtras(next);
+
+  return toView(updated);
+}
+
 export function clearExtraInterviewViews() {
   if (!isBrowser()) return;
   localStorage.removeItem(EXTRA_KEY);
   localStorage.removeItem(EXTRA_NEXT_ID_KEY);
 }
 
-// ===== 조인 유틸 (ERD 관계대로 묶어줌) =====
-
+// ===== joins for applicant-side mock =====
 export function buildMyInterviewViews(
   applicantId: number = CURRENT_APPLICANT_ID,
 ): InterviewSessionView[] {
   const myApps = APPLICATIONS.filter((a) => a.applicant_id === applicantId);
 
   const views: InterviewSessionView[] = [];
-
   for (const iv of INTERVIEWS) {
     const app = myApps.find((a) => a.id === iv.application_id);
     if (!app) continue;
@@ -487,11 +493,9 @@ export function buildMyInterviewViews(
       application_id: app.id,
       room_id: iv.room_id,
       scheduledAt: iv.scheduled_at,
-
       job_post_id: post.id,
       postingTitle: post.title,
       companyName: company.companies_name,
-
       status: interviewStatusToListStatus(iv.status),
     });
   }
@@ -499,12 +503,10 @@ export function buildMyInterviewViews(
   return views.sort((a, b) => (a.scheduledAt > b.scheduledAt ? 1 : -1));
 }
 
-/** ✅ 기존 더미 + 기업이 만든(저장된) 면접을 합쳐서 보여주기 */
 export function buildAllInterviewViews(applicantId: number = CURRENT_APPLICANT_ID) {
   const base = buildMyInterviewViews(applicantId);
   const extra = buildExtraInterviewViews();
 
-  // 혹시나 id 충돌하면 extra 우선
   const map = new Map<number, InterviewSessionView>();
   for (const b of base) map.set(b.interview_id, b);
   for (const e of extra) map.set(e.interview_id, e);
@@ -550,22 +552,18 @@ export function buildMyScrapViews(applicantId: number = CURRENT_APPLICANT_ID): S
     .filter(Boolean) as ScrapView[];
 }
 
-/* =======================================================================
-   ✅ MyPage에서 "파일 안에 더미를 넣지 않기" 위한 추가 mock API 레이어
-   - 나중에 실제 API/React Query 붙일 때 여기 함수들만 교체하면 됨
-   ======================================================================= */
-
+// ===== mock fetch layer =====
 export type PortfolioReport = {
   id: number;
   filename: string;
-  analyzedAt: string; // ISO
+  analyzedAt: string;
   highlights: string[];
 };
 
 export type NotificationItem = {
   id: number;
   message: string;
-  createdAt: string; // ISO
+  createdAt: string;
   read: boolean;
 };
 
@@ -587,10 +585,7 @@ export const NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
-type FetchOptions = {
-  delayMs?: number;
-  shouldFail?: boolean; // 상태 UI 테스트용
-};
+type FetchOptions = { delayMs?: number; shouldFail?: boolean };
 
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
@@ -599,15 +594,10 @@ function sleep(ms: number) {
 async function mockFetch<T>(value: T, options?: FetchOptions): Promise<T> {
   const delay = options?.delayMs ?? 300;
   await sleep(delay);
-
-  if (options?.shouldFail) {
-    throw new Error('네트워크 오류가 발생했어요. 다시 시도해 주세요.');
-  }
-
+  if (options?.shouldFail) throw new Error('네트워크 오류가 발생했어요. 다시 시도해 주세요.');
   return value;
 }
 
-// ✅ “API처럼” 쓰는 함수들 (MyPage는 이걸로만 가져감)
 export function fetchMyInterviewViews(options?: FetchOptions): Promise<InterviewSessionView[]> {
   return mockFetch(buildAllInterviewViews(), options);
 }
