@@ -18,7 +18,7 @@ services:
     restart: always
 
     environment:
-      - OPENVIDU_URL=http://openvidu-server:4443
+      - OPENVIDU_URL=http://openvidu-server:4443/
       - OPENVIDU_SECRET=MY_SECRET
       - EXPLANATION_URL=http://explanation-llm:8003
       
@@ -100,14 +100,17 @@ services:
     environment:
       - OPENVIDU_SECRET=MY_SECRET
       - DOMAIN_OR_PUBLIC_IP=i14d205.p.ssafy.io
-      - WITH_KMS=http://localhost:8888/kurento
       - OPENVIDU_HTTPS_PORT=443
-      - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900       
-      - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=3600     
-      - OPENVIDU_SESSIONS_GARBAGE_INTERVAL_LAST_PARTICIPANT=900
+      - HTTPS_PORT=4443
+      - CERTIFICATE_TYPE=selfsigned
+      - OPENVIDU_PRO_LICENSE=
+      - WITH_KMS=http://localhost:8888/kurento
+      - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900
+      - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=3600
       - OPENVIDU_WEBHOOK=true
       - OPENVIDU_WEBHOOK_ENDPOINT=http://portmatch-backend-prod:8080/api/interview/webhook
-      - OPENVIDU_WEBHOOK_EVENTS=["sessionDestroyed","participantJoined","participantLeft"]      
+      - OPENVIDU_WEBHOOK_EVENTS=["sessionDestroyed", "participantJoined", "participantLeft"]
+     
 
   certbot:
     image: certbot/certbot:latest
