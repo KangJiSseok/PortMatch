@@ -1,5 +1,5 @@
 // src/pages/company/CompanyInterviewSchedulePage.tsx
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
@@ -14,6 +14,13 @@ type NavState = {
   applicantName?: string;
   postingTitle?: string;
   companyName?: string;
+};
+
+type FormErrors = {
+  companyName?: string;
+  applicantName?: string;
+  postingTitle?: string;
+  scheduledLocal?: string;
 };
 
 function toLocalInputValue(iso: string) {
@@ -89,44 +96,42 @@ export default function CompanyInterviewSchedulePage() {
     return toLocalInputValue(base.toISOString());
   }, []);
 
-  const [companyName, setCompanyName] = useState<string>(navState.companyName ?? '');
-  const [applicantName, setApplicantName] = useState<string>(navState.applicantName ?? '');
-  const [postingTitle, setPostingTitle] = useState<string>(navState.postingTitle ?? '');
-  const [scheduledLocal, setScheduledLocal] = useState<string>(defaultLocalDateTime);
+  // ✅ effect 없이: 렌더 시점에 기존 일정 조회 (localStorage 기반이라 동기 OK)
+  const existing = useMemo(() => {
+    if (!isParamValid) return undefined;
+    return getExtraInterviewViewByApplicationId(safeApplicationId);
+  }, [isParamValid, safeApplicationId]);
 
-  const [currentInterview, setCurrentInterview] = useState<InterviewSessionView | null>(null);
+  // ✅ 초기값은 state initializer로만 세팅 (setState-in-effect ESLint 회피)
+  const [currentInterview, setCurrentInterview] = useState<InterviewSessionView | null>(
+    () => existing ?? null,
+  );
+
+  const [companyName, setCompanyName] = useState<string>(
+    () => navState.companyName ?? existing?.companyName ?? '',
+  );
+  const [applicantName, setApplicantName] = useState<string>(
+    () => navState.applicantName ?? existing?.applicantName ?? '',
+  );
+  const [postingTitle, setPostingTitle] = useState<string>(
+    () => navState.postingTitle ?? existing?.postingTitle ?? '',
+  );
+  const [scheduledLocal, setScheduledLocal] = useState<string>(() =>
+    existing ? toLocalInputValue(existing.scheduledAt) : defaultLocalDateTime,
+  );
+
   const [toast, setToast] = useState<string>('');
-
-  const [errors, setErrors] = useState<{
-    companyName?: string;
-    applicantName?: string;
-    postingTitle?: string;
-    scheduledLocal?: string;
-  }>({});
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(''), 1800);
   }, []);
 
-  // ✅ 기존 일정 있으면 자동으로 EDIT 모드로 세팅
-  useEffect(() => {
-    if (!isParamValid) return;
-
-    const existing = getExtraInterviewViewByApplicationId(safeApplicationId);
-    if (!existing) return;
-
-    setCurrentInterview(existing);
-    setCompanyName((v) => v || existing.companyName);
-    setPostingTitle((v) => v || existing.postingTitle);
-    setApplicantName((v) => v || existing.applicantName || '');
-    setScheduledLocal(toLocalInputValue(existing.scheduledAt));
-  }, [isParamValid, safeApplicationId]);
-
   const modeLabel = currentInterview ? 'EDIT' : 'CREATE';
 
   const validate = useCallback(() => {
-    const next: typeof errors = {};
+    const next: FormErrors = {};
 
     if (!companyName.trim()) next.companyName = '기업명을 입력해 주세요.';
     if (!postingTitle.trim()) next.postingTitle = '공고 제목을 입력해 주세요.';
@@ -156,7 +161,6 @@ export default function CompanyInterviewSchedulePage() {
 
     const scheduledAtIso = localInputToIso(scheduledLocal);
 
-    // ✅ 없으면 생성, 있으면 수정 (로비로 자동 이동 X)
     const saved = upsertExtraInterviewView({
       application_id: safeApplicationId,
       job_post_id: safeJobPostId,
@@ -166,8 +170,9 @@ export default function CompanyInterviewSchedulePage() {
       scheduledAt: scheduledAtIso,
     });
 
+    const wasEdit = currentInterview != null;
     setCurrentInterview(saved);
-    showToast(currentInterview ? '일정 수정 완료!' : '일정 등록 완료!');
+    showToast(wasEdit ? '일정 수정 완료!' : '일정 등록 완료!');
   }, [
     applicantName,
     companyName,
