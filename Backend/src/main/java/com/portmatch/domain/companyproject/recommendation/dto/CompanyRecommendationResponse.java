@@ -2,6 +2,7 @@ package com.portmatch.domain.companyproject.recommendation.dto;
 
 public record CompanyRecommendationResponse(
         Long companyId,
+        String companyName,
         double distance,
         double similarity,
         Long portfolioProjectId,
@@ -16,6 +17,7 @@ public record CompanyRecommendationResponse(
 ) {
     public static CompanyRecommendationResponse of(
             Long companyId,
+            String companyName,
             double distance,
             Long portfolioProjectId,
             Long companyProjectId,
@@ -29,6 +31,7 @@ public record CompanyRecommendationResponse(
     ) {
         return new CompanyRecommendationResponse(
                 companyId,
+                companyName,
                 distance,
                 1.0 - distance,
                 portfolioProjectId,

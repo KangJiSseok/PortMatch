@@ -19,6 +19,7 @@ public class CompanyRecommendationService {
         return repository.findTopCompaniesByPortfolio(portfolioId, 20).stream()
                 .map(r -> CompanyRecommendationResponse.of(
                         r.getCompanyId(),
+                        r.getCompanyName(),
                         nvl(r.getDistance(), 999.0),
                         r.getPortfolioProjectId(),
                         r.getCompanyProjectId(),
