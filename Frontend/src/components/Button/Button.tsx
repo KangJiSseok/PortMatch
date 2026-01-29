@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronLeft, X } from 'lucide-react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
@@ -77,19 +78,11 @@ function Button({
     if (icon) return <span className="mr-2">{icon}</span>;
     if (isBack) {
       return (
-        <svg
+        <ChevronLeft
+          size="1.2em"
+          strokeWidth={2.5}
           className="mr-2 transform transition-transform duration-300 group-hover:-translate-x-1"
-          width="1.2em"
-          height="1.2em"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
+        />
       );
     }
     return null;
@@ -102,19 +95,7 @@ function Button({
       {...props}
     >
       {variant === 'close' && !children ? (
-        <svg
-          width="50%"
-          height="50%"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
+        <X size="60%" strokeWidth={3} />
       ) : (
         <>
           {renderIcon()}
