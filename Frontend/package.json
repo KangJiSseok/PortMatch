@@ -15,7 +15,7 @@
     "axios": "^1.13.2",
     "framer-motion": "^12.27.0",
     "lucide-react": "^0.562.0",
-    "openvidu-browser": "^2.32.1",
+    "openvidu-browser": "2.30.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.12.0",
