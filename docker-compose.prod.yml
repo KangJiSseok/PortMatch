@@ -74,7 +74,6 @@ services:
     volumes:
       - letsencrypt:/etc/letsencrypt
       - certbot-www:/var/www/certbot
-      - ./default.conf:/etc/nginx/conf.d/default.conf
     ports:
       - "80:80"
       - "443:443"
