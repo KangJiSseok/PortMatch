@@ -20,22 +20,21 @@ class GeminiEmbeddingsResponse(BaseModel):
     vectors: List[List[float]]
 
 
-@router.post("/embeddings/gemini", response_model=GeminiEmbeddingsResponse)
-def gemini_embeddings(payload: GeminiEmbeddingsRequest) -> GeminiEmbeddingsResponse:
+def run_embeddings(texts: List[str], model: Optional[str]) -> "GeminiEmbeddingsResponse":
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GMS_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not set")
 
-    resolved_model = (payload.model or "models/gemini-embedding-001").strip()
+    resolved_model = (model or "models/gemini-embedding-001").strip()
     output_dim = int(os.getenv("GEMINI_OUTPUT_DIMENSIONS", "1536"))
-    texts = [(t or "").strip() for t in payload.texts]
-    if not texts or any(not t for t in texts):
+    cleaned_texts = [(t or "").strip() for t in texts]
+    if not cleaned_texts or any(not t for t in cleaned_texts):
         raise HTTPException(status_code=400, detail="texts contains empty string")
 
     try:
         vectors = embed_texts_gemini(
             api_key=api_key,
-            texts=texts,
+            texts=cleaned_texts,
             model=resolved_model,
             output_dimensionality=output_dim,
         )
@@ -46,3 +45,13 @@ def gemini_embeddings(payload: GeminiEmbeddingsRequest) -> GeminiEmbeddingsRespo
         raise HTTPException(status_code=502, detail="embedding failed: empty vectors")
 
     return GeminiEmbeddingsResponse(model=resolved_model, dim=len(vectors[0]), vectors=vectors)
+
+
+@router.post("/embeddings/gemini", response_model=GeminiEmbeddingsResponse)
+def gemini_embeddings(payload: GeminiEmbeddingsRequest) -> GeminiEmbeddingsResponse:
+    return run_embeddings(payload.texts, payload.model)
+
+
+# Backward-compatible aliases for existing imports.
+EmbeddingsRequest = GeminiEmbeddingsRequest
+EmbeddingsResponse = GeminiEmbeddingsResponse
