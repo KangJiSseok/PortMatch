@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -64,8 +65,8 @@ public class SessionController {
      * @return 클라이언트에게 전달할 토큰(입장권)
      */
     @PostMapping("/sessions/{sessionId}/connections")
-    public ResponseEntity<String> createConnection(@PathVariable("sessionId") String sessionId,
-                                                   @RequestBody ConnectionRequestDto request) {
+    public ResponseEntity<?> createConnection(@PathVariable("sessionId") String sessionId,
+                                              @RequestBody ConnectionRequestDto request) {
         try {
             Session session = openVidu.getActiveSession(sessionId);
             if (session == null) {
@@ -83,14 +84,27 @@ public class SessionController {
 
             Connection connection = session.createConnection(properties);
             String originalToken = connection.getToken();
-            // originalToken 예시: ws://localhost:4443?sessionId=...&token=...
+            // 예: ws://localhost:4443?sessionId=ses_abc&token=tok_123
 
+            // 1. 쿼리 스트링 추출
             String queryString = originalToken.substring(originalToken.indexOf("?"));
+
+            // 2. 전체 URL 조립 (혹시 필요할지 모르니 유지)
             String finalUrl = "wss://i14d205.p.ssafy.io/openvidu" + queryString;
 
-            System.out.println("최종 전달 토큰: " + finalUrl);
+            // 3. 순수 토큰 값만 추출 (tok_XXXX 이 부분만!)
+            // token= 뒤에 있는 문자열만 가져옵니다.
+            String pureToken = originalToken.split("token=")[1];
 
-            return new ResponseEntity<>(finalUrl, HttpStatus.OK);
+            System.out.println("전체 URL: " + finalUrl);
+            System.out.println("순수 토큰: " + pureToken);
+
+            // 여러 정보를 담기 위해 Map 사용
+            Map<String, String> response = new HashMap<>();
+            response.put("token", pureToken); // 프론트가 바로 쓸 순수 토큰
+            response.put("url", finalUrl);    // 참고용 전체 URL
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
 
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
