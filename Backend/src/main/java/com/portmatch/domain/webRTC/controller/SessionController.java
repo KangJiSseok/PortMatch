@@ -85,19 +85,10 @@ public class SessionController {
             String originalToken = connection.getToken();
             // originalToken 예시: ws://localhost:4443?sessionId=...&token=...
 
-            // 1. 쿼리 스트링(? 이후의 내용)만 추출하기
-            String queryString = "";
-            if (originalToken.contains("?")) {
-                queryString = originalToken.substring(originalToken.indexOf("?"));
-            }
 
-            // 2. 실제 서비스 중인 도메인과 OpenVidu 경로 조합
-            // 배포 환경의 Nginx 설정에 따라 /openvidu 경로가 필요하므로 아래처럼 구성해봐
-            String fixedToken = "wss://i14d205.p.ssafy.io/openvidu" + queryString;
+            System.out.println("최종 전달 토큰: " + originalToken);
 
-            System.out.println("최종 전달 토큰: " + fixedToken);
-
-            return new ResponseEntity<>(fixedToken, HttpStatus.OK);
+            return new ResponseEntity<>(originalToken, HttpStatus.OK);
 
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
