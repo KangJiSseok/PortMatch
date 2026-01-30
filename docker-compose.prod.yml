@@ -21,7 +21,7 @@ services:
       - OPENVIDU_URL=http://openvidu-server:4443/
       - OPENVIDU_SECRET=MY_SECRET
       - EXPLANATION_URL=http://explanation-llm:8003
-      
+
     env_file:
       - .env.prod
     ports:
@@ -110,7 +110,6 @@ services:
       - OPENVIDU_WEBHOOK=true
       - OPENVIDU_WEBHOOK_ENDPOINT=http://portmatch-backend-prod:8080/api/interview/webhook
       - OPENVIDU_WEBHOOK_EVENTS=["sessionDestroyed", "participantJoined", "participantLeft"]
-     
 
   certbot:
     image: certbot/certbot:latest
