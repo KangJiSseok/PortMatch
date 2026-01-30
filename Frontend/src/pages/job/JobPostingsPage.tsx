@@ -646,8 +646,9 @@ function JobPostingsPage() {
       fetchJobPostingStacks(job.id)
         .then((res) => {
           const names =
-            res.data?.map((stack) => stack.stack_name || (stack as { stackName?: string }).stackName) ??
-            [];
+            res.data
+              ?.map((stack) => stack.stack_name || (stack as { stackName?: string }).stackName)
+              .filter((name): name is string => typeof name === 'string' && name.length > 0) ?? [];
           if (names.length > 0) {
             setPostingStackMap((prev) => ({ ...prev, [job.id]: names }));
           }

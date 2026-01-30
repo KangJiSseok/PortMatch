@@ -917,11 +917,11 @@ export default function RecommendCompanyPage() {
 
         const mapped = data.map((item: CompanyRecommendationResponse, idx) => {
           const distByFactor: Record<Factor, number> = {
-            [FACTOR_ORDER[0]]: item.projectDistance,
-            [FACTOR_ORDER[1]]: item.domainDistance,
-            [FACTOR_ORDER[2]]: item.problemDistance,
-            [FACTOR_ORDER[3]]: item.solutionDistance,
-            [FACTOR_ORDER[4]]: item.techDistance,
+            프로젝트: item.projectDistance,
+            도메인: item.domainDistance,
+            문제: item.problemDistance,
+            해결: item.solutionDistance,
+            기술스택: item.techDistance,
           };
 
           const weights = distancesToWeights(distByFactor);
@@ -959,7 +959,6 @@ export default function RecommendCompanyPage() {
   }, [portfolioId]);
 
 
-  const hasValidPortfolioId = Boolean(portfolioId) && !Number.isNaN(portfolioId);
   const companies = apiCompanies;
 
   const companiesWithCounts = useMemo(
