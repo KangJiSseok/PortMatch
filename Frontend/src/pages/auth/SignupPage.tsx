@@ -5,26 +5,30 @@ import axios from 'axios';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 import Select from '../../components/Select/Select';
+import WarningBubble from '../../components/WarningBubble/WarningBubble';
 import { useSignup } from '../../hooks/useAuth';
 import type { UserRole } from '../../types/auth';
 
-const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boolean }) => {
-  if (!isVisible || !message) return null;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -5 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="absolute top-[calc(100%+4px)] left-4 z-50"
-    >
-      <div className="flex flex-col items-start">
-        <div className="ml-4 h-0 w-0 border-x-[5px] border-b-[6px] border-x-transparent border-b-red-500/80" />
-        <div className="rounded-lg bg-red-500/80 px-3 py-1.5 text-[11px] font-bold text-white shadow-lg backdrop-blur-md">
-          {message}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+const YEARS = Array.from({ length: 100 }, (_, i) => ({
+  value: `${2026 - i}`,
+  label: `${2026 - i}년`,
+}));
+const MONTHS = Array.from({ length: 12 }, (_, i) => ({ value: `${i + 1}`, label: `${i + 1}월` }));
+const DAYS = Array.from({ length: 31 }, (_, i) => ({ value: `${i + 1}`, label: `${i + 1}일` }));
+
+const COMPANY_SIZE_OPTIONS = [
+  { value: '', label: '선택' },
+  { value: 'large', label: '대기업' },
+  { value: 'affiliate', label: '대기업 계올사·자회사' },
+  { value: 'small', label: '중소기업(300명이하)' },
+  { value: 'medium', label: '중견기업(300명이상)' },
+  { value: 'venture', label: '벤처기업' },
+  { value: 'foreign_invested', label: '외국계(외국 투자기업)' },
+  { value: 'foreign_corporate', label: '외국계(외국 법인기업)' },
+  { value: 'public', label: '국내 공공기관·공기업' },
+  { value: 'non_profit', label: '비영리단체·협회·교육재단' },
+  { value: 'foreign_org', label: '외국 기관·비영리기구·단체' },
+];
 
 function SignupPage() {
   const [userType, setUserType] = useState<UserRole>('APPLICANT');
@@ -50,29 +54,7 @@ function SignupPage() {
   });
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
   const { mutate: signupMutate, isPending: isLoading } = useSignup();
-
-  const years = Array.from({ length: 100 }, (_, i) => ({
-    value: `${2026 - i}`,
-    label: `${2026 - i}년`,
-  }));
-  const months = Array.from({ length: 12 }, (_, i) => ({ value: `${i + 1}`, label: `${i + 1}월` }));
-  const days = Array.from({ length: 31 }, (_, i) => ({ value: `${i + 1}`, label: `${i + 1}일` }));
-
-  const companySizeOptions = [
-    { value: '', label: '선택' },
-    { value: 'large', label: '대기업' },
-    { value: 'affiliate', label: '대기업 계열사·자회사' },
-    { value: 'small', label: '중소기업(300명이하)' },
-    { value: 'medium', label: '중견기업(300명이상)' },
-    { value: 'venture', label: '벤처기업' },
-    { value: 'foreign_invested', label: '외국계(외국 투자기업)' },
-    { value: 'foreign_corporate', label: '외국계(외국 법인기업)' },
-    { value: 'public', label: '국내 공공기관·공기업' },
-    { value: 'non_profit', label: '비영리단체·협회·교육재단' },
-    { value: 'foreign_org', label: '외국 기관·비영리기구·단체' },
-  ];
 
   const validateField = (field: string, value: string, currentFormData = formData) => {
     let error = '';
@@ -86,19 +68,23 @@ function SignupPage() {
       const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,16}$/;
       if (!value) error = '비밀번호를 입력해주세요.';
       else if (!passwordRegex.test(value)) error = '8~16자 영문, 숫자, 특수문자를 조합해주세요.';
+
+      const passwordConfirmError =
+        currentFormData.passwordConfirm && value !== currentFormData.passwordConfirm
+          ? '비밀번호가 일치하지 않습니다.'
+          : '';
+
+      setErrors((prev) => ({
+        ...prev,
+        password: error,
+        passwordConfirm: passwordConfirmError,
+      }));
+      return;
     }
 
     if (field === 'passwordConfirm') {
       if (!value) error = '비밀번호 확인이 필요합니다.';
       else if (value !== currentFormData.password) error = '비밀번호가 일치하지 않습니다.';
-    }
-
-    if (field === 'password') {
-      if (currentFormData.passwordConfirm && value !== currentFormData.passwordConfirm) {
-        setErrors((prev) => ({ ...prev, passwordConfirm: '비밀번호가 일치하지 않습니다.' }));
-      } else {
-        setErrors((prev) => ({ ...prev, passwordConfirm: '' }));
-      }
     }
 
     if (['name', 'phone', 'companyName', 'businessNumber', 'address'].includes(field) && !value) {
@@ -151,39 +137,39 @@ function SignupPage() {
             'companySize',
           ];
 
-    let firstError: string | null = null;
     const newErrors: Record<string, string> = { ...errors };
+    let firstErrorField: string | null = null;
 
     requiredFields.forEach((field) => {
       if (!formData[field as keyof typeof formData]) {
         newErrors[field] = '필수 입력 항목입니다.';
-        if (!firstError) firstError = field;
+        if (!firstErrorField) firstErrorField = field;
       }
     });
 
-    setErrors(newErrors);
-
-    if (firstError || Object.values(newErrors).some((msg) => msg)) {
-      const errorField = firstError || Object.keys(newErrors).find((key) => newErrors[key] !== '');
-      if (errorField) {
-        setShakeField(errorField);
-        fieldRefs.current[errorField]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const inputElement = fieldRefs.current[errorField]?.querySelector(
-          'input, select',
-        ) as HTMLElement;
-        inputElement?.focus();
+    if (firstErrorField || Object.values(newErrors).some((msg) => msg)) {
+      setErrors(newErrors);
+      const errorKey = firstErrorField || Object.keys(newErrors).find((k) => newErrors[k]);
+      if (errorKey) {
+        setShakeField(errorKey);
+        fieldRefs.current[errorKey]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (fieldRefs.current[errorKey]?.querySelector('input, select') as HTMLElement)?.focus();
         setTimeout(() => setShakeField(null), 500);
       }
       return;
     }
+
+    const commonData = {
+      email: formData.email,
+      password: formData.password,
+    };
 
     if (userType === 'APPLICANT') {
       signupMutate(
         {
           type: 'APPLICANT',
           data: {
-            email: formData.email,
-            password: formData.password,
+            ...commonData,
             name: formData.name,
             phone: formData.phone.replace(/-/g, ''),
             birthYear: formData.birthYear,
@@ -194,18 +180,7 @@ function SignupPage() {
           },
         },
         {
-          onError: (error: unknown) => {
-            if (axios.isAxiosError(error)) {
-              const detailedError = error.response?.data?.data?.errors?.[0]?.reason;
-              setErrors((prev) => ({
-                ...prev,
-                submit:
-                  detailedError ||
-                  error.response?.data?.message ||
-                  '회원가입 처리 중 오류가 발생했습니다.',
-              }));
-            }
-          },
+          onError: handleApiError,
         },
       );
     } else {
@@ -213,8 +188,7 @@ function SignupPage() {
         {
           type: 'COMPANY',
           data: {
-            email: formData.email,
-            password: formData.password,
+            ...commonData,
             companyName: formData.companyName,
             businessNumber: formData.businessNumber.replace(/-/g, ''),
             managerName: formData.name,
@@ -225,20 +199,20 @@ function SignupPage() {
           },
         },
         {
-          onError: (error: unknown) => {
-            if (axios.isAxiosError(error)) {
-              const detailedError = error.response?.data?.data?.errors?.[0]?.reason;
-              setErrors((prev) => ({
-                ...prev,
-                submit:
-                  detailedError ||
-                  error.response?.data?.message ||
-                  '회원가입 처리 중 오류가 발생했습니다.',
-              }));
-            }
-          },
+          onError: handleApiError,
         },
       );
+    }
+  };
+
+  const handleApiError = (error: unknown) => {
+    if (axios.isAxiosError(error)) {
+      const detailedError = error.response?.data?.data?.errors?.[0]?.reason;
+      setErrors((prev) => ({
+        ...prev,
+        submit:
+          detailedError || error.response?.data?.message || '회원가입 처리 중 오류가 발생했습니다.',
+      }));
     }
   };
 
@@ -305,25 +279,22 @@ function SignupPage() {
         </div>
 
         <div className="mb-12 flex rounded-[20px] bg-gray-50 p-1.5">
-          {(
-            [
-              { id: 'APPLICANT', label: '개인 회원' },
-              { id: 'COMPANY', label: '기업 회원' },
-            ] as const
-          ).map((tab) => (
+          {(['APPLICANT', 'COMPANY'] as const).map((id) => (
             <button
-              key={tab.id}
+              key={id}
               type="button"
-              onClick={() => setUserType(tab.id)}
-              className={`relative flex-1 py-3.5 text-[15px] font-black transition-all ${userType === tab.id ? 'text-point-blue' : 'text-slate-gray hover:text-midnight-ink'}`}
+              onClick={() => setUserType(id)}
+              className={`relative flex-1 py-3.5 text-[15px] font-black transition-all ${userType === id ? 'text-point-blue' : 'text-slate-gray hover:text-midnight-ink'}`}
             >
-              {userType === tab.id && (
+              {userType === id && (
                 <motion.div
                   layoutId="activeTab"
                   className="bg-pure-white absolute inset-0 rounded-[15px] shadow-sm"
                 />
               )}
-              <span className="relative z-10">{tab.label}</span>
+              <span className="relative z-10">
+                {id === 'APPLICANT' ? '개인 회원' : '기업 회원'}
+              </span>
             </button>
           ))}
         </div>
@@ -341,7 +312,7 @@ function SignupPage() {
                   ref={(el) => {
                     fieldRefs.current[field] = el;
                   }}
-                  animate={shakeField === field ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+                  animate={shakeField === field ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }}
                   className={`relative ${field === 'email' ? 'col-span-2' : ''}`}
                 >
                   <Input
@@ -364,6 +335,7 @@ function SignupPage() {
                     }
                     maxLength={field === 'phone' ? 13 : undefined}
                     disabled={isLoading}
+                    error={errors[field] ? ' ' : undefined}
                   />
                   <WarningBubble message={errors[field]} isVisible={!!errors[field]} />
                 </motion.div>
@@ -385,30 +357,29 @@ function SignupPage() {
                     ref={(el) => {
                       fieldRefs.current.birthYear = el;
                     }}
-                    animate={shakeField === 'birthYear' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+                    animate={
+                      shakeField === 'birthYear' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }
+                    }
                     className="relative col-span-2"
                   >
                     <div className="grid grid-cols-3 gap-4">
                       <Select
                         label="출생 연도 *"
-                        options={[{ value: '', label: '선택' }, ...years]}
-                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                          handleInputChange('birthYear', e.target.value)
-                        }
+                        options={[{ value: '', label: '선택' }, ...YEARS]}
+                        onChange={(e) => handleInputChange('birthYear', e.target.value)}
+                        error={!!errors.birthYear}
                       />
                       <Select
                         label="월 *"
-                        options={[{ value: '', label: '선택' }, ...months]}
-                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                          handleInputChange('birthMonth', e.target.value)
-                        }
+                        options={[{ value: '', label: '선택' }, ...MONTHS]}
+                        onChange={(e) => handleInputChange('birthMonth', e.target.value)}
+                        error={!!errors.birthYear}
                       />
                       <Select
                         label="일 *"
-                        options={[{ value: '', label: '선택' }, ...days]}
-                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                          handleInputChange('birthDay', e.target.value)
-                        }
+                        options={[{ value: '', label: '선택' }, ...DAYS]}
+                        onChange={(e) => handleInputChange('birthDay', e.target.value)}
+                        error={!!errors.birthYear}
                       />
                     </div>
                     <WarningBubble message={errors.birthYear} isVisible={!!errors.birthYear} />
@@ -417,7 +388,7 @@ function SignupPage() {
                     ref={(el) => {
                       fieldRefs.current.gender = el;
                     }}
-                    animate={shakeField === 'gender' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+                    animate={shakeField === 'gender' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }}
                     className="relative"
                   >
                     <Select
@@ -427,9 +398,8 @@ function SignupPage() {
                         { value: 'male', label: '남성' },
                         { value: 'female', label: '여성' },
                       ]}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                        handleInputChange('gender', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('gender', e.target.value)}
+                      error={!!errors.gender}
                     />
                     <WarningBubble message={errors.gender} isVisible={!!errors.gender} />
                   </motion.div>
@@ -438,9 +408,7 @@ function SignupPage() {
                     type="number"
                     min="0"
                     value={formData.experienceYears}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      handleInputChange('experienceYears', e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('experienceYears', e.target.value)}
                     disabled={isLoading}
                   />
                 </>
@@ -450,17 +418,18 @@ function SignupPage() {
                     ref={(el) => {
                       fieldRefs.current.companyName = el;
                     }}
-                    animate={shakeField === 'companyName' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+                    animate={
+                      shakeField === 'companyName' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }
+                    }
                     className="relative col-span-2"
                   >
                     <Input
                       label="기업명 *"
                       placeholder="공식 기업명을 입력하세요"
                       value={formData.companyName}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        handleInputChange('companyName', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('companyName', e.target.value)}
                       disabled={isLoading}
+                      error={errors.companyName ? ' ' : undefined}
                     />
                     <WarningBubble message={errors.companyName} isVisible={!!errors.companyName} />
                   </motion.div>
@@ -468,18 +437,19 @@ function SignupPage() {
                     ref={(el) => {
                       fieldRefs.current.businessNumber = el;
                     }}
-                    animate={shakeField === 'businessNumber' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+                    animate={
+                      shakeField === 'businessNumber' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }
+                    }
                     className="relative"
                   >
                     <Input
                       label="사업자 등록번호 *"
                       placeholder="000-00-00000"
                       value={formData.businessNumber}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        handleInputChange('businessNumber', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('businessNumber', e.target.value)}
                       maxLength={12}
                       disabled={isLoading}
+                      error={errors.businessNumber ? ' ' : undefined}
                     />
                     <WarningBubble
                       message={errors.businessNumber}
@@ -490,26 +460,23 @@ function SignupPage() {
                     label="홈페이지 URL"
                     placeholder="https://..."
                     value={formData.homepageUrl}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      handleInputChange('homepageUrl', e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('homepageUrl', e.target.value)}
                     disabled={isLoading}
                   />
                   <motion.div
                     ref={(el) => {
                       fieldRefs.current.address = el;
                     }}
-                    animate={shakeField === 'address' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+                    animate={shakeField === 'address' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }}
                     className="relative col-span-2"
                   >
                     <Input
                       label="기업 주소 *"
                       placeholder="상세 주소를 입력하세요"
                       value={formData.address}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        handleInputChange('address', e.target.value)
-                      }
+                      onChange={(e) => handleInputChange('address', e.target.value)}
                       disabled={isLoading}
+                      error={errors.address ? ' ' : undefined}
                     />
                     <WarningBubble message={errors.address} isVisible={!!errors.address} />
                   </motion.div>
@@ -517,15 +484,16 @@ function SignupPage() {
                     ref={(el) => {
                       fieldRefs.current.companySize = el;
                     }}
-                    animate={shakeField === 'companySize' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+                    animate={
+                      shakeField === 'companySize' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }
+                    }
                     className="relative col-span-2"
                   >
                     <Select
                       label="기업 형태 *"
-                      options={companySizeOptions}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                        handleInputChange('companySize', e.target.value)
-                      }
+                      options={COMPANY_SIZE_OPTIONS}
+                      onChange={(e) => handleInputChange('companySize', e.target.value)}
+                      error={!!errors.companySize}
                     />
                     <WarningBubble message={errors.companySize} isVisible={!!errors.companySize} />
                   </motion.div>
@@ -547,7 +515,6 @@ function SignupPage() {
                 </motion.div>
               )}
             </AnimatePresence>
-
             <Button
               variant="blue"
               type="submit"

@@ -44,22 +44,66 @@ const NavAction = ({ to, onClick, children, isError, noDefaultUnderline }: NavAc
   );
 };
 
+const SearchBar = () => {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const [searchKeyword, setSearchKeyword] = useState('');
+
+  const handleSearch = () => {
+    const trimmed = searchKeyword.trim();
+    if (!trimmed) {
+      navigate('/job-postings');
+      return;
+    }
+    navigate(`/job-postings?keyword=${encodeURIComponent(trimmed)}`);
+  };
+
+  const searchPlaceholder = user?.role === 'COMPANY' ? '인재 검색' : '공고 검색';
+  const isSearchActive = searchKeyword.trim().length > 0;
+
+  return (
+    <div className="absolute left-1/2 w-full max-w-sm -translate-x-1/2">
+      <input
+        id="navbar-search-input"
+        type="text"
+        value={searchKeyword}
+        onChange={(e) => setSearchKeyword(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+        placeholder={searchPlaceholder}
+        className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"
+      />
+      <button
+        onClick={handleSearch}
+        className={`absolute top-1/2 right-5 transition-colors duration-300 ${
+          isSearchActive
+            ? 'text-point-blue animate-search-active'
+            : 'text-slate-gray -translate-y-1/2'
+        }`}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
+      </button>
+    </div>
+  );
+};
+
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoggedIn } = useAuthStore();
   const { mutate: performLogout } = useLogout();
-
-  const [searchKeyword, setSearchKeyword] = useState('');
   const [logoKey, setLogoKey] = useState(0);
-
-  const [prevPath, setPrevPath] = useState(location.pathname + location.search);
-  const currentPath = location.pathname + location.search;
-
-  if (prevPath !== currentPath) {
-    setPrevPath(currentPath);
-    setSearchKeyword('');
-  }
 
   const handleLogout = async () => {
     navigate('/login', { replace: true });
@@ -72,22 +116,10 @@ function Navbar() {
     setLogoKey((prev) => prev + 1);
   };
 
-  const handleSearch = () => {
-    const trimmed = searchKeyword.trim();
-    if (!trimmed) {
-      navigate('/job-postings');
-      return;
-    }
-    navigate(`/job-postings?keyword=${encodeURIComponent(trimmed)}`);
-  };
-
   const logoPart1 = 'PORT'.split('');
   const logoPart2 = 'MATCH'.split('');
   const charDuration = 0.05;
   const groupPause = 0.4;
-
-  const searchPlaceholder = user?.role === 'COMPANY' ? '인재 검색' : '공고 검색';
-  const isSearchActive = searchKeyword.trim().length > 0;
 
   return (
     <nav
@@ -154,39 +186,7 @@ function Navbar() {
           </div>
         </div>
 
-        <div className="absolute left-1/2 w-full max-w-sm -translate-x-1/2">
-          <input
-            id="navbar-search-input"
-            type="text"
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder={searchPlaceholder}
-            className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"
-          />
-          <button
-            onClick={handleSearch}
-            className={`absolute top-1/2 right-5 transition-colors duration-300 ${
-              isSearchActive
-                ? 'text-point-blue animate-search-active'
-                : 'text-slate-gray -translate-y-1/2'
-            }`}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-          </button>
-        </div>
+        <SearchBar key={location.pathname + location.search} />
 
         <div className="z-10 mr-12 flex items-center gap-10">
           {!isLoggedIn ? (

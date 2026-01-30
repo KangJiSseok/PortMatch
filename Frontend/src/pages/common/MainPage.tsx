@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,36 +13,16 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
+import EmptyState from '../../components/states/EmptyState';
 import heroBg from '../../assets/images/main/HERO_BG.avif';
 import { useAuthStore } from '@/store/authStore';
+import { useJobPostings } from '@/hooks/useJobPostings';
+import type { JobPostingDto } from '@/types/backendJobPosting';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop';
 const FALLBACK_LOGO =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"%3E%3Crect fill="%23E5E7EB" width="64" height="64"/%3E%3Ctext fill="%236B7280" font-family="sans-serif" font-size="14" dy="5" font-weight="bold" x="50%" y="50%" text-anchor="middle"%3ELOGO%3C/text%3E%3C/svg%3E';
-
-interface JobPost {
-  id: string;
-  title: string;
-  cid: string;
-  detail: string;
-  endDate: string;
-  active: number;
-  company: {
-    corpName: string;
-    logo: string;
-    corpAddr: string;
-  };
-}
-
-interface Talent {
-  id: number;
-  name: string;
-  position: string;
-  experience: string;
-  tags: string[];
-  avatar: string;
-}
 
 interface QuickMenu {
   id: number;
@@ -69,88 +49,26 @@ const COMPANY_QUICK_MENUS: QuickMenu[] = [
   { id: 6, title: '면접 질문 생성', icon: Mic, link: '/support/interview-generator' },
 ];
 
-const MOCK_TALENTS: Talent[] = [
-  {
-    id: 1,
-    name: '김철수',
-    position: 'Full-Stack Developer',
-    experience: '경력 5년',
-    tags: ['React', 'Node.js', 'AWS'],
-    avatar: '👤',
-  },
-  {
-    id: 2,
-    name: '이영희',
-    position: 'UI/UX Designer',
-    experience: '경력 3년',
-    tags: ['Figma', 'Protopie'],
-    avatar: '🎨',
-  },
-  {
-    id: 3,
-    name: '박지민',
-    position: 'Backend Engineer',
-    experience: '신입',
-    tags: ['Java', 'Spring Boot', 'MySQL'],
-    avatar: '💻',
-  },
-  {
-    id: 4,
-    name: '최유진',
-    position: 'Product Manager',
-    experience: '경력 7년',
-    tags: ['Agile', 'Jira'],
-    avatar: '📋',
-  },
-  {
-    id: 5,
-    name: '정호석',
-    position: 'Data Scientist',
-    experience: '경력 2년',
-    tags: ['Python', 'PyTorch'],
-    avatar: '📊',
-  },
-];
-
 function MainPage() {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAuthStore();
   const [trendIndex, setTrendIndex] = useState(0);
-  const [jobPosts, setJobPosts] = useState<JobPost[]>([]);
-  const [trendPosts, setTrendPosts] = useState<JobPost[][]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement;
-    if (navbarInput) navbarInput.value = '';
+  const { data: jobPostingsResponse, isLoading: loading } = useJobPostings();
 
-    fetchJobPosts();
-  }, []);
+  const jobPosts = useMemo(() => {
+    const list = jobPostingsResponse?.data ?? [];
+    return list.filter((post: JobPostingDto) => post.active === 1);
+  }, [jobPostingsResponse?.data]);
 
-  const fetchJobPosts = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/job-postings');
-      const json = await response.json();
-      if (json && Array.isArray(json.data)) {
-        const activePosts = json.data.filter((post: JobPost) => post.active === 1);
-        setJobPosts(activePosts);
-
-        const chunks: JobPost[][] = [];
-        const trendSource = activePosts.slice(0, 9);
-        for (let i = 0; i < trendSource.length; i += 3) {
-          chunks.push(trendSource.slice(i, i + 3));
-        }
-        setTrendPosts(chunks);
-      }
-    } catch (error) {
-      console.error(error);
-      setJobPosts([]);
-      setTrendPosts([]);
-    } finally {
-      setLoading(false);
+  const trendPosts = useMemo(() => {
+    const chunks: JobPostingDto[][] = [];
+    const trendSource = jobPosts.slice(0, 9);
+    for (let i = 0; i < trendSource.length; i += 3) {
+      chunks.push(trendSource.slice(i, i + 3));
     }
-  };
+    return chunks;
+  }, [jobPosts]);
 
   const calculateDDay = (endDate: string): string => {
     const today = new Date();
@@ -176,7 +94,7 @@ function MainPage() {
     e.stopPropagation();
     navigate(`/companies/${cid}`);
   };
-  const goToJobPostDetail = (e: React.MouseEvent, id: string) => {
+  const goToJobPostDetail = (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
     navigate(`/job-posts/${id}`);
   };
@@ -289,7 +207,7 @@ function MainPage() {
                     transition={{ duration: 0.2 }}
                     className="space-y-2"
                   >
-                    {trendPosts[trendIndex]?.map((item) => {
+                    {trendPosts[trendIndex]?.map((item: JobPostingDto) => {
                       const dDay = calculateDDay(item.endDate);
                       return (
                         <div
@@ -373,97 +291,80 @@ function MainPage() {
           </div>
 
           <div className="grid min-h-80 grid-cols-5 gap-6">
-            {loading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm"
-                  >
-                    <div className="mb-4 h-16 w-16 animate-pulse rounded-xl bg-zinc-100" />
-                    <div className="space-y-2">
-                      <div className="h-4 w-2/3 animate-pulse rounded bg-zinc-100" />
-                      <div className="h-6 w-full animate-pulse rounded bg-zinc-100" />
-                      <div className="h-6 w-full animate-pulse rounded bg-zinc-100" />
-                    </div>
-                    <div className="mt-auto flex justify-between border-t border-zinc-50 pt-4">
-                      <div className="h-4 w-1/3 animate-pulse rounded bg-zinc-100" />
-                      <div className="h-4 w-1/4 animate-pulse rounded bg-zinc-100" />
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm"
+                >
+                  <div className="mb-4 h-16 w-16 animate-pulse rounded-xl bg-zinc-100" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-2/3 animate-pulse rounded bg-zinc-100" />
+                    <div className="h-6 w-full animate-pulse rounded bg-zinc-100" />
+                    <div className="h-6 w-full animate-pulse rounded bg-zinc-100" />
+                  </div>
+                  <div className="mt-auto flex justify-between border-t border-zinc-50 pt-4">
+                    <div className="h-4 w-1/3 animate-pulse rounded bg-zinc-100" />
+                    <div className="h-4 w-1/4 animate-pulse rounded bg-zinc-100" />
+                  </div>
+                </div>
+              ))
+            ) : user?.role === 'COMPANY' ? (
+              <div className="col-span-5">
+                <EmptyState
+                  title="추천 인재를 준비하고 있어요"
+                  description="곧 만나보실 수 있어요."
+                  showIcon={true}
+                />
+              </div>
+            ) : (
+              jobPosts.map((job: JobPostingDto) => (
+                <motion.div
+                  key={job.id}
+                  whileHover={{ y: -10 }}
+                  className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition-all hover:shadow-xl"
+                  onClick={(e) => goToJobPostDetail(e, job.id)}
+                >
+                  <div className="p-5 pb-0">
+                    <div className="h-16 w-16 overflow-hidden rounded-xl border border-zinc-100 p-2">
+                      <img
+                        src={
+                          !job.company?.logo || job.company.logo === 'string'
+                            ? FALLBACK_LOGO
+                            : job.company.logo
+                        }
+                        alt={job.company?.corpName}
+                        className="h-full w-full object-contain"
+                        onError={handleLogoError}
+                      />
                     </div>
                   </div>
-                ))
-              : user?.role === 'COMPANY'
-                ? MOCK_TALENTS.map((talent) => (
-                    <motion.div
-                      key={talent.id}
-                      whileHover={{ y: -10 }}
-                      className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white p-5 shadow-sm transition-all hover:shadow-xl"
-                    >
-                      <div className="mb-4 flex h-20 w-20 items-center justify-center self-center rounded-2xl border border-zinc-100 bg-zinc-50 text-4xl">
-                        {talent.avatar}
+                  <div className="flex flex-1 flex-col p-5 pt-4">
+                    <div className="mb-4 space-y-1">
+                      <div className="flex">
+                        <p
+                          onClick={(e) => goToCompanyDetail(e, job.cid)}
+                          className={`hover:text-point-blue relative flex max-w-full cursor-pointer text-[13px] font-bold text-zinc-400 transition-colors ${underlineEffect}`}
+                        >
+                          <span className="truncate">{job.company?.corpName || '기업명'}</span>
+                        </p>
                       </div>
-                      <div className="mb-4 space-y-1 text-center">
-                        <h3 className="text-midnight-ink text-lg font-black">{talent.name}</h3>
-                        <p className="text-point-blue text-sm font-bold">{talent.position}</p>
-                        <p className="text-xs font-bold text-zinc-400">{talent.experience}</p>
-                      </div>
-                      <div className="mt-auto flex flex-wrap justify-center gap-1">
-                        {talent.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-md bg-zinc-100 px-2 py-1 text-[10px] font-bold text-zinc-500"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))
-                : jobPosts.map((job) => (
-                    <motion.div
-                      key={job.id}
-                      whileHover={{ y: -10 }}
-                      className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition-all hover:shadow-xl"
-                      onClick={(e) => goToJobPostDetail(e, job.id)}
-                    >
-                      <div className="p-5 pb-0">
-                        <div className="h-16 w-16 overflow-hidden rounded-xl border border-zinc-100 p-2">
-                          <img
-                            src={
-                              !job.company?.logo || job.company.logo === 'string'
-                                ? FALLBACK_LOGO
-                                : job.company.logo
-                            }
-                            alt={job.company?.corpName}
-                            className="h-full w-full object-contain"
-                            onError={handleLogoError}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex flex-1 flex-col p-5 pt-4">
-                        <div className="mb-4 space-y-1">
-                          <div className="flex">
-                            <p
-                              onClick={(e) => goToCompanyDetail(e, job.cid)}
-                              className={`hover:text-point-blue relative flex max-w-full cursor-pointer text-[13px] font-bold text-zinc-400 transition-colors ${underlineEffect}`}
-                            >
-                              <span className="truncate">{job.company?.corpName || '기업명'}</span>
-                            </p>
-                          </div>
-                          <h3 className="text-midnight-ink group-hover:text-point-blue line-clamp-2 min-h-10 text-base leading-tight font-black transition-colors">
-                            {job.title}
-                          </h3>
-                        </div>
-                        <div className="mt-auto flex items-center justify-between border-t border-zinc-50 pt-4">
-                          <span className="max-w-35 truncate text-sm font-bold text-zinc-400">
-                            {job.company?.corpAddr || '지역 미정'}
-                          </span>
-                          <span className="text-point-blue text-sm font-black whitespace-nowrap">
-                            {calculateDDay(job.endDate)}
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      <h3 className="text-midnight-ink group-hover:text-point-blue line-clamp-2 min-h-10 text-base leading-tight font-black transition-colors">
+                        {job.title}
+                      </h3>
+                    </div>
+                    <div className="mt-auto flex items-center justify-between border-t border-zinc-50 pt-4">
+                      <span className="max-w-35 truncate text-sm font-bold text-zinc-400">
+                        {job.company?.corpAddr || '지역 미정'}
+                      </span>
+                      <span className="text-point-blue text-sm font-black whitespace-nowrap">
+                        {calculateDDay(job.endDate)}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </section>
       </div>

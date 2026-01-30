@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   motion,
@@ -7,6 +7,7 @@ import {
   useSpring,
   useMotionValueEvent,
   MotionValue,
+  type Variants,
 } from 'framer-motion';
 import { ArrowRight, User, Building2, Cpu, FileSearch, Share2, ChevronsDown } from 'lucide-react';
 
@@ -19,6 +20,7 @@ interface Point {
   x: number;
   y: number;
 }
+
 interface ParticleData {
   id: number;
   s0: Point;
@@ -28,145 +30,99 @@ interface ParticleData {
   s4: Point;
 }
 
-const getLayoutConstants = () => {
-  const isMobile = window.innerWidth < 768;
-  const padding = isMobile ? 48 : 96;
-  const gap = 48;
-  const availableWidth = window.innerWidth - padding * 2;
-  const panelWidth = (availableWidth - gap) / 2;
-  const panelHeight = window.innerHeight - padding * 2;
-  const offsetX = panelWidth / 2 + gap / 2;
+const getLayoutConstants = (width: number, height: number) => {
+  const isMobile = width < 768;
 
-  return { panelWidth, panelHeight, offsetX };
+  if (isMobile) {
+    const pt = 80;
+    const pb = 24;
+    const px = 24;
+    const gap = 16;
+
+    const availableHeight = height - pt - pb;
+    const panelWidth = width - px * 2;
+    const panelHeight = (availableHeight - gap) / 2;
+
+    const offsetY = (panelHeight + gap) / 2;
+    const centerShiftY = (pt - pb) / 2;
+
+    return { panelWidth, panelHeight, offsetX: 0, offsetY, isMobile, centerShiftY };
+  }
+
+  const padding = 80;
+  const gap = 32;
+  const availableWidth = width - padding * 2;
+  const panelWidth = (availableWidth - gap) / 2;
+  const panelHeight = height - padding * 2;
+  const offsetX = (panelWidth + gap) / 2;
+
+  return { panelWidth, panelHeight, offsetX, offsetY: 0, isMobile, centerShiftY: 0 };
 };
 
-const getBorderPoint = (index: number, isLeft: boolean) => {
-  const { panelWidth, panelHeight, offsetX } = getLayoutConstants();
+const getBorderPoint = (index: number, isFirstGroup: boolean, width: number, height: number) => {
+  const { panelWidth, panelHeight, offsetX, offsetY, isMobile, centerShiftY } = getLayoutConstants(
+    width,
+    height,
+  );
   const halfCount = PARTICLE_COUNT / 2;
   const pIndex = index % halfCount;
 
   const w = panelWidth;
   const h = panelHeight;
   const totalPerimeter = (w + h) * 2;
-  const step = totalPerimeter / (halfCount - 1);
-  const dist = pIndex * step;
 
-  let x = 0,
-    y = 0;
-  if (dist <= w) {
-    x = dist - w / 2;
+  const nTop = Math.floor((w / totalPerimeter) * halfCount);
+  const nRight = Math.floor((h / totalPerimeter) * halfCount);
+  const nBottom = Math.floor((w / totalPerimeter) * halfCount);
+  const nLeft = halfCount - nTop - nRight - nBottom;
+
+  let x = 0;
+  let y = 0;
+
+  if (pIndex < nTop) {
+    x = -w / 2 + w * (pIndex / nTop);
     y = -h / 2;
-  } else if (dist <= w + h) {
+  } else if (pIndex < nTop + nRight) {
     x = w / 2;
-    y = dist - w - h / 2;
-  } else if (dist <= w * 2 + h) {
-    x = w / 2 - (dist - (w + h));
+    y = -h / 2 + h * ((pIndex - nTop) / nRight);
+  } else if (pIndex < nTop + nRight + nBottom) {
+    x = w / 2 - w * ((pIndex - (nTop + nRight)) / nBottom);
     y = h / 2;
   } else {
+    const processed = nTop + nRight + nBottom;
     x = -w / 2;
-    y = h / 2 - (dist - (w * 2 + h));
+    y = h / 2 - h * ((pIndex - processed) / nLeft);
   }
-  return { x: x + (isLeft ? -offsetX : offsetX), y };
+
+  if (isMobile) {
+    return { x, y: y + (isFirstGroup ? -offsetY : offsetY) + centerShiftY };
+  } else {
+    return { x: x + (isFirstGroup ? -offsetX : offsetX), y };
+  }
 };
 
-const STATIC_PARTICLES: ParticleData[] = Array.from({ length: PARTICLE_COUNT }).map((_, i) => {
-  const isLeft = i < PARTICLE_COUNT / 2;
-  const screenMin = Math.min(window.innerWidth, window.innerHeight);
-  const screenMax = Math.max(window.innerWidth, window.innerHeight);
-
-  const s0Radius = screenMin * 0.4;
-  const s0 = {
-    x: Math.cos((i / PARTICLE_COUNT) * Math.PI * 2) * s0Radius,
-    y: Math.sin((i / PARTICLE_COUNT) * Math.PI * 2) * s0Radius,
-  };
-
-  const cols = 20;
-  const rows = Math.ceil(PARTICLE_COUNT / cols);
-  const col = i % cols;
-  const row = Math.floor(i / cols);
-  const gridSpacingX = window.innerWidth / (cols + 5);
-  const gridSpacingY = window.innerHeight / (rows + 5);
-  const s1 = {
-    x: (col - cols / 2 + 0.5) * gridSpacingX,
-    y: (row - rows / 2 + 0.5) * gridSpacingY,
-  };
-
-  const brainAngle = (i % (PARTICLE_COUNT / 2)) * 0.15;
-  const brainRadiusVar = Math.sin(i * 0.8) * 25;
-  const brainBaseRadius = screenMin * 0.25;
-  const brainBaseX = isLeft ? -screenMin * 0.15 : screenMin * 0.15;
-  const s2 = {
-    x: brainBaseX + Math.cos(brainAngle) * (brainBaseRadius + brainRadiusVar),
-    y: Math.sin(brainAngle) * (brainBaseRadius + brainRadiusVar) * 1.2,
-  };
-
-  let s3x = 0;
-  let s3y = 0;
-  const arrowGroupSize = PARTICLE_COUNT / 2;
-  const idxInGroup = i % arrowGroupSize;
-  const splitPoint = Math.floor(arrowGroupSize * 0.65);
-
-  const arrowTotalLength = screenMax * 0.5;
-  const arrowHeadLength = arrowTotalLength * 0.3;
-  const arrowShaftLength = arrowTotalLength - arrowHeadLength;
-  const shaftHalfWidth = 10;
-  const headBaseHalfWidth = 35;
-  const centerYOffset = screenMax * 0.12;
-
-  const getPerpendicularOffset = (idx: number, maxHalfWidth: number) => {
-    const lane = idx % 5;
-    const normalizedPos = (lane - 2) / 2;
-    return normalizedPos * maxHalfWidth;
-  };
-
-  if (isLeft) {
-    const axisY = -centerYOffset;
-    const tipX = -screenMin * 0.05;
-    const joinX = tipX + arrowHeadLength;
-    const endX = joinX + arrowShaftLength;
-
-    if (idxInGroup < splitPoint) {
-      const progress = idxInGroup / splitPoint;
-      s3x = endX - progress * arrowShaftLength;
-      s3y = axisY + getPerpendicularOffset(idxInGroup, shaftHalfWidth);
-    } else {
-      const headProgress = (idxInGroup - splitPoint) / (arrowGroupSize - splitPoint);
-      s3x = joinX - headProgress * arrowHeadLength;
-      const currentHalfWidth = headBaseHalfWidth * (1 - headProgress);
-      s3y = axisY + getPerpendicularOffset(idxInGroup, currentHalfWidth);
-    }
-  } else {
-    const axisY = centerYOffset;
-    const tipX = screenMin * 0.05;
-    const joinX = tipX - arrowHeadLength;
-    const startX = joinX - arrowShaftLength;
-
-    if (idxInGroup < splitPoint) {
-      const progress = idxInGroup / splitPoint;
-      s3x = startX + progress * arrowShaftLength;
-      s3y = axisY + getPerpendicularOffset(idxInGroup, shaftHalfWidth);
-    } else {
-      const headProgress = (idxInGroup - splitPoint) / (arrowGroupSize - splitPoint);
-      s3x = joinX + headProgress * arrowHeadLength;
-      const currentHalfWidth = headBaseHalfWidth * (1 - headProgress);
-      s3y = axisY + getPerpendicularOffset(idxInGroup, currentHalfWidth);
-    }
-  }
-  const s3 = { x: s3x, y: s3y };
-
-  return {
-    id: i,
-    s0,
-    s1,
-    s2,
-    s3,
-    s4: getBorderPoint(i, isLeft),
-  };
-});
+const charVariants: Variants = {
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: { delay: i * 0.1, duration: 0.8, ease: [0.215, 0.61, 0.355, 1] },
+  }),
+  hidden: (i: number) => ({
+    opacity: 0,
+    y: -20,
+    filter: 'blur(10px)',
+    transition: { delay: i * 0.05, duration: 0.5, ease: 'easeInOut' },
+  }),
+};
 
 function IntroPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState(0);
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
   const navigate = useNavigate();
 
   const [logoKey, setLogoKey] = useState(0);
@@ -176,35 +132,98 @@ function IntroPage() {
   const groupPause = 0.4;
 
   useEffect(() => {
-    if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual';
-    }
+    const handleResize = () =>
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
     window.scrollTo(0, 0);
-
-    return () => {
-      if ('scrollRestoration' in window.history) {
-        window.history.scrollRestoration = 'auto';
-      }
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const particles = useMemo(() => {
+    const { width, height } = windowSize;
+    return Array.from({ length: PARTICLE_COUNT }).map((_, i) => {
+      const isFirstGroup = i < PARTICLE_COUNT / 2;
+      const screenMin = Math.min(width, height);
+      const screenMax = Math.max(width, height);
+
+      const s0 = {
+        x: Math.cos((i / PARTICLE_COUNT) * Math.PI * 2) * (screenMin * 0.4),
+        y: Math.sin((i / PARTICLE_COUNT) * Math.PI * 2) * (screenMin * 0.4),
+      };
+
+      const cols = 20;
+      const rows = Math.ceil(PARTICLE_COUNT / cols);
+      const s1 = {
+        x: ((i % cols) - cols / 2 + 0.5) * (width / (cols + 5)),
+        y: (Math.floor(i / cols) - rows / 2 + 0.5) * (height / (rows + 5)),
+      };
+
+      const brainAngle = (i % (PARTICLE_COUNT / 2)) * 0.15;
+      const brainBaseRadius = screenMin * 0.25;
+      const s2 = {
+        x:
+          (isFirstGroup ? -screenMin * 0.15 : screenMin * 0.15) +
+          Math.cos(brainAngle) * (brainBaseRadius + Math.sin(i * 0.8) * 25),
+        y: Math.sin(brainAngle) * (brainBaseRadius + Math.sin(i * 0.8) * 25) * 1.2,
+      };
+
+      const idxInGroup = i % (PARTICLE_COUNT / 2);
+      const splitPoint = Math.floor((PARTICLE_COUNT / 2) * 0.65);
+      const arrowTotalLength = screenMax * 0.5;
+      const arrowHeadLength = arrowTotalLength * 0.3;
+      const arrowShaftLength = arrowTotalLength - arrowHeadLength;
+      const centerYOffset = screenMax * 0.12;
+      let s3x = 0;
+      let s3y = 0;
+
+      const getOffset = (idx: number, max: number) => (((idx % 5) - 2) / 2) * max;
+
+      if (isFirstGroup) {
+        const joinX = -screenMin * 0.05 + arrowHeadLength;
+        if (idxInGroup < splitPoint) {
+          s3x = joinX + arrowShaftLength - (idxInGroup / splitPoint) * arrowShaftLength;
+          s3y = -centerYOffset + getOffset(idxInGroup, 10);
+        } else {
+          const prog = (idxInGroup - splitPoint) / (PARTICLE_COUNT / 2 - splitPoint);
+          s3x = joinX - prog * arrowHeadLength;
+          s3y = -centerYOffset + getOffset(idxInGroup, 35 * (1 - prog));
+        }
+      } else {
+        const joinX = screenMin * 0.05 - arrowHeadLength;
+        if (idxInGroup < splitPoint) {
+          s3x = joinX - arrowShaftLength + (idxInGroup / splitPoint) * arrowShaftLength;
+          s3y = centerYOffset + getOffset(idxInGroup, 10);
+        } else {
+          const prog = (idxInGroup - splitPoint) / (PARTICLE_COUNT / 2 - splitPoint);
+          s3x = joinX + prog * arrowHeadLength;
+          s3y = centerYOffset + getOffset(idxInGroup, 35 * (1 - prog));
+        }
+      }
+
+      return {
+        id: i,
+        s0,
+        s1,
+        s2,
+        s3: { x: s3x, y: s3y },
+        s4: getBorderPoint(i, isFirstGroup, width, height),
+      };
+    });
+  }, [windowSize]);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ['start start', 'end end'],
   });
-
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 45, damping: 30 });
-
-  useMotionValueEvent(smoothProgress, 'change', (latest) => {
-    const section = Math.min(Math.floor(latest * 5), 4);
-    setActiveSection(section);
-  });
-
+  useMotionValueEvent(smoothProgress, 'change', (latest) =>
+    setActiveSection(Math.min(Math.floor(latest * 5), 4)),
+  );
   const finalReveal = useTransform(smoothProgress, [0.82, 0.9], [0, 1]);
 
   const handleScrollToSection = (index: number) => {
     if (!containerRef.current) return;
-    const targets = [0.1, 0.3, 0.5, 0.7, 0.9];
+    const targets = [0.0, 0.25, 0.45, 0.65, 1];
     window.scrollTo({
       top: (containerRef.current.scrollHeight - window.innerHeight) * targets[index],
       behavior: 'smooth',
@@ -214,192 +233,141 @@ function IntroPage() {
 
   return (
     <div ref={containerRef} className="relative w-full bg-[#020205]" style={{ height: '700vh' }}>
-      <style>{`
-        @keyframes logo-appear {
-          from { opacity: 0; transform: translateY(20px); filter: blur(10px); }
-          to { opacity: 1; transform: translateY(0); filter: blur(0); }
-        }
-      `}</style>
-
+      <style>{`@keyframes logo-appear { from { opacity: 0; transform: translateY(20px); filter: blur(10px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }`}</style>
       <div className="sticky top-0 flex h-screen w-full flex-col overflow-hidden">
         <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,#121225_0%,#020205_100%)]" />
-
         <div className="pointer-events-none absolute inset-0 z-10">
-          {STATIC_PARTICLES.map((p) => (
+          {particles.map((p) => (
             <Particle key={p.id} data={p} progress={smoothProgress} />
           ))}
         </div>
 
-        <nav className="absolute top-0 left-0 z-50 flex w-full items-center justify-between p-10 mix-blend-difference">
+        <nav className="absolute top-0 left-0 z-50 flex w-full items-center justify-between p-6 mix-blend-difference md:p-10">
           <div
             onClick={() => handleScrollToSection(0)}
-            className="flex cursor-pointer text-3xl font-black tracking-tighter text-white uppercase"
+            className="flex cursor-pointer text-2xl font-black tracking-tighter text-white uppercase md:text-3xl"
           >
             <div key={logoKey} className="flex">
-              <span className="flex">
-                {logoPart1.map((char, idx) => (
-                  <span
-                    key={`nav-p1-${idx}`}
-                    style={{
-                      opacity: 0,
-                      animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
-                      animationDelay: `${idx * charDuration}s`,
-                    }}
-                  >
-                    {char}
-                  </span>
-                ))}
-              </span>
-              <span className="flex">
-                {logoPart2.map((char, idx) => (
-                  <span
-                    key={`nav-p2-${idx}`}
-                    style={{
-                      opacity: 0,
-                      animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
-                      animationDelay: `${logoPart1.length * charDuration + groupPause + idx * charDuration}s`,
-                    }}
-                  >
-                    {char}
-                  </span>
-                ))}
-              </span>
+              {logoPart1.map((char, idx) => (
+                <span
+                  key={`nav-p1-${idx}`}
+                  style={{
+                    opacity: 0,
+                    animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
+                    animationDelay: `${idx * charDuration}s`,
+                  }}
+                >
+                  {char}
+                </span>
+              ))}
+              {logoPart2.map((char, idx) => (
+                <span
+                  key={`nav-p2-${idx}`}
+                  style={{
+                    opacity: 0,
+                    animation: `logo-appear 0.6s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`,
+                    animationDelay: `${logoPart1.length * charDuration + groupPause + idx * charDuration}s`,
+                  }}
+                >
+                  {char}
+                </span>
+              ))}
             </div>
           </div>
-
-          <div className="flex items-center gap-6">
-            <button
-              onClick={() => navigate('/main')}
-              className="rounded-full border border-white/20 bg-white/10 px-8 py-3 text-xs font-bold tracking-widest text-white uppercase backdrop-blur-xl transition-all hover:bg-white hover:text-black"
-            >
-              Skip
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/main')}
+            className="rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[10px] font-bold tracking-[0.2em] text-white/80 uppercase backdrop-blur-md md:text-xs"
+          >
+            Skip
+          </button>
         </nav>
 
-        <div className="absolute top-1/2 right-10 z-50 flex -translate-y-1/2 flex-col gap-6">
+        <div className="absolute top-1/2 right-2 z-50 flex -translate-y-1/2 flex-col gap-4 md:right-10">
           {[0, 1, 2, 3, 4].map((idx) => (
             <div
               key={idx}
               onClick={() => handleScrollToSection(idx)}
-              className={`w-1 cursor-pointer transition-all duration-500 ${activeSection === idx ? 'h-10 bg-indigo-500 shadow-[0_0_10px_#6366f1]' : 'h-4 bg-white/20 hover:bg-white/50'}`}
-            />
+              className="group relative flex cursor-pointer items-center justify-center p-2"
+            >
+              <div
+                className={`w-1 transition-all duration-500 ${activeSection === idx ? 'h-8 bg-indigo-500 shadow-[0_0_10px_#6366f1]' : 'h-3 bg-white/20'}`}
+              />
+            </div>
           ))}
         </div>
 
         <div className="pointer-events-none relative z-30 flex flex-1 items-center justify-center">
           <SectionWrapper show={activeSection === 0}>
             <div className="flex flex-col items-center text-center">
-              <div
-                key={activeSection === 0 ? `main-logo-${logoKey}` : 'main-logo-hidden'}
-                className="flex text-[12vw] leading-none font-black tracking-tighter text-white uppercase"
-              >
-                <span className="flex">
-                  {logoPart1.map((char, idx) => (
-                    <span
-                      key={`main-p1-${idx}`}
-                      style={{
-                        opacity: 0,
-                        animation:
-                          activeSection === 0
-                            ? `logo-appear 1s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`
-                            : 'none',
-                        animationDelay: `${idx * 0.1}s`,
-                      }}
-                    >
-                      {char}
-                    </span>
-                  ))}
-                </span>
-                <span className="flex">
-                  {logoPart2.map((char, idx) => (
-                    <span
-                      key={`main-p2-${idx}`}
-                      style={{
-                        opacity: 0,
-                        animation:
-                          activeSection === 0
-                            ? `logo-appear 1s cubic-bezier(0.215, 0.610, 0.355, 1.000) forwards`
-                            : 'none',
-                        animationDelay: `${logoPart1.length * 0.1 + 0.3 + idx * 0.1}s`,
-                      }}
-                    >
-                      {char}
-                    </span>
-                  ))}
-                </span>
+              <div className="flex text-[15vw] leading-none font-black tracking-tighter text-white uppercase md:text-[12vw]">
+                {logoPart1.map((char, idx) => (
+                  <motion.span
+                    key={`m1-${idx}`}
+                    custom={idx}
+                    variants={charVariants}
+                    initial="hidden"
+                    animate={activeSection === 0 ? 'visible' : 'hidden'}
+                  >
+                    {char}
+                  </motion.span>
+                ))}
+                {logoPart2.map((char, idx) => (
+                  <motion.span
+                    key={`m2-${idx}`}
+                    custom={logoPart1.length + idx}
+                    variants={charVariants}
+                    initial="hidden"
+                    animate={activeSection === 0 ? 'visible' : 'hidden'}
+                  >
+                    {char}
+                  </motion.span>
+                ))}
               </div>
               <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={activeSection === 0 ? { opacity: 1, y: 0 } : { opacity: 0 }}
-                transition={{ delay: 1.2, duration: 0.8 }}
-                className="mt-4 text-xl font-medium tracking-[0.4em] text-indigo-400 uppercase"
+                initial={{ opacity: 0 }}
+                animate={activeSection === 0 ? { opacity: 1 } : { opacity: 0 }}
+                transition={{ delay: 1.2 }}
+                className="mt-4 text-xs font-medium tracking-[0.3em] text-indigo-400 uppercase md:text-xl"
               >
                 AI Portfolio Matching Hub
               </motion.p>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={activeSection === 0 ? { opacity: 1 } : { opacity: 0 }}
-              transition={{ delay: 1.8, duration: 0.8 }}
-              className="absolute bottom-12 left-1/2 flex -translate-x-1/2 flex-col items-center gap-3 text-white/50"
-            >
-              <span className="text-sm font-bold tracking-[0.3em] uppercase">Scroll Down</span>
               <motion.div
-                animate={{ y: [0, 10, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                initial={{ opacity: 0 }}
+                animate={activeSection === 0 ? { opacity: 1 } : { opacity: 0 }}
+                transition={{ delay: 1.8 }}
+                className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/30"
               >
-                <ChevronsDown size={36} />
+                <ChevronsDown size={24} className="animate-bounce" />
               </motion.div>
-            </motion.div>
-          </SectionWrapper>
-
-          <SectionWrapper show={activeSection === 1}>
-            <div className="max-w-5xl px-6 text-center break-keep">
-              <FileSearch size={48} className="mx-auto mb-8 text-indigo-400" />
-              <h2 className="text-5xl font-bold tracking-tight text-white md:text-6xl">
-                포트폴리오 속 잠재력을 데이터로
-              </h2>
-              <p className="mt-8 text-xl leading-relaxed text-white/90">
-                포트폴리오 속 이미지와 텍스트를 분석하여
-                <br />
-                단순 스펙이 아닌 실제 역량 프로필을 추출합니다.
-              </p>
             </div>
           </SectionWrapper>
 
-          <SectionWrapper show={activeSection === 2}>
-            <div className="max-w-4xl px-6 text-center break-keep">
-              <Cpu size={48} className="mx-auto mb-8 text-purple-400" />
-              <h2 className="text-5xl font-bold tracking-tight text-white md:text-6xl">
-                조건을 넘어선 정밀 매칭
-              </h2>
-              <p className="mt-8 text-xl leading-relaxed text-white/90">
-                AI 엔진이 도메인 관심사와 문제 해결 방식을 분석하여
-                <br />
-                당신에게 최적화된 공고와 인재를 연결합니다.
-              </p>
-            </div>
-          </SectionWrapper>
-
-          <SectionWrapper show={activeSection === 3}>
-            <div className="max-w-4xl px-6 text-center break-keep">
-              <Share2 size={48} className="mx-auto mb-8 text-emerald-400" />
-              <h2 className="text-5xl font-bold tracking-tight text-white md:text-6xl">
-                양방향 채용의 새로운 기준
-              </h2>
-              <p className="mt-8 text-xl leading-relaxed text-white/90">
-                구직자에게는 맞춤형 큐레이션을,
-                <br />
-                기업에게는 고도화된 인재 필터링을 제공합니다.
-              </p>
-            </div>
-          </SectionWrapper>
+          {[1, 2, 3].map((i) => (
+            <SectionWrapper key={i} show={activeSection === i}>
+              <div className="max-w-5xl px-6 text-center break-keep">
+                {i === 1 && <FileSearch size={40} className="mx-auto mb-6 text-indigo-400" />}
+                {i === 2 && <Cpu size={40} className="mx-auto mb-6 text-purple-400" />}
+                {i === 3 && <Share2 size={40} className="mx-auto mb-6 text-emerald-400" />}
+                <h2 className="text-3xl font-bold text-white md:text-6xl">
+                  {i === 1 && '포트폴리오 속 잠재력을 데이터로'}
+                  {i === 2 && '조건을 넘어선 정밀 매칭'}
+                  {i === 3 && '양방향 채용의 새로운 기준'}
+                </h2>
+                <p className="mt-6 text-sm text-white/90 md:text-xl">
+                  {i === 1 &&
+                    '포트폴리오 속 이미지와 텍스트를 분석하여\n단순 스펙이 아닌 실제 역량 프로필을 추출합니다.'}
+                  {i === 2 &&
+                    'AI 엔진이 도메인 관심사와 문제 해결 방식을 분석하여\n당신에게 최적화된 공고와 인재를 연결합니다.'}
+                  {i === 3 &&
+                    '구직자에게는 맞춤형 큐레이션을,\n기업에게는 고도화된 인재 필터링을 제공합니다.'}
+                </p>
+              </div>
+            </SectionWrapper>
+          ))}
 
           <motion.div
             style={{ opacity: finalReveal }}
-            className={`absolute inset-0 z-40 flex items-stretch gap-12 p-12 md:p-24 ${activeSection === 4 ? 'pointer-events-auto' : 'pointer-events-none'}`}
+            className={`absolute inset-0 z-40 flex flex-col items-stretch gap-4 overflow-hidden px-6 pt-20 pb-6 md:flex-row md:gap-8 md:p-20 ${activeSection === 4 ? 'pointer-events-auto' : 'pointer-events-none'}`}
           >
             <Panel
               type="APPLICANT"
@@ -423,11 +391,9 @@ function IntroPage() {
 }
 
 const Particle = ({ data, progress }: { data: ParticleData; progress: MotionValue<number> }) => {
-  const isLeft = data.id < PARTICLE_COUNT / 2;
-
-  const inputRange = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
-
-  const x = useTransform(progress, inputRange, [
+  const isFirstGroup = data.id < PARTICLE_COUNT / 2;
+  const range = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+  const x = useTransform(progress, range, [
     data.s0.x,
     data.s0.x,
     data.s1.x,
@@ -440,8 +406,7 @@ const Particle = ({ data, progress }: { data: ParticleData; progress: MotionValu
     data.s4.x,
     data.s4.x,
   ]);
-
-  const y = useTransform(progress, inputRange, [
+  const y = useTransform(progress, range, [
     data.s0.y,
     data.s0.y,
     data.s1.y,
@@ -454,10 +419,11 @@ const Particle = ({ data, progress }: { data: ParticleData; progress: MotionValu
     data.s4.y,
     data.s4.y,
   ]);
-
-  const scale = useTransform(progress, [0.8, 0.9, 1], [1, 1.2, 1]);
-  const baseColor = isLeft ? '#6366f1' : '#a855f7';
-  const color = useTransform(progress, [0.8, 0.9], ['#ffffff', baseColor]);
+  const color = useTransform(
+    progress,
+    [0.8, 0.9],
+    ['#ffffff', isFirstGroup ? '#6366f1' : '#a855f7'],
+  );
   const opacity = useTransform(progress, [0.8, 0.9], [0.3, 0.8]);
 
   return (
@@ -465,63 +431,68 @@ const Particle = ({ data, progress }: { data: ParticleData; progress: MotionValu
       style={{
         x,
         y,
-        scale,
         opacity,
         backgroundColor: color,
         borderRadius: '50%',
         left: '50%',
         top: '50%',
       }}
-      className="absolute h-1 w-1"
+      className="absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2"
     />
   );
 };
 
 const SectionWrapper = ({ children, show }: { children: React.ReactNode; show: boolean }) => (
   <motion.div
-    initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
-    animate={
-      show
-        ? { opacity: 1, y: 0, filter: 'blur(0px)' }
-        : { opacity: 0, y: -20, filter: 'blur(10px)' }
-    }
+    initial={{ opacity: 0, y: 20 }}
+    animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
     transition={{ duration: 0.6 }}
-    className="pointer-events-none absolute inset-0 flex w-full flex-col items-center justify-center"
+    className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center whitespace-pre-line"
   >
     {children}
   </motion.div>
 );
 
-interface PanelProps {
+const Panel = ({
+  title,
+  desc,
+  img,
+  onClick,
+  type,
+}: {
   title: string;
   desc: string;
   img: string;
   onClick: () => void;
   type: 'APPLICANT' | 'COMPANY';
-}
-
-const Panel = ({ title, desc, img, onClick, type }: PanelProps) => (
+}) => (
   <div
     onClick={onClick}
-    className="group relative flex-1 cursor-pointer overflow-hidden rounded-none bg-white/2 transition-all duration-700 hover:bg-white/5"
+    className="group relative flex min-h-0 w-full flex-1 cursor-pointer flex-col overflow-hidden rounded-2xl bg-white/5 transition-all duration-700 hover:bg-white/10 md:w-auto"
   >
     <div
-      className="absolute inset-0 bg-cover bg-center opacity-0 brightness-50 grayscale transition-all duration-1000 group-hover:scale-110 group-hover:opacity-20"
+      className="absolute inset-0 bg-cover bg-center opacity-0 brightness-[0.4] transition-all duration-1000 group-hover:scale-110 group-hover:opacity-30"
       style={{ backgroundImage: `url(${img})` }}
     />
-    <div className="relative z-10 flex h-full flex-col items-center justify-end p-16 text-center break-keep">
+    <div className="relative z-10 flex h-full flex-col items-center justify-center p-4 text-center break-keep sm:p-8 md:justify-end md:p-12 md:text-left">
       <div
-        className={`mb-10 rounded-2xl bg-white/5 p-5 transition-all duration-500 group-hover:scale-110 ${type === 'APPLICANT' ? 'text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white' : 'text-purple-400 group-hover:bg-purple-500 group-hover:text-white'}`}
+        className={`mb-2 rounded-lg bg-white/5 p-2 transition-all duration-500 group-hover:scale-110 sm:mb-4 sm:p-4 md:mb-8 ${type === 'APPLICANT' ? 'text-indigo-400' : 'text-purple-400'}`}
       >
-        {type === 'APPLICANT' ? <User size={48} /> : <Building2 size={48} />}
+        {type === 'APPLICANT' ? (
+          <User className="size-6 md:size-12" />
+        ) : (
+          <Building2 className="size-6 md:size-12" />
+        )}
       </div>
-      <h3 className="mb-6 text-5xl font-black tracking-tighter text-white uppercase transition-transform group-hover:-translate-y-2">
+      <h3 className="mb-1 text-2xl font-black text-white uppercase sm:text-3xl md:mb-4 md:text-5xl">
         {title}
       </h3>
-      <p className="max-w-70 text-lg leading-relaxed font-medium text-white/60">{desc}</p>
-      <div className="mt-12 flex translate-y-4 items-center gap-4 rounded-full bg-white/10 px-8 py-4 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
-        <span className="text-xs font-black tracking-widest text-white uppercase">Get Started</span>
-        <ArrowRight size={18} className="text-white" />
+      <p className="max-w-[320px] text-xs font-medium text-white/70 sm:text-sm md:max-w-none md:text-lg">
+        {desc}
+      </p>
+      <div className="mt-4 hidden items-center gap-2 rounded-full bg-white/10 px-4 py-2 opacity-0 transition-all duration-500 group-hover:opacity-100 sm:flex md:mt-8 md:px-8 md:py-4">
+        <span className="text-[10px] font-black text-white uppercase md:text-xs">Start</span>
+        <ArrowRight size={14} className="text-white" />
       </div>
     </div>
   </div>
