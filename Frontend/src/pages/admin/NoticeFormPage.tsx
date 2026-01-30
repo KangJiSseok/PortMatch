@@ -31,7 +31,7 @@ function NoticeFormPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     alert(isEditMode ? '수정되었습니다.' : '등록되었습니다.');
-    navigate('/admin/notices');
+    navigate('/admin/notices/manage');
   };
 
   return (

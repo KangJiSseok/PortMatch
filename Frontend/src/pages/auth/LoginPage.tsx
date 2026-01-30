@@ -5,26 +5,9 @@ import axios from 'axios';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 import Checkbox from '../../components/Checkbox/Checkbox';
+import WarningBubble from '../../components/WarningBubble/WarningBubble';
 import { useLogin } from '../../hooks/useAuth';
 import type { UserRole } from '../../types/auth';
-
-const WarningBubble = ({ message, isVisible }: { message: string; isVisible: boolean }) => {
-  if (!isVisible || !message) return null;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -5 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="absolute top-[calc(100%+4px)] left-4 z-50"
-    >
-      <div className="flex flex-col items-start">
-        <div className="ml-4 h-0 w-0 border-x-[5px] border-b-[6px] border-x-transparent border-b-red-500/80" />
-        <div className="rounded-lg bg-red-500/80 px-3 py-1.5 text-[11px] font-bold text-white shadow-lg backdrop-blur-md">
-          {message}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
 function LoginPage() {
   const location = useLocation();
@@ -200,7 +183,7 @@ function LoginPage() {
               ref={(el) => {
                 fieldRefs.current.email = el;
               }}
-              animate={shakeField === 'email' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+              animate={shakeField === 'email' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }}
               className="relative"
             >
               <Input
@@ -212,6 +195,7 @@ function LoginPage() {
                   handleInputChange('email', e.target.value)
                 }
                 disabled={isLoading}
+                error={errors.email ? ' ' : undefined}
               />
               <WarningBubble message={errors.email} isVisible={!!errors.email} />
             </motion.div>
@@ -220,7 +204,7 @@ function LoginPage() {
               ref={(el) => {
                 fieldRefs.current.password = el;
               }}
-              animate={shakeField === 'password' ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+              animate={shakeField === 'password' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }}
               className="relative"
             >
               <Input
@@ -232,6 +216,7 @@ function LoginPage() {
                   handleInputChange('password', e.target.value)
                 }
                 disabled={isLoading}
+                error={errors.password ? ' ' : undefined}
               />
               <WarningBubble message={errors.password} isVisible={!!errors.password} />
             </motion.div>
