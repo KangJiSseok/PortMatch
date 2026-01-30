@@ -903,7 +903,7 @@ export default function RecommendCompanyPage() {
     if (!portfolioId || Number.isNaN(portfolioId)) {
       setApiCompanies([]);
       setIsLoading(false);
-      setLoadError('?ы듃?대━??ID媛 ?꾩슂?⑸땲??. ?ы듃?대━??遺꾩꽍 ?섏씠吏?먯꽌 ?대룞?댁＜?몄슂.');
+      setLoadError('포트폴리오 정보가 없습니다. 이전 단계에서 다시 접근해 주세요.');
       return;
     }
 
@@ -941,7 +941,7 @@ export default function RecommendCompanyPage() {
         });
 
         setApiCompanies(mapped);
-      } catch (err) {
+      } catch {
         if (!ignore) {
           setApiCompanies([]);
           setLoadError('추천 기업 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
