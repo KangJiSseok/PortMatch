@@ -24,6 +24,8 @@ public enum ResponseCode {
     USER_NOT_FOUND(false, 2201, "사용자를 찾을 수 없습니다."),
     PORTFOLIO_NOT_FOUND(false, 2202, "포트폴리오를 찾을 수 없습니다."),
     PORTFOLIO_FILE_REQUIRED(false, 2203, "포트폴리오 파일은 필수입니다."),
+    PROFILE_IMAGE_REQUIRED(false, 2204, "프로필 이미지는 필수입니다."),
+    PROFILE_IMAGE_NOT_FOUND(false, 2205, "프로필 이미지를 찾을 수 없습니다."),
 
     // 5000: server error (5xx)
 
@@ -37,6 +39,7 @@ public enum ResponseCode {
     PORTFOLIO_EMBEDDING_EMPTY(false, 5007, "포트폴리오 임베딩 결과가 비어있습니다."),
     PORTFOLIO_EMBEDDING_SERVICE_UNAVAILABLE(false, 5008, "포트폴리오 임베딩 서비스가 응답하지 않습니다."),
     PORTFOLIO_EMBEDDING_SIZE_MISMATCH(false, 5009, "포트폴리오 임베딩 결과 사이즈 불일치"),
+    PROFILE_IMAGE_S3_UPLOAD_FAILED(false, 5010, "프로필 이미지 업로드에 실패했습니다."),
 
     // openai
     OPENAI_BASE_URL_NOT_CONFIGURED(false, 5100, "OpenAI URL 설정이 없습니다."),
