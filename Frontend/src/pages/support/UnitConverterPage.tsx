@@ -12,6 +12,7 @@ import {
   Thermometer,
   Clock,
   Droplets,
+  AlertCircle,
   type LucideIcon,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
@@ -29,6 +30,7 @@ interface CurrencyApiResponse {
   rates: Record<string, number>;
   base_code: string;
   result: string;
+  time_last_update_utc: string;
 }
 
 const CATEGORIES: Record<ConverterCategory, CategoryConfig> = {
@@ -83,9 +85,9 @@ const UnitConverterPage = () => {
       const data: CurrencyApiResponse = await res.json();
       if (data?.rates) {
         setCurrencyRates(data.rates);
-        const now = new Date();
+        const dateObj = new Date(data.time_last_update_utc);
         setLastUpdated(
-          `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+          `${dateObj.getMonth() + 1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`,
         );
       }
     } catch (error) {
@@ -119,9 +121,17 @@ const UnitConverterPage = () => {
   };
 
   const formatResult = (val: number) => {
-    if (category === 'CURRENCY') return Math.floor(val).toLocaleString();
-    if (val > 1000000) return val.toLocaleString(undefined, { maximumFractionDigits: 0 });
-    return val.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    if (val === 0) return '0';
+
+    let digits = 2;
+    if (val <= 1) digits = 5;
+    else if (val <= 10) digits = 4;
+    else if (val <= 100) digits = 3;
+    else if (val > 1000000) digits = 0;
+
+    return val.toLocaleString(undefined, {
+      maximumFractionDigits: digits,
+    });
   };
 
   return (
@@ -244,7 +254,7 @@ const UnitConverterPage = () => {
               </div>
               {category === 'CURRENCY' && lastUpdated && (
                 <div className="text-point-blue bg-point-blue/5 border-point-blue/10 flex items-center gap-1.5 rounded-lg border px-3 py-1 text-[11px] font-black">
-                  <Clock size={12} /> {lastUpdated} 업데이트됨
+                  <Clock size={12} /> 데이터 기준: {lastUpdated} (UTC)
                 </div>
               )}
             </div>
@@ -278,13 +288,20 @@ const UnitConverterPage = () => {
                 </motion.div>
               </div>
 
-              <div className="mt- flex h-12 items-center">
+              <div className="mt-8 flex flex-col items-center gap-4">
                 <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-100 bg-emerald-50 px-6 py-3 text-sm font-black text-emerald-600 shadow-sm">
                   <Check size={18} />
                   {category === 'TEMP'
                     ? `${fromUnit === 'C' ? '(°C × 9/5) + 32' : '(°F - 32) × 5/9'}`
-                    : `1 ${fromUnit} ≈ ${(convertedValue / (Number(amount.replace(/[^0-9.]/g, '')) || 1)).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${toUnit}`}
+                    : `1 ${fromUnit} ≈ ${(convertedValue / (Number(amount.replace(/[^0-9.]/g, '')) || 1)).toLocaleString(undefined, { maximumFractionDigits: 5 })} ${toUnit}`}
                 </div>
+
+                {category === 'CURRENCY' && (
+                  <div className="text-slate-gray/60 flex items-center gap-2 text-[11px] font-bold">
+                    <AlertCircle size={14} />
+                    실제 거래 환율과 차이가 있을 수 있으니 참고용으로만 사용하시기 바랍니다.
+                  </div>
+                )}
               </div>
             </div>
           </motion.section>
