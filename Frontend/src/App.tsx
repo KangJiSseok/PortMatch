@@ -61,6 +61,9 @@ import TestInterviewLobbyPage from './pages/interview/TestInterviewLobbyPage';
 import TestInterviewPage from './pages/interview/TestInterviewPage';
 import ProfileEditPage from './pages/user/ProfileEditPage';
 
+import { MessengerProvider } from './contexts/MessengerProvider';
+import MessengerContainer from './components/Messenger/MessengerContainer';
+
 const RootLayout = () => {
   const location = useLocation();
 
@@ -82,6 +85,7 @@ const RootLayout = () => {
         <Outlet />
       </div>
       {!shouldHideLayout && <Footer />}
+      {!shouldHideLayout && <MessengerContainer />}
     </div>
   );
 };
@@ -396,7 +400,11 @@ const router = createBrowserRouter([
 ]);
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <MessengerProvider>
+      <RouterProvider router={router} />
+    </MessengerProvider>
+  );
 }
 
 export default App;
