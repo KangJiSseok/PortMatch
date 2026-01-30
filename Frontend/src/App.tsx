@@ -26,7 +26,6 @@ import SignupPage from './pages/auth/SignupPage';
 import PortfoliosPage from './pages/user/PortfoliosPage';
 import ResumeDetailPage from './pages/user/ResumeDetailPage';
 import RecommendCompanyPage from './pages/user/RecommendCompanyPage';
-import ProfileEditPage from './pages/user/ProfileEditPage';
 
 import JobPostingsPage from './pages/job/JobPostingsPage';
 import CompanyJobManagementPage from './pages/job/CompanyJobManagementPage';
@@ -58,6 +57,9 @@ import MypageGate from './routes/MyPageGate';
 import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
 import CompanyInterviewSchedulePage from './pages/company/CompanyInterviewSchedulePage';
+import TestInterviewLobbyPage from './pages/interview/TestInterviewLobbyPage';
+import TestInterviewPage from './pages/interview/TestInterviewPage';
+import ProfileEditPage from './pages/user/ProfileEditPage';
 
 const RootLayout = () => {
   const location = useLocation();
@@ -218,6 +220,18 @@ const router = createBrowserRouter([
             <JobApplyPage />
           </AuthGuard>
         ),
+      },
+      {
+        path: 'interviews/test/:id/lobby',
+        element: (
+          <TestInterviewLobbyPage/>
+        )
+      },
+      {
+        path: "/interviews/test/room",
+        element:(
+          <TestInterviewPage />
+        )
       },
       {
         path: 'company/jobs',
