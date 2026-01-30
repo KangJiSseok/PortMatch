@@ -85,10 +85,12 @@ public class SessionController {
             String originalToken = connection.getToken();
             // originalToken 예시: ws://localhost:4443?sessionId=...&token=...
 
+            String queryString = originalToken.substring(originalToken.indexOf("?"));
+            String finalUrl = "wss://i14d205.p.ssafy.io/openvidu" + queryString;
 
-            System.out.println("최종 전달 토큰: " + originalToken);
+            System.out.println("최종 전달 토큰: " + finalUrl);
 
-            return new ResponseEntity<>(originalToken, HttpStatus.OK);
+            return new ResponseEntity<>(finalUrl, HttpStatus.OK);
 
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
