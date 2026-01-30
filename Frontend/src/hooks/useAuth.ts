@@ -76,3 +76,13 @@ export const useMyInfo = () => {
     staleTime: 1000 * 60 * 5,
   });
 };
+
+export const useAuth = () => {
+  const user = useAuthStore((state) => state.user);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+
+  return {
+    user,
+    isLoggedIn,
+  };
+};

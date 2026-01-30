@@ -14,6 +14,8 @@ import {
   Sparkles,
   Upload,
   Camera,
+  MessageSquare,
+  Bookmark,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 
@@ -43,6 +45,7 @@ interface Experience {
 
 interface ResumeData {
   id: string;
+  userId: string;
   title: string;
   name: string;
   contact: string;
@@ -78,6 +81,7 @@ const MAX_LENGTHS = {
 const INITIAL_RESUMES: Record<string, ResumeData> = {
   frontend: {
     id: 'frontend',
+    userId: 'user123',
     title: '프론트엔드 이력서',
     name: '김싸피',
     contact: '010-1234-5678',
@@ -130,6 +134,10 @@ const SectionCard = ({
 function ResumeDetailPage() {
   const { resumeId } = useParams<{ resumeId: string }>();
   const navigate = useNavigate();
+
+  const user = { userId: 'user123', role: 'COMPANY' };
+  const startNewChat = (id: string, name: string) => console.log(`${name}님과 채팅방 생성`, id);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileImgRef = useRef<HTMLInputElement>(null);
   const infoRef = useRef<HTMLDivElement>(null);
@@ -182,6 +190,13 @@ function ResumeDetailPage() {
       isEditing && currentLocation.pathname !== nextLocation.pathname,
   );
 
+  const authContext = useMemo(() => {
+    if (!user || !resume) return { isOwner: false, isCompany: false };
+    const isOwner = user.userId === resume.userId;
+    const isCompany = user.role === 'COMPANY' && !isOwner;
+    return { isOwner, isCompany };
+  }, [user, resume]);
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isEditing) {
@@ -226,22 +241,19 @@ function ResumeDetailPage() {
 
   const handleCreateResume = () => {
     if (isEditing) return;
-
     setResumeSnapshot({ ...allResumes });
-
     const baseTitle = '새로운 이력서';
     let finalTitle = baseTitle;
     let counter = 1;
     const existingTitles = Object.values(allResumes).map((r) => r.title);
-
     while (existingTitles.includes(finalTitle)) {
       finalTitle = `${baseTitle} ${counter}`;
       counter++;
     }
-
     const newId = `resume-${Date.now()}`;
     const newResume: ResumeData = {
       id: newId,
+      userId: user.userId,
       title: finalTitle,
       name: '',
       contact: '',
@@ -253,11 +265,8 @@ function ResumeDetailPage() {
       selectedPortfolioId: null,
       selectedSelfIntroId: selfIntros[0]?.id || null,
     };
-
-    const updated = { ...allResumes, [newId]: newResume };
-    setAllResumes(updated);
+    setAllResumes({ ...allResumes, [newId]: newResume });
     navigate(`/resumes/${newId}`, { replace: true });
-
     setTimeout(() => {
       setIsEditing(true);
       showToast(`${finalTitle} 작성을 시작합니다.`);
@@ -273,22 +282,16 @@ function ResumeDetailPage() {
   const handleCancelEdit = () => {
     if (resumeSnapshot) {
       setAllResumes(resumeSnapshot);
-
       if (!resumeSnapshot[targetId]) {
         const firstId = Object.keys(resumeSnapshot)[0];
-        if (firstId) {
-          navigate(`/resumes/${firstId}`, { replace: true });
-        } else {
-          navigate('/portfolios', { replace: true });
-        }
+        if (firstId) navigate(`/resumes/${firstId}`, { replace: true });
+        else navigate('/portfolios', { replace: true });
       }
     }
-
     const savedP = localStorage.getItem('portfolios');
     const savedS = localStorage.getItem('selfIntros');
     if (savedP) setPortfolios(JSON.parse(savedP));
     if (savedS) setSelfIntros(JSON.parse(savedS));
-
     setResumeSnapshot(null);
     setIsEditing(false);
     setInnerEditingIntro(false);
@@ -304,17 +307,14 @@ function ResumeDetailPage() {
     }
     if (!resume.title?.trim()) errors.push('title');
     if (!resume.name?.trim()) errors.push('name');
-
     (resume.experience || []).forEach((exp, i) => {
       if (!exp.company?.trim()) errors.push(`exp_company_${i}`);
       if (!exp.role?.trim()) errors.push(`exp_role_${i}`);
     });
-
     (resume.education || []).forEach((edu, i) => {
       if (!edu.school?.trim()) errors.push(`edu_school_${i}`);
       if (!edu.major?.trim()) errors.push(`edu_major_${i}`);
     });
-
     if (errors.length > 0) {
       setErrorFields(errors);
       if (errors.includes('title') || errors.includes('name')) {
@@ -330,13 +330,25 @@ function ResumeDetailPage() {
       setTimeout(() => setErrorFields([]), 2500);
       return;
     }
-
     localStorage.setItem('resumes', JSON.stringify(allResumes));
     localStorage.setItem('portfolios', JSON.stringify(portfolios));
     localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
     setResumeSnapshot(null);
     setIsEditing(false);
     showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
+  };
+
+  const handleInterviewRequest = () => {
+    if (
+      window.confirm(`${resume.name}님께 면접을 요청하시겠습니까?\n확인 시 채팅방으로 연결됩니다.`)
+    ) {
+      startNewChat(resume.id, resume.name);
+      showToast('면접 요청을 보냈습니다.', 'success');
+    }
+  };
+
+  const handleScrap = () => {
+    showToast('관심 이력서로 스크랩되었습니다.', 'spark');
   };
 
   const handlePeriodChange = (
@@ -396,9 +408,7 @@ function ResumeDetailPage() {
     if (isEditing) setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
+  const handleDragLeave = () => setIsDragging(false);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -428,21 +438,15 @@ function ResumeDetailPage() {
   const confirmDeleteAction = () => {
     if (!deleteConfirm) return;
     const { type, index, id } = deleteConfirm;
-
     if (type === 'resume' && id !== undefined) {
       const newAllResumes = { ...allResumes };
       delete newAllResumes[String(id)];
       const remainingIds = Object.keys(newAllResumes);
-
       setIsEditing(false);
       setAllResumes(newAllResumes);
       localStorage.setItem('resumes', JSON.stringify(newAllResumes));
-
-      if (remainingIds.length > 0) {
-        navigate(`/resumes/${remainingIds[0]}`, { replace: true });
-      } else {
-        navigate('/portfolios', { replace: true });
-      }
+      if (remainingIds.length > 0) navigate(`/resumes/${remainingIds[0]}`, { replace: true });
+      else navigate('/portfolios', { replace: true });
     } else {
       if (type === 'experience' && index !== undefined) {
         const newData = [...(resume.experience || [])];
@@ -625,7 +629,6 @@ function ResumeDetailPage() {
                   당신의 특별한 커리어 스토리를 완성하세요
                 </p>
               </div>
-
               <div className="flex shrink-0 items-center gap-4">
                 <Button isBack variant="outline" size="md" className="rounded-xl" />
               </div>
@@ -646,7 +649,6 @@ function ResumeDetailPage() {
                     기본 정보
                   </h2>
                 </div>
-
                 <div className="flex flex-wrap gap-12 lg:flex-nowrap">
                   <div className="mx-auto shrink-0 lg:mx-0">
                     <div className="relative h-60 w-48 overflow-hidden rounded-3xl border border-slate-100 bg-slate-50 shadow-inner">
@@ -695,7 +697,6 @@ function ResumeDetailPage() {
                       onChange={handleProfileImageUpload}
                     />
                   </div>
-
                   <div className="w-full min-w-0 flex-1">
                     {!isEditing ? (
                       <div className="space-y-8">
@@ -805,9 +806,6 @@ function ResumeDetailPage() {
                                 updateCurrentResume({ contact: formatPhoneNumber(e.target.value) })
                               }
                             />
-                            <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
-                              {(resume?.contact || '').length}/{MAX_LENGTHS.CONTACT}
-                            </span>
                           </div>
                           <div className="relative">
                             <label className={labelClass}>이메일</label>
@@ -818,9 +816,6 @@ function ResumeDetailPage() {
                               placeholder="example@mail.com"
                               onChange={(e) => updateCurrentResume({ email: e.target.value })}
                             />
-                            <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
-                              {(resume?.email || '').length}/{MAX_LENGTHS.EMAIL}
-                            </span>
                           </div>
                           <div className="relative col-span-1 md:col-span-2">
                             <label className={labelClass}>주소</label>
@@ -831,9 +826,6 @@ function ResumeDetailPage() {
                               placeholder="주소를 입력하세요"
                               onChange={(e) => updateCurrentResume({ address: e.target.value })}
                             />
-                            <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
-                              {(resume?.address || '').length}/{MAX_LENGTHS.ADDRESS}
-                            </span>
                           </div>
                         </div>
                       </div>
@@ -855,19 +847,17 @@ function ResumeDetailPage() {
                         className="min-w-20 rounded-xl font-black"
                         onClick={() => {
                           if (type === 'experience') {
-                            updateCurrentResume({
-                              experience: [
-                                ...(resume?.experience || []),
-                                { company: '', role: '', period: '2024.01 - 2024.01' },
-                              ],
-                            });
+                            const newData: Experience[] = [
+                              ...(resume.experience || []),
+                              { company: '', role: '', period: '2024.01 - 2024.01' },
+                            ];
+                            updateCurrentResume({ experience: newData });
                           } else {
-                            updateCurrentResume({
-                              education: [
-                                ...(resume?.education || []),
-                                { school: '', major: '', status: '', period: '2024.01 - 2024.01' },
-                              ],
-                            });
+                            const newData: Education[] = [
+                              ...(resume.education || []),
+                              { school: '', major: '', status: '', period: '2024.01 - 2024.01' },
+                            ];
+                            updateCurrentResume({ education: newData });
                           }
                         }}
                       >
@@ -881,11 +871,7 @@ function ResumeDetailPage() {
                       resume[type].map((item, i) => (
                         <div
                           key={i}
-                          className={`group relative rounded-2xl border transition-all ${
-                            isEditing
-                              ? 'border-blue-100 bg-slate-50/50 p-6 pt-10'
-                              : 'border-slate-50 bg-white p-6 shadow-sm hover:border-blue-100 hover:shadow-md'
-                          }`}
+                          className={`group relative rounded-2xl border transition-all ${isEditing ? 'border-blue-100 bg-slate-50/50 p-6 pt-10' : 'border-slate-50 bg-white p-6 shadow-sm hover:border-blue-100 hover:shadow-md'}`}
                         >
                           {isEditing && (
                             <div className="absolute top-4 right-4 z-10">
@@ -896,7 +882,6 @@ function ResumeDetailPage() {
                               />
                             </div>
                           )}
-
                           {!isEditing ? (
                             <div className="flex w-full flex-wrap items-center">
                               <div className="flex min-w-0 flex-1 items-center pr-6">
@@ -909,7 +894,6 @@ function ResumeDetailPage() {
                                     : (item as Education).school}
                                 </span>
                               </div>
-                              <div className="hidden h-8 w-px bg-slate-200 md:block" />
                               <div className="flex min-w-0 flex-1 items-center px-6">
                                 <span className="mr-3 shrink-0 rounded bg-slate-100 px-2 py-1 text-sm font-black tracking-tighter text-slate-400 uppercase">
                                   {type === 'experience' ? '역할' : '전공'}
@@ -920,11 +904,7 @@ function ResumeDetailPage() {
                                     : (item as Education).major}
                                 </span>
                               </div>
-                              <div className="hidden h-8 w-px bg-slate-200 md:block" />
                               <div className="flex items-center pl-6">
-                                <span className="mr-3 shrink-0 rounded bg-slate-100 px-2 py-1 text-sm font-black tracking-tighter text-slate-400 uppercase">
-                                  기간
-                                </span>
                                 <span className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-base font-black whitespace-nowrap text-blue-600">
                                   {item.period}
                                 </span>
@@ -946,36 +926,18 @@ function ResumeDetailPage() {
                                       ? (item as Experience).company
                                       : (item as Education).school
                                   }
-                                  maxLength={
-                                    type === 'experience' ? MAX_LENGTHS.COMPANY : MAX_LENGTHS.SCHOOL
-                                  }
-                                  placeholder={
-                                    type === 'experience'
-                                      ? '회사명을 입력하세요'
-                                      : '학교명을 입력하세요'
-                                  }
                                   onChange={(e) => {
                                     if (type === 'experience') {
-                                      const newData = [...(resume?.experience || [])];
+                                      const newData = [...resume.experience];
                                       newData[i] = { ...newData[i], company: e.target.value };
                                       updateCurrentResume({ experience: newData });
                                     } else {
-                                      const newData = [...(resume?.education || [])];
+                                      const newData = [...resume.education];
                                       newData[i] = { ...newData[i], school: e.target.value };
                                       updateCurrentResume({ education: newData });
                                     }
                                   }}
                                 />
-                                <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
-                                  {
-                                    (type === 'experience'
-                                      ? (item as Experience).company
-                                      : (item as Education).school
-                                    ).length
-                                  }
-                                  /
-                                  {type === 'experience' ? MAX_LENGTHS.COMPANY : MAX_LENGTHS.SCHOOL}
-                                </span>
                               </div>
                               <div className="relative col-span-1 md:col-span-3">
                                 <label className={labelClass}>
@@ -991,39 +953,22 @@ function ResumeDetailPage() {
                                       ? (item as Experience).role
                                       : (item as Education).major
                                   }
-                                  maxLength={
-                                    type === 'experience' ? MAX_LENGTHS.ROLE : MAX_LENGTHS.MAJOR
-                                  }
-                                  placeholder={
-                                    type === 'experience'
-                                      ? '직무를 입력하세요'
-                                      : '전공을 입력하세요'
-                                  }
                                   onChange={(e) => {
                                     if (type === 'experience') {
-                                      const newData = [...(resume?.experience || [])];
+                                      const newData = [...resume.experience];
                                       newData[i] = { ...newData[i], role: e.target.value };
                                       updateCurrentResume({ experience: newData });
                                     } else {
-                                      const newData = [...(resume?.education || [])];
+                                      const newData = [...resume.education];
                                       newData[i] = { ...newData[i], major: e.target.value };
                                       updateCurrentResume({ education: newData });
                                     }
                                   }}
                                 />
-                                <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
-                                  {
-                                    (type === 'experience'
-                                      ? (item as Experience).role
-                                      : (item as Education).major
-                                    ).length
-                                  }
-                                  /{type === 'experience' ? MAX_LENGTHS.ROLE : MAX_LENGTHS.MAJOR}
-                                </span>
                               </div>
                               <div className="col-span-1 md:col-span-5">
                                 <label className={labelClass}>기간</label>
-                                <div className="flex flex-wrap items-center gap-1 sm:flex-nowrap sm:gap-2">
+                                <div className="flex flex-wrap items-center gap-1 sm:flex-nowrap">
                                   <select
                                     className={selectClass}
                                     value={item.period?.split(' - ')[0]?.split('.')[0]}
@@ -1107,11 +1052,7 @@ function ResumeDetailPage() {
                           portfolios.length > 0 &&
                           setShowPortfolioList(!showPortfolioList)
                         }
-                        className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${
-                          isEditing
-                            ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5'
-                            : 'border-slate-100 bg-slate-50'
-                        }`}
+                        className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
                       >
                         <div className="flex items-center gap-2 truncate">
                           <FileText
@@ -1133,9 +1074,8 @@ function ResumeDetailPage() {
                       </div>
                       <AnimatePresence>
                         {showPortfolioList && isEditing && (
-                          <div key="portfolio-dropdown-portal">
+                          <>
                             <motion.div
-                              key="portfolio-list-overlay"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
@@ -1143,7 +1083,6 @@ function ResumeDetailPage() {
                               onClick={() => setShowPortfolioList(false)}
                             />
                             <motion.div
-                              key="portfolio-list-dropdown"
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0 }}
@@ -1172,7 +1111,7 @@ function ResumeDetailPage() {
                                 </div>
                               ))}
                             </motion.div>
-                          </div>
+                          </>
                         )}
                       </AnimatePresence>
                     </div>
@@ -1197,15 +1136,6 @@ function ResumeDetailPage() {
                       }}
                     />
                   </div>
-
-                  {isEditing && (
-                    <div className="space-y-3">
-                      <p className="flex items-center px-2 text-sm font-bold text-slate-500 italic">
-                        <AlertTriangle size={14} className="mr-1" /> PDF 형식의 파일만 업로드
-                        가능합니다.
-                      </p>
-                    </div>
-                  )}
                 </div>
               </SectionCard>
 
@@ -1216,14 +1146,18 @@ function ResumeDetailPage() {
                   isEditing && (
                     <div className="flex items-center gap-2">
                       {!innerEditingIntro ? (
-                        <div className="flex items-center gap-2">
+                        <>
                           <Button
                             variant="blue"
                             size="md"
                             className="min-w-20 rounded-xl font-black"
                             onClick={() => {
-                              const newIntro = { id: `si-${Date.now()}`, title: '', content: '' };
-                              setSelfIntros((prev) => [...prev, newIntro]);
+                              const newIntro: SelfIntro = {
+                                id: `si-${Date.now()}`,
+                                title: '',
+                                content: '',
+                              };
+                              setSelfIntros([...selfIntros, newIntro]);
                               updateCurrentResume({ selectedSelfIntroId: newIntro.id });
                               setInnerEditingIntro(true);
                             }}
@@ -1233,35 +1167,28 @@ function ResumeDetailPage() {
                           <Button
                             variant="outline"
                             size="md"
-                            className="min-w-27.5 rounded-xl bg-white font-black whitespace-nowrap"
-                            onClick={() => {
-                              if (selfIntros.length > 0) setShowSelfIntroList(!showSelfIntroList);
-                            }}
+                            className="min-w-27.5 rounded-xl bg-white font-black"
+                            onClick={() =>
+                              selfIntros.length > 0 && setShowSelfIntroList(!showSelfIntroList)
+                            }
                           >
                             자기소개 선택 <ChevronDown size={16} className="ml-1" />
                           </Button>
                           <Button
                             variant="blue"
                             size="md"
-                            className="min-w-22.5 rounded-xl font-black whitespace-nowrap"
-                            onClick={() => {
-                              if (selfIntros.length === 0 || !resume?.selectedSelfIntroId) {
-                                const newIntro = { id: `si-${Date.now()}`, title: '', content: '' };
-                                setSelfIntros((prev) => [...prev, newIntro]);
-                                updateCurrentResume({ selectedSelfIntroId: newIntro.id });
-                              }
-                              setInnerEditingIntro(true);
-                            }}
+                            className="min-w-22.5 rounded-xl font-black"
+                            onClick={() => setInnerEditingIntro(true)}
                           >
                             내용 수정
                           </Button>
-                        </div>
+                        </>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <>
                           <Button
                             variant="outline"
                             size="md"
-                            className="min-w-17.5 rounded-xl bg-white font-black whitespace-nowrap"
+                            className="min-w-17.5 rounded-xl bg-white font-black"
                             onClick={() => {
                               setInnerEditingIntro(false);
                               const saved = localStorage.getItem('selfIntros');
@@ -1273,7 +1200,7 @@ function ResumeDetailPage() {
                           <Button
                             variant="blue"
                             size="md"
-                            className="min-w-22.5 rounded-xl font-black whitespace-nowrap"
+                            className="min-w-22.5 rounded-xl font-black"
                             onClick={() => {
                               const current = selfIntros.find(
                                 (s) => s.id === resume?.selectedSelfIntroId,
@@ -1289,114 +1216,52 @@ function ResumeDetailPage() {
                           >
                             내용 저장
                           </Button>
-                        </div>
+                        </>
                       )}
                     </div>
                   )
                 }
               >
                 <div className="space-y-6">
-                  <div className="relative">
-                    <div
-                      onClick={() =>
-                        isEditing &&
-                        !innerEditingIntro &&
-                        selfIntros.length > 0 &&
-                        setShowSelfIntroList(!showSelfIntroList)
-                      }
-                      className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${
-                        isEditing && !innerEditingIntro
-                          ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5'
-                          : 'border-slate-100 bg-slate-50'
-                      }`}
-                    >
-                      <div className="mr-4 flex min-w-0 flex-1 items-center gap-2">
-                        <FileText
-                          size={20}
-                          className={currentSelfIntro ? 'text-blue-600' : 'text-slate-300'}
+                  <div
+                    onClick={() =>
+                      isEditing &&
+                      !innerEditingIntro &&
+                      selfIntros.length > 0 &&
+                      setShowSelfIntroList(!showSelfIntroList)
+                    }
+                    className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing && !innerEditingIntro ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
+                  >
+                    <div className="mr-4 flex min-w-0 flex-1 items-center gap-2">
+                      <FileText
+                        size={20}
+                        className={currentSelfIntro ? 'text-blue-600' : 'text-slate-300'}
+                      />
+                      {innerEditingIntro ? (
+                        <input
+                          className="w-full bg-transparent text-xl font-black text-blue-600 outline-none"
+                          value={currentSelfIntro?.title || ''}
+                          maxLength={MAX_LENGTHS.TITLE}
+                          placeholder="자기소개 제목을 입력하세요"
+                          autoFocus
+                          onChange={(e) =>
+                            setSelfIntros(
+                              selfIntros.map((s) =>
+                                s.id === resume?.selectedSelfIntroId
+                                  ? { ...s, title: e.target.value }
+                                  : s,
+                              ),
+                            )
+                          }
                         />
-                        {innerEditingIntro ? (
-                          <input
-                            className="w-full bg-transparent text-xl font-black text-blue-600 outline-none"
-                            value={currentSelfIntro?.title || ''}
-                            maxLength={MAX_LENGTHS.TITLE}
-                            placeholder="자기소개 제목을 입력하세요"
-                            autoFocus
-                            onChange={(e) =>
-                              setSelfIntros(
-                                selfIntros.map((s) =>
-                                  s.id === resume?.selectedSelfIntroId
-                                    ? { ...s, title: e.target.value }
-                                    : s,
-                                ),
-                              )
-                            }
-                          />
-                        ) : (
-                          <span
-                            className={`truncate text-xl font-black ${currentSelfIntro ? 'text-blue-600' : 'text-slate-400'}`}
-                          >
-                            {currentSelfIntro?.title || '자기소개를 선택하거나 새로 작성하세요.'}
-                          </span>
-                        )}
-                      </div>
-                      {isEditing && !innerEditingIntro && (
-                        <ChevronDown
-                          size={20}
-                          className={`text-blue-600 transition-transform ${showSelfIntroList ? 'rotate-180' : ''}`}
-                        />
-                      )}
-                      {innerEditingIntro && (
-                        <span className="text-[10px] font-black whitespace-nowrap text-blue-300">
-                          {(currentSelfIntro?.title || '').length}/{MAX_LENGTHS.TITLE}
+                      ) : (
+                        <span
+                          className={`truncate text-xl font-black ${currentSelfIntro ? 'text-blue-600' : 'text-slate-400'}`}
+                        >
+                          {currentSelfIntro?.title || '자기소개를 선택해주세요.'}
                         </span>
                       )}
                     </div>
-
-                    <AnimatePresence>
-                      {showSelfIntroList && !innerEditingIntro && isEditing && (
-                        <div key="selfintro-dropdown-portal">
-                          <motion.div
-                            key="selfintro-overlay"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-100"
-                            onClick={() => setShowSelfIntroList(false)}
-                          />
-                          <motion.div
-                            key="selfintro-dropdown"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            className="absolute top-full left-0 z-110 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
-                          >
-                            {selfIntros.map((s) => (
-                              <div
-                                key={s.id}
-                                className="flex cursor-pointer items-center justify-between px-6 py-4 transition-colors hover:bg-slate-50"
-                                onClick={() => {
-                                  updateCurrentResume({ selectedSelfIntroId: s.id });
-                                  setShowSelfIntroList(false);
-                                }}
-                              >
-                                <span className="mr-4 truncate font-bold text-slate-700">
-                                  {s.title || '(제목 없음)'}
-                                </span>
-                                <Button
-                                  variant="close"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteConfirm({ type: 'selfIntro', id: s.id });
-                                  }}
-                                />
-                              </div>
-                            ))}
-                          </motion.div>
-                        </div>
-                      )}
-                    </AnimatePresence>
                   </div>
                   <div
                     className={`relative overflow-hidden rounded-2xl border p-8 transition-all ${innerEditingIntro ? 'border-blue-600 bg-white ring-4 ring-blue-600/5' : 'border-slate-50 bg-slate-50/30 shadow-inner'}`}
@@ -1425,16 +1290,42 @@ function ResumeDetailPage() {
                 </div>
               </SectionCard>
 
-              <div className="flex flex-wrap items-center justify-center gap-4 pt-12">
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-18">
                 {!isEditing ? (
-                  <Button
-                    variant="blue"
-                    size="xl"
-                    className="w-full min-w-70 rounded-[20px] px-10 py-5 font-black shadow-lg shadow-blue-600/20 sm:w-auto"
-                    onClick={toggleEditMode}
-                  >
-                    이력서 수정하기
-                  </Button>
+                  <>
+                    {authContext.isOwner && (
+                      <Button
+                        variant="blue"
+                        size="xl"
+                        className="w-full min-w-70 rounded-[20px] px-10 py-5 font-black shadow-lg shadow-blue-600/20 sm:w-auto"
+                        onClick={toggleEditMode}
+                      >
+                        이력서 수정하기
+                      </Button>
+                    )}
+                    {authContext.isCompany && (
+                      <div className="flex items-center gap-4">
+                        <Button
+                          variant="outline"
+                          size="xl"
+                          className="flex min-w-40 items-center justify-center gap-2 rounded-[20px] px-10 py-5 font-black"
+                          onClick={handleScrap}
+                        >
+                          <Bookmark size={20} />
+                          스크랩하기
+                        </Button>
+                        <Button
+                          variant="blue"
+                          size="xl"
+                          className="flex min-w-70 items-center justify-center gap-2 rounded-[20px] px-10 py-5 font-black shadow-lg shadow-blue-600/20"
+                          onClick={handleInterviewRequest}
+                        >
+                          <MessageSquare size={20} />
+                          면접 요청하기
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <>
                     <Button
@@ -1463,12 +1354,8 @@ function ResumeDetailPage() {
 
       <AnimatePresence>
         {(deleteConfirm || (blocker.state === 'blocked' && isEditing)) && (
-          <div
-            key="modal-portal"
-            className="fixed inset-0 z-3000 flex items-center justify-center p-6"
-          >
+          <div className="fixed inset-0 z-3000 flex items-center justify-center p-6">
             <motion.div
-              key="modal-overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1479,7 +1366,6 @@ function ResumeDetailPage() {
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
-              key="modal-content"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -1493,9 +1379,7 @@ function ResumeDetailPage() {
               </h3>
               <p className="text-lg font-bold text-slate-500">
                 {deleteConfirm
-                  ? deleteConfirm.type === 'resume'
-                    ? '해당 이력서가 영구적으로 삭제됩니다.'
-                    : '삭제된 데이터는 복구할 수 없습니다.'
+                  ? '삭제된 데이터는 복구할 수 없습니다.'
                   : '페이지를 벗어나면 변경 사항이 사라집니다.'}
               </p>
               <div className="mt-8 flex gap-4">

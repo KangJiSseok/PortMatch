@@ -59,6 +59,9 @@ import InterviewListGate from './routes/InterviewListGate';
 import { useAuthStore } from './store/authStore';
 import CompanyInterviewSchedulePage from './pages/company/CompanyInterviewSchedulePage';
 
+import { MessengerProvider } from './contexts/MessengerProvider';
+import MessengerContainer from './components/Messenger/MessengerContainer';
+
 const RootLayout = () => {
   const location = useLocation();
 
@@ -80,6 +83,7 @@ const RootLayout = () => {
         <Outlet />
       </div>
       {!shouldHideLayout && <Footer />}
+      {!shouldHideLayout && <MessengerContainer />}
     </div>
   );
 };
@@ -382,7 +386,11 @@ const router = createBrowserRouter([
 ]);
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <MessengerProvider>
+      <RouterProvider router={router} />
+    </MessengerProvider>
+  );
 }
 
 export default App;
