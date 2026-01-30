@@ -1,4 +1,4 @@
-// src/pages/TestInterviewPage.tsx
+﻿// src/pages/TestInterviewPage.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -71,7 +71,7 @@ function StreamVideo({
 }
 
 /**
- * ✅ 토큰만 받는다. DB 조회 X.
+ * 토큰만 받아서 붙는 테스트 (DB 조회 X)
  * - POST /api/interview/sessions/{sessionId}/connections
  */
 async function fetchOpenViduToken(sessionId: string): Promise<string> {
@@ -81,8 +81,10 @@ async function fetchOpenViduToken(sessionId: string): Promise<string> {
   const payload = res.data as unknown;
   const data = (payload as { data?: unknown })?.data ?? payload;
 
+  // 1) 서버가 string으로 바로 내려주는 경우
   if (typeof data === 'string') return data;
 
+  // 2) { token: "..." } / { connectionToken: "..." } 같은 경우
   if (typeof data === 'object' && data) {
     const obj = data as Record<string, unknown>;
     const token =
@@ -97,8 +99,8 @@ async function fetchOpenViduToken(sessionId: string): Promise<string> {
 }
 
 /**
- * ✅ 토큰이 이미 외부 공개 주소(wss://i14d205.../openvidu...)면 그대로 쓴다.
- * ✅ localhost 등으로 오면 VITE_OPENVIDU_PUBLIC_URL 기준으로 host/protocol/path를 맞춘다.
+ * 서버가 내려준 토큰이 wss://.../openvidu 형태면 그대로 사용.
+ * 로컬/프록시 환경에서 host/path가 꼬이는 경우에만 VITE_OPENVIDU_PUBLIC_URL 기준으로 보정.
  *
  * VITE_OPENVIDU_PUBLIC_URL 예시:
  *  - https://i14d205.p.ssafy.io           (추천)
@@ -109,33 +111,15 @@ function normalizeOpenViduToken(raw: string): string {
   const publicUrl = (import.meta.env.VITE_OPENVIDU_PUBLIC_URL as string | undefined) ?? '';
   if (!publicUrl) return raw;
 
-  // 이미 i14d205로 잘 내려오면 그냥 둔다 (불필요한 변형 방지)
-  if (raw.includes('i14d205.p.ssafy.io')) return raw;
-
   try {
     const t = new URL(raw);
 
     // raw가 ws/wss URL이 아니면 그대로
     if (t.protocol !== 'ws:' && t.protocol !== 'wss:') return raw;
 
-    const p = new URL(publicUrl);
-
-    const toWsProtocol = (proto: string) => {
-      if (proto === 'https:' || proto === 'wss:') return 'wss:';
-      if (proto === 'http:' || proto === 'ws:') return 'ws:';
-      return t.protocol;
-    };
-
-    // protocol/host 교체
-    t.protocol = toWsProtocol(p.protocol);
-    t.host = p.host;
-
-    // path 보정: 토큰 URL에 path가 없거나 '/'면 publicUrl의 pathname or '/openvidu'로 맞춘다
-    const desiredPath = p.pathname && p.pathname !== '/' ? p.pathname : '/openvidu';
-
-    if (!t.pathname || t.pathname === '/') {
-      t.pathname = desiredPath;
-    }
+    // ✅ 요청대로 ws/wss 프로토콜은 유지하고, :4443만 /openvidu로 교체
+    t.port = '';
+    t.pathname = '/openvidu';
 
     return t.toString();
   } catch {
@@ -154,7 +138,7 @@ function toHumanError(err: unknown): string {
     return http ? `(${http}) ${msg}` : msg;
   }
 
-  // OpenVidu connect 에러(대충 이런 형태로 떨어짐)
+  // OpenVidu connect 에러
   const anyErr = err as Record<string, unknown> | null;
   const msg =
     (typeof anyErr?.message === 'string' && anyErr.message) ||
@@ -163,7 +147,11 @@ function toHumanError(err: unknown): string {
     '';
 
   if (msg.includes('Token') && msg.includes('401')) {
-    return `OpenVidu 토큰 인증 실패(401): 토큰 발급한 OpenVidu 인스턴스와 지금 접속한 OpenVidu 인스턴스가 같은지(nginx 라우팅/포트/secret) 확인 필요`;
+    return [
+      'OpenVidu 토큰 인증 실패(401).',
+      '토큰 발급 서버(/connections)와 실제 OpenVidu 인스턴스가 같은 곳을 보고 있는지 확인하세요.',
+      '(nginx 라우팅/포트/secret 설정 불일치가 흔한 원인)',
+    ].join(' ');
   }
 
   return msg || (err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
@@ -234,7 +222,7 @@ export default function TestInterviewPage() {
     const sid = sessionIdInput.trim();
 
     if (!sid) {
-      showToast('sessionId 비어있음 😇');
+      showToast('sessionId 비어있음!');
       return;
     }
 
@@ -245,16 +233,16 @@ export default function TestInterviewPage() {
     const opId = ++connectOpRef.current;
 
     try {
-      // 1) 토큰 받기 + 필요할 때만 보정
+      // 1) 토큰 받기 + 필요하면 보정
       const token = await fetchOpenViduToken(sid);
       const normalized = normalizeOpenViduToken(token);
 
       // eslint-disable-next-line no-console
-      console.log('OV TOKEN    =', token);
+      console.log('OV TOKEN  =', token);
       // eslint-disable-next-line no-console
-      console.log('OV NORMAL   =', normalized);
+      console.log('OV NORMAL =', normalized);
       // eslint-disable-next-line no-console
-      console.log('OV PUBLIC   =', import.meta.env.VITE_OPENVIDU_PUBLIC_URL);
+      console.log('OV PUBLIC =', import.meta.env.VITE_OPENVIDU_PUBLIC_URL);
 
       if (opId !== connectOpRef.current) return;
 
@@ -278,7 +266,7 @@ export default function TestInterviewPage() {
         console.warn('OpenVidu exception:', event);
       });
 
-      // 3) connect (여기서 토큰이 서버로 넘어가고, joinRoom 시도함)
+      // 3) connect
       await session.connect(normalized, {
         clientData: isCorporate ? 'corporate' : role,
       });
@@ -317,7 +305,7 @@ export default function TestInterviewPage() {
     navigate(-1);
   }, [cleanupSession, navigate]);
 
-  // ✅ mic/cam 토글이 바뀌면 publisher에 반영
+  // mic/cam 상태 변경 시 publisher 반영
   useEffect(() => {
     const p = publisherRef.current;
     if (!p) return;
@@ -338,14 +326,14 @@ export default function TestInterviewPage() {
     }
   }, [camOn]);
 
-  // ✅ 페이지 닫힐 때 정리
+  // 페이지 언마운트 시 정리
   useEffect(() => {
     return () => {
       cleanupSession();
     };
   }, [cleanupSession]);
 
-  // ✅ 들어오자마자 sessionId가 있으면 자동 연결(테스트 편의)
+  // 들어오자마자 sessionId가 있으면 자동 연결(테스트 편의)
   useEffect(() => {
     if (!navState.sessionId) return;
     const cleanup = defer(() => {
@@ -357,7 +345,7 @@ export default function TestInterviewPage() {
   const copySessionId = useCallback(async () => {
     const sid = sessionIdInput.trim();
     if (!sid) {
-      showToast('복사할 sessionId가 비어있어요 🫠');
+      showToast('복사할 sessionId가 비어있어요!');
       return;
     }
     try {
@@ -409,7 +397,7 @@ export default function TestInterviewPage() {
             <div className="mt-4 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
               <p className="text-sm font-black">Session ID</p>
               <p className="mt-1 text-xs font-semibold text-zinc-500">
-                같은 sessionId로 두 사람이 들어오면 서로 화면 떠요.
+                같은 sessionId로 서로 들어오면 같은 방에서 만나요.
               </p>
 
               <input
@@ -481,8 +469,7 @@ export default function TestInterviewPage() {
                   {errorMessage}
                 </p>
                 <p className="mt-2 text-xs font-semibold text-red-600/70">
-                  (특히 401이면) 토큰 발급 OpenVidu와 접속 OpenVidu가 동일한지(nginx
-                  라우팅/포트/secret) 확인!
+                  (특히 401이면) 토큰 발급 OpenVidu와 실제 접속 OpenVidu가 같은 곳인지 확인!
                 </p>
               </div>
             ) : null}
@@ -526,7 +513,7 @@ export default function TestInterviewPage() {
                         : '오류'}
                 </span>
                 <span className="text-zinc-300"> · </span>
-                참가자:{' '}
+                참가자{' '}
                 <span className="font-black">{subscribers.length + (publisher ? 1 : 0)}</span>
               </p>
             </div>
@@ -537,7 +524,7 @@ export default function TestInterviewPage() {
               <div>
                 <p className="text-lg font-black tracking-tighter">화상 테스트</p>
                 <p className="mt-1 text-sm font-semibold text-zinc-500">
-                  로컬(내 화면) + 리모트(상대 화면) 떠야 성공.
+                  로컬(내 화면) + 리모트(상대 화면) 둘 다 떠야 성공!
                 </p>
               </div>
 
@@ -601,9 +588,9 @@ export default function TestInterviewPage() {
               <div className="mt-4 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
                 <p className="text-sm font-black text-zinc-700">추가 참가자</p>
                 <div className="mt-3 grid grid-cols-3 gap-3">
-                  {remoteRest.map((s, idx) => (
+                  {remoteRest.map((s) => (
                     <div
-                      key={`sub-${idx}`}
+                      key={s.stream.streamId}
                       className="bg-midnight-ink/90 overflow-hidden rounded-3xl border border-zinc-100"
                     >
                       <div className="h-40">
