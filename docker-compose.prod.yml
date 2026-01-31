@@ -104,13 +104,19 @@ services:
       - HTTPS_PORT=4443
       - CERTIFICATE_TYPE=selfsigned
       - OPENVIDU_PRO_LICENSE=
-      - WITH_KMS=http://localhost:8888/kurento
+      - WITH_KMS=ws://kurento:8888/kurento
       - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900
       - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=3600
       - OPENVIDU_WEBHOOK=true
       - OPENVIDU_WEBHOOK_ENDPOINT=http://portmatch-backend-prod:8080/api/interview/webhook
       - OPENVIDU_WEBHOOK_EVENTS=["sessionDestroyed", "participantJoined", "participantLeft"]
-     
+  
+  kurento:
+    image: kurento/kurento-media-server:7.0.1
+    container_name: kurento
+    restart: always
+    ports:
+      - "8888:8888"
 
   certbot:
     image: certbot/certbot:latest
