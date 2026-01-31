@@ -41,21 +41,23 @@ def load_tech_stacks():
         stack_id = item['id']
         stack_name = item['stackName']
 
-        # 2. ⭐ 핵심 로직: 이름(stackName)으로 중복 체크
-        # 이름이 같으면 놔두고, 없을 때만 원티드 ID와 함께 인서트!
-        cur.execute("SELECT id FROM tech_stacks WHERE stack_name = %s", (stack_name,))
-        if cur.fetchone():
-            skip_count += 1
-            continue
-
         try:
-            cur.execute(
-                "INSERT INTO tech_stacks (id, stack_name) VALUES (%s, %s)",
-                (stack_id, stack_name)
-            )
-            success_count += 1
+            # ⭐ 이름 체크 생략! 그냥 ID로 박아버리기. 
+            # 만약 ID가 겹치면(CONFLICT) 아무것도 하지 마(DO NOTHING).
+            cur.execute("""
+                INSERT INTO tech_stacks (id, stack_name) 
+                VALUES (%s, %s)
+                ON CONFLICT (id) DO NOTHING;
+            """, (stack_id, stack_name))
+            
+            # INSERT가 실제로 성공했는지 확인해서 카운트
+            if cur.rowcount > 0:
+                success_count += 1
+            else:
+                skip_count += 1
+
         except Exception as e:
-            print(f"⚠️ 저장 실패 [{stack_name}]: {e}")
+            print(f"⚠️ 에러 발생: {e}")
             conn.rollback()
         else:
             conn.commit()
