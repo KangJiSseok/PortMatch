@@ -4,7 +4,19 @@ import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.auth.repository.UserRepository;
 import com.portmatch.domain.portfolio.entity.Portfolio;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
-import com.portmatch.domain.resume.dto.*;
+import com.portmatch.domain.resume.dto.CareerCreateRequest;
+import com.portmatch.domain.resume.dto.CareerResponse;
+import com.portmatch.domain.resume.dto.EducationCreateRequest;
+import com.portmatch.domain.resume.dto.EducationResponse;
+import com.portmatch.domain.resume.dto.ProfileResponse;
+import com.portmatch.domain.resume.dto.ProfileUpsertRequest;
+import com.portmatch.domain.resume.dto.ResumeCreateRequest;
+import com.portmatch.domain.resume.dto.ResumePortfolioResponse;
+import com.portmatch.domain.resume.dto.ResumePortfolioUpdateRequest;
+import com.portmatch.domain.resume.dto.ResumeResponse;
+import com.portmatch.domain.resume.dto.ResumeSummaryResponse;
+import com.portmatch.domain.resume.dto.SelfIntroductionCreateWithQuestionsRequest;
+import com.portmatch.domain.resume.dto.SelfIntroductionResponse;
 import com.portmatch.domain.resume.entity.*;
 import com.portmatch.domain.resume.repository.ProfileImageRepository;
 import com.portmatch.domain.resume.repository.ResumeCareerEntryRepository;
@@ -24,8 +36,6 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -92,9 +102,49 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
-    public ResumeResponse updateResume(Long userId, Long resumeId, ResumeUpdateRequest request) {
+    public ResumeResponse replaceResume(Long userId, Long resumeId, ResumeCreateRequest request) {
         Resume resume = getResumeOwned(userId, resumeId);
         resume.updateTitle(request.getTitle());
+        if (request.getIsMain() != null) {
+            if (request.getIsMain()) {
+                unsetMainIfExists(userId);
+                resume.markMain(true);
+            } else {
+                resume.markMain(false);
+            }
+        }
+
+        ResumeProfile existingProfile = resumeProfileRepository.findByResume_Id(resumeId).orElse(null);
+        if (existingProfile != null) {
+            resumeProfileRepository.delete(existingProfile);
+            resume.setProfile(null);
+        }
+        resume.setPortfolio(null);
+        resumeCareerEntryRepository.deleteAll(
+                resumeCareerEntryRepository.findAllByResume_IdOrderByOrderIndexAsc(resumeId)
+        );
+        resumeEducationEntryRepository.deleteAll(
+                resumeEducationEntryRepository.findAllByResume_IdOrderByOrderIndexAsc(resumeId)
+        );
+        selfIntroductionRepository.deleteAll(
+                selfIntroductionRepository.findAllByResume_IdOrderByOrderIndexAsc(resumeId)
+        );
+
+        if (request.getProfile() != null) {
+            upsertProfile(userId, resumeId, request.getProfile());
+        }
+        if (request.getPortfolio() != null) {
+            uploadPortfolio(userId, resumeId, request.getPortfolio());
+        }
+        if (request.getCareers() != null && !request.getCareers().isEmpty()) {
+            request.getCareers().forEach(item -> addCareer(userId, resumeId, item));
+        }
+        if (request.getEducations() != null && !request.getEducations().isEmpty()) {
+            request.getEducations().forEach(item -> addEducation(userId, resumeId, item));
+        }
+        if (request.getSelfIntroductions() != null && !request.getSelfIntroductions().isEmpty()) {
+            createSelfIntroductionsWithAnswers(resume, request.getSelfIntroductions());
+        }
         return toResumeResponse(resume);
     }
 
@@ -115,18 +165,7 @@ public class ResumeServiceImpl implements ResumeService {
         }
     }
 
-    @Override
-    public void setMainResume(Long userId, Long resumeId) {
-        Resume resume = getResumeOwned(userId, resumeId);
-        if (Boolean.TRUE.equals(resume.getIsMain())) {
-            return;
-        }
-        unsetMainIfExists(userId);
-        resume.markMain(true);
-    }
-
-    @Override
-    public ProfileResponse upsertProfile(Long userId, Long resumeId, ProfileUpsertRequest request) {
+    private ProfileResponse upsertProfile(Long userId, Long resumeId, ProfileUpsertRequest request) {
         Resume resume = getResumeOwned(userId, resumeId);
         ResumeProfile profile = resumeProfileRepository.findByResume_Id(resumeId)
                 .orElse(null);
@@ -155,22 +194,7 @@ public class ResumeServiceImpl implements ResumeService {
         return toProfileResponse(saved);
     }
 
-    @Override
-    public ProfileResponse updateProfileImage(Long userId, Long resumeId, Long profileImageId) {
-        ResumeProfile profile = getProfileOwned(userId, resumeId);
-        ProfileImage profileImage = getProfileImageOwned(userId, profileImageId);
-        profile.updateProfileImage(profileImage);
-        return toProfileResponse(profile);
-    }
-
-    @Override
-    public void deleteProfileImage(Long userId, Long resumeId) {
-        ResumeProfile profile = getProfileOwned(userId, resumeId);
-        profile.clearProfileImage();
-    }
-
-    @Override
-    public CareerResponse addCareer(Long userId, Long resumeId, CareerCreateRequest request) {
+    private CareerResponse addCareer(Long userId, Long resumeId, CareerCreateRequest request) {
         Resume resume = getResumeOwned(userId, resumeId);
         Integer orderIndex = request.getOrderIndex();
         if (orderIndex == null) {
@@ -194,59 +218,7 @@ public class ResumeServiceImpl implements ResumeService {
         return toCareerResponse(saved);
     }
 
-    @Override
-    public CareerResponse updateCareer(Long userId, Long resumeId, Long careerId, CareerUpdateRequest request) {
-        getResumeOwned(userId, resumeId);
-        ResumeCareerEntry entry = resumeCareerEntryRepository.findByIdAndResume_Id(careerId, resumeId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
-        entry.update(
-                request.getCompany(),
-                request.getRole(),
-                request.getPeriodStart(),
-                request.getPeriodEnd(),
-                request.getEmploymentStatus(),
-                request.getDescription(),
-                request.getOrderIndex()
-        );
-        return toCareerResponse(entry);
-    }
-
-    @Override
-    public void deleteCareer(Long userId, Long resumeId, Long careerId) {
-        getResumeOwned(userId, resumeId);
-        ResumeCareerEntry entry = resumeCareerEntryRepository.findByIdAndResume_Id(careerId, resumeId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
-        resumeCareerEntryRepository.delete(entry);
-    }
-
-    @Override
-    public void reorderCareers(Long userId, Long resumeId, CareerReorderRequest request) {
-        getResumeOwned(userId, resumeId);
-        List<Long> ids = request.getItems().stream()
-                .map(OrderIndexItem::getId)
-                .toList();
-        List<ResumeCareerEntry> entries = resumeCareerEntryRepository.findAllByResume_IdAndIdIn(resumeId, ids);
-        if (entries.size() != ids.size()) {
-            throw new BusinessException(ResponseCode.NOT_FOUND);
-        }
-        Map<Long, ResumeCareerEntry> entryMap = entries.stream()
-                .collect(Collectors.toMap(ResumeCareerEntry::getId, item -> item));
-        request.getItems().forEach(item -> {
-            ResumeCareerEntry entry = entryMap.get(item.getId());
-            entry.update(
-                    entry.getCompany(),
-                    entry.getRole(),
-                    entry.getPeriodStart(),
-                    entry.getPeriodEnd(),
-                    entry.getEmploymentStatus(),
-                    entry.getDescription(),
-                    item.getOrderIndex()
-            );
-        });
-    }
-
-    @Override
-    public EducationResponse addEducation(Long userId, Long resumeId, EducationCreateRequest request) {
+    private EducationResponse addEducation(Long userId, Long resumeId, EducationCreateRequest request) {
         Resume resume = getResumeOwned(userId, resumeId);
         Integer orderIndex = request.getOrderIndex();
         if (orderIndex == null) {
@@ -270,59 +242,7 @@ public class ResumeServiceImpl implements ResumeService {
         return toEducationResponse(saved);
     }
 
-    @Override
-    public EducationResponse updateEducation(Long userId, Long resumeId, Long educationId, EducationUpdateRequest request) {
-        getResumeOwned(userId, resumeId);
-        ResumeEducationEntry entry = resumeEducationEntryRepository.findByIdAndResume_Id(educationId, resumeId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
-        entry.update(
-                request.getSchool(),
-                request.getMajor(),
-                request.getDegree(),
-                request.getPeriodStart(),
-                request.getPeriodEnd(),
-                request.getStatus(),
-                request.getOrderIndex()
-        );
-        return toEducationResponse(entry);
-    }
-
-    @Override
-    public void deleteEducation(Long userId, Long resumeId, Long educationId) {
-        getResumeOwned(userId, resumeId);
-        ResumeEducationEntry entry = resumeEducationEntryRepository.findByIdAndResume_Id(educationId, resumeId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
-        resumeEducationEntryRepository.delete(entry);
-    }
-
-    @Override
-    public void reorderEducations(Long userId, Long resumeId, EducationReorderRequest request) {
-        getResumeOwned(userId, resumeId);
-        List<Long> ids = request.getItems().stream()
-                .map(OrderIndexItem::getId)
-                .toList();
-        List<ResumeEducationEntry> entries = resumeEducationEntryRepository.findAllByResume_IdAndIdIn(resumeId, ids);
-        if (entries.size() != ids.size()) {
-            throw new BusinessException(ResponseCode.NOT_FOUND);
-        }
-        Map<Long, ResumeEducationEntry> entryMap = entries.stream()
-                .collect(Collectors.toMap(ResumeEducationEntry::getId, item -> item));
-        request.getItems().forEach(item -> {
-            ResumeEducationEntry entry = entryMap.get(item.getId());
-            entry.update(
-                    entry.getSchool(),
-                    entry.getMajor(),
-                    entry.getDegree(),
-                    entry.getPeriodStart(),
-                    entry.getPeriodEnd(),
-                    entry.getStatus(),
-                    item.getOrderIndex()
-            );
-        });
-    }
-
-    @Override
-    public ResumePortfolioResponse uploadPortfolio(Long userId, Long resumeId, ResumePortfolioUpdateRequest request) {
+    private ResumePortfolioResponse uploadPortfolio(Long userId, Long resumeId, ResumePortfolioUpdateRequest request) {
         Resume resume = getResumeOwned(userId, resumeId);
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(request.getPortfolioId(), userId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.PORTFOLIO_NOT_FOUND));
@@ -332,64 +252,6 @@ public class ResumeServiceImpl implements ResumeService {
         }
         resume.setPortfolio(portfolio);
         return toPortfolioResponse(portfolio, resume.getId());
-    }
-
-    @Override
-    public void deletePortfolio(Long userId, Long resumeId) {
-        Resume resume = getResumeOwned(userId, resumeId);
-        resume.setPortfolio(null);
-    }
-
-    @Override
-    public SelfIntroductionResponse addSelfIntroduction(Long userId, Long resumeId, SelfIntroductionCreateRequest request) {
-        Resume resume = getResumeOwned(userId, resumeId);
-        Integer orderIndex = request.getOrderIndex();
-        if (orderIndex == null) {
-            orderIndex = nextOrderIndex(
-                    selfIntroductionRepository.findAllByResume_IdOrderByOrderIndexAsc(resumeId).stream()
-                            .map(SelfIntroduction::getOrderIndex)
-                            .toList()
-            );
-        }
-        SelfIntroduction selfIntroduction = SelfIntroduction.create(
-                resume,
-                request.getTitle(),
-                request.getAnswerText(),
-                orderIndex
-        );
-        SelfIntroduction saved = selfIntroductionRepository.save(selfIntroduction);
-        return toSelfIntroductionResponse(saved);
-    }
-
-    @Override
-    public SelfIntroductionResponse updateSelfIntroduction(Long userId, Long resumeId, Long selfIntroductionId, SelfIntroductionUpdateRequest request) {
-        SelfIntroduction selfIntroduction = getSelfIntroductionOwned(userId, resumeId, selfIntroductionId);
-        selfIntroduction.update(request.getTitle(), request.getAnswerText(), request.getOrderIndex());
-        return toSelfIntroductionResponse(selfIntroduction);
-    }
-
-    @Override
-    public void deleteSelfIntroduction(Long userId, Long resumeId, Long selfIntroductionId) {
-        SelfIntroduction selfIntroduction = getSelfIntroductionOwned(userId, resumeId, selfIntroductionId);
-        selfIntroductionRepository.delete(selfIntroduction);
-    }
-
-    @Override
-    public void reorderSelfIntroductions(Long userId, Long resumeId, SelfIntroductionReorderRequest request) {
-        getResumeOwned(userId, resumeId);
-        List<Long> ids = request.getItems().stream()
-                .map(OrderIndexItem::getId)
-                .toList();
-        List<SelfIntroduction> introductions = selfIntroductionRepository.findAllByResume_IdAndIdIn(resumeId, ids);
-        if (introductions.size() != ids.size()) {
-            throw new BusinessException(ResponseCode.NOT_FOUND);
-        }
-        Map<Long, SelfIntroduction> introMap = introductions.stream()
-                .collect(Collectors.toMap(SelfIntroduction::getId, item -> item));
-        request.getItems().forEach(item -> {
-            SelfIntroduction intro = introMap.get(item.getId());
-            intro.update(intro.getTitle(), intro.getAnswerText(), item.getOrderIndex());
-        });
     }
 
     private User getUser(Long userId) {
@@ -402,21 +264,9 @@ public class ResumeServiceImpl implements ResumeService {
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
     }
 
-    private ResumeProfile getProfileOwned(Long userId, Long resumeId) {
-        getResumeOwned(userId, resumeId);
-        return resumeProfileRepository.findByResume_Id(resumeId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
-    }
-
     private ProfileImage getProfileImageOwned(Long userId, Long profileImageId) {
         return profileImageRepository.findByIdAndUser_Id(profileImageId, userId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.PROFILE_IMAGE_NOT_FOUND));
-    }
-
-    private SelfIntroduction getSelfIntroductionOwned(Long userId, Long resumeId, Long selfIntroductionId) {
-        getResumeOwned(userId, resumeId);
-        return selfIntroductionRepository.findByIdAndResume_Id(selfIntroductionId, resumeId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
     }
 
     private void unsetMainIfExists(Long userId) {

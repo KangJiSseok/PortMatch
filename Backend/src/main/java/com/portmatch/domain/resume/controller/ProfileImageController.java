@@ -16,17 +16,17 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-@Tag(name = "프로필 이미지", description = "프로필 이미지 업로드 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/profile-images")
+@Tag(name = "프로필 이미지", description = "프로필 이미지 업로드 API")
 @RequiredArgsConstructor
 public class ProfileImageController {
 
     private final ProfileImageService profileImageService;
 
-    @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 S3에 업로드하고 정보를 반환합니다.")
     @PostMapping(path = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 S3에 업로드하고 정보를 반환합니다.")
     public BaseApiResponse<ProfileImageResponse> upload(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestPart("file") MultipartFile file

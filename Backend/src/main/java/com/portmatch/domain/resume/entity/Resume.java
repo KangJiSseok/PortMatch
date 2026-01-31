@@ -82,16 +82,4 @@ public class Resume extends BaseTimeEntity {
     public void setPortfolio(Portfolio portfolio) {
         this.portfolio = portfolio;
     }
-
-    public void addCareerEntry(ResumeCareerEntry entry) {
-        this.careerEntries.add(entry);
-    }
-
-    public void addEducationEntry(ResumeEducationEntry entry) {
-        this.educationEntries.add(entry);
-    }
-
-    public void addSelfIntroduction(SelfIntroduction selfIntroduction) {
-        this.selfIntroductions.add(selfIntroduction);
-    }
 }
