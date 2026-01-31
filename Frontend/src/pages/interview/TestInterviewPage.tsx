@@ -98,35 +98,6 @@ async function fetchOpenViduToken(sessionId: string): Promise<string> {
   throw new Error('토큰 응답 형식이 예상과 달라요.');
 }
 
-/**
- * 서버가 내려준 토큰이 wss://.../openvidu 형태면 그대로 사용.
- * 로컬/프록시 환경에서 host/path가 꼬이는 경우에만 VITE_OPENVIDU_PUBLIC_URL 기준으로 보정.
- *
- * VITE_OPENVIDU_PUBLIC_URL 예시:
- *  - https://i14d205.p.ssafy.io           (추천)
- *  - https://i14d205.p.ssafy.io/openvidu  (가능)
- *  - http://i14d205.p.ssafy.io:8443       (가능)
- */
-function normalizeOpenViduToken(raw: string): string {
-  const publicUrl = (import.meta.env.VITE_OPENVIDU_PUBLIC_URL as string | undefined) ?? '';
-  if (!publicUrl) return raw;
-
-  try {
-    const t = new URL(raw);
-
-    // raw가 ws/wss URL이 아니면 그대로
-    if (t.protocol !== 'ws:' && t.protocol !== 'wss:') return raw;
-
-    // ✅ 요청대로 ws/wss 프로토콜은 유지하고, :4443만 /openvidu로 교체
-    t.port = '';
-    t.pathname = '/openvidu';
-
-    return t.toString();
-  } catch {
-    return raw;
-  }
-}
-
 function toHumanError(err: unknown): string {
   // axios 에러
   if (axios.isAxiosError(err)) {
@@ -233,14 +204,11 @@ export default function TestInterviewPage() {
     const opId = ++connectOpRef.current;
 
     try {
-      // 1) 토큰 받기 + 필요하면 보정
+      // 1) 토큰 받기
       const token = await fetchOpenViduToken(sid);
-      const normalized = normalizeOpenViduToken(token);
 
       // eslint-disable-next-line no-console
       console.log('OV TOKEN  =', token);
-      // eslint-disable-next-line no-console
-      console.log('OV NORMAL =', normalized);
       // eslint-disable-next-line no-console
       console.log('OV PUBLIC =', import.meta.env.VITE_OPENVIDU_PUBLIC_URL);
 
@@ -267,7 +235,7 @@ export default function TestInterviewPage() {
       });
 
       // 3) connect
-      await session.connect(normalized, {
+      await session.connect(token, {
         clientData: isCorporate ? 'corporate' : role,
       });
 
