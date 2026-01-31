@@ -1,7 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Sparkles, KeyRound, Puzzle, X, Info } from 'lucide-react';
+import {
+  Sparkles,
+  KeyRound,
+  Puzzle,
+  X,
+  Info,
+  FileText,
+  MousePointerClick,
+  ChevronDown,
+} from 'lucide-react';
 import {
   fetchPortfolioRecommendedCompanies,
   fetchCompanyMatchExplanation,
@@ -16,6 +25,7 @@ import type {
 
 type Factor = '프로젝트' | '도메인' | '문제' | '해결' | '기술스택';
 const FACTOR_ORDER: Factor[] = ['프로젝트', '도메인', '문제', '해결', '기술스택'];
+const DONUT_ORDER: Factor[] = ['기술스택', '프로젝트', '도메인', '문제', '해결'];
 
 type Headline = {
   line1: string;
@@ -35,6 +45,8 @@ type Company = {
   portfolioProjectId: number;
   companyProjectId: number;
   name: string;
+  portfolioContent: string;
+  companyContent: string;
   matchScore: number; // 0~100
   openingsCount: number;
   weights: Record<Factor, number>; // % 합 100
@@ -125,6 +137,14 @@ function pickTopFactors(weights: Record<Factor, number>, n = 2): Factor[] {
   return [...FACTOR_ORDER].sort((a, b) => weights[b] - weights[a]).slice(0, n);
 }
 
+const FACTOR_LABEL: Record<Factor, string> = {
+  프로젝트: '프로젝트',
+  도메인: '도메인',
+  문제: '문제 정의',
+  해결: '해결 방식',
+  기술스택: '기술스택',
+};
+
 /** ---------------- DonutChart (CI-safe) ---------------- **/
 
 function DonutChart({ weights, score }: { weights: Record<Factor, number>; score: number }) {
@@ -133,10 +153,11 @@ function DonutChart({ weights, score }: { weights: Record<Factor, number>; score
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const cy = size / 2;
+  const START_ANGLE_OFFSET = 180;
 
   type Segment = { key: Factor; angle: number; start: number; end: number };
 
-  const segments: Segment[] = FACTOR_ORDER.reduce(
+  const segments: Segment[] = DONUT_ORDER.reduce(
     (state, k) => {
       const value = weights[k] ?? 0;
       const angle = (value / 100) * 360;
@@ -160,8 +181,8 @@ function DonutChart({ weights, score }: { weights: Record<Factor, number>; score
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f1f1" strokeWidth={stroke} />
 
         {segments.map(({ key, angle, start, end }) => {
-          const startRad = ((start - 90) * Math.PI) / 180;
-          const endRad = ((end - 90) * Math.PI) / 180;
+          const startRad = ((start - 90 + START_ANGLE_OFFSET) * Math.PI) / 180;
+          const endRad = ((end - 90 + START_ANGLE_OFFSET) * Math.PI) / 180;
 
           return (
             <path
@@ -203,6 +224,231 @@ const BTN_INSET =
 
 /** ---------------- CompanyCard ---------------- **/
 
+const TECH_KEYWORDS = [
+  'React',
+  'Next.js',
+  'Vue',
+  'Angular',
+  'Svelte',
+  'TypeScript',
+  'JavaScript',
+  'Node.js',
+  'Express',
+  'NestJS',
+  'Spring',
+  'Spring Boot',
+  'Java',
+  'Kotlin',
+  'Python',
+  'Django',
+  'FastAPI',
+  'Flask',
+  'Go',
+  'Rust',
+  'C#',
+  'C++',
+  'MySQL',
+  'PostgreSQL',
+  'MongoDB',
+  'Redis',
+  'Kafka',
+  'RabbitMQ',
+  'Docker',
+  'Kubernetes',
+  'AWS',
+  'GCP',
+  'Azure',
+  'GraphQL',
+  'REST',
+];
+
+function extractTechTags(text: string): string[] {
+  if (!text) return [];
+  const normalized = text.toLowerCase();
+  const tags = TECH_KEYWORDS.filter((keyword) => normalized.includes(keyword.toLowerCase()));
+  return Array.from(new Set(tags));
+}
+
+function extractTechTagsFromStructured(content: string): string[] {
+  if (!content) return [];
+  const parsed = parseStructuredContent(content);
+  const techLine =
+    parsed['기술'] || parsed['기술스택'] || parsed['스택'] || parsed['Tech'] || content;
+
+  const rawTags = techLine
+    .split(/[,\u00B7/|]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const keywordTags = extractTechTags(techLine);
+  const merged = [...rawTags, ...keywordTags];
+  return Array.from(new Set(merged));
+}
+
+function getExcerpt(text: string): string {
+  if (!text) return '';
+  const parts = text
+    .split(/[\n.!?]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return parts[0] ?? text.slice(0, 80);
+}
+
+function parseStructuredContent(content: string): Record<string, string> {
+  if (!content) return {};
+  const result: Record<string, string> = {};
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  lines.forEach((line) => {
+    const match = line.match(/^\[([^\]]+)\]\s*(.+)$/);
+    if (match) {
+      result[match[1]] = match[2].trim();
+    }
+  });
+
+  if (Object.keys(result).length === 0) {
+    const regex = /\[([^\]]+)\]\s*([^[]+)/g;
+    let match = regex.exec(content);
+    while (match) {
+      result[match[1]] = match[2].trim();
+      match = regex.exec(content);
+    }
+  }
+
+  return result;
+}
+
+function getStructuredValue(content: string, labels: string[], fallback: string): string {
+  const parsed = parseStructuredContent(content);
+  for (const label of labels) {
+    if (parsed[label]) return parsed[label];
+  }
+  return fallback;
+}
+
+function ComparisonTable({
+  portfolioContent,
+  companyContent,
+  weights,
+}: {
+  portfolioContent: string;
+  companyContent: string;
+  weights: Record<Factor, number>;
+}) {
+  const portfolioTechTags = extractTechTagsFromStructured(portfolioContent);
+  const companyTechTags = extractTechTagsFromStructured(companyContent);
+  const matchedTechTags = companyTechTags.filter((tag) => portfolioTechTags.includes(tag));
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full table-fixed text-left text-[13px]">
+        <colgroup>
+          <col className="w-[90px]" />
+          <col className="w-[32px]" />
+          <col className="w-[280px]" />
+          <col className="w-[280px]" />
+        </colgroup>
+        <thead className="bg-gray-50/70 text-[12px] font-bold text-gray-500">
+          <tr>
+            <th className="px-6 py-3">비교 항목</th>
+            <th className="px-2 py-3 text-center">매칭도</th>
+            <th className="px-6 py-3">내 포트폴리오</th>
+            <th className="px-6 py-3">기업 과제</th>
+          </tr>
+        </thead>
+        <tbody>
+          {FACTOR_ORDER.map((factor) => {
+            if (factor === '기술스택') {
+              return (
+                <tr key={factor} className="border-t border-gray-100">
+                  <td className="px-6 py-4 font-bold text-gray-900">
+                    <div>{FACTOR_LABEL[factor]}</div>
+                    {matchedTechTags.length > 0 && (
+                      <p className="mt-2 text-[12px] font-semibold text-indigo-600">
+                        공통 기술 {matchedTechTags.length}개
+                      </p>
+                    )}
+                  </td>
+                  <td className="w-[32px] px-2 py-4 text-center text-[13px] font-bold text-blue-600">
+                    {weights[factor]}%
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      {portfolioTechTags.length === 0 && (
+                        <span className="text-[12px] text-blue-400">추출된 기술 없음</span>
+                      )}
+                      {portfolioTechTags.map((tag) => (
+                        <span
+                          key={`portfolio-${tag}`}
+                          className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${
+                            matchedTechTags.includes(tag)
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'border border-blue-100 bg-white text-blue-700'
+                          }`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      {companyTechTags.length === 0 && (
+                        <span className="text-[12px] text-indigo-400">추출된 기술 없음</span>
+                      )}
+                      {companyTechTags.map((tag) => (
+                        <span
+                          key={`company-${tag}`}
+                          className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${
+                            matchedTechTags.includes(tag)
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : 'border border-indigo-100 bg-white text-indigo-700'
+                          }`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              );
+            }
+
+            const portfolioValue = getStructuredValue(
+              portfolioContent,
+              factor === '프로젝트' ? ['프로젝트명', '프로젝트'] : [factor],
+              getExcerpt(portfolioContent),
+            );
+            const companyValue = getStructuredValue(
+              companyContent,
+              factor === '프로젝트' ? ['프로젝트명', '프로젝트', '회사'] : [factor],
+              getExcerpt(companyContent),
+            );
+
+            return (
+              <tr key={factor} className="border-t border-gray-100">
+                <td className="px-6 py-4 font-bold text-gray-900">{FACTOR_LABEL[factor]}</td>
+                <td className="w-[32px] px-2 py-4 text-center text-[13px] font-bold text-blue-600">
+                  {weights[factor]}%
+                </td>
+                <td className="px-6 py-4 text-[13px] leading-relaxed text-gray-700">
+                  {portfolioValue || '포트폴리오 요약 데이터가 없습니다.'}
+                </td>
+                <td className="px-6 py-4 text-[13px] leading-relaxed text-gray-700">
+                  {companyValue || '기업 과제 요약 데이터가 없습니다.'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function CompanyCard({
   company,
   onOpenReason,
@@ -229,7 +475,7 @@ function CompanyCard({
       whileTap={{ y: -2 }}
       transition={{ type: 'spring', stiffness: 260, damping: 22 }}
       className={[
-        'relative flex h-[460px] w-full flex-col overflow-hidden rounded-2xl',
+        'relative flex min-h-[460px] w-full flex-col overflow-hidden rounded-2xl',
         'border border-gray-200/60 bg-white',
       ].join(' ')}
       style={{
@@ -242,7 +488,8 @@ function CompanyCard({
       />
 
       <div
-        className="relative flex-1 cursor-pointer [perspective:1000px]"
+        className="relative flex-shrink-0 cursor-pointer [perspective:1000px]"
+        style={{ height: 300 }}
         onClick={() => setIsFlipped((v) => !v)}
       >
         <motion.div
@@ -258,10 +505,12 @@ function CompanyCard({
               </h3>
             </div>
 
-            <div className="flex flex-1 flex-col items-center justify-center">
-              <DonutChart weights={company.weights} score={company.matchScore} />
+            <div className="flex flex-1 flex-col items-center justify-end pt-[13px]">
+              <div className="flex items-center justify-center">
+                <DonutChart weights={company.weights} score={company.matchScore} />
+              </div>
 
-              <div className="mt-9 flex flex-wrap justify-center gap-2">
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {company.topFactors.map((f) => (
                   <span
                     key={f}
@@ -272,7 +521,7 @@ function CompanyCard({
                       border: `1px solid ${FACTOR_COLOR[f]}25`,
                     }}
                   >
-                    #{f}
+                    #{FACTOR_LABEL[f]}
                   </span>
                 ))}
               </div>
@@ -306,7 +555,7 @@ function CompanyCard({
                 {FACTOR_ORDER.map((f) => (
                   <div key={f} className="text-[12px]">
                     <div className="mb-1.5 flex justify-between">
-                      <span className="font-semibold text-gray-500">{f}</span>
+                      <span className="font-semibold text-gray-500">{FACTOR_LABEL[f]}</span>
                       <span className="font-bold text-[#4a4a4a]">{company.weights[f]}%</span>
                     </div>
 
@@ -333,37 +582,37 @@ function CompanyCard({
         </motion.div>
       </div>
 
-      <div className="space-y-2 px-5 pt-1 pb-5">
-        <button
-          onClick={goToPostings}
-          className={`${BTN_BASE} ${BTN_INSET} py-3.5 text-[14px] shadow-sm hover:shadow-md`}
-          style={{
-            backgroundColor: 'rgba(240,238,233,0.55)',
-            color: PALETTE.slateGray,
-            border: '1px solid rgba(0,0,0,0.055)',
-          }}
-        >
-          모집중인 공고 {company.openingsCount}개 보기
-        </button>
+      <div className="-mt-4 flex min-h-0 flex-1 flex-col gap-2 px-4 pt-0 pb-2">
+        <div className="mt-10 space-y-2 pt-1">
+          <button
+            onClick={goToPostings}
+            className={`${BTN_BASE} ${BTN_INSET} w-full py-3 text-[13px] shadow-sm`}
+            style={{
+              backgroundColor: '#F8F8F6',
+              color: PALETTE.slateGray,
+              border: '1px solid rgba(0,0,0,0.04)',
+            }}
+          >
+            채용 공고 <span className="ml-1 text-blue-600">{company.openingsCount}</span>
+          </button>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenReason(company);
-          }}
-          className={`${BTN_BASE} ${BTN_INSET} py-3.5 text-[14px] text-white shadow-sm hover:shadow-md`}
-          style={{ backgroundColor: POINT_BLUE }}
-        >
-          합격 전략 리포트
-        </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenReason(company);
+            }}
+            className={`${BTN_BASE} ${BTN_INSET} w-full py-3 text-[13px] text-white shadow-md`}
+            style={{ backgroundColor: POINT_BLUE }}
+          >
+            합격 전략 리포트
+          </button>
+        </div>
       </div>
     </motion.div>
   );
 }
 
 /** ---------------- Criteria (모달 밖에서 1번만) ---------------- **/
-
-import { ChevronDown } from 'lucide-react';
 
 function EvaluationCriteria() {
   const [open, setOpen] = useState(false);
@@ -372,8 +621,8 @@ function EvaluationCriteria() {
   const FACTOR_COLORS = {
     프로젝트: '#60A5FA',
     도메인: '#F43F5E',
-    문제: '#FB923C',
-    해결: '#4ADE80',
+    '문제 정의': '#FB923C',
+    '해결 방식': '#4ADE80',
     기술스택: '#C084FC',
   };
 
@@ -386,8 +635,14 @@ function EvaluationCriteria() {
       id: '도메인',
       desc: '프로젝트가 어떤 산업·서비스 영역에서 진행되었는지, 환경적 유사성을 평가합니다.',
     },
-    { id: '문제', desc: '프로젝트에서 해결하려 했던 과제의 본질(성능, 효율 등)에 집중합니다.' },
-    { id: '해결', desc: '문제를 풀기 위해 선택한 접근 방식과 사고 구조가 논리적인지 평가합니다.' },
+    {
+      id: '문제 정의',
+      desc: '프로젝트에서 해결하려 했던 과제의 본질(성능, 효율 등)에 집중합니다.',
+    },
+    {
+      id: '해결 방식',
+      desc: '문제를 풀기 위해 선택한 접근 방식과 사고 구조가 논리적인지 평가합니다.',
+    },
     {
       id: '기술스택',
       desc: '단순 사용 여부보다 기술이 활용된 맥락과 숙련도의 연관성을 고려합니다.',
@@ -395,35 +650,34 @@ function EvaluationCriteria() {
   ];
 
   return (
-    <div className="mb-10 pl-6">
+    <div className="mb-6 pl-6">
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        {/* Header (Toggle) */}
+        {/* Header (Toggle) - 컴팩트 */}
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-gray-50/50"
+          className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left transition-colors hover:bg-gray-50/50"
         >
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0eee9] text-[#4a4a4a]">
-              <Info className="h-5 w-5" />
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f0eee9] text-[#4a4a4a]">
+              <Info className="h-4 w-4" />
             </span>
             <div>
-              <h4 className="text-[17px] font-black text-[#1a1a1a]">기업 평가 지표</h4>
-              <p className="mt-0.5 text-[13px] font-medium text-gray-500">
+              <h4 className="text-[15px] font-black text-[#1a1a1a]">기업 평가 지표</h4>
+              <p className="mt-0.5 text-[12px] font-medium text-gray-500">
                 AI가 당신의 포트폴리오를 분석하는 5가지 핵심 관점
               </p>
             </div>
           </div>
           <ChevronDown
-            className={`h-5 w-5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+            className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
           />
         </button>
 
-        {/* Body */}
+        {/* Body - 패딩·간격 축소 */}
         {open && (
-          <div className="border-t border-gray-100 bg-[#fcfcfc] px-6 py-8">
-            {/* Intro */}
-            <p className="mb-8 max-w-[80ch] text-[15px] leading-relaxed text-[#4a4a4a]">
+          <div className="border-t border-gray-100 bg-[#fcfcfc] px-5 py-4">
+            <p className="mb-4 max-w-[80ch] text-[13px] leading-relaxed text-[#4a4a4a]">
               이 리포트는 기업이 실제로 수행하는 프로젝트 내용을 기준으로,
               <br />
               <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
@@ -432,22 +686,20 @@ function EvaluationCriteria() {
               가 얼마나 유사한지를 종합적으로 평가합니다.
             </p>
 
-            {/* Criteria Grid */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
               {CRITERIA_DATA.map((item) => (
                 <div
                   key={item.id}
-                  className="relative rounded-xl border border-gray-100 bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all hover:shadow-md"
+                  className="relative rounded-lg border border-gray-100 bg-white p-3 shadow-[0_2px_6px_rgba(0,0,0,0.02)] transition-all hover:shadow-md"
                 >
-                  {/* 컬러 포인트 라인 (상단) */}
                   <div
-                    className="absolute top-0 left-0 h-1 w-full rounded-t-xl"
+                    className="absolute top-0 left-0 h-0.5 w-full rounded-t-lg"
                     style={{
                       backgroundColor: FACTOR_COLORS[item.id as keyof typeof FACTOR_COLORS],
                     }}
                   />
-                  <h5 className="mb-2 text-[14px] font-black text-[#1a1a1a]">{item.id}</h5>
-                  <p className="text-[12px] leading-[1.6] font-medium text-gray-500">{item.desc}</p>
+                  <h5 className="mb-1 text-[13px] font-black text-[#1a1a1a]">{item.id}</h5>
+                  <p className="text-[11px] leading-[1.5] font-medium text-gray-500">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -460,11 +712,13 @@ function EvaluationCriteria() {
 
 /** ---------------- Reason Modal ---------------- **/
 
+let lockedScrollY = 0;
 function lockBodyScroll(lock: boolean) {
   const body = document.body;
 
   if (lock) {
     const y = window.scrollY || document.documentElement.scrollTop;
+    lockedScrollY = y;
     body.dataset.scrollY = String(y);
     body.style.position = 'fixed';
     body.style.top = `-${y}px`;
@@ -473,7 +727,7 @@ function lockBodyScroll(lock: boolean) {
     body.style.width = '100%';
     body.style.overflow = 'hidden';
   } else {
-    const y = Number(body.dataset.scrollY || '0');
+    const y = Number(body.dataset.scrollY || lockedScrollY || 0);
     body.style.position = '';
     body.style.top = '';
     body.style.left = '';
@@ -499,35 +753,39 @@ function ReasonModal({
   error?: string | null;
 }) {
   const [progress, setProgress] = useState(0);
+  const showScan = false;
+  const comparisonTableRef = useRef<HTMLDivElement | null>(null);
+  const comparisonHeightRef = useRef(0);
+  const [comparisonTableHeight, setComparisonTableHeight] = useState(0);
 
   useEffect(() => {
     if (!loading) {
-      setProgress(0);
+      requestAnimationFrame(() => setProgress(0));
       return;
     }
 
     let mounted = true;
     let timer: ReturnType<typeof setInterval> | null = null;
-    setProgress(0);
+    requestAnimationFrame(() => setProgress(0));
 
-    const schedule = (intervalMs: number, stepMin: number, stepMax: number) => {
+    const schedule = (intervalMs: number, stepMin: number, stepMax: number, cap: number) => {
       if (timer) clearInterval(timer);
       timer = setInterval(() => {
         setProgress((prev) => {
           if (!mounted) return prev;
           const step = stepMin + Math.floor(Math.random() * (stepMax - stepMin + 1));
-          const next = Math.min(96, prev + step);
+          const next = Math.min(cap, prev + step);
           return next;
         });
       }, intervalMs);
     };
 
-    // 빠르게 70%까지 상승, 이후 완만하게
-    schedule(160, 4, 8);
+    // 97%까지 빠르게, 이후 천천히
+    schedule(120, 6, 10, 97);
 
     const phaseTimer = setTimeout(() => {
-      schedule(260, 2, 5);
-    }, 1200);
+      schedule(600, 1, 2, 99);
+    }, 1100);
 
     return () => {
       mounted = false;
@@ -541,6 +799,27 @@ function ReasonModal({
   }, [open]);
 
   useEffect(() => {
+    if (loading) return;
+    const node = comparisonTableRef.current;
+    if (!node) return;
+
+    const updateHeight = () => {
+      const next = Math.ceil(node.getBoundingClientRect().height);
+      if (next > 0 && next !== comparisonHeightRef.current) {
+        comparisonHeightRef.current = next;
+        setComparisonTableHeight(next);
+      }
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => updateHeight());
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [loading, company, open]);
+
+  useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -552,11 +831,13 @@ function ReasonModal({
   if (!company) return null;
 
   // ✅ 백엔드 headline 사용 + fallback
+  const fallbackTopFactor = pickTopFactors(company.weights, 1)[0] ?? '프로젝트';
+  const topFactorLabel = FACTOR_LABEL[fallbackTopFactor];
   const headline: Headline = company.headline ?? {
     line1: `${company.name} 기준, 당신의`,
-    highlight: '#문제해결',
-    line2: '역량이',
-    line3: '가장 강점으로 평가됐습니다.',
+    highlight: `#${topFactorLabel}`,
+    line2: '항목이',
+    line3: '가장 유사하게 평가되었습니다.',
   };
 
   // ✅ 섹션도 백엔드 응답 사용 + fallback
@@ -595,11 +876,11 @@ function ReasonModal({
             animate={{ y: 0, opacity: 1, scale: 0.8 }}
             exit={{ y: 28, opacity: 0, scale: 0.99 }}
             transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-            className="relative z-[201] flex max-h-[90vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
+            className="relative z-[201] flex max-h-[94vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
           >
             <div
               style={{ backgroundColor: PALETTE.midnightInk }}
-              className="relative px-7 py-7 text-white sm:px-10 sm:py-9"
+              className="relative px-7 py-5 text-white sm:px-10 sm:py-6"
             >
               <div className="mb-5 flex items-center justify-between gap-4">
                 <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-black tracking-widest text-blue-300 uppercase">
@@ -612,32 +893,21 @@ function ReasonModal({
                 className="absolute top-4 right-4 rounded-xl p-2 text-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none"
                 aria-label="close"
               >
-                <X className="h-5 w-5" />
+                <X className="h`-5 w-5" />
               </button>
 
               {/* ✅ 백엔드 headline 기반 3줄 */}
               <h4 className="text-[20px] leading-[1.2] font-black tracking-tight sm:text-[22px]">
-                {headline.line1}
+                {company.name} 기준,
                 <br />
-                <span className="text-blue-400">
-                  {headline.highlight} {headline.line2}
-                </span>
-                <br />
-                {headline.line3}
+                <span className="text-blue-400">#{topFactorLabel}</span> 항목이 가장 유사하게
+                평가되었습니다.
               </h4>
             </div>
 
             <div
-              className={`flex-1 px-7 py-6 sm:px-10 sm:py-8 ${
-                loading
-                  ? 'flex items-center justify-center overflow-hidden'
-                  : 'overflow-y-auto soft-scrollbar'
-              }`}
-              style={
-                loading
-                  ? undefined
-                  : { scrollbarWidth: 'thin', scrollbarColor: 'rgba(15,23,42,0.22) transparent' }
-              }
+              className="soft-scrollbar flex-1 overflow-y-auto px-7 py-6 text-[16px] sm:px-10 sm:py-8 sm:text-[17px]"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(15,23,42,0.22) transparent' }}
             >
               <style>
                 {`
@@ -652,11 +922,34 @@ function ReasonModal({
                   }
                 `}
               </style>
-              <div className="space-y-12">
-                {loading && (
-            <div className="relative w-full max-w-[720px] max-h-[62vh] overflow-hidden rounded-[24px] border border-slate-100 bg-white/60 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-2xl">
-              <style>
-                {`
+              <div className="w-full space-y-12">
+                <div>
+                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
+                      <FileText className="h-5 w-5" />
+                    </span>
+                    내 포트폴리오와 비교 결과
+                  </h4>
+                  <div
+                    ref={comparisonTableRef}
+                    style={
+                      loading && comparisonTableHeight
+                        ? { minHeight: `${comparisonTableHeight}px` }
+                        : undefined
+                    }
+                  >
+                    <ComparisonTable
+                      portfolioContent={company.portfolioContent}
+                      companyContent={company.companyContent}
+                      weights={company.weights}
+                    />
+                  </div>
+                </div>
+
+                {showScan && (
+                  <div className="relative max-h-[62vh] w-full overflow-hidden rounded-[24px] border border-slate-100 bg-white/60 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-2xl">
+                    <style>
+                      {`
                   @keyframes scanLine {
                     0% { transform: translateY(-10%); opacity: 0; }
                     50% { opacity: 1; }
@@ -667,92 +960,159 @@ function ReasonModal({
                     100% { transform: translateX(100%); }
                   }
                 `}
-              </style>
+                    </style>
 
-              {/* 상단 장식 요소 - 은은한 글로우 */}
-              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-50/50 blur-3xl" />
-              <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-50/40 blur-3xl" />
+                    {/* 상단 장식 요소 - 은은한 글로우 */}
+                    <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-blue-50/50 blur-3xl" />
+                    <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-indigo-50/40 blur-3xl" />
 
-              <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h3 className="text-xl font-bold tracking-tight text-slate-900">
-                    전략 리포트 스캔
-                  </h3>
-                  <p className="mt-1.5 text-sm font-medium text-slate-500">
-                    AI가 포트폴리오의 핵심 역량을 정밀하게 분석하고 있습니다
-                  </p>
-                </div>
-
-              </div>
-
-              <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_220px]">
-                {/* 메인 스캔 프리뷰 영역 */}
-                <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
-                  {/* 스캐닝 라인 애니메이션 */}
-                  <div 
-                    className="absolute inset-x-0 z-10 h-12 w-full bg-gradient-to-b from-transparent via-blue-500/10 to-transparent"
-                    style={{ animation: 'scanLine 3s ease-in-out infinite' }}
-                  />
-                  
-                  <div className="space-y-3 opacity-40">
-                    <div className="h-4 w-1/3 rounded-md bg-slate-200" />
-                    <div className="space-y-2">
-                      <div className="h-2 w-full rounded-md bg-slate-200" />
-                      <div className="h-2 w-11/12 rounded-md bg-slate-200" />
-                      <div className="h-2 w-10/12 rounded-md bg-slate-200" />
+                    <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold tracking-tight text-slate-900">
+                          전략 리포트 스캔
+                        </h3>
+                        <p className="mt-1.5 text-sm font-medium text-slate-500">
+                          AI가 포트폴리오의 핵심 역량을 정밀하게 분석하고 있습니다
+                        </p>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 pt-2">
-                      {[0, 1, 2].map((i) => (
-                        <div key={i} className="h-12 rounded-lg bg-slate-200" />
-                      ))}
-                    </div>
-                  </div>
-                </div>
 
-                {/* 우측 체크리스트 영역 */}
-                <div className="flex flex-col justify-center space-y-3 rounded-2xl bg-slate-50/50 p-4 border border-slate-100">
-                  <p className="text-[13px] font-bold text-slate-800">분석 프로세스</p>
-                  <div className="space-y-3">
-                    {[
-                      { t: 30, l: '데이터 정밀 대조' },
-                      { t: 60, l: '역량 구조 정합 확인' },
-                      { t: 90, l: '최종 리포트 생성' }
-                    ].map((step, idx) => {
-                      const done = progress >= step.t;
-                      const active = progress >= step.t - 30 && progress < step.t;
-                      return (
-                        <div key={idx} className={`flex items-center gap-3 transition-opacity duration-300 ${done || active ? 'opacity-100' : 'opacity-40'}`}>
-                          <div className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
-                            done ? 'bg-slate-800 border-slate-800' : 'border-slate-300'
-                          }`}>
-                            {done && <span className="text-[10px] text-white">✓</span>}
-                            {active && <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-800" />}
+                    <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_220px]">
+                      {/* 메인 스캔 프리뷰 영역 */}
+                      <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+                        {/* 스캐닝 라인 애니메이션 */}
+                        <div
+                          className="absolute inset-x-0 z-10 h-12 w-full bg-gradient-to-b from-transparent via-blue-500/10 to-transparent"
+                          style={{ animation: 'scanLine 3s ease-in-out infinite' }}
+                        />
+
+                        <div className="space-y-3 opacity-40">
+                          <div className="h-4 w-1/3 rounded-md bg-slate-200" />
+                          <div className="space-y-2">
+                            <div className="h-2 w-full rounded-md bg-slate-200" />
+                            <div className="h-2 w-11/12 rounded-md bg-slate-200" />
+                            <div className="h-2 w-10/12 rounded-md bg-slate-200" />
                           </div>
-                          <span className={`text-xs font-medium ${done ? 'text-slate-900' : 'text-slate-500'}`}>
-                            {step.l}
-                          </span>
+                          <div className="grid grid-cols-3 gap-2 pt-2">
+                            {[0, 1, 2].map((i) => (
+                              <div key={i} className="h-12 rounded-lg bg-slate-200" />
+                            ))}
+                          </div>
                         </div>
-                      );
-                    })}
+                      </div>
+
+                      {/* 우측 체크리스트 영역 */}
+                      <div className="flex flex-col justify-center space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                        <p className="text-[13px] font-bold text-slate-800">분석 프로세스</p>
+                        <div className="space-y-3">
+                          {[
+                            { t: 30, l: '데이터 정밀 대조' },
+                            { t: 60, l: '역량 구조 정합 확인' },
+                            { t: 90, l: '최종 리포트 생성' },
+                          ].map((step, idx) => {
+                            const done = progress >= step.t;
+                            const active = progress >= step.t - 30 && progress < step.t;
+                            return (
+                              <div
+                                key={idx}
+                                className={`flex items-center gap-3 transition-opacity duration-300 ${done || active ? 'opacity-100' : 'opacity-40'}`}
+                              >
+                                <div
+                                  className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
+                                    done ? 'border-slate-800 bg-slate-800' : 'border-slate-300'
+                                  }`}
+                                >
+                                  {done && <span className="text-[10px] text-white">✓</span>}
+                                  {active && (
+                                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-800" />
+                                  )}
+                                </div>
+                                <span
+                                  className={`text-xs font-medium ${done ? 'text-slate-900' : 'text-slate-500'}`}
+                                >
+                                  {step.l}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 하단 진행바 */}
+                    <div className="mt-6">
+                      <div className="mb-2 flex justify-between">
+                        <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                          System Status
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400">Processing...</span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-slate-800 transition-all duration-500 ease-out"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {loading && (
+                  <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 shadow-lg shadow-slate-200/40 backdrop-blur">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[12px] font-bold tracking-wider text-slate-500 uppercase">
+                        합격 전략을 분석 중입니다···
+                      </span>
+                      <span className="text-[12px] font-bold text-slate-500">{progress}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-slate-800 transition-all duration-500 ease-out"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="mb-4 flex items-center gap-3 text-[19px] font-black tracking-tight text-[#1a1a1a]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                      <MousePointerClick className="h-5 w-5" />
+                    </span>
+                    분석 요약
+                  </h4>
+                  <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
+                    <p
+                      className={`text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                        loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                      }`}
+                    >
+                      {loading ? (
+                        '분석 중'
+                      ) : (
+                        <>
+                          <span className="font-black text-blue-500">{headline.highlight}</span>
+                          <br></br>
+                          {headline.line1}
+                        </>
+                      )}
+                    </p>
+                    <p
+                      className={`text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                        loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                      }`}
+                    >
+                      {loading ? '' : <>{headline.line2}</>}
+                    </p>
+                    <p
+                      className={`text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                        loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                      }`}
+                    >
+                      {loading ? '' : headline.line3}
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              {/* 하단 진행바 */}
-              <div className="mt-6">
-                <div className="flex justify-between mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">System Status</span>
-                  <span className="text-[11px] font-bold text-slate-400">Processing...</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full bg-slate-800 transition-all duration-500 ease-out"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
 
                 {error && (
                   <div className="rounded-2xl border border-red-100 bg-red-50/70 px-5 py-4 text-[13px] font-bold text-red-600">
@@ -760,62 +1120,70 @@ function ReasonModal({
                   </div>
                 )}
 
-                {!loading && (
-                  <>
-                {/* 1 */}
-                <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                      <Sparkles className="h-5 w-5" />
-                    </span>
-                    {portfolioFocus?.title ?? '포트폴리오 강조 포인트'}
-                  </h4>
-
-                  <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
-                    <p className="max-w-[62ch] text-[16px] leading-relaxed font-medium text-[#4a4a4a] sm:text-[17px]">
-                      {portfolioFocus?.text ?? '...'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 2 */}
-                <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                      <KeyRound className="h-5 w-5" />
-                    </span>
-                    {writingCheats?.title ?? '지원서 작성 치트키'}
-                  </h4>
-
-                  <div className="flex flex-wrap gap-2.5">
-                    {(writingCheats?.tags ?? ['#...']).map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-xl border-2 border-gray-100 bg-white px-4 py-2 text-[14px] font-bold text-gray-600 shadow-sm"
-                      >
-                        {tag}
+                <>
+                  {/* 1 */}
+                  <div>
+                    <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                        <Sparkles className="h-5 w-5" />
                       </span>
-                    ))}
-                  </div>
-                </div>
+                      {portfolioFocus?.title ?? '포트폴리오 강조 포인트'}
+                    </h4>
 
-                {/* 3 */}
-                <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                      <Puzzle className="h-5 w-5" />
-                    </span>
-                    {strategyGuide?.title ?? '합격 전략 가이드'}
-                  </h4>
-
-                  <div className="rounded-2xl border-2 border-dashed border-[#d6d2c4] bg-[#fcfcfc] p-6 sm:p-7">
-                    <p className="max-w-[62ch] text-[16px] leading-loose font-medium text-[#4a4a4a] sm:text-[17px]">
-                      {strategyGuide?.text ?? '...'}
-                    </p>
+                    <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
+                      <p
+                        className={`w-full text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                          loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                        }`}
+                      >
+                        {loading ? '분석 중' : (portfolioFocus?.text ?? '...')}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                  </>
-                )}
+
+                  {/* 2 */}
+                  <div>
+                    <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                        <KeyRound className="h-5 w-5" />
+                      </span>
+                      {writingCheats?.title ?? '지원서 작성 치트키'}
+                    </h4>
+
+                    <div className="flex flex-wrap gap-2.5">
+                      {(loading ? ['분석 중'] : (writingCheats?.tags ?? ['#...'])).map((tag) => (
+                        <span
+                          key={tag}
+                          className={`rounded-xl border-2 border-gray-100 bg-white px-4 py-2 text-[14px] font-bold shadow-sm ${
+                            loading ? 'text-gray-300' : 'text-gray-600'
+                          }`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3 */}
+                  <div>
+                    <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                        <Puzzle className="h-5 w-5" />
+                      </span>
+                      {strategyGuide?.title ?? '합격 전략 가이드'}
+                    </h4>
+
+                    <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
+                      <p
+                        className={`w-full text-[16px] leading-loose font-medium sm:text-[17px] ${
+                          loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                        }`}
+                      >
+                        {loading ? '분석 중' : (strategyGuide?.text ?? '...')}
+                      </p>
+                    </div>
+                  </div>
+                </>
               </div>
             </div>
 
@@ -841,6 +1209,7 @@ type SortBy = 'matchScore' | 'openingsCount';
 
 export default function RecommendCompanyPage() {
   const [sortBy, setSortBy] = useState<SortBy>('matchScore');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [reasonTarget, setReasonTarget] = useState<Company | null>(null);
   const [searchParams] = useSearchParams();
   const [apiCompanies, setApiCompanies] = useState<Company[]>([]);
@@ -865,45 +1234,44 @@ export default function RecommendCompanyPage() {
       if (section.key === 'writingCheats') {
         return {
           key: 'writingCheats',
-          title: section.title || 'Writing Cheats',
+          title: '지원서 작성 치트키',
           tags: section.tags ?? [],
         };
       }
       if (section.key === 'portfolioFocus') {
         return {
           key: 'portfolioFocus',
-          title: section.title || 'Portfolio Focus',
+          title: '포트폴리오 강조 포인트',
           text: section.text ?? '',
         };
       }
       if (section.key === 'strategyGuide') {
         return {
           key: 'strategyGuide',
-          title: section.title || 'Strategy Guide',
+          title: '합격 전략 가이드',
           text: section.text ?? '',
         };
       }
       if (section.tags && section.tags.length > 0) {
         return {
           key: 'writingCheats',
-          title: section.title || 'Writing Cheats',
+          title: '지원서 작성 치트키',
           tags: section.tags,
         };
       }
       return {
         key: 'strategyGuide',
-        title: section.title || 'Strategy Guide',
+        title: '합격 전략 가이드',
         text: section.text ?? '',
       };
     });
-
 
   // TODO: 실제 API로 교체 시, companies를 fetch로 받아서 setCompanies 하면 됨
   useEffect(() => {
     if (!portfolioId || Number.isNaN(portfolioId)) {
       setApiCompanies([]);
       setIsLoading(false);
-      setLoadError('?ы듃?대━??ID媛 ?꾩슂?⑸땲??. ?ы듃?대━??遺꾩꽍 ?섏씠吏?먯꽌 ?대룞?댁＜?몄슂.');
+      setLoadError('포트폴리오 정보가 없습니다. 이전 단계에서 다시 접근해 주세요.');
       return;
     }
 
@@ -926,6 +1294,25 @@ export default function RecommendCompanyPage() {
 
           const weights = distancesToWeights(distByFactor);
           const topFactors = pickTopFactors(weights, 2);
+          const similarity = item.similarity ?? 0;
+          const matchScore = Math.round(similarity * 100);
+
+          console.log('[RecommendCompany] score calc', {
+            idx,
+            companyId: item.companyId,
+            companyName: item.companyName,
+            similarity,
+            matchScore,
+            distances: {
+              projectDistance: item.projectDistance,
+              domainDistance: item.domainDistance,
+              problemDistance: item.problemDistance,
+              solutionDistance: item.solutionDistance,
+              techDistance: item.techDistance,
+            },
+            weights,
+            topFactors,
+          });
 
           return {
             id: idx + 1,
@@ -933,7 +1320,9 @@ export default function RecommendCompanyPage() {
             portfolioProjectId: item.portfolioProjectId,
             companyProjectId: item.companyProjectId,
             name: item.companyName,
-            matchScore: Math.round((item.similarity ?? 0) * 100),
+            portfolioContent: item.portfolioContent ?? '',
+            companyContent: item.companyContent ?? '',
+            matchScore,
             openingsCount: 0,
             weights,
             topFactors,
@@ -941,7 +1330,7 @@ export default function RecommendCompanyPage() {
         });
 
         setApiCompanies(mapped);
-      } catch (err) {
+      } catch {
         if (!ignore) {
           setApiCompanies([]);
           setLoadError('추천 기업 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
@@ -958,17 +1347,13 @@ export default function RecommendCompanyPage() {
     };
   }, [portfolioId]);
 
-
   const companies = apiCompanies;
 
   const companiesWithCounts = useMemo(
     () =>
       companies.map((company) => ({
         ...company,
-        openingsCount:
-          openingsCountMap[company.companyId] ??
-          company.openingsCount ??
-          0,
+        openingsCount: openingsCountMap[company.companyId] ?? company.openingsCount ?? 0,
       })),
     [companies, openingsCountMap],
   );
@@ -1074,6 +1459,16 @@ export default function RecommendCompanyPage() {
   const isScore = sortBy === 'matchScore';
   const isOpenings = sortBy === 'openingsCount';
 
+  useEffect(() => {
+    if (!sortedCompanies.length) return;
+    if (selectedCompanyId === null) {
+      setSelectedCompanyId(sortedCompanies[0].companyId);
+      return;
+    }
+    const exists = sortedCompanies.some((company) => company.companyId === selectedCompanyId);
+    if (!exists) setSelectedCompanyId(sortedCompanies[0].companyId);
+  }, [sortedCompanies, selectedCompanyId]);
+
   const sortBtnBase =
     'rounded-full px-4 py-2 text-[13px] font-black transition-all duration-200 ' +
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/20 focus-visible:ring-offset-2';
@@ -1102,7 +1497,7 @@ export default function RecommendCompanyPage() {
 
         {isLoading && (
           <div className="mb-6 rounded-2xl border border-gray-100 bg-white px-6 py-4 text-[13px] font-bold text-gray-500">
-            추천 기업 데이터를 분석 중입니다…
+            추천 기업 데이터를 분석 중입니다···
           </div>
         )}
 
@@ -1180,4 +1575,3 @@ export default function RecommendCompanyPage() {
     </div>
   );
 }
-
