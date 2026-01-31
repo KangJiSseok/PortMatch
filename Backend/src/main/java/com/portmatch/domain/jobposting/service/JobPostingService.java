@@ -2,6 +2,8 @@ package com.portmatch.domain.jobposting.service;
 
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -13,7 +15,7 @@ public interface JobPostingService {
     void saveJobPostingWithStacks(JobPostingDto dto);
 
     // 2. [Read] 전체 공고 목록 조회 (기존 getJobPostings 대체)
-    List<JobPostingDto> getAllJobPostings();
+    public Page<JobPostingDto> getAllJobPostings(Pageable pageable);
 
     // 3. [Read] 특정 공고 상세 조회 (기존 getJobDetail 활용)
     JobPostingDto getJobDetail(Long id);
@@ -25,11 +27,11 @@ public interface JobPostingService {
     void updateViewCount(Long id);
 
     // 6. [Read] 스택 별 공고 조회
-    List<JobPostingDto> getJobsByStacks(List<Long> stackIds);
+    public Page<JobPostingDto> getJobsByStacks(List<Long> stackIds, Pageable pageable);
 
     // 7. [Read] 기업 별 공고 조회 (기업 ID를 기준으로 해당 기업의 모든 공고 조회)
-    List<JobPostingDto> getJobsByCompany(String companyId);
+    public Page<JobPostingDto> getJobsByCompany(String companyId, Pageable pageable);
 
     // 8. [Read] 제목 별 공고 조회 (공고 제목에 특정 키워드가 포함된 모든 공고 조회)
-    List<JobPostingDto> getJobsByTitleKeyword(String keyword);
+    public Page<JobPostingDto> getJobsByTitleKeyword(String keyword, Pageable pageable);
 }

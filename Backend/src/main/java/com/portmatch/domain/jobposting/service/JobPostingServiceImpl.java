@@ -14,6 +14,8 @@ import com.portmatch.global.exception.BusinessException; // 공통 예외 추가
 import com.portmatch.global.response.ResponseCode; // 공통 응답 코드 추가
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,9 +30,10 @@ public class JobPostingServiceImpl implements JobPostingService {
     private final PostingStackRepository postingStackRepository;
     private final CompaniesService companiesService;
 
+    // --- 저장/수정 로직 (기존 유지) ---
     @Override
     @Transactional
-    public JobPostingEntity saveJobPosting(JobPostingDto dto) { // void -> Entity로 변경
+    public JobPostingEntity saveJobPosting(JobPostingDto dto) {
         Company company = jobCompaniesRepository.findByCid(dto.getCid())
                 .orElseThrow(() -> new BusinessException(ResponseCode.USER_NOT_FOUND));
 
@@ -48,67 +51,62 @@ public class JobPostingServiceImpl implements JobPostingService {
             builder.id(dto.getId());
         }
 
-        JobPostingEntity entity = builder.build();
-        return jobPostingRepository.save(entity); // 저장된 객체를 반환!
+        return jobPostingRepository.save(builder.build());
     }
 
     @Override
     @Transactional
     public void saveJobPostingWithStacks(JobPostingDto dto) {
-        // 1. 저장된 엔티티를 직접 받아온다! (DB가 생성한 ID가 들어있음)
         JobPostingEntity jobPosting = saveJobPosting(dto);
-
-        // 2. 이제 다시 조회할 필요 없이 바로 사용하면 돼!
         if (dto.getStackIds() != null) {
             for (Long sId : dto.getStackIds()) {
                 TechStackEntity techStack = techStackRepository.findById(sId)
                         .orElseThrow(() -> new BusinessException(ResponseCode.INVALID_PARAMETER));
 
                 PostingStackEntity psEntity = PostingStackEntity.builder()
-                        .jobPosting(jobPosting) // 여기서 사용!
+                        .jobPosting(jobPosting)
                         .techStack(techStack)
                         .build();
-
                 postingStackRepository.save(psEntity);
             }
         }
     }
 
-    @Override
-    public List<JobPostingDto> getJobsByStacks(List<Long> stackIds) {
-        List<PostingStackEntity> postingStacks = postingStackRepository.findByTechStackIdIn(stackIds);
+    // --- 조회 로직 (Pageable 적용 및 중복 해결) ---
 
-        return postingStacks.stream()
-                .map(PostingStackEntity::getJobPosting)
-                .distinct()
-                .map(this::convertToDto)
-                .toList();
+    // 1. 전체 조회 (페이징)
+    @Override
+    public Page<JobPostingDto> getAllJobPostings(Pageable pageable) {
+        return jobPostingRepository.findAll(pageable)
+                .map(this::convertToDto);
     }
 
+    // 2. 제목 검색 (페이징)
     @Override
-    public List<JobPostingDto> getJobsByCompany(String companyId) {
-        return jobPostingRepository.findByCompanyCid(companyId).stream()
-                .map(this::convertToDto)
-                .toList();
+    public Page<JobPostingDto> getJobsByTitleKeyword(String keyword, Pageable pageable) {
+        return jobPostingRepository.findByTitleContaining(keyword, pageable)
+                .map(this::convertToDto);
     }
 
+    // 3. 기업별 조회 (페이징)
     @Override
-    public List<JobPostingDto> getJobsByTitleKeyword(String keyword) {
-        return jobPostingRepository.findByTitleContaining(keyword).stream()
-                .map(this::convertToDto)
-                .toList();
+    public Page<JobPostingDto> getJobsByCompany(String companyId, Pageable pageable) {
+        return jobPostingRepository.findByCompanyCid(companyId, pageable)
+                .map(this::convertToDto);
     }
 
+    // 4. 기술 스택별 조회 (페이징 + 중복 제거) ⭐ 핵심 수정 포인트!
     @Override
-    public List<JobPostingDto> getAllJobPostings() {
-        return jobPostingRepository.findAll().stream()
-                .map(this::convertToDto)
-                .toList();
+    public Page<JobPostingDto> getJobsByStacks(List<Long> stackIds, Pageable pageable) {
+        // PostingStackRepository 대신 JobPostingRepository의 커스텀 쿼리를 호출해!
+        // 그래야 DISTINCT가 적용되어 중복 공고가 안 나와.
+        return postingStackRepository.findByStackIds(stackIds, pageable)
+                .map(this::convertToDto);
     }
 
+    // --- 상세 및 기타 로직 (기존 유지) ---
     @Override
     public JobPostingDto getJobDetail(Long id) {
-        // 기존의 throws Exception을 제거하고 BusinessException으로 통일!
         return jobPostingRepository.findById(id)
                 .map(this::convertToDto)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
@@ -117,7 +115,6 @@ public class JobPostingServiceImpl implements JobPostingService {
     @Override
     @Transactional
     public void deleteJobPosting(Long id) {
-        // 삭제 전 존재 여부 체크 (선택사항이나 권장함)
         if (!jobPostingRepository.existsById(id)) {
             throw new BusinessException(ResponseCode.NOT_FOUND);
         }
@@ -127,10 +124,10 @@ public class JobPostingServiceImpl implements JobPostingService {
     @Override
     @Transactional
     public void updateViewCount(Long id) {
-        // 수정할 대상이 없으면 조용히 넘어가거나 에러를 던질 수 있어
         JobPostingEntity entity = jobPostingRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
+        // vcnt만 업데이트하는 방식 (Dirty Checking 이용 시 더 깔끔하지만 일단 유지)
         JobPostingEntity updated = JobPostingEntity.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
@@ -145,6 +142,7 @@ public class JobPostingServiceImpl implements JobPostingService {
         jobPostingRepository.save(updated);
     }
 
+    // DTO 변환 로직
     private JobPostingDto convertToDto(JobPostingEntity entity) {
         List<Long> stackIds = null;
         if (entity.getTechStacks() != null) {
