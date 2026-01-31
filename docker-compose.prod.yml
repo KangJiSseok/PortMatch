@@ -18,7 +18,7 @@ services:
     restart: always
 
     environment:
-      - OPENVIDU_URL=http://openvidu-server:4443/
+      - OPENVIDU_URL=https://openvidu-server:4443/
       - OPENVIDU_SECRET=MY_SECRET
       - EXPLANATION_URL=http://explanation-llm:8003
       
