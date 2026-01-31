@@ -13,7 +13,7 @@ def get_db_connection():
         database=os.getenv('POSTGRES_DB', 'portmatch'),
         user=os.getenv('POSTGRES_USER', 'port'),
         password=os.getenv('POSTGRES_PASSWORD', 'match'),
-        port=os.getenv('DB_PORT', '8100')
+        port=os.getenv('DB_PORT', '5432')
     )
 
 def load_tech_stacks():

@@ -8,11 +8,11 @@ load_dotenv(".env.prod")
 
 def get_db_connection():
     return psycopg2.connect(
-        host="db", # 도커 환경이라면 'db', 아니면 주소 입력
-        database=os.getenv("POSTGRES_DB"), # portmatch
-        user=os.getenv("DB_USERNAME"),     # port
-        password=os.getenv("DB_PASSWORD"), # match
-        port="5432"
+        host=os.getenv('DB_HOST', 'localhost'),
+        database=os.getenv('POSTGRES_DB', 'portmatch'),
+        user=os.getenv('POSTGRES_USER', 'port'),
+        password=os.getenv('POSTGRES_PASSWORD', 'match'),
+        port=os.getenv('DB_PORT', '5432')
     )
 
 def insert_to_db():
@@ -32,62 +32,51 @@ def insert_to_db():
     cur = conn.cursor()
 
     try:
-        # 2. 기술 스택 적재 (엔티티 컬럼명 stack_name 반영)
-        print("🔧 기술 스택 적재...")
-        for stack in data.get('techStacks', []):
-            cur.execute("""
-                INSERT INTO tech_stacks (id, stack_name)
-                VALUES (%s, %s)
-                ON CONFLICT (id) DO UPDATE SET stack_name = EXCLUDED.stack_name;
-            """, (stack['id'], stack['stackName']))
 
-        # 3. 회사 정보 적재 (엔티티 컬럼명 companies_name 등 반영)
+        # 3. 회사 정보 적재
         print("🏢 회사 정보 체크 및 적재...")
-        # 이름 매칭 로직으로 가입 기업의 cid를 보존함
         company_id_map = {} 
         for company in data.get('companies', []):
             c_name = company['companiesName']
-            cur.execute("SELECT cid FROM companies WHERE companies_name = %s", (c_name,))
-            existing = cur.fetchone()
-
-            if existing:
-                target_cid = existing[0]
-            else:
-                target_cid = company['cid'] # 전처리된 랜덤 ID
-                cur.execute("""
-                    INSERT INTO companies (cid, companies_name, address, size, homepage_url, logo)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (cid) DO NOTHING;
-                """, (target_cid, c_name, company.get('address'), company.get('size'), company.get('homepageUrl'), company.get('logo')))
             
-            company_id_map[c_name] = target_cid
+            # 우선 INSERT 시도 (이름이 같으면 아무것도 안 함)
+            cur.execute("""
+                INSERT INTO companies (cid, companies_name, address, size, homepage_url, logo)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (companies_name) DO NOTHING;
+            """, (company['cid'], c_name, company.get('address'), company.get('size'), company.get('homepageUrl'), company.get('logo')))
+            
+            # 실제 DB에 있는 cid를 가져와서 맵에 저장 (기존 기업이든 신규든 상관없이)
+            cur.execute("SELECT cid FROM companies WHERE companies_name = %s", (c_name,))
+            company_id_map[c_name] = cur.fetchone()[0]
 
-        # 4. 채용 공고 적재 (제목+cid로 중복 체크하여 찜하기 보호)
+        # 4. 채용 공고 적재
         print("📝 채용 공고 적재 시작...")
         for job in data.get('jobPostings', []):
             target_cid = company_id_map.get(job['company']['companiesName'])
 
-            cur.execute("""
-                SELECT id FROM job_postings WHERE title = %s AND cid = %s;
-            """, (job['title'], target_cid))
-            
-            if cur.fetchone():
-                continue # 이미 있으면 스킵
-            
+            # 제목+회사가 같으면 중복으로 판단하고 DO NOTHING
+            # 만약 업데이트를 하고 싶다면 DO UPDATE SET ... 으로 변경 가능!
             cur.execute("""
                 INSERT INTO job_postings (title, active, start_date, end_date, vcnt, cid, detail, job_type)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (title, cid) DO NOTHING
                 RETURNING id;
             """, (job['title'], job['active'], job['startDate'], job['endDate'], 0, target_cid, job['detail'], 1))
             
-            new_job_id = cur.fetchone()[0]
-
-            # 5. 공고-스택 연결 (중간 테이블)
-            for stack in job.get('skillTags', []):
-                cur.execute("""
-                    INSERT INTO posting_stacks (job_posting_id, stack_id)
-                    VALUES (%s, %s) ON CONFLICT DO NOTHING;
-                """, (new_job_id, stack['id']))
+            result = cur.fetchone()
+            
+            if result:
+                new_job_id = result[0]
+                # 5. 공고-스택 연결 (새로 등록된 공고일 때만 연결)
+                for stack in job.get('skillTags', []):
+                    cur.execute("""
+                        INSERT INTO posting_stacks (job_posting_id, stack_id)
+                        VALUES (%s, %s) ON CONFLICT DO NOTHING;
+                    """, (new_job_id, stack['id']))
+            else:
+                # 이미 있는 공고는 스킵 (혹은 여기서 기존 ID를 SELECT해서 스택만 업데이트할 수도 있어!)
+                continue
 
         conn.commit()
         print(f"✅ 모든 데이터가 엔티티 구조에 맞춰 적재되었습니다!")

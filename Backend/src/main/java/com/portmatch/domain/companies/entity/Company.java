@@ -23,13 +23,13 @@ public class Company {
     @Column(name = "companies_name", nullable = false, unique = true)
     private String companiesName;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String address;
 
     @Column
     private String size;
 
-    @Column(name = "homepage_url")
+    @Column(name = "homepage_url", columnDefinition = "TEXT")
     private String homepageUrl;
 
     @Column(unique = true, name = "cid")
@@ -41,10 +41,10 @@ public class Company {
     @Column
     private String yrSalesAmt;
 
-    @Column
+    @Column(name = "busi_cont", columnDefinition = "TEXT")
     private String busiCont;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String logo;
 
     public Company(

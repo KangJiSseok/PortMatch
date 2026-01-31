@@ -102,10 +102,14 @@ def transform_job_postings(job_postings):
         transformed_job = job.copy()
         transformed_job['cid'] = new_cid
         
-        # Company 데이터도 변환
         if 'company' in transformed_job:
-            company = transformed_job['company'].copy()
+            old_company = job['company'] 
+            company = old_company.copy() 
             company['cid'] = new_cid
+            
+            if 'busiCont' in old_company:
+                company['busiCont'] = old_company['busiCont']
+                
             transformed_job['company'] = company
         
         transformed_jobs.append(transformed_job)
