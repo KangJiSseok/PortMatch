@@ -85,35 +85,6 @@ const MAX_LENGTHS = {
   CONTACT: 13,
 };
 
-const INITIAL_RESUMES: Record<string, ResumeData> = {
-  frontend: {
-    id: 'frontend',
-    userId: 'user123',
-    title: '프론트엔드 이력서',
-    name: '김싸피',
-    contact: '010-1234-5678',
-    email: 'kim@ssafy.com',
-    address: '서울특별시 강남구 테헤란로 123',
-    profileImage: null,
-    education: [
-      { school: '한국대학교', major: '컴퓨터공학과', status: '졸업', period: '2018.03 - 2023.02' },
-    ],
-    experience: [{ company: 'A 스타트업', role: '인턴', period: '2023.01 - 2023.06' }],
-    selectedPortfolioId: 1,
-    selectedSelfIntroId: 'si-1',
-  },
-};
-
-const INITIAL_PORTFOLIOS: Portfolio[] = [{ id: 1, name: '2024_프론트엔드_이력서_최종.pdf' }];
-
-const INITIAL_SELF_INTROS: SelfIntro[] = [
-  {
-    id: 'si-1',
-    title: '성장하는 개발자',
-    content: '끊임없이 학습하며 동료들과 함께 성장하는 것을 즐깁니다.',
-  },
-];
-
 const SectionCard = ({
   title,
   children,
@@ -141,7 +112,6 @@ const SectionCard = ({
 function ResumeDetailPage() {
   const { resumeId } = useParams<{ resumeId: string }>();
   const navigate = useNavigate();
-
   const [user, setUser] = useState<UserData | null>(null);
 
   useEffect(() => {
@@ -170,17 +140,17 @@ function ResumeDetailPage() {
 
   const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>(() => {
     const saved = localStorage.getItem('resumes');
-    return saved ? JSON.parse(saved) : INITIAL_RESUMES;
+    return saved ? JSON.parse(saved) : {};
   });
 
   const [portfolios, setPortfolios] = useState<Portfolio[]>(() => {
     const saved = localStorage.getItem('portfolios');
-    return saved ? JSON.parse(saved) : INITIAL_PORTFOLIOS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
     const saved = localStorage.getItem('selfIntros');
-    return saved ? JSON.parse(saved) : INITIAL_SELF_INTROS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
@@ -188,7 +158,6 @@ function ResumeDetailPage() {
   const allResumeKeys = Object.keys(allResumes);
   const isEmpty = allResumeKeys.length === 0;
 
-  // URL 정규화 및 리다이렉트 로직
   useEffect(() => {
     if (allResumeKeys.length > 0) {
       if (!resumeId || resumeId === 'me' || !allResumes[resumeId]) {
@@ -274,7 +243,6 @@ function ResumeDetailPage() {
 
   const handleCreateResume = () => {
     if (isEditing) return;
-
     setResumeSnapshot({ ...allResumes });
     const baseTitle = '새로운 이력서';
     let finalTitle = baseTitle;
@@ -289,9 +257,9 @@ function ResumeDetailPage() {
       id: newId,
       userId: user?.userId || 'unknown',
       title: finalTitle,
-      name: user?.name || '', // 유저 정보 자동 할당
+      name: user?.name || '',
       contact: '',
-      email: user?.email || '', // 유저 정보 자동 할당
+      email: user?.email || '',
       address: '',
       profileImage: null,
       education: [],
@@ -299,10 +267,8 @@ function ResumeDetailPage() {
       selectedPortfolioId: null,
       selectedSelfIntroId: selfIntros[0]?.id || null,
     };
-
     setAllResumes((prev) => ({ ...prev, [newId]: newResume }));
     navigate(`/resumes/${newId}`, { replace: true });
-
     setTimeout(() => {
       setIsEditing(true);
       showToast(`${finalTitle} 작성을 시작합니다.`);
@@ -557,7 +523,6 @@ function ResumeDetailPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       <div className="mx-auto w-5xl px-6">
         {isEmpty ? (
           <motion.div
@@ -673,7 +638,6 @@ function ResumeDetailPage() {
                 <Button isBack variant="outline" size="md" className="rounded-xl" />
               </div>
             </header>
-
             <main className="space-y-8">
               <section
                 ref={infoRef}
@@ -872,7 +836,6 @@ function ResumeDetailPage() {
                   </div>
                 </div>
               </section>
-
               {(['experience', 'education'] as const).map((type) => (
                 <SectionCard
                   key={type}
@@ -1075,7 +1038,6 @@ function ResumeDetailPage() {
                   </div>
                 </SectionCard>
               ))}
-
               <SectionCard title="포트폴리오">
                 <div className="space-y-6">
                   <div
@@ -1177,7 +1139,6 @@ function ResumeDetailPage() {
                   </div>
                 </div>
               </SectionCard>
-
               <SectionCard
                 title="자기소개"
                 sectionRef={selfIntroRef}
@@ -1328,7 +1289,6 @@ function ResumeDetailPage() {
                   </div>
                 </div>
               </SectionCard>
-
               <div className="flex flex-wrap items-center justify-center gap-4 pt-18">
                 {!isEditing ? (
                   <>
@@ -1390,7 +1350,6 @@ function ResumeDetailPage() {
           </>
         )}
       </div>
-
       <AnimatePresence>
         {(deleteConfirm || (blocker.state === 'blocked' && isEditing)) && (
           <div className="fixed inset-0 z-3000 flex items-center justify-center p-6">
