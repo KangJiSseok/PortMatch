@@ -100,7 +100,7 @@ services:
     environment:
       - OPENVIDU_SECRET=MY_SECRET
       - DOMAIN_OR_PUBLIC_IP=i14d205.p.ssafy.io
-      - OPENVIDU_HTTPS_PORT=443
+      - OPENVIDU_HTTPS_PORT=8443
       - HTTPS_PORT=4443
       - CERTIFICATE_TYPE=selfsigned
       - OPENVIDU_PRO_LICENSE=
