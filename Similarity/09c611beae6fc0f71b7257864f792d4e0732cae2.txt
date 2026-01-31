@@ -1,0 +1,102 @@
+{ 
+    "query": "실시간 스트리밍 서버 구현해본사람 추천해줘",
+    "limit": 10
+}
+
+{
+    "status": true,
+    "code": 1000,
+    "message": "success",
+    "data": [
+        {
+            "userId": 1,
+            "portfolioId": 1,
+            "projectId": 1,
+            "content": "[기술] Jetson Orin Nano, Raspberry Pi, YOLO v8, OpenCV, Flask\n[키워드] 자율주행, 실시간 장바구니 관리, 사용자 추종, 상품 추천\n[아키텍처] 분산 처리, 실시간 데이터 처리, 지능형 추천 시스템",
+            "techSimilarity": 0.556119624453878,
+            "keywordSimilarity": 0.6320711475618062,
+            "architectureSimilarity": 0.739277705896817,
+            "similarity": 0.6704841221077259
+        },
+        {
+            "userId": 8,
+            "portfolioId": 8,
+            "projectId": 7,
+            "content": "[기술] GAN, Redis, CNN\n[키워드] 플로깅, 면적 계산, 이동 경로 기록, 커뮤니티, 랭킹, 이미지 변환, 쓰레기 분류\n[아키텍처] 실시간 데이터 처리, 대규모 GPS 데이터 처리, 캐시 계층",
+            "techSimilarity": 0.6764627169218752,
+            "keywordSimilarity": 0.5975689718577097,
+            "architectureSimilarity": 0.6355357971219637,
+            "similarity": 0.6323311335026698
+        },
+        {
+            "userId": 4,
+            "portfolioId": 4,
+            "projectId": 4,
+            "content": "[기술] WebRTC, Socket.io, MediaPipe, Web Speech, Web Audio, Three.js\n[키워드] Gamification of Shame, B급 감성, 접근성, AI 판정 시스템\n[아키텍처] P2P 스트리밍, 실시간 멀티모달 입력, 상태 동기화",
+            "techSimilarity": 0.7216050468040495,
+            "keywordSimilarity": 0.5323643135833838,
+            "architectureSimilarity": 0.6343376000492157,
+            "similarity": 0.6211991034604329
+        },
+        {
+            "userId": 10,
+            "portfolioId": 10,
+            "projectId": 9,
+            "content": "[기술] MediaPipe Pose, 4D-Humans, TryMe\n[키워드] 체형 분석, 가상 착용, 의류 추천, 실시간 인식, 3D 모델링\n[아키텍처] 비동기 이벤트 기반 처리, 서버 중심 상태 관리, AI 파이프라인, 캐시 재사용, 엔드투엔드 구조",
+            "techSimilarity": 0.5061550792107307,
+            "keywordSimilarity": 0.6104991621478341,
+            "architectureSimilarity": 0.6505218383874353,
+            "similarity": 0.609641683680214
+        },
+        {
+            "userId": 7,
+            "portfolioId": 7,
+            "projectId": 6,
+            "content": "[기술] WebRTC, Whisper Live Kit\n[키워드] 회의 관리, STT, 아젠다 체크리스트, 발언 대기열, 안건 이탈 감지\n[아키텍처] 실시간 처리, 가드레일 기능, 트랙 기반 설계",
+            "techSimilarity": 0.6809553210470488,
+            "keywordSimilarity": 0.5944717965503363,
+            "architectureSimilarity": 0.5825162121968406,
+            "similarity": 0.6057907092729309
+        },
+        {
+            "userId": 2,
+            "portfolioId": 2,
+            "projectId": 2,
+            "content": "[기술] WebRTC, AI\n[키워드] 음성 분석, 랭킹 시스템, 업적 시스템, 주간 챌린지, 대전 모드\n[아키텍처] 실시간 처리, 게임화, 사용자 참여형 커뮤니티",
+            "techSimilarity": 0.725764078545573,
+            "keywordSimilarity": 0.5556317196119338,
+            "architectureSimilarity": 0.5847514592209465,
+            "similarity": 0.604218061203168
+        },
+        {
+            "userId": 9,
+            "portfolioId": 9,
+            "projectId": 8,
+            "content": "[기술] AI, WebSocket, OCR\n[키워드] 퀴즈 생성, PDF 파싱, 의미 분석, 하이브리드 퀴즈, AI 평가, 게임화, 집단 학습\n[아키텍처] 실시간 이벤트 스트림, 게임 상태 동기화, 서버 중심 상태 관리, Zero Authoring",
+            "techSimilarity": 0.6164740753102971,
+            "keywordSimilarity": 0.5220723407628394,
+            "architectureSimilarity": 0.5960799057904941,
+            "similarity": 0.5779564701861583
+        },
+        {
+            "userId": 5,
+            "portfolioId": 5,
+            "projectId": 5,
+            "content": "[기술] Python, AI, LLM\n[키워드] 채용 매칭, 이력서 분석, AI 추천, 프로젝트 기반 필터링, 화상 면접 관리\n[아키텍처] 텍스트 분석, AI 추천 시스템, 데이터 파싱",
+            "techSimilarity": 0.552752667437753,
+            "keywordSimilarity": 0.5663698854763787,
+            "architectureSimilarity": 0.5825551642637692,
+            "similarity": 0.5717390812623488
+        },
+        {
+            "userId": 3,
+            "portfolioId": 3,
+            "projectId": 3,
+            "content": "[기술] LLM, Python\n[키워드] 면접 코칭, AI 피드백, 맞춤형 질문, 연습 모드, 실전 모드\n[아키텍처] AI 기반 분석, 실시간 질문 생성, 모드 분리",
+            "techSimilarity": 0.5232095812270626,
+            "keywordSimilarity": 0.5551565810471284,
+            "architectureSimilarity": 0.52198812389279,
+            "similarity": 0.532182952505946
+        }
+    ]
+}
