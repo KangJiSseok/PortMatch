@@ -3,8 +3,8 @@ package com.portmatch.domain.portfolio.recommendation.service;
 import com.portmatch.domain.portfolio.embedding.client.PortfolioAnalysisClient;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioQueryEmbeddingRequest;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioQueryEmbeddingResponse;
-import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectTagEmbeddingRepository;
-import com.portmatch.domain.portfolio.embedding.repository.TagRecommendationRow;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserTagRecommendationRepository;
+import com.portmatch.domain.portfolio.embedding.repository.UserTagRecommendationRow;
 import com.portmatch.domain.portfolio.recommendation.dto.PortfolioQueryRecommendationResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,11 +16,11 @@ import java.util.List;
 public class PortfolioQueryRecommendationService {
 
     private final PortfolioAnalysisClient embeddingClient;
-    private final PortfolioProjectTagEmbeddingRepository tagEmbeddingRepository;
+    private final PortfolioUserTagRecommendationRepository tagEmbeddingRepository;
 
     public PortfolioQueryRecommendationService(
             PortfolioAnalysisClient embeddingClient,
-            PortfolioProjectTagEmbeddingRepository tagEmbeddingRepository
+            PortfolioUserTagRecommendationRepository tagEmbeddingRepository
     ) {
         this.embeddingClient = embeddingClient;
         this.tagEmbeddingRepository = tagEmbeddingRepository;
@@ -40,7 +40,7 @@ public class PortfolioQueryRecommendationService {
         double keywordWeight = embedding.keywordMissing() ? 0.2 : 0.3;
         double architectureWeight = embedding.architectureMissing() ? 0.3 : 0.5;
 
-        List<TagRecommendationRow> rows = tagEmbeddingRepository.findTopUsersByQueryEmbedding(
+        List<UserTagRecommendationRow> rows = tagEmbeddingRepository.findTopUsersByQueryEmbedding(
                 techVector,
                 keywordVector,
                 architectureVector,
@@ -54,8 +54,6 @@ public class PortfolioQueryRecommendationService {
                 .map(r -> new PortfolioQueryRecommendationResponse(
                         r.getUserId(),
                         r.getPortfolioId(),
-                        r.getProjectId(),
-                        r.getContent(),
                         safe(r.getTechSimilarity()),
                         safe(r.getKeywordSimilarity()),
                         safe(r.getArchitectureSimilarity()),
