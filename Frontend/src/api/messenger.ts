@@ -1,5 +1,5 @@
 import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../lib/firebase';
 
 export const initiateChatByCompany = async (
   companyId: number,

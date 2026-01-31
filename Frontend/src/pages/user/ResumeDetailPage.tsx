@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -18,6 +18,13 @@ import {
   Bookmark,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
+
+interface UserData {
+  userId: number;
+  name: string;
+  email: string;
+  role: string;
+}
 
 interface Portfolio {
   id: string | number;
@@ -45,7 +52,7 @@ interface Experience {
 
 interface ResumeData {
   id: string;
-  userId: string;
+  userId: string | number;
   title: string;
   name: string;
   contact: string;
@@ -56,6 +63,12 @@ interface ResumeData {
   experience: Experience[];
   selectedPortfolioId: string | number | null;
   selectedSelfIntroId: string | null;
+}
+
+interface ApiResponse<T> {
+  status: boolean;
+  data: T;
+  message?: string;
 }
 
 interface SectionCardProps {
@@ -77,35 +90,6 @@ const MAX_LENGTHS = {
   MAJOR: 50,
   CONTACT: 13,
 };
-
-const INITIAL_RESUMES: Record<string, ResumeData> = {
-  frontend: {
-    id: 'frontend',
-    userId: 'user123',
-    title: '프론트엔드 이력서',
-    name: '김싸피',
-    contact: '010-1234-5678',
-    email: 'kim@ssafy.com',
-    address: '서울특별시 강남구 테헤란로 123',
-    profileImage: null,
-    education: [
-      { school: '한국대학교', major: '컴퓨터공학과', status: '졸업', period: '2018.03 - 2023.02' },
-    ],
-    experience: [{ company: 'A 스타트업', role: '인턴', period: '2023.01 - 2023.06' }],
-    selectedPortfolioId: 1,
-    selectedSelfIntroId: 'si-1',
-  },
-};
-
-const INITIAL_PORTFOLIOS: Portfolio[] = [{ id: 1, name: '2024_프론트엔드_이력서_최종.pdf' }];
-
-const INITIAL_SELF_INTROS: SelfIntro[] = [
-  {
-    id: 'si-1',
-    title: '성장하는 개발자',
-    content: '끊임없이 학습하며 동료들과 함께 성장하는 것을 즐깁니다.',
-  },
-];
 
 const SectionCard = ({
   title,
@@ -134,8 +118,115 @@ const SectionCard = ({
 function ResumeDetailPage() {
   const { resumeId } = useParams<{ resumeId: string }>();
   const navigate = useNavigate();
+  const [user, setUser] = useState<UserData | null>(null);
+  const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  const user = { userId: 'user123', role: 'COMPANY' };
+  const mapApiToResume = useCallback((apiData: any, currentUser: UserData | null): ResumeData => {
+    const profile = apiData.profile || {};
+    return {
+      id: String(apiData.id),
+      userId: apiData.userId,
+      title: apiData.title || '제목 없음',
+      name: profile.name || currentUser?.name || '',
+      contact: profile.contact || '',
+      email: profile.email || currentUser?.email || '',
+      address: profile.address || '',
+      profileImage: profile.profileImageUrl || null,
+      experience: (apiData.careers || []).map((c: any) => ({
+        company: c.company,
+        role: c.role,
+        period: `${c.periodStart?.replace(/-/g, '.').slice(0, 7) || ''} - ${c.periodEnd?.replace(/-/g, '.').slice(0, 7) || ''}`,
+      })),
+      education: (apiData.educations || []).map((e: any) => ({
+        school: e.school,
+        major: e.major,
+        status: e.status,
+        period: `${e.periodStart?.replace(/-/g, '.').slice(0, 7) || ''} - ${e.periodEnd?.replace(/-/g, '.').slice(0, 7) || ''}`,
+      })),
+      selectedPortfolioId: apiData.portfolio?.portfolioId || null,
+      selectedSelfIntroId: apiData.selfIntroductions?.[0]?.id || null,
+    };
+  }, []);
+
+  const fetchResumes = useCallback(async () => {
+    try {
+      const response = await fetch('/api/resumes');
+      if (response.ok) {
+        const json: ApiResponse<any[]> = await response.json();
+
+        // [디버깅] 서버에서 실제로 어떤 목록을 주는지 콘솔에서 확인하세요.
+        console.log("Server Resume List:", json.data);
+
+        if (json.status && Array.isArray(json.data)) {
+          const resumeMap: Record<string, ResumeData> = {};
+
+          json.data.forEach((r) => {
+            // ID가 없거나 유효하지 않은 데이터는 목록에 넣지 않음 (유령 방지)
+            if (r.id !== undefined && r.id !== null) {
+              resumeMap[String(r.id)] = {
+                id: String(r.id),
+                title: r.title || '제목 없음',
+              } as ResumeData;
+            }
+          });
+
+          setAllResumes(resumeMap);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch resumes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const fetchResumeDetail = useCallback(async (id: string) => {
+    if (!user) return;
+    try {
+      const response = await fetch(`/api/resumes/${id}`);
+      if (response.ok) {
+        const json = await response.json();
+        if (json.status && json.data) {
+          const mappedResume = mapApiToResume(json.data, user);
+          setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch resume detail:', error);
+    }
+  }, [user, mapApiToResume]);
+
+  useEffect(() => {
+    localStorage.removeItem('resumes');
+  }, []);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const json = await response.json();
+          if (json.status && json.data) {
+            setUser(json.data);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+      }
+    };
+    fetchUser();
+    fetchResumes();
+  }, [fetchResumes]);
+
+  useEffect(() => {
+    if (resumeId && resumeId !== 'me' && user) {
+      if (!allResumes[resumeId] || !allResumes[resumeId].name) {
+        fetchResumeDetail(resumeId);
+      }
+    }
+  }, [resumeId, user, fetchResumeDetail, allResumes]);
+
   const startNewChat = (id: string, name: string) => console.log(`${name}님과 채팅방 생성`, id);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,25 +236,29 @@ function ResumeDetailPage() {
   const eduRef = useRef<HTMLDivElement>(null);
   const selfIntroRef = useRef<HTMLDivElement>(null);
 
-  const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>(() => {
-    const saved = localStorage.getItem('resumes');
-    return saved ? JSON.parse(saved) : INITIAL_RESUMES;
-  });
-
   const [portfolios, setPortfolios] = useState<Portfolio[]>(() => {
     const saved = localStorage.getItem('portfolios');
-    return saved ? JSON.parse(saved) : INITIAL_PORTFOLIOS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
     const saved = localStorage.getItem('selfIntros');
-    return saved ? JSON.parse(saved) : INITIAL_SELF_INTROS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
 
   const allResumeKeys = Object.keys(allResumes);
-  const isEmpty = allResumeKeys.length === 0;
+  const isEmpty = !isLoading && allResumeKeys.length === 0;
+
+  useEffect(() => {
+    if (!isLoading && allResumeKeys.length > 0) {
+      if (!resumeId || resumeId === 'me' || !allResumes[resumeId]) {
+        navigate(`/resumes/${allResumeKeys[0]}`, { replace: true });
+      }
+    }
+  }, [resumeId, allResumeKeys, allResumes, navigate, isLoading]);
+
   const targetId = resumeId || allResumeKeys[0];
   const resume = allResumes[targetId];
 
@@ -192,7 +287,7 @@ function ResumeDetailPage() {
 
   const authContext = useMemo(() => {
     if (!user || !resume) return { isOwner: false, isCompany: false };
-    const isOwner = user.userId === resume.userId;
+    const isOwner = String(user.userId) === String(resume.userId);
     const isCompany = user.role === 'COMPANY' && !isOwner;
     return { isOwner, isCompany };
   }, [user, resume]);
@@ -239,9 +334,9 @@ function ResumeDetailPage() {
     }
   };
 
-  const handleCreateResume = () => {
+  const handleCreateResume = async () => {
     if (isEditing) return;
-    setResumeSnapshot({ ...allResumes });
+
     const baseTitle = '새로운 이력서';
     let finalTitle = baseTitle;
     let counter = 1;
@@ -250,27 +345,36 @@ function ResumeDetailPage() {
       finalTitle = `${baseTitle} ${counter}`;
       counter++;
     }
-    const newId = `resume-${Date.now()}`;
-    const newResume: ResumeData = {
-      id: newId,
-      userId: user.userId,
-      title: finalTitle,
-      name: '',
-      contact: '',
-      email: '',
-      address: '',
-      profileImage: null,
-      education: [],
-      experience: [],
-      selectedPortfolioId: null,
-      selectedSelfIntroId: selfIntros[0]?.id || null,
-    };
-    setAllResumes({ ...allResumes, [newId]: newResume });
-    navigate(`/resumes/${newId}`, { replace: true });
-    setTimeout(() => {
-      setIsEditing(true);
-      showToast(`${finalTitle} 작성을 시작합니다.`);
-    }, 0);
+
+    try {
+      const response = await fetch('/api/resumes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: finalTitle }),
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        if (json.status && json.data) {
+          const newResume = mapApiToResume(json.data, user);
+
+          setResumeSnapshot({ ...allResumes });
+          setAllResumes((prev) => ({ ...prev, [String(newResume.id)]: newResume }));
+
+          navigate(`/resumes/${newResume.id}`, { replace: true });
+
+          setTimeout(() => {
+            setIsEditing(true);
+            showToast(`${finalTitle} 작성을 시작합니다.`);
+          }, 0);
+        }
+      } else {
+        showToast('이력서 생성에 실패했습니다.', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to create resume:', error);
+      showToast('서버 통신 중 오류가 발생했습니다.', 'error');
+    }
   };
 
   const toggleEditMode = () => {
@@ -282,10 +386,13 @@ function ResumeDetailPage() {
   const handleCancelEdit = () => {
     if (resumeSnapshot) {
       setAllResumes(resumeSnapshot);
-      if (!resumeSnapshot[targetId]) {
-        const firstId = Object.keys(resumeSnapshot)[0];
-        if (firstId) navigate(`/resumes/${firstId}`, { replace: true });
-        else navigate('/portfolios', { replace: true });
+      const snapshotKeys = Object.keys(resumeSnapshot);
+      if (snapshotKeys.length > 0) {
+        if (!resumeSnapshot[targetId]) {
+          navigate(`/resumes/${snapshotKeys[0]}`, { replace: true });
+        }
+      } else {
+        navigate('/resumes', { replace: true });
       }
     }
     const savedP = localStorage.getItem('portfolios');
@@ -307,6 +414,8 @@ function ResumeDetailPage() {
     }
     if (!resume.title?.trim()) errors.push('title');
     if (!resume.name?.trim()) errors.push('name');
+    if (!resume.email?.trim()) errors.push('email');
+
     (resume.experience || []).forEach((exp, i) => {
       if (!exp.company?.trim()) errors.push(`exp_company_${i}`);
       if (!exp.role?.trim()) errors.push(`exp_role_${i}`);
@@ -315,10 +424,11 @@ function ResumeDetailPage() {
       if (!edu.school?.trim()) errors.push(`edu_school_${i}`);
       if (!edu.major?.trim()) errors.push(`edu_major_${i}`);
     });
+
     if (errors.length > 0) {
       setErrorFields(errors);
-      if (errors.includes('title') || errors.includes('name')) {
-        showToast('이력서 제목과 성함을 입력해주세요!', 'warn');
+      if (errors.includes('title') || errors.includes('name') || errors.includes('email')) {
+        showToast('이력서 제목, 성함, 이메일을 모두 입력해주세요!', 'warn');
         scrollToSection(infoRef);
       } else if (errors.some((e) => e.startsWith('exp'))) {
         showToast('경력 사항의 필수 항목을 모두 입력해주세요!', 'warn');
@@ -330,6 +440,15 @@ function ResumeDetailPage() {
       setTimeout(() => setErrorFields([]), 2500);
       return;
     }
+
+    const titles = selfIntros.map((s) => s.title.trim());
+    const uniqueTitles = new Set(titles);
+    if (titles.length !== uniqueTitles.size) {
+      showToast('자기소개 목록에 중복된 제목이 있습니다.', 'warn');
+      scrollToSection(selfIntroRef);
+      return;
+    }
+
     localStorage.setItem('resumes', JSON.stringify(allResumes));
     localStorage.setItem('portfolios', JSON.stringify(portfolios));
     localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
@@ -435,18 +554,44 @@ function ResumeDetailPage() {
     }
   };
 
-  const confirmDeleteAction = () => {
+  const confirmDeleteAction = async () => {
     if (!deleteConfirm) return;
-    const { type, index, id } = deleteConfirm;
+    const { type, id, index } = deleteConfirm;
+
     if (type === 'resume' && id !== undefined) {
-      const newAllResumes = { ...allResumes };
-      delete newAllResumes[String(id)];
-      const remainingIds = Object.keys(newAllResumes);
-      setIsEditing(false);
-      setAllResumes(newAllResumes);
-      localStorage.setItem('resumes', JSON.stringify(newAllResumes));
-      if (remainingIds.length > 0) navigate(`/resumes/${remainingIds[0]}`, { replace: true });
-      else navigate('/portfolios', { replace: true });
+      const removeLocally = () => {
+        const newAllResumes = { ...allResumes };
+        delete newAllResumes[String(id)];
+        const remainingIds = Object.keys(newAllResumes);
+        setAllResumes(newAllResumes);
+        setIsEditing(false);
+        if (remainingIds.length > 0) {
+          navigate(`/resumes/${remainingIds[0]}`, { replace: true });
+        } else {
+          navigate('/resumes', { replace: true });
+        }
+      };
+
+      try {
+        const response = await fetch(`/api/resumes/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          removeLocally();
+          showToast('이력서가 삭제되었습니다.', 'success');
+        } else {
+          if (window.confirm('서버 삭제에 실패했습니다. 목록에서만 강제로 제거할까요?')) {
+            removeLocally();
+            showToast('목록에서 강제 제거되었습니다.', 'warn');
+          }
+        }
+      } catch (error) {
+        console.error('Delete failed:', error);
+        if (window.confirm('네트워크 오류가 발생했습니다. 목록에서만 강제로 제거할까요?')) {
+          removeLocally();
+        }
+      }
     } else {
       if (type === 'experience' && index !== undefined) {
         const newData = [...(resume.experience || [])];
@@ -478,10 +623,9 @@ function ResumeDetailPage() {
   const currentSelfIntro = selfIntros.find((s) => s.id === resume?.selectedSelfIntroId);
 
   const inputClass = (fieldId?: string) =>
-    `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${
-      errorFields.includes(fieldId || '')
-        ? 'border-red-500 bg-red-50/30 ring-4 ring-red-500/5'
-        : 'focus:bg-pure-white border-slate-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5'
+    `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${errorFields.includes(fieldId || '')
+      ? 'border-red-500 bg-red-50/30 ring-4 ring-red-500/5'
+      : 'focus:bg-pure-white border-slate-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5'
     }`;
   const labelClass =
     'mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase';
@@ -497,13 +641,12 @@ function ResumeDetailPage() {
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className={`${
-              toast.type === 'success' || toast.type === 'spark'
-                ? 'bg-blue-600'
-                : toast.type === 'warn'
-                  ? 'bg-amber-500'
-                  : 'bg-red-500'
-            } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
+            className={`${toast.type === 'success' || toast.type === 'spark'
+              ? 'bg-blue-600'
+              : toast.type === 'warn'
+                ? 'bg-amber-500'
+                : 'bg-red-500'
+              } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
           >
             {toast.type === 'success' && <CheckCircle2 size={24} />}
             {toast.type === 'spark' && <Sparkles size={24} />}
@@ -517,7 +660,6 @@ function ResumeDetailPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
       <div className="mx-auto w-5xl px-6">
         {isEmpty ? (
           <motion.div
@@ -580,7 +722,7 @@ function ResumeDetailPage() {
                             {Object.values(allResumes).map((r) => (
                               <div
                                 key={r.id}
-                                className={`flex cursor-pointer items-center justify-between border-b border-slate-50 px-6 py-4 transition-colors last:border-0 hover:bg-slate-50 ${r.id === targetId ? 'bg-blue-50/30' : ''}`}
+                                className={`flex cursor-pointer items-center justify-between border-b border-slate-50 px-6 py-4 transition-colors last:border-0 hover:bg-slate-50 ${String(r.id) === targetId ? 'bg-blue-50/30' : ''}`}
                                 onClick={() => {
                                   if (isEditing) {
                                     showToast(
@@ -594,7 +736,7 @@ function ResumeDetailPage() {
                                 }}
                               >
                                 <span
-                                  className={`truncate pr-4 text-lg font-bold ${r.id === targetId ? 'text-blue-600' : 'text-slate-800'}`}
+                                  className={`truncate pr-4 text-lg font-bold ${String(r.id) === targetId ? 'text-blue-600' : 'text-slate-800'}`}
                                 >
                                   {r.title}
                                 </span>
@@ -633,15 +775,13 @@ function ResumeDetailPage() {
                 <Button isBack variant="outline" size="md" className="rounded-xl" />
               </div>
             </header>
-
             <main className="space-y-8">
               <section
                 ref={infoRef}
-                className={`bg-pure-white rounded-4xl border p-10 shadow-xl transition-all ${
-                  isEditing
-                    ? 'border-blue-600/30 ring-4 ring-blue-600/5'
-                    : 'border-slate-100 shadow-slate-200/50'
-                }`}
+                className={`bg-pure-white rounded-4xl border p-10 shadow-xl transition-all ${isEditing
+                  ? 'border-blue-600/30 ring-4 ring-blue-600/5'
+                  : 'border-slate-100 shadow-slate-200/50'
+                  }`}
               >
                 <div className="mb-8 flex items-center gap-3">
                   <div className="h-6 w-1.5 rounded-full bg-blue-600" />
@@ -808,14 +948,19 @@ function ResumeDetailPage() {
                             />
                           </div>
                           <div className="relative">
-                            <label className={labelClass}>이메일</label>
+                            <label className={labelClass}>
+                              이메일 <span className="text-red-500">*</span>
+                            </label>
                             <input
-                              className={inputClass()}
+                              className={inputClass('email')}
                               value={resume?.email || ''}
                               maxLength={MAX_LENGTHS.EMAIL}
                               placeholder="example@mail.com"
                               onChange={(e) => updateCurrentResume({ email: e.target.value })}
                             />
+                            <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                              {(resume?.email || '').length}/{MAX_LENGTHS.EMAIL}
+                            </span>
                           </div>
                           <div className="relative col-span-1 md:col-span-2">
                             <label className={labelClass}>주소</label>
@@ -833,7 +978,6 @@ function ResumeDetailPage() {
                   </div>
                 </div>
               </section>
-
               {(['experience', 'education'] as const).map((type) => (
                 <SectionCard
                   key={type}
@@ -1036,7 +1180,6 @@ function ResumeDetailPage() {
                   </div>
                 </SectionCard>
               ))}
-
               <SectionCard title="포트폴리오">
                 <div className="space-y-6">
                   <div
@@ -1138,7 +1281,6 @@ function ResumeDetailPage() {
                   </div>
                 </div>
               </SectionCard>
-
               <SectionCard
                 title="자기소개"
                 sectionRef={selfIntroRef}
@@ -1165,20 +1307,16 @@ function ResumeDetailPage() {
                             <Plus size={16} className="mr-1" /> 추가
                           </Button>
                           <Button
-                            variant="outline"
-                            size="md"
-                            className="min-w-27.5 rounded-xl bg-white font-black"
-                            onClick={() =>
-                              selfIntros.length > 0 && setShowSelfIntroList(!showSelfIntroList)
-                            }
-                          >
-                            자기소개 선택 <ChevronDown size={16} className="ml-1" />
-                          </Button>
-                          <Button
                             variant="blue"
                             size="md"
                             className="min-w-22.5 rounded-xl font-black"
-                            onClick={() => setInnerEditingIntro(true)}
+                            onClick={() => {
+                              if (!currentSelfIntro) {
+                                showToast('수정할 자기소개를 선택하거나 새로 추가해주세요.', 'warn');
+                                return;
+                              }
+                              setInnerEditingIntro(true);
+                            }}
                           >
                             내용 수정
                           </Button>
@@ -1209,6 +1347,13 @@ function ResumeDetailPage() {
                                 showToast('제목과 내용을 모두 입력해주세요!', 'warn');
                                 return;
                               }
+                              const isDuplicate = selfIntros.some(
+                                (s) => s.id !== current.id && s.title.trim() === current.title.trim(),
+                              );
+                              if (isDuplicate) {
+                                showToast('이미 존재하는 자기소개 제목입니다.', 'warn');
+                                return;
+                              }
                               localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
                               setInnerEditingIntro(false);
                               showToast('자기소개 내용이 저장되었습니다.', 'success');
@@ -1223,45 +1368,95 @@ function ResumeDetailPage() {
                 }
               >
                 <div className="space-y-6">
-                  <div
-                    onClick={() =>
-                      isEditing &&
-                      !innerEditingIntro &&
-                      selfIntros.length > 0 &&
-                      setShowSelfIntroList(!showSelfIntroList)
-                    }
-                    className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing && !innerEditingIntro ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
-                  >
-                    <div className="mr-4 flex min-w-0 flex-1 items-center gap-2">
-                      <FileText
-                        size={20}
-                        className={currentSelfIntro ? 'text-blue-600' : 'text-slate-300'}
-                      />
-                      {innerEditingIntro ? (
-                        <input
-                          className="w-full bg-transparent text-xl font-black text-blue-600 outline-none"
-                          value={currentSelfIntro?.title || ''}
-                          maxLength={MAX_LENGTHS.TITLE}
-                          placeholder="자기소개 제목을 입력하세요"
-                          autoFocus
-                          onChange={(e) =>
-                            setSelfIntros(
-                              selfIntros.map((s) =>
-                                s.id === resume?.selectedSelfIntroId
-                                  ? { ...s, title: e.target.value }
-                                  : s,
-                              ),
-                            )
-                          }
+                  <div className="relative">
+                    <div
+                      onClick={() =>
+                        isEditing &&
+                        !innerEditingIntro &&
+                        selfIntros.length > 0 &&
+                        setShowSelfIntroList(!showSelfIntroList)
+                      }
+                      className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing && !innerEditingIntro ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
+                    >
+                      <div className="mr-4 flex min-w-0 flex-1 items-center gap-2">
+                        <FileText
+                          size={20}
+                          className={currentSelfIntro ? 'text-blue-600' : 'text-slate-300'}
                         />
-                      ) : (
-                        <span
-                          className={`truncate text-xl font-black ${currentSelfIntro ? 'text-blue-600' : 'text-slate-400'}`}
-                        >
-                          {currentSelfIntro?.title || '자기소개를 선택해주세요.'}
-                        </span>
+                        {innerEditingIntro ? (
+                          <input
+                            className="w-full bg-transparent text-xl font-black text-blue-600 outline-none"
+                            value={currentSelfIntro?.title || ''}
+                            maxLength={MAX_LENGTHS.TITLE}
+                            placeholder="자기소개 제목을 입력하세요"
+                            autoFocus
+                            onChange={(e) =>
+                              setSelfIntros(
+                                selfIntros.map((s) =>
+                                  s.id === resume?.selectedSelfIntroId
+                                    ? { ...s, title: e.target.value }
+                                    : s,
+                                ),
+                              )
+                            }
+                          />
+                        ) : (
+                          <span
+                            className={`truncate text-xl font-black ${currentSelfIntro ? 'text-blue-600' : 'text-slate-400'}`}
+                          >
+                            {currentSelfIntro?.title || '등록된 자기소개가 없습니다.'}
+                          </span>
+                        )}
+                      </div>
+                      {isEditing && !innerEditingIntro && (
+                        <ChevronDown
+                          size={20}
+                          className={`text-blue-600 transition-transform ${showSelfIntroList ? 'rotate-180' : ''}`}
+                        />
                       )}
                     </div>
+                    <AnimatePresence>
+                      {showSelfIntroList && isEditing && !innerEditingIntro && (
+                        <>
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-60"
+                            onClick={() => setShowSelfIntroList(false)}
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute top-full left-0 z-70 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
+                          >
+                            {selfIntros.map((s) => (
+                              <div
+                                key={s.id}
+                                className="flex cursor-pointer items-center justify-between px-6 py-4 transition-colors hover:bg-slate-50"
+                                onClick={() => {
+                                  updateCurrentResume({ selectedSelfIntroId: s.id });
+                                  setShowSelfIntroList(false);
+                                }}
+                              >
+                                <span className="mr-4 truncate font-bold text-slate-700">
+                                  {s.title || '(제목 없음)'}
+                                </span>
+                                <Button
+                                  variant="close"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirm({ type: 'selfIntro', id: s.id });
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
                   </div>
                   <div
                     className={`relative overflow-hidden rounded-2xl border p-8 transition-all ${innerEditingIntro ? 'border-blue-600 bg-white ring-4 ring-blue-600/5' : 'border-slate-50 bg-slate-50/30 shadow-inner'}`}
@@ -1283,13 +1478,12 @@ function ResumeDetailPage() {
                       />
                     ) : (
                       <p className="min-h-25 text-lg leading-relaxed font-bold break-all whitespace-pre-wrap text-slate-700">
-                        {currentSelfIntro?.content || '자기소개를 선택해주세요.'}
+                        {currentSelfIntro?.content || '등록된 자기소개가 없습니다.'}
                       </p>
                     )}
                   </div>
                 </div>
               </SectionCard>
-
               <div className="flex flex-wrap items-center justify-center gap-4 pt-18">
                 {!isEditing ? (
                   <>
@@ -1351,7 +1545,6 @@ function ResumeDetailPage() {
           </>
         )}
       </div>
-
       <AnimatePresence>
         {(deleteConfirm || (blocker.state === 'blocked' && isEditing)) && (
           <div className="fixed inset-0 z-3000 flex items-center justify-center p-6">

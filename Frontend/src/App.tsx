@@ -157,7 +157,7 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to="/portfolios" replace />,
+            element: <Navigate to="me" replace />,
           },
           {
             path: ':resumeId',
@@ -228,12 +228,12 @@ const router = createBrowserRouter([
       {
         path: 'interviews/test/:id/lobby',
         element: (
-          <TestInterviewLobbyPage/>
+          <TestInterviewLobbyPage />
         )
       },
       {
         path: "/interviews/test/room",
-        element:(
+        element: (
           <TestInterviewPage />
         )
       },

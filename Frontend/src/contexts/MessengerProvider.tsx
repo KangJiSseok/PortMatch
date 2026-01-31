@@ -3,15 +3,15 @@ import {
   collection,
   query,
   orderBy,
-  getDocs,
   addDoc,
   Timestamp,
   where,
   updateDoc,
   doc,
   increment,
+  onSnapshot
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { MessengerContext } from './MessengerContext';
 import type { Message, ChatRoom } from '../types/messenger';
@@ -23,56 +23,51 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
 
-  const refreshMessages = useCallback(async () => {
-    if (!currentRoomId) return;
-    try {
-      const q = query(
-        collection(db, `rooms/${currentRoomId}/messages`),
-        orderBy('createdAt', 'asc'),
-      );
-      const snapshot = await getDocs(q);
+  useEffect(() => {
+    if (!user) {
+      setRooms([]);
+      return;
+    }
+
+    const currentUserId = String(user.userId);
+
+    const q = query(
+      collection(db, 'rooms'),
+      where('participants', 'array-contains', currentUserId)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const roomData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as ChatRoom[];
+      setRooms(roomData);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!currentRoomId) {
+      setMessages([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, `rooms/${currentRoomId}/messages`),
+      orderBy('createdAt', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Message[];
       setMessages(data);
-    } catch (error) {
-      console.error(error);
-    }
+    });
+
+    return () => unsubscribe();
   }, [currentRoomId]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchRooms = async () => {
-      if (!user) {
-        if (isMounted) setRooms([]);
-        return;
-      }
-
-      try {
-        const q = query(
-          collection(db, 'rooms'),
-          where('participants', 'array-contains', String(user.userId)),
-        );
-        const snapshot = await getDocs(q);
-        if (isMounted) {
-          const roomData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as ChatRoom[];
-          setRooms(roomData);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    fetchRooms();
-    return () => {
-      isMounted = false;
-    };
-  }, [user]);
 
   const toggleMessenger = useCallback(() => setIsOpen((prev) => !prev), []);
 
@@ -81,20 +76,12 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!user || user.role !== 'COMPANY') return;
 
       try {
-        const roomsRef = collection(db, 'rooms');
-        const q = query(roomsRef, where('participants', 'array-contains', String(user.userId)));
-        const snapshot = await getDocs(q);
-
-        const existingRoom = snapshot.docs.find((doc) =>
-          (doc.data().participants as string[]).includes(applicantId),
-        );
-
-        let roomId: string;
+        const existingRoom = rooms.find((r) => r.participants.includes(applicantId));
 
         if (existingRoom) {
-          roomId = existingRoom.id;
+          setCurrentRoomId(existingRoom.id);
         } else {
-          const newRoom = await addDoc(roomsRef, {
+          const newRoom = await addDoc(collection(db, 'rooms'), {
             name: applicantName,
             companyName: user.name,
             participants: [String(user.userId), applicantId],
@@ -105,35 +92,19 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             companyId: String(user.userId),
             logoUrl: logoUrl || '',
           });
-          roomId = newRoom.id;
+          setCurrentRoomId(newRoom.id);
         }
-
-        setCurrentRoomId(roomId);
         setIsOpen(true);
       } catch (error) {
         console.error(error);
       }
     },
-    [user],
+    [user, rooms]
   );
 
   const sendMessage = useCallback(
     async (text: string, type: 'text' | 'interview' = 'text', interviewId?: string) => {
       if (!currentRoomId || !user || !text.trim()) return;
-
-      const tempId = `temp-${Date.now()}`;
-      const tempMsg: Message = {
-        id: tempId,
-        text,
-        senderId: String(user.userId),
-        senderName: user.name,
-        createdAt: Timestamp.now(),
-        type,
-        status: 'sending',
-        ...(interviewId && { interviewId }),
-      };
-
-      setMessages((prev) => [...prev, tempMsg]);
 
       try {
         await addDoc(collection(db, `rooms/${currentRoomId}/messages`), {
@@ -150,61 +121,65 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           lastUpdatedAt: Timestamp.now(),
           unreadCount: increment(1),
         });
-
-        await refreshMessages();
       } catch (error) {
-        console.error('전송 실패:', error);
-        setMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, status: 'error' } : m)));
+        console.error(error);
       }
     },
-    [currentRoomId, user, refreshMessages],
+    [currentRoomId, user]
   );
 
-  useEffect(() => {
-    const markAsRead = async () => {
-      if (currentRoomId && isOpen) {
-        const roomRef = doc(db, 'rooms', currentRoomId);
-        await updateDoc(roomRef, {
-          unreadCount: 0,
-        });
-      }
-    };
-
-    markAsRead();
-  }, [currentRoomId, isOpen]);
   const acceptInterview = useCallback(
     async (messageId: string, interviewId: string, companyName: string) => {
       if (!currentRoomId || !user) return;
 
       try {
-        const confirmText = `[면접 수락]\n${user.name}님이 ${companyName}의 면접 제안을 수락하였습니다.`;
-
-        const messageRef = doc(db, `rooms/${currentRoomId}/messages`, messageId);
-        await updateDoc(messageRef, {
+        await updateDoc(doc(db, `rooms/${currentRoomId}/messages`, messageId), {
           isAccepted: true,
         });
 
+        const confirmText = `[면접 수락]\n${user.name}님이 ${companyName}의 면접 제안을 수락하였습니다.`;
         await sendMessage(confirmText, 'text');
 
         if (interviewId !== 'pending') {
-          const interviewRef = doc(db, 'interviews', interviewId);
-          await updateDoc(interviewRef, {
+          await updateDoc(doc(db, 'interviews', interviewId), {
             status: 'ACCEPTED',
             acceptedAt: Timestamp.now(),
           });
         }
-
-        await refreshMessages();
       } catch (error) {
         console.error(error);
       }
     },
-    [currentRoomId, user, sendMessage, refreshMessages],
+    [currentRoomId, user, sendMessage]
+  );
+
+  const declineInterview = useCallback(
+    async (messageId: string, interviewId: string, companyName: string) => {
+      if (!currentRoomId || !user) return;
+
+      try {
+        await updateDoc(doc(db, `rooms/${currentRoomId}/messages`, messageId), {
+          isDeclined: true,
+        });
+
+        const declineText = `[면접 거절]\n${user.name}님이 ${companyName}의 면접 제안을 거절하였습니다.`;
+        await sendMessage(declineText, 'text');
+
+        if (interviewId !== 'pending') {
+          await updateDoc(doc(db, 'interviews', interviewId), {
+            status: 'REJECTED',
+          });
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    },
+    [currentRoomId, user, sendMessage]
   );
 
   const totalUnreadCount = useMemo(
     () => rooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0),
-    [rooms],
+    [rooms]
   );
 
   return (
@@ -220,8 +195,8 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setCurrentRoomId,
         sendMessage,
         acceptInterview,
+        declineInterview,
         startNewChat,
-        refreshMessages,
       }}
     >
       {children}

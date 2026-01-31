@@ -1,27 +1,27 @@
-import type { Timestamp } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 
 export interface Message {
   id: string;
   text: string;
   senderId: string;
   senderName: string;
-  createdAt: Timestamp;
-  type?: 'text' | 'interview';
+  createdAt: Timestamp | null;
+  type: 'text' | 'interview';
+  status?: 'sending' | 'error' | 'success';
   interviewId?: string;
-  status?: 'sending' | 'sent' | 'error';
   isAccepted?: boolean;
+  isDeclined?: boolean;
 }
 
 export interface ChatRoom {
   id: string;
   name: string;
+  companyName?: string;
+  participants: string[];
   lastMessage: string;
   lastUpdatedAt: Timestamp;
   unreadCount: number;
-  senderType: 'individual' | 'company';
-  companyId?: string;
   logoUrl?: string;
-  participants: string[];
 }
 
 export interface MessengerContextType {
@@ -35,6 +35,6 @@ export interface MessengerContextType {
   setCurrentRoomId: (id: string | null) => void;
   sendMessage: (text: string, type?: 'text' | 'interview', interviewId?: string) => Promise<void>;
   acceptInterview: (messageId: string, interviewId: string, companyName: string) => Promise<void>;
+  declineInterview: (messageId: string, interviewId: string, companyName: string) => Promise<void>;
   startNewChat: (applicantId: string, applicantName: string, logoUrl?: string) => Promise<void>;
-  refreshMessages: () => Promise<void>;
 }

@@ -2,11 +2,14 @@ import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 import Select from '../../components/Select/Select';
 import WarningBubble from '../../components/WarningBubble/WarningBubble';
 import { useSignup } from '../../hooks/useAuth';
+import { auth } from '../../lib/firebase';
 import type { UserRole } from '../../types/auth';
 
 const YEARS = Array.from({ length: 100 }, (_, i) => ({
@@ -118,7 +121,7 @@ function SignupPage() {
     validateField(field, processedValue, nextFormData);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
 
@@ -126,16 +129,16 @@ function SignupPage() {
       userType === 'APPLICANT'
         ? ['email', 'password', 'passwordConfirm', 'name', 'phone', 'birthYear', 'gender']
         : [
-            'email',
-            'password',
-            'passwordConfirm',
-            'name',
-            'phone',
-            'companyName',
-            'businessNumber',
-            'address',
-            'companySize',
-          ];
+          'email',
+          'password',
+          'passwordConfirm',
+          'name',
+          'phone',
+          'companyName',
+          'businessNumber',
+          'address',
+          'companySize',
+        ];
 
     const newErrors: Record<string, string> = { ...errors };
     let firstErrorField: string | null = null;
@@ -159,49 +162,66 @@ function SignupPage() {
       return;
     }
 
-    const commonData = {
-      email: formData.email,
-      password: formData.password,
-    };
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const uid = userCredential.user.uid;
 
-    if (userType === 'APPLICANT') {
-      signupMutate(
-        {
-          type: 'APPLICANT',
-          data: {
-            ...commonData,
-            name: formData.name,
-            phone: formData.phone.replace(/-/g, ''),
-            birthYear: formData.birthYear,
-            birthMonth: formData.birthMonth.padStart(2, '0'),
-            birthDay: formData.birthDay.padStart(2, '0'),
-            gender: formData.gender.toUpperCase(),
-            experienceYears: Number(formData.experienceYears),
+      const commonData = {
+        email: formData.email,
+        password: formData.password,
+        uid,
+      };
+
+      if (userType === 'APPLICANT') {
+        signupMutate(
+          {
+            type: 'APPLICANT',
+            data: {
+              ...commonData,
+              name: formData.name,
+              phone: formData.phone.replace(/-/g, ''),
+              birthYear: formData.birthYear,
+              birthMonth: formData.birthMonth.padStart(2, '0'),
+              birthDay: formData.birthDay.padStart(2, '0'),
+              gender: formData.gender.toUpperCase(),
+              experienceYears: Number(formData.experienceYears),
+            },
           },
-        },
-        {
-          onError: handleApiError,
-        },
-      );
-    } else {
-      signupMutate(
-        {
-          type: 'COMPANY',
-          data: {
-            ...commonData,
-            companyName: formData.companyName,
-            businessNumber: formData.businessNumber.replace(/-/g, ''),
-            managerName: formData.name,
-            managerPhone: formData.phone.replace(/-/g, ''),
-            address: formData.address,
-            companySize: formData.companySize,
-            homepageUrl: formData.homepageUrl || null,
+          {
+            onError: handleApiError,
           },
-        },
-        {
-          onError: handleApiError,
-        },
-      );
+        );
+      } else {
+        signupMutate(
+          {
+            type: 'COMPANY',
+            data: {
+              ...commonData,
+              companyName: formData.companyName,
+              businessNumber: formData.businessNumber.replace(/-/g, ''),
+              managerName: formData.name,
+              managerPhone: formData.phone.replace(/-/g, ''),
+              address: formData.address,
+              companySize: formData.companySize,
+              homepageUrl: formData.homepageUrl || null,
+            },
+          },
+          {
+            onError: handleApiError,
+          },
+        );
+      }
+    } catch (err: unknown) {
+      if (err instanceof FirebaseError) {
+        let message = '회원가입 처리 중 오류가 발생했습니다.';
+        if (err.code === 'auth/email-already-in-use') message = '이미 사용 중인 이메일입니다.';
+        else if (err.code === 'auth/invalid-email') message = '유효하지 않은 이메일 형식입니다.';
+        else if (err.code === 'auth/weak-password') message = '비밀번호가 너무 취약합니다.';
+
+        setErrors((prev) => ({ ...prev, submit: message }));
+      } else {
+        handleApiError(err);
+      }
     }
   };
 

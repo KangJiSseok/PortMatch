@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
+import { auth as firebaseAuth } from '../../lib/firebase';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 import Checkbox from '../../components/Checkbox/Checkbox';
@@ -33,7 +36,7 @@ function LoginPage() {
     setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
 
@@ -62,30 +65,50 @@ function LoginPage() {
       return;
     }
 
-    loginMutate(
-      {
-        email: formData.email,
-        password: formData.password,
-        expectedRole: userType,
-        rememberMe,
-      },
-      {
-        onSuccess: () => navigate('/main'),
-        onError: (error: unknown) => {
-          if (axios.isAxiosError(error)) {
-            const serverMessage = error.response?.data?.message;
-            setErrors({
-              auth:
-                error.response?.status === 401
-                  ? '이메일 또는 비밀번호가 일치하지 않습니다.'
-                  : serverMessage || '서버 연결에 실패했습니다.',
-            });
-          } else {
-            setErrors({ auth: '예상치 못한 오류가 발생했습니다.' });
-          }
+    try {
+      await signInWithEmailAndPassword(firebaseAuth, formData.email, formData.password);
+
+      loginMutate(
+        {
+          email: formData.email,
+          password: formData.password,
+          expectedRole: userType,
+          rememberMe,
         },
-      },
-    );
+        {
+          onSuccess: () => navigate('/main'),
+          onError: (error: unknown) => {
+            if (axios.isAxiosError(error)) {
+              const serverMessage = error.response?.data?.message;
+              setErrors({
+                auth:
+                  error.response?.status === 401
+                    ? '이메일 또는 비밀번호가 일치하지 않습니다.'
+                    : serverMessage || '서버 연결에 실패했습니다.',
+              });
+            } else {
+              setErrors({ auth: '예상치 못한 오류가 발생했습니다.' });
+            }
+          },
+        },
+      );
+    } catch (err: unknown) {
+      if (err instanceof FirebaseError) {
+        let message = '로그인 처리 중 오류가 발생했습니다.';
+        if (
+          err.code === 'auth/invalid-credential' ||
+          err.code === 'auth/user-not-found' ||
+          err.code === 'auth/wrong-password'
+        ) {
+          message = '이메일 또는 비밀번호가 일치하지 않습니다.';
+        } else if (err.code === 'auth/too-many-requests') {
+          message = '너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.';
+        }
+        setErrors({ auth: message });
+      } else {
+        setErrors({ auth: '예상치 못한 오류가 발생했습니다.' });
+      }
+    }
   };
 
   return (
