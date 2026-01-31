@@ -139,6 +139,20 @@ services:
     entrypoint: >
       sh -c "trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew --webroot -w /var/www/certbot --quiet; done"
 
+  wanted-crawler:
+    build:
+      context: ./crawler 
+      dockerfile: Dockerfile
+    container_name: portmatch-wanted-crawler
+    env_file:
+      - .env.prod
+    environment:
+      - DB_HOST=db  
+      - CRAWL_LIMIT=50
+    depends_on:
+      - db
+    restart: "no"
+
 volumes:
   postgres-data:
   letsencrypt:

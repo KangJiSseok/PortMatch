@@ -8,7 +8,6 @@ import os
 import requests
 import time
 import json
-import uuid
 from datetime import datetime
 
 HEADERS = {

@@ -2,31 +2,28 @@ import os
 import json
 import glob
 import psycopg2
-from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 
-# 1. 환경 변수 로드 (.env.prod 파일 읽기)
 load_dotenv(".env.prod")
 
 def get_db_connection():
-    """DB 연결 설정"""
     return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "wanted_db"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD", "password"),
-        port=os.getenv("DB_PORT", "5432")
+        host="db", # 도커 환경이라면 'db', 아니면 주소 입력
+        database=os.getenv("POSTGRES_DB"), # portmatch
+        user=os.getenv("DB_USERNAME"),     # port
+        password=os.getenv("DB_PASSWORD"), # match
+        port="5432"
     )
 
 def insert_to_db():
-    # 최신 JSON 파일 찾기 (full 데이터 파일 기준)
-    json_files = glob.glob("wanted_crawl_full_*.json")
+    # 1. 수정 포인트: 전처리된 최종 파일을 읽어야 함!
+    json_files = glob.glob("db_ready_data_*.json") 
     if not json_files:
-        print("⚠️ 적재할 JSON 파일이 없습니다.")
+        print("⚠️ 적재할 전처리 JSON 파일이 없습니다.")
         return
 
-    latest_file = max(json_files) # 가장 최근 파일 선택
-    print(f"📦 최신 데이터 로드 중: {latest_file}")
+    latest_file = max(json_files)
+    print(f"📦 전처리 완료 데이터 로드: {latest_file}")
 
     with open(latest_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -35,38 +32,65 @@ def insert_to_db():
     cur = conn.cursor()
 
     try:
-        # 2. 회사(Companies) 정보 먼저 저장 (FK 제약 조건 때문)
-        print("🏢 회사 정보 적재 시작...")
-        for job in data['jobPostings']:
-            company = job['company']
+        # 2. 기술 스택 적재 (엔티티 컬럼명 stack_name 반영)
+        print("🔧 기술 스택 적재...")
+        for stack in data.get('techStacks', []):
             cur.execute("""
-                INSERT INTO companies (cid, name, address, size, homepage_url, logo)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (cid) DO UPDATE SET
-                    name = EXCLUDED.name,
-                    address = EXCLUDED.address,
-                    size = EXCLUDED.size,
-                    homepage_url = EXCLUDED.homepage_url,
-                    logo = EXCLUDED.logo;
-            """, (
-                company['cid'], company['companiesName'], company['address'],
-                company['size'], company['homepageUrl'], company['logo']
-            ))
+                INSERT INTO tech_stacks (id, stack_name)
+                VALUES (%s, %s)
+                ON CONFLICT (id) DO UPDATE SET stack_name = EXCLUDED.stack_name;
+            """, (stack['id'], stack['stackName']))
 
-        # 3. 채용 공고(Job Postings) 정보 저장
+        # 3. 회사 정보 적재 (엔티티 컬럼명 companies_name 등 반영)
+        print("🏢 회사 정보 체크 및 적재...")
+        # 이름 매칭 로직으로 가입 기업의 cid를 보존함
+        company_id_map = {} 
+        for company in data.get('companies', []):
+            c_name = company['companiesName']
+            cur.execute("SELECT cid FROM companies WHERE companies_name = %s", (c_name,))
+            existing = cur.fetchone()
+
+            if existing:
+                target_cid = existing[0]
+            else:
+                target_cid = company['cid'] # 전처리된 랜덤 ID
+                cur.execute("""
+                    INSERT INTO companies (cid, companies_name, address, size, homepage_url, logo)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (cid) DO NOTHING;
+                """, (target_cid, c_name, company.get('address'), company.get('size'), company.get('homepageUrl'), company.get('logo')))
+            
+            company_id_map[c_name] = target_cid
+
+        # 4. 채용 공고 적재 (제목+cid로 중복 체크하여 찜하기 보호)
         print("📝 채용 공고 적재 시작...")
-        for job in data['jobPostings']:
+        for job in data.get('jobPostings', []):
+            target_cid = company_id_map.get(job['company']['companiesName'])
+
             cur.execute("""
-                INSERT INTO job_postings (job_id, title, active, detail, cid, start_date, end_date)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (job_id) DO NOTHING;  -- 이미 있는 공고는 스킵
-            """, (
-                job['id'], job['title'], job['active'], job['detail'],
-                job['cid'], job['startDate'], job['endDate']
-            ))
+                SELECT id FROM job_postings WHERE title = %s AND cid = %s;
+            """, (job['title'], target_cid))
+            
+            if cur.fetchone():
+                continue # 이미 있으면 스킵
+            
+            cur.execute("""
+                INSERT INTO job_postings (title, active, start_date, end_date, vcnt, cid, detail, job_type)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id;
+            """, (job['title'], job['active'], job['startDate'], job['endDate'], 0, target_cid, job['detail'], 1))
+            
+            new_job_id = cur.fetchone()[0]
+
+            # 5. 공고-스택 연결 (중간 테이블)
+            for stack in job.get('skillTags', []):
+                cur.execute("""
+                    INSERT INTO posting_stacks (job_posting_id, stack_id)
+                    VALUES (%s, %s) ON CONFLICT DO NOTHING;
+                """, (new_job_id, stack['id']))
 
         conn.commit()
-        print(f"✅ DB 적재 완료! (파일: {latest_file})")
+        print(f"✅ 모든 데이터가 엔티티 구조에 맞춰 적재되었습니다!")
 
     except Exception as e:
         conn.rollback()
