@@ -7,6 +7,8 @@ import com.portmatch.domain.portfolio.dto.PortfolioAnalysisResponse;
 import com.portmatch.domain.portfolio.entity.Portfolio;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysis;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProject;
+import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectArchitectureExperience;
+import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectKeyword;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectTech;
 import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
@@ -110,6 +112,12 @@ public class PortfolioAnalysisService {
                         project.getSolution(),
                         project.getTechs().stream()
                                 .map(PortfolioAnalysisProjectTech::getTech)
+                                .toList(),
+                        project.getArchitectureExperiences().stream()
+                                .map(PortfolioAnalysisProjectArchitectureExperience::getArchitectureExperience)
+                                .toList(),
+                        project.getKeywords().stream()
+                                .map(PortfolioAnalysisProjectKeyword::getKeyword)
                                 .toList()
                 ))
                 .toList();
@@ -153,6 +161,16 @@ public class PortfolioAnalysisService {
                         project.tech().stream()
                                 .filter(tech -> tech != null && !tech.isBlank())
                                 .forEach(entity::addTech);
+                    }
+                    if (project.architectureExperience() != null) {
+                        project.architectureExperience().stream()
+                                .filter(exp -> exp != null && !exp.isBlank())
+                                .forEach(entity::addArchitectureExperience);
+                    }
+                    if (project.keywords() != null) {
+                        project.keywords().stream()
+                                .filter(keyword -> keyword != null && !keyword.isBlank())
+                                .forEach(entity::addKeyword);
                     }
                     return entity;
                 })

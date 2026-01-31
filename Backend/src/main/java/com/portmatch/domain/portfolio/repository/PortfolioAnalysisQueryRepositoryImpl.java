@@ -8,6 +8,7 @@ import com.portmatch.domain.portfolio.entity.QPortfolioAnalysisProjectTech;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -36,14 +37,14 @@ public class PortfolioAnalysisQueryRepositoryImpl implements PortfolioAnalysisQu
         }
 
         if (!result.getProjects().isEmpty()) {
+            List<Long> projectIds = result.getProjects().stream()
+                    .map(PortfolioAnalysisProject::getId)
+                    .toList();
+
             queryFactory
                     .selectFrom(project)
                     .leftJoin(project.techs, tech).fetchJoin()
-                    .where(project.id.in(
-                            result.getProjects().stream()
-                                    .map(PortfolioAnalysisProject::getId)
-                                    .toList()
-                    ))
+                    .where(project.id.in(projectIds))
                     .distinct()
                     .fetch();
         }

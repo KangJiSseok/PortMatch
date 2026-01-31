@@ -13,6 +13,7 @@ import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional
 public class PortfolioEmbeddingService {
@@ -48,20 +50,38 @@ public class PortfolioEmbeddingService {
     }
 
     public void buildForMyPortfolio(Long userId, Long portfolioId) {
-        // 1) ?뚯쑀沅?泥댄겕
+        log.info("[portfolio-embedding] start userId={} portfolioId={}", userId, portfolioId);
+        // 1) 소유권 체크
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
 
-        // 2) 遺꾩꽍 寃곌낵 濡쒕뱶 (?꾩옱 援ы쁽??留욎떠 portfolioId濡?fetch)
-        PortfolioAnalysis analysis = analysisRepository.findWithProjectsByPortfolioId(portfolio.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
+        // 2) 분석 결과 로드 (현재 구현은 portfolioId로 fetch)
+        PortfolioAnalysis analysis;
+        try {
+            log.info("[portfolio-embedding] fetch analysis start portfolioId={}", portfolioId);
+            analysis = analysisRepository.findWithProjectsByPortfolioId(portfolio.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
+            log.info("[portfolio-embedding] fetch analysis done analysisId={}", analysis.getId());
+        } catch (RuntimeException e) {
+            log.error("[portfolio-embedding] fetch analysis failed portfolioId={}", portfolioId, e);
+            throw e;
+        }
 
-        List<PortfolioAnalysisProject> projects = analysis.getProjects();
+        List<PortfolioAnalysisProject> projects;
+        try {
+            projects = analysis.getProjects();
+            log.info("[portfolio-embedding] fetched projects analysisId={} projects={}",
+                    analysis.getId(), projects == null ? 0 : projects.size());
+        } catch (RuntimeException e) {
+            log.error("[portfolio-embedding] fetch projects failed analysisId={}", analysis.getId(), e);
+            throw e;
+        }
         if (projects == null || projects.isEmpty()) {
+            log.info("[portfolio-embedding] skip empty projects portfolioId={}", portfolioId);
             return;
         }
 
-        // 3) ?꾨줈?앺듃蹂?content ?앹꽦 + content_hash
+        // 3) 프로젝트별 content 생성 + content_hash
         List<Long> projectIds = new ArrayList<>();
         List<String> contents = new ArrayList<>();
         List<String> hashes = new ArrayList<>();
@@ -123,7 +143,8 @@ public class PortfolioEmbeddingService {
             ));
         }
 
-        // 4) Portfolio-Analysis濡?諛곗튂 ?꾨쿋???붿껌
+        // 4) Portfolio-Analysis로 배치 임베딩 요청
+        log.info("[portfolio-embedding] request embeddings texts={}", textsToEmbed.size());
         PortfolioEmbeddingResponse resp = embeddingClient.embed(
                 new PortfolioEmbeddingRequest(textsToEmbed)
         );
@@ -131,8 +152,9 @@ public class PortfolioEmbeddingService {
         if (resp.vectors() == null || resp.vectors().size() != textsToEmbed.size()) {
             throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
         }
+        log.info("[portfolio-embedding] response embeddings size={}", resp.vectors().size());
 
-        // 5) upsert + ?곸꽭 寃곌낵 留뚮뱾湲?
+        // 5) upsert + 상세 결과 만들기
         for (int i = 0; i < projectIds.size(); i++) {
             Long projectId = projectIds.get(i);
             String content = contents.get(i);
@@ -168,6 +190,7 @@ public class PortfolioEmbeddingService {
                     flags.techMissing()
             );
         }
+        log.info("[portfolio-embedding] done portfolioId={} projects={}", portfolioId, projectIds.size());
     }
 
     private record FieldEmbeddingIndices(
@@ -256,4 +279,3 @@ public class PortfolioEmbeddingService {
         }
     }
 }
-

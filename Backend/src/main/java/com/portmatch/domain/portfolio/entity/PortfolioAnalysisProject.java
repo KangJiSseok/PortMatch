@@ -45,6 +45,12 @@ public class PortfolioAnalysisProject {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<PortfolioAnalysisProjectTech> techs = new ArrayList<>();
 
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final List<PortfolioAnalysisProjectArchitectureExperience> architectureExperiences = new ArrayList<>();
+
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final List<PortfolioAnalysisProjectKeyword> keywords = new ArrayList<>();
+
     public PortfolioAnalysisProject(
             PortfolioAnalysis analysis,
             String name,
@@ -61,5 +67,15 @@ public class PortfolioAnalysisProject {
 
     public void addTech(String tech) {
         this.techs.add(new PortfolioAnalysisProjectTech(this, tech));
+    }
+
+    public void addArchitectureExperience(String architectureExperience) {
+        this.architectureExperiences.add(
+                new PortfolioAnalysisProjectArchitectureExperience(this, architectureExperience)
+        );
+    }
+
+    public void addKeyword(String keyword) {
+        this.keywords.add(new PortfolioAnalysisProjectKeyword(this, keyword));
     }
 }
