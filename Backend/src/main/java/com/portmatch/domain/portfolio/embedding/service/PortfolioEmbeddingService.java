@@ -88,6 +88,10 @@ public class PortfolioEmbeddingService {
             return;
         }
 
+        // 2.5) 기존 임베딩 제거 (포트폴리오 단위 재생성)
+        tagEmbeddingRepository.deleteByPortfolioId(portfolioId);
+        embeddingRepository.deleteByPortfolioId(portfolioId);
+
         // 3) 프로젝트별 content 생성 + content_hash
         List<Long> projectIds = new ArrayList<>();
         List<String> contents = new ArrayList<>();
