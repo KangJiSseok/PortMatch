@@ -18,6 +18,7 @@ import {
   Bookmark,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
+import { portfolioApi } from '../../api/portfolioApi'; // portfolioApi import 추가
 
 interface UserData {
   userId: number;
@@ -29,6 +30,7 @@ interface UserData {
 interface Portfolio {
   id: string | number;
   name: string;
+  fileUrl?: string;
 }
 
 interface SelfIntro {
@@ -122,6 +124,18 @@ function ResumeDetailPage() {
   const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>({});
   const [isLoading, setIsLoading] = useState(true);
 
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+
+  const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
+    const saved = localStorage.getItem('selfIntros');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const formatDateToDot = (dateStr?: string) => {
+    if (!dateStr) return '';
+    return dateStr.substring(0, 7).replace(/-/g, '.');
+  };
+
   const mapApiToResume = useCallback((apiData: any, currentUser: UserData | null): ResumeData => {
     const profile = apiData.profile || {};
     return {
@@ -136,17 +150,35 @@ function ResumeDetailPage() {
       experience: (apiData.careers || []).map((c: any) => ({
         company: c.company,
         role: c.role,
-        period: `${c.periodStart?.replace(/-/g, '.').slice(0, 7) || ''} - ${c.periodEnd?.replace(/-/g, '.').slice(0, 7) || ''}`,
+        period: `${formatDateToDot(c.periodStart)} - ${formatDateToDot(c.periodEnd)}`,
       })),
       education: (apiData.educations || []).map((e: any) => ({
         school: e.school,
         major: e.major,
-        status: e.status,
-        period: `${e.periodStart?.replace(/-/g, '.').slice(0, 7) || ''} - ${e.periodEnd?.replace(/-/g, '.').slice(0, 7) || ''}`,
+        status: e.status || 'GRADUATED',
+        period: `${formatDateToDot(e.periodStart)} - ${formatDateToDot(e.periodEnd)}`,
       })),
       selectedPortfolioId: apiData.portfolio?.portfolioId || null,
-      selectedSelfIntroId: apiData.selfIntroductions?.[0]?.id || null,
+      selectedSelfIntroId: apiData.selfIntroductions?.[0]?.id ? String(apiData.selfIntroductions[0].id) : null,
     };
+  }, []);
+
+  // API 연동: 포트폴리오 목록 조회
+  const fetchPortfolios = useCallback(async () => {
+    try {
+      // portfolioApi 사용
+      const portfolioList = await portfolioApi.fetchMyPortfolios();
+
+      const mappedPortfolios: Portfolio[] = portfolioList.map((p) => ({
+        id: p.id,
+        name: p.originalFilename, // API 응답의 originalFilename을 UI의 name으로 매핑
+        fileUrl: '', // 필요한 경우 추가 로직 구현
+      }));
+
+      setPortfolios(mappedPortfolios);
+    } catch (error) {
+      console.error('Failed to fetch portfolios:', error);
+    }
   }, []);
 
   const fetchResumes = useCallback(async () => {
@@ -154,23 +186,26 @@ function ResumeDetailPage() {
       const response = await fetch('/api/resumes');
       if (response.ok) {
         const json: ApiResponse<any[]> = await response.json();
-
-        // [디버깅] 서버에서 실제로 어떤 목록을 주는지 콘솔에서 확인하세요.
-        console.log("Server Resume List:", json.data);
-
         if (json.status && Array.isArray(json.data)) {
           const resumeMap: Record<string, ResumeData> = {};
-
           json.data.forEach((r) => {
-            // ID가 없거나 유효하지 않은 데이터는 목록에 넣지 않음 (유령 방지)
             if (r.id !== undefined && r.id !== null) {
               resumeMap[String(r.id)] = {
                 id: String(r.id),
                 title: r.title || '제목 없음',
-              } as ResumeData;
+                userId: r.userId,
+                name: r.profile?.name || '',
+                contact: r.profile?.contact || '',
+                email: r.profile?.email || '',
+                address: r.profile?.address || '',
+                profileImage: r.profile?.profileImageUrl || null,
+                education: [],
+                experience: [],
+                selectedPortfolioId: null,
+                selectedSelfIntroId: null,
+              };
             }
           });
-
           setAllResumes(resumeMap);
         }
       }
@@ -189,6 +224,16 @@ function ResumeDetailPage() {
         const json = await response.json();
         if (json.status && json.data) {
           const mappedResume = mapApiToResume(json.data, user);
+
+          if (json.data.selfIntroductions && Array.isArray(json.data.selfIntroductions)) {
+            const mappedIntros = json.data.selfIntroductions.map((intro: any) => ({
+              id: String(intro.id),
+              title: intro.title,
+              content: intro.answerText
+            }));
+            setSelfIntros(mappedIntros);
+          }
+
           setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
         }
       }
@@ -196,10 +241,6 @@ function ResumeDetailPage() {
       console.error('Failed to fetch resume detail:', error);
     }
   }, [user, mapApiToResume]);
-
-  useEffect(() => {
-    localStorage.removeItem('resumes');
-  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -217,15 +258,14 @@ function ResumeDetailPage() {
     };
     fetchUser();
     fetchResumes();
-  }, [fetchResumes]);
+    fetchPortfolios();
+  }, [fetchResumes, fetchPortfolios]);
 
   useEffect(() => {
     if (resumeId && resumeId !== 'me' && user) {
-      if (!allResumes[resumeId] || !allResumes[resumeId].name) {
-        fetchResumeDetail(resumeId);
-      }
+      fetchResumeDetail(resumeId);
     }
-  }, [resumeId, user, fetchResumeDetail, allResumes]);
+  }, [resumeId, user, fetchResumeDetail]);
 
   const startNewChat = (id: string, name: string) => console.log(`${name}님과 채팅방 생성`, id);
 
@@ -235,16 +275,6 @@ function ResumeDetailPage() {
   const expRef = useRef<HTMLDivElement>(null);
   const eduRef = useRef<HTMLDivElement>(null);
   const selfIntroRef = useRef<HTMLDivElement>(null);
-
-  const [portfolios, setPortfolios] = useState<Portfolio[]>(() => {
-    const saved = localStorage.getItem('portfolios');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
-    const saved = localStorage.getItem('selfIntros');
-    return saved ? JSON.parse(saved) : [];
-  });
 
   const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
 
@@ -350,7 +380,10 @@ function ResumeDetailPage() {
       const response = await fetch('/api/resumes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: finalTitle }),
+        body: JSON.stringify({
+          title: finalTitle,
+          isMain: Object.keys(allResumes).length === 0
+        }),
       });
 
       if (response.ok) {
@@ -395,9 +428,7 @@ function ResumeDetailPage() {
         navigate('/resumes', { replace: true });
       }
     }
-    const savedP = localStorage.getItem('portfolios');
     const savedS = localStorage.getItem('selfIntros');
-    if (savedP) setPortfolios(JSON.parse(savedP));
     if (savedS) setSelfIntros(JSON.parse(savedS));
     setResumeSnapshot(null);
     setIsEditing(false);
@@ -405,7 +436,17 @@ function ResumeDetailPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const validateAndSave = () => {
+
+  const convertToDateStr = (dotDate?: string) => {
+    if (!dotDate) return '2026-01-01';
+    const parts = dotDate.split('.');
+    if (parts.length < 2) return `${dotDate.trim()}-01-01`.substring(0, 10);
+    const year = parts[0].trim();
+    const month = parts[1].trim();
+    return `${year}-${month}-01`;
+  };
+
+  const validateAndSave = async () => {
     const errors: string[] = [];
     if (innerEditingIntro) {
       showToast("상단의 '내용 저장' 버튼을 먼저 눌러주세요!", 'warn');
@@ -441,20 +482,69 @@ function ResumeDetailPage() {
       return;
     }
 
-    const titles = selfIntros.map((s) => s.title.trim());
-    const uniqueTitles = new Set(titles);
-    if (titles.length !== uniqueTitles.size) {
-      showToast('자기소개 목록에 중복된 제목이 있습니다.', 'warn');
-      scrollToSection(selfIntroRef);
-      return;
-    }
+    const payload = {
+      title: resume.title,
+      isMain: true,
+      profile: {
+        name: resume.name,
+        contact: resume.contact || null,
+        email: resume.email,
+        address: resume.address || null,
+        profileImageId: null
+      },
+      portfolio: resume.selectedPortfolioId ? { portfolioId: Number(resume.selectedPortfolioId) } : null,
+      careers: resume.experience.map((exp, index) => {
+        const periodParts = exp.period ? exp.period.split(' - ') : ['2026.01', '2026.01'];
+        return {
+          company: exp.company,
+          role: exp.role,
+          periodStart: convertToDateStr(periodParts[0]),
+          periodEnd: convertToDateStr(periodParts[1]),
+          employmentStatus: "FULL_TIME",
+          description: "",
+          orderIndex: index
+        };
+      }),
+      educations: resume.education.map((edu, index) => {
+        const periodParts = edu.period ? edu.period.split(' - ') : ['2026.01', '2026.01'];
+        return {
+          school: edu.school,
+          major: edu.major,
+          degree: "HIGH_SCHOOL",
+          periodStart: convertToDateStr(periodParts[0]),
+          periodEnd: convertToDateStr(periodParts[1]),
+          status: edu.status || "GRADUATED",
+          orderIndex: index
+        };
+      }),
+      selfIntroductions: selfIntros.map((intro, index) => ({
+        title: intro.title,
+        answerText: intro.content,
+        orderIndex: index
+      }))
+    };
 
-    localStorage.setItem('resumes', JSON.stringify(allResumes));
-    localStorage.setItem('portfolios', JSON.stringify(portfolios));
-    localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
-    setResumeSnapshot(null);
-    setIsEditing(false);
-    showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
+    try {
+      const response = await fetch(`/api/resumes/${resume.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        setResumeSnapshot(null);
+        setIsEditing(false);
+        showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
+        fetchResumeDetail(resume.id);
+      } else {
+        const errJson = await response.json();
+        console.error("Server Error Response:", errJson);
+        showToast(`저장 실패: ${errJson.message || '서버 오류'}`, 'error');
+      }
+    } catch (error) {
+      console.error('Save failed:', error);
+      showToast('서버 통신 오류가 발생했습니다.', 'error');
+    }
   };
 
   const handleInterviewRequest = () => {
@@ -507,19 +597,30 @@ function ResumeDetailPage() {
     }
   };
 
-  const handlePortfolioUpload = (file: File) => {
+  // API 연동: 포트폴리오 업로드
+  const handlePortfolioUpload = async (file: File) => {
     if (file.type !== 'application/pdf') {
       showToast('PDF 형식의 파일만 업로드 가능합니다.', 'warn');
       return;
     }
-    const isDuplicate = portfolios.some((p) => p.name === file.name);
-    if (isDuplicate) {
-      showToast('이미 등록된 파일 이름입니다.', 'warn');
-      return;
+
+    try {
+      // portfolioApi 사용
+      const response = await portfolioApi.uploadPortfolio(file);
+
+      const newP: Portfolio = {
+        id: response.id,
+        name: response.originalFilename, // API 응답에서 originalFilename 사용
+      };
+
+      setPortfolios((prev) => [newP, ...prev]);
+      updateCurrentResume({ selectedPortfolioId: newP.id });
+      showToast('포트폴리오가 업로드되었습니다.', 'success');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
+      console.error('Portfolio upload failed:', err);
+      showToast(`업로드 실패: ${errorMessage}`, 'error');
     }
-    const newP = { id: Date.now(), name: file.name };
-    setPortfolios((prev) => [newP, ...prev]);
-    updateCurrentResume({ selectedPortfolioId: newP.id });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -602,10 +703,22 @@ function ResumeDetailPage() {
         newData.splice(index, 1);
         updateCurrentResume({ education: newData });
       } else if (type === 'portfolio' && id !== undefined) {
-        const filtered = portfolios.filter((p) => p.id !== id);
-        setPortfolios(filtered);
-        localStorage.setItem('portfolios', JSON.stringify(filtered));
-        if (resume.selectedPortfolioId === id) updateCurrentResume({ selectedPortfolioId: null });
+        // API 연동: 포트폴리오 삭제
+        try {
+          // portfolioApi 사용
+          await portfolioApi.deletePortfolio(id);
+
+          const filtered = portfolios.filter((p) => String(p.id) !== String(id));
+          setPortfolios(filtered);
+          if (String(resume.selectedPortfolioId) === String(id)) {
+            updateCurrentResume({ selectedPortfolioId: null });
+          }
+          showToast('포트폴리오가 삭제되었습니다.', 'success');
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : '삭제 처리 중 오류가 발생했습니다.';
+          console.error('Portfolio delete failed:', err);
+          showToast(errorMessage, 'error');
+        }
       } else if (type === 'selfIntro' && id !== undefined) {
         const filtered = selfIntros.filter((s) => s.id !== id);
         setSelfIntros(filtered);
@@ -619,8 +732,8 @@ function ResumeDetailPage() {
     setDeleteConfirm(null);
   };
 
-  const currentPortfolio = portfolios.find((p) => p.id === resume?.selectedPortfolioId);
-  const currentSelfIntro = selfIntros.find((s) => s.id === resume?.selectedSelfIntroId);
+  const currentPortfolio = portfolios.find((p) => String(p.id) === String(resume?.selectedPortfolioId));
+  const currentSelfIntro = selfIntros.find((s) => String(s.id) === String(resume?.selectedSelfIntroId));
 
   const inputClass = (fieldId?: string) =>
     `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${errorFields.includes(fieldId || '')
@@ -1341,14 +1454,14 @@ function ResumeDetailPage() {
                             className="min-w-22.5 rounded-xl font-black"
                             onClick={() => {
                               const current = selfIntros.find(
-                                (s) => s.id === resume?.selectedSelfIntroId,
+                                (s) => String(s.id) === String(resume?.selectedSelfIntroId),
                               );
                               if (!current?.title?.trim() || !current?.content?.trim()) {
                                 showToast('제목과 내용을 모두 입력해주세요!', 'warn');
                                 return;
                               }
                               const isDuplicate = selfIntros.some(
-                                (s) => s.id !== current.id && s.title.trim() === current.title.trim(),
+                                (s) => String(s.id) !== String(current.id) && s.title.trim() === current.title.trim(),
                               );
                               if (isDuplicate) {
                                 showToast('이미 존재하는 자기소개 제목입니다.', 'warn');
@@ -1393,7 +1506,7 @@ function ResumeDetailPage() {
                             onChange={(e) =>
                               setSelfIntros(
                                 selfIntros.map((s) =>
-                                  s.id === resume?.selectedSelfIntroId
+                                  String(s.id) === String(resume?.selectedSelfIntroId)
                                     ? { ...s, title: e.target.value }
                                     : s,
                                 ),
@@ -1469,7 +1582,7 @@ function ResumeDetailPage() {
                         onChange={(e) =>
                           setSelfIntros(
                             selfIntros.map((s) =>
-                              s.id === resume?.selectedSelfIntroId
+                              String(s.id) === String(resume?.selectedSelfIntroId)
                                 ? { ...s, content: e.target.value }
                                 : s,
                             ),
