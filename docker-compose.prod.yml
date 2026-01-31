@@ -104,7 +104,7 @@ services:
       - HTTPS_PORT=4443
       - CERTIFICATE_TYPE=selfsigned
       - OPENVIDU_PRO_LICENSE=
-      - WITH_KMS=ws://kurento:8888/kurento
+      - KMS_URIS=["ws://kurento:8888/kurento"]
       - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900
       - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=3600
       - OPENVIDU_WEBHOOK=true
