@@ -8,11 +8,11 @@ load_dotenv(".env.prod")
 
 def get_db_connection():
     return psycopg2.connect(
-        host="db", # 도커 환경이라면 'db', 아니면 주소 입력
-        database=os.getenv("POSTGRES_DB"), # portmatch
-        user=os.getenv("DB_USERNAME"),     # port
-        password=os.getenv("DB_PASSWORD"), # match
-        port="5432"
+        host=os.getenv('DB_HOST', 'localhost'),
+        database=os.getenv('POSTGRES_DB', 'portmatch'),
+        user=os.getenv('POSTGRES_USER', 'port'),
+        password=os.getenv('POSTGRES_PASSWORD', 'match'),
+        port=os.getenv('DB_PORT', '5432')
     )
 
 def insert_to_db():
@@ -32,14 +32,6 @@ def insert_to_db():
     cur = conn.cursor()
 
     try:
-        # 2. 기술 스택 적재 (엔티티 컬럼명 stack_name 반영)
-        print("🔧 기술 스택 적재...")
-        for stack in data.get('techStacks', []):
-            cur.execute("""
-                INSERT INTO tech_stacks (id, stack_name)
-                VALUES (%s, %s)
-                ON CONFLICT (id) DO UPDATE SET stack_name = EXCLUDED.stack_name;
-            """, (stack['id'], stack['stackName']))
 
         # 3. 회사 정보 적재 (엔티티 컬럼명 companies_name 등 반영)
         print("🏢 회사 정보 체크 및 적재...")
@@ -53,12 +45,21 @@ def insert_to_db():
             if existing:
                 target_cid = existing[0]
             else:
-                target_cid = company['cid'] # 전처리된 랜덤 ID
+                target_cid = company['cid'] 
                 cur.execute("""
-                    INSERT INTO companies (cid, companies_name, address, size, homepage_url, logo)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO companies (cid, companies_name, address, size, homepage_url, logo, busi_cont, tot_psncnt)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (cid) DO NOTHING;
-                """, (target_cid, c_name, company.get('address'), company.get('size'), company.get('homepageUrl'), company.get('logo')))
+                """, (
+                    target_cid, 
+                    c_name, 
+                    company.get('address'), 
+                    company.get('size'), 
+                    company.get('homepageUrl'), 
+                    company.get('logo'),
+                    company.get('busiCont'),
+                    company.get('totPsncnt')
+                ))
             
             company_id_map[c_name] = target_cid
 

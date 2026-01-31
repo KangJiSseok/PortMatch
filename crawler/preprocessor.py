@@ -88,25 +88,45 @@ def transform_job_postings(job_postings):
     transformed_jobs = []
     
     for idx, job in enumerate(job_postings, 1):
-        # 원본 CID
         original_cid = job.get('cid')
-        
         if not original_cid:
-            print(f"[{idx}] ⚠️  CID 없음, 스킵")
             continue
         
-        # 랜덤 CID 생성
         new_cid = generate_company_id(original_cid)
-        
-        # 공고 데이터 복사 및 변환
         transformed_job = job.copy()
         transformed_job['cid'] = new_cid
-        
-        # Company 데이터도 변환
+
+        # ✂️ [추가] detail에서 회사 소개 중복 제거 로직
+        detail = transformed_job.get('detail', '')
+        if detail:
+            # 원티드 공고에서 '직무 상세'가 시작되는 주요 키워드들
+            cut_points = [
+                "[어떤 일을 하게 되나요?]", 
+                "[주요 업무]", 
+                "[주요업무]", 
+                "[직무 소개]", 
+                "[담당 업무]",
+                "어떤 일을 하게 되나요?",
+                "주요 업무"
+            ]
+            
+            for point in cut_points:
+                if point in detail:
+                    # 해당 키워드 위치를 찾아서 그 이후만 남김
+                    start_index = detail.find(point)
+                    transformed_job['detail'] = detail[start_index:].strip()
+                    break # 하나라도 찾으면 중단
+
         if 'company' in transformed_job:
-            company = transformed_job['company'].copy()
-            company['cid'] = new_cid
-            transformed_job['company'] = company
+            old_company = job.get('company', {})
+            new_company = old_company.copy()
+            new_company['cid'] = new_cid
+            
+            # ⭐ busiCont가 원본에 있다면 확실하게 복사!
+            if 'busiCont' in old_company:
+                new_company['busiCont'] = old_company['busiCont']
+                
+            transformed_job['company'] = new_company
         
         transformed_jobs.append(transformed_job)
         
