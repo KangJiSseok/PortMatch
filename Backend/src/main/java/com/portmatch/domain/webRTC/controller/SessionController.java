@@ -93,7 +93,7 @@ public class SessionController {
             System.out.println("프론트에 전달할 순수 토큰: " + pureToken);
 
             // 프론트가 기대하는 대로 문자열(String)만 리턴
-            return new ResponseEntity<>(pureToken, HttpStatus.OK);
+            return new ResponseEntity<>(originalToken, HttpStatus.OK);
 
         } catch (Exception e) {
             // 에러 시에도 문자열로 에러 메시지 전달
