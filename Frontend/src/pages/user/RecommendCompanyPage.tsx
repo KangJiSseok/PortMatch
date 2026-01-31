@@ -1,7 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Sparkles, KeyRound, Puzzle, X, Info, FileText } from 'lucide-react';
+import {
+  Sparkles,
+  KeyRound,
+  Puzzle,
+  X,
+  Info,
+  FileText,
+  MousePointerClick,
+  ChevronDown,
+} from 'lucide-react';
 import {
   fetchPortfolioRecommendedCompanies,
   fetchCompanyMatchExplanation,
@@ -16,6 +25,7 @@ import type {
 
 type Factor = '프로젝트' | '도메인' | '문제' | '해결' | '기술스택';
 const FACTOR_ORDER: Factor[] = ['프로젝트', '도메인', '문제', '해결', '기술스택'];
+const DONUT_ORDER: Factor[] = ['기술스택', '프로젝트', '도메인', '문제', '해결'];
 
 type Headline = {
   line1: string;
@@ -127,6 +137,14 @@ function pickTopFactors(weights: Record<Factor, number>, n = 2): Factor[] {
   return [...FACTOR_ORDER].sort((a, b) => weights[b] - weights[a]).slice(0, n);
 }
 
+const FACTOR_LABEL: Record<Factor, string> = {
+  프로젝트: '프로젝트',
+  도메인: '도메인',
+  문제: '문제 정의',
+  해결: '해결 방식',
+  기술스택: '기술스택',
+};
+
 /** ---------------- DonutChart (CI-safe) ---------------- **/
 
 function DonutChart({ weights, score }: { weights: Record<Factor, number>; score: number }) {
@@ -135,10 +153,11 @@ function DonutChart({ weights, score }: { weights: Record<Factor, number>; score
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const cy = size / 2;
+  const START_ANGLE_OFFSET = 180;
 
   type Segment = { key: Factor; angle: number; start: number; end: number };
 
-  const segments: Segment[] = FACTOR_ORDER.reduce(
+  const segments: Segment[] = DONUT_ORDER.reduce(
     (state, k) => {
       const value = weights[k] ?? 0;
       const angle = (value / 100) * 360;
@@ -162,8 +181,8 @@ function DonutChart({ weights, score }: { weights: Record<Factor, number>; score
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f1f1" strokeWidth={stroke} />
 
         {segments.map(({ key, angle, start, end }) => {
-          const startRad = ((start - 90) * Math.PI) / 180;
-          const endRad = ((end - 90) * Math.PI) / 180;
+          const startRad = ((start - 90 + START_ANGLE_OFFSET) * Math.PI) / 180;
+          const endRad = ((end - 90 + START_ANGLE_OFFSET) * Math.PI) / 180;
 
           return (
             <path
@@ -278,7 +297,10 @@ function getExcerpt(text: string): string {
 function parseStructuredContent(content: string): Record<string, string> {
   if (!content) return {};
   const result: Record<string, string> = {};
-  const lines = content.split('\n').map((line) => line.trim()).filter(Boolean);
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   lines.forEach((line) => {
     const match = line.match(/^\[([^\]]+)\]\s*(.+)$/);
@@ -288,7 +310,7 @@ function parseStructuredContent(content: string): Record<string, string> {
   });
 
   if (Object.keys(result).length === 0) {
-    const regex = /\[([^\]]+)\]\s*([^\[]+)/g;
+    const regex = /\[([^\]]+)\]\s*([^[]+)/g;
     let match = regex.exec(content);
     while (match) {
       result[match[1]] = match[2].trim();
@@ -299,11 +321,7 @@ function parseStructuredContent(content: string): Record<string, string> {
   return result;
 }
 
-function getStructuredValue(
-  content: string,
-  labels: string[],
-  fallback: string,
-): string {
+function getStructuredValue(content: string, labels: string[], fallback: string): string {
   const parsed = parseStructuredContent(content);
   for (const label of labels) {
     if (parsed[label]) return parsed[label];
@@ -327,27 +345,40 @@ function ComparisonTable({
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full table-fixed text-left text-[13px]">
+        <colgroup>
+          <col className="w-[90px]" />
+          <col className="w-[32px]" />
+          <col className="w-[280px]" />
+          <col className="w-[280px]" />
+        </colgroup>
         <thead className="bg-gray-50/70 text-[12px] font-bold text-gray-500">
           <tr>
-            <th className="px-6 py-3 w-[66px]">비교 항목</th>
-            <th className="px-6 py-3 w-[54px]">매칭도</th>
-            <th className="px-6 py-3 w-[280px]">내 포트폴리오</th>
-            <th className="px-6 py-3 w-[280px]">기업 과제</th>
+            <th className="px-6 py-3">비교 항목</th>
+            <th className="px-2 py-3 text-center">매칭도</th>
+            <th className="px-6 py-3">내 포트폴리오</th>
+            <th className="px-6 py-3">기업 과제</th>
           </tr>
         </thead>
         <tbody>
           {FACTOR_ORDER.map((factor) => {
             if (factor === '기술스택') {
-                return (
-                  <tr key={factor} className="border-t border-gray-100">
-                    <td className="px-6 py-4 font-bold text-gray-900">{factor}</td>
-                    <td className="px-6 py-4 text-[13px] font-bold text-blue-600">
-                      {weights[factor]}%
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1.5">
-                        {portfolioTechTags.length === 0 && (
-                          <span className="text-[12px] text-blue-400">추출된 기술 없음</span>
+              return (
+                <tr key={factor} className="border-t border-gray-100">
+                  <td className="px-6 py-4 font-bold text-gray-900">
+                    <div>{FACTOR_LABEL[factor]}</div>
+                    {matchedTechTags.length > 0 && (
+                      <p className="mt-2 text-[12px] font-semibold text-indigo-600">
+                        공통 기술 {matchedTechTags.length}개
+                      </p>
+                    )}
+                  </td>
+                  <td className="w-[32px] px-2 py-4 text-center text-[13px] font-bold text-blue-600">
+                    {weights[factor]}%
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      {portfolioTechTags.length === 0 && (
+                        <span className="text-[12px] text-blue-400">추출된 기술 없음</span>
                       )}
                       {portfolioTechTags.map((tag) => (
                         <span
@@ -381,11 +412,6 @@ function ComparisonTable({
                         </span>
                       ))}
                     </div>
-                    {matchedTechTags.length > 0 && (
-                      <p className="mt-2 text-[12px] font-semibold text-indigo-600">
-                        공통 기술 {matchedTechTags.length}개
-                      </p>
-                    )}
                   </td>
                 </tr>
               );
@@ -404,8 +430,8 @@ function ComparisonTable({
 
             return (
               <tr key={factor} className="border-t border-gray-100">
-                <td className="px-6 py-4 font-bold text-gray-900">{factor}</td>
-                <td className="px-6 py-4 text-[13px] font-bold text-blue-600">
+                <td className="px-6 py-4 font-bold text-gray-900">{FACTOR_LABEL[factor]}</td>
+                <td className="w-[32px] px-2 py-4 text-center text-[13px] font-bold text-blue-600">
                   {weights[factor]}%
                 </td>
                 <td className="px-6 py-4 text-[13px] leading-relaxed text-gray-700">
@@ -449,7 +475,7 @@ function CompanyCard({
       whileTap={{ y: -2 }}
       transition={{ type: 'spring', stiffness: 260, damping: 22 }}
       className={[
-        'relative flex w-full min-h-[460px] flex-col overflow-hidden rounded-2xl',
+        'relative flex min-h-[460px] w-full flex-col overflow-hidden rounded-2xl',
         'border border-gray-200/60 bg-white',
       ].join(' ')}
       style={{
@@ -495,7 +521,7 @@ function CompanyCard({
                       border: `1px solid ${FACTOR_COLOR[f]}25`,
                     }}
                   >
-                    #{f}
+                    #{FACTOR_LABEL[f]}
                   </span>
                 ))}
               </div>
@@ -529,7 +555,7 @@ function CompanyCard({
                 {FACTOR_ORDER.map((f) => (
                   <div key={f} className="text-[12px]">
                     <div className="mb-1.5 flex justify-between">
-                      <span className="font-semibold text-gray-500">{f}</span>
+                      <span className="font-semibold text-gray-500">{FACTOR_LABEL[f]}</span>
                       <span className="font-bold text-[#4a4a4a]">{company.weights[f]}%</span>
                     </div>
 
@@ -556,7 +582,7 @@ function CompanyCard({
         </motion.div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 px-4 pt-0 pb-2 -mt-4">
+      <div className="-mt-4 flex min-h-0 flex-1 flex-col gap-2 px-4 pt-0 pb-2">
         <div className="mt-10 space-y-2 pt-1">
           <button
             onClick={goToPostings}
@@ -588,8 +614,6 @@ function CompanyCard({
 
 /** ---------------- Criteria (모달 밖에서 1번만) ---------------- **/
 
-import { ChevronDown } from 'lucide-react';
-
 function EvaluationCriteria() {
   const [open, setOpen] = useState(false);
 
@@ -597,8 +621,8 @@ function EvaluationCriteria() {
   const FACTOR_COLORS = {
     프로젝트: '#60A5FA',
     도메인: '#F43F5E',
-    문제: '#FB923C',
-    해결: '#4ADE80',
+    '문제 정의': '#FB923C',
+    '해결 방식': '#4ADE80',
     기술스택: '#C084FC',
   };
 
@@ -611,8 +635,14 @@ function EvaluationCriteria() {
       id: '도메인',
       desc: '프로젝트가 어떤 산업·서비스 영역에서 진행되었는지, 환경적 유사성을 평가합니다.',
     },
-    { id: '문제', desc: '프로젝트에서 해결하려 했던 과제의 본질(성능, 효율 등)에 집중합니다.' },
-    { id: '해결', desc: '문제를 풀기 위해 선택한 접근 방식과 사고 구조가 논리적인지 평가합니다.' },
+    {
+      id: '문제 정의',
+      desc: '프로젝트에서 해결하려 했던 과제의 본질(성능, 효율 등)에 집중합니다.',
+    },
+    {
+      id: '해결 방식',
+      desc: '문제를 풀기 위해 선택한 접근 방식과 사고 구조가 논리적인지 평가합니다.',
+    },
     {
       id: '기술스택',
       desc: '단순 사용 여부보다 기술이 활용된 맥락과 숙련도의 연관성을 고려합니다.',
@@ -682,11 +712,13 @@ function EvaluationCriteria() {
 
 /** ---------------- Reason Modal ---------------- **/
 
+let lockedScrollY = 0;
 function lockBodyScroll(lock: boolean) {
   const body = document.body;
 
   if (lock) {
     const y = window.scrollY || document.documentElement.scrollTop;
+    lockedScrollY = y;
     body.dataset.scrollY = String(y);
     body.style.position = 'fixed';
     body.style.top = `-${y}px`;
@@ -695,7 +727,7 @@ function lockBodyScroll(lock: boolean) {
     body.style.width = '100%';
     body.style.overflow = 'hidden';
   } else {
-    const y = Number(body.dataset.scrollY || '0');
+    const y = Number(body.dataset.scrollY || lockedScrollY || 0);
     body.style.position = '';
     body.style.top = '';
     body.style.left = '';
@@ -721,35 +753,39 @@ function ReasonModal({
   error?: string | null;
 }) {
   const [progress, setProgress] = useState(0);
+  const showScan = false;
+  const comparisonTableRef = useRef<HTMLDivElement | null>(null);
+  const comparisonHeightRef = useRef(0);
+  const [comparisonTableHeight, setComparisonTableHeight] = useState(0);
 
   useEffect(() => {
     if (!loading) {
-      setProgress(0);
+      requestAnimationFrame(() => setProgress(0));
       return;
     }
 
     let mounted = true;
     let timer: ReturnType<typeof setInterval> | null = null;
-    setProgress(0);
+    requestAnimationFrame(() => setProgress(0));
 
-    const schedule = (intervalMs: number, stepMin: number, stepMax: number) => {
+    const schedule = (intervalMs: number, stepMin: number, stepMax: number, cap: number) => {
       if (timer) clearInterval(timer);
       timer = setInterval(() => {
         setProgress((prev) => {
           if (!mounted) return prev;
           const step = stepMin + Math.floor(Math.random() * (stepMax - stepMin + 1));
-          const next = Math.min(96, prev + step);
+          const next = Math.min(cap, prev + step);
           return next;
         });
       }, intervalMs);
     };
 
-    // 빠르게 70%까지 상승, 이후 완만하게
-    schedule(160, 4, 8);
+    // 97%까지 빠르게, 이후 천천히
+    schedule(120, 6, 10, 97);
 
     const phaseTimer = setTimeout(() => {
-      schedule(260, 2, 5);
-    }, 1200);
+      schedule(600, 1, 2, 99);
+    }, 1100);
 
     return () => {
       mounted = false;
@@ -763,6 +799,27 @@ function ReasonModal({
   }, [open]);
 
   useEffect(() => {
+    if (loading) return;
+    const node = comparisonTableRef.current;
+    if (!node) return;
+
+    const updateHeight = () => {
+      const next = Math.ceil(node.getBoundingClientRect().height);
+      if (next > 0 && next !== comparisonHeightRef.current) {
+        comparisonHeightRef.current = next;
+        setComparisonTableHeight(next);
+      }
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => updateHeight());
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [loading, company, open]);
+
+  useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -774,11 +831,13 @@ function ReasonModal({
   if (!company) return null;
 
   // ✅ 백엔드 headline 사용 + fallback
+  const fallbackTopFactor = pickTopFactors(company.weights, 1)[0] ?? '프로젝트';
+  const topFactorLabel = FACTOR_LABEL[fallbackTopFactor];
   const headline: Headline = company.headline ?? {
     line1: `${company.name} 기준, 당신의`,
-    highlight: '#문제해결',
-    line2: '역량이',
-    line3: '가장 강점으로 평가됐습니다.',
+    highlight: `#${topFactorLabel}`,
+    line2: '항목이',
+    line3: '가장 유사하게 평가되었습니다.',
   };
 
   // ✅ 섹션도 백엔드 응답 사용 + fallback
@@ -817,11 +876,11 @@ function ReasonModal({
             animate={{ y: 0, opacity: 1, scale: 0.8 }}
             exit={{ y: 28, opacity: 0, scale: 0.99 }}
             transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-            className="relative z-[201] flex max-h-[90vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
+            className="relative z-[201] flex max-h-[94vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
           >
             <div
               style={{ backgroundColor: PALETTE.midnightInk }}
-              className="relative px-7 py-7 text-white sm:px-10 sm:py-9"
+              className="relative px-7 py-5 text-white sm:px-10 sm:py-6"
             >
               <div className="mb-5 flex items-center justify-between gap-4">
                 <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-black tracking-widest text-blue-300 uppercase">
@@ -834,32 +893,21 @@ function ReasonModal({
                 className="absolute top-4 right-4 rounded-xl p-2 text-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none"
                 aria-label="close"
               >
-                <X className="h-5 w-5" />
+                <X className="h`-5 w-5" />
               </button>
 
               {/* ✅ 백엔드 headline 기반 3줄 */}
               <h4 className="text-[20px] leading-[1.2] font-black tracking-tight sm:text-[22px]">
-                {headline.line1}
+                {company.name} 기준,
                 <br />
-                <span className="text-blue-400">
-                  {headline.highlight} {headline.line2}
-                </span>
-                <br />
-                {headline.line3}
+                <span className="text-blue-400">#{topFactorLabel}</span> 항목이 가장 유사하게
+                평가되었습니다.
               </h4>
             </div>
 
             <div
-              className={`flex-1 px-7 py-6 sm:px-10 sm:py-8 ${
-                loading
-                  ? 'flex items-center justify-center overflow-hidden'
-                  : 'overflow-y-auto soft-scrollbar'
-              }`}
-              style={
-                loading
-                  ? undefined
-                  : { scrollbarWidth: 'thin', scrollbarColor: 'rgba(15,23,42,0.22) transparent' }
-              }
+              className="soft-scrollbar flex-1 overflow-y-auto px-7 py-6 text-[16px] sm:px-10 sm:py-8 sm:text-[17px]"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(15,23,42,0.22) transparent' }}
             >
               <style>
                 {`
@@ -874,11 +922,34 @@ function ReasonModal({
                   }
                 `}
               </style>
-              <div className="space-y-12">
-                {loading && (
-            <div className="relative w-full max-w-[720px] max-h-[62vh] overflow-hidden rounded-[24px] border border-slate-100 bg-white/60 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-2xl">
-              <style>
-                {`
+              <div className="w-full space-y-12">
+                <div>
+                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
+                      <FileText className="h-5 w-5" />
+                    </span>
+                    내 포트폴리오와 비교 결과
+                  </h4>
+                  <div
+                    ref={comparisonTableRef}
+                    style={
+                      loading && comparisonTableHeight
+                        ? { minHeight: `${comparisonTableHeight}px` }
+                        : undefined
+                    }
+                  >
+                    <ComparisonTable
+                      portfolioContent={company.portfolioContent}
+                      companyContent={company.companyContent}
+                      weights={company.weights}
+                    />
+                  </div>
+                </div>
+
+                {showScan && (
+                  <div className="relative max-h-[62vh] w-full overflow-hidden rounded-[24px] border border-slate-100 bg-white/60 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-2xl">
+                    <style>
+                      {`
                   @keyframes scanLine {
                     0% { transform: translateY(-10%); opacity: 0; }
                     50% { opacity: 1; }
@@ -889,92 +960,159 @@ function ReasonModal({
                     100% { transform: translateX(100%); }
                   }
                 `}
-              </style>
+                    </style>
 
-              {/* 상단 장식 요소 - 은은한 글로우 */}
-              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-50/50 blur-3xl" />
-              <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-50/40 blur-3xl" />
+                    {/* 상단 장식 요소 - 은은한 글로우 */}
+                    <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-blue-50/50 blur-3xl" />
+                    <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-indigo-50/40 blur-3xl" />
 
-              <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h3 className="text-xl font-bold tracking-tight text-slate-900">
-                    전략 리포트 스캔
-                  </h3>
-                  <p className="mt-1.5 text-sm font-medium text-slate-500">
-                    AI가 포트폴리오의 핵심 역량을 정밀하게 분석하고 있습니다
-                  </p>
-                </div>
-
-              </div>
-
-              <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_220px]">
-                {/* 메인 스캔 프리뷰 영역 */}
-                <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
-                  {/* 스캐닝 라인 애니메이션 */}
-                  <div 
-                    className="absolute inset-x-0 z-10 h-12 w-full bg-gradient-to-b from-transparent via-blue-500/10 to-transparent"
-                    style={{ animation: 'scanLine 3s ease-in-out infinite' }}
-                  />
-                  
-                  <div className="space-y-3 opacity-40">
-                    <div className="h-4 w-1/3 rounded-md bg-slate-200" />
-                    <div className="space-y-2">
-                      <div className="h-2 w-full rounded-md bg-slate-200" />
-                      <div className="h-2 w-11/12 rounded-md bg-slate-200" />
-                      <div className="h-2 w-10/12 rounded-md bg-slate-200" />
+                    <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold tracking-tight text-slate-900">
+                          전략 리포트 스캔
+                        </h3>
+                        <p className="mt-1.5 text-sm font-medium text-slate-500">
+                          AI가 포트폴리오의 핵심 역량을 정밀하게 분석하고 있습니다
+                        </p>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 pt-2">
-                      {[0, 1, 2].map((i) => (
-                        <div key={i} className="h-12 rounded-lg bg-slate-200" />
-                      ))}
-                    </div>
-                  </div>
-                </div>
 
-                {/* 우측 체크리스트 영역 */}
-                <div className="flex flex-col justify-center space-y-3 rounded-2xl bg-slate-50/50 p-4 border border-slate-100">
-                  <p className="text-[13px] font-bold text-slate-800">분석 프로세스</p>
-                  <div className="space-y-3">
-                    {[
-                      { t: 30, l: '데이터 정밀 대조' },
-                      { t: 60, l: '역량 구조 정합 확인' },
-                      { t: 90, l: '최종 리포트 생성' }
-                    ].map((step, idx) => {
-                      const done = progress >= step.t;
-                      const active = progress >= step.t - 30 && progress < step.t;
-                      return (
-                        <div key={idx} className={`flex items-center gap-3 transition-opacity duration-300 ${done || active ? 'opacity-100' : 'opacity-40'}`}>
-                          <div className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
-                            done ? 'bg-slate-800 border-slate-800' : 'border-slate-300'
-                          }`}>
-                            {done && <span className="text-[10px] text-white">✓</span>}
-                            {active && <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-800" />}
+                    <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_220px]">
+                      {/* 메인 스캔 프리뷰 영역 */}
+                      <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+                        {/* 스캐닝 라인 애니메이션 */}
+                        <div
+                          className="absolute inset-x-0 z-10 h-12 w-full bg-gradient-to-b from-transparent via-blue-500/10 to-transparent"
+                          style={{ animation: 'scanLine 3s ease-in-out infinite' }}
+                        />
+
+                        <div className="space-y-3 opacity-40">
+                          <div className="h-4 w-1/3 rounded-md bg-slate-200" />
+                          <div className="space-y-2">
+                            <div className="h-2 w-full rounded-md bg-slate-200" />
+                            <div className="h-2 w-11/12 rounded-md bg-slate-200" />
+                            <div className="h-2 w-10/12 rounded-md bg-slate-200" />
                           </div>
-                          <span className={`text-xs font-medium ${done ? 'text-slate-900' : 'text-slate-500'}`}>
-                            {step.l}
-                          </span>
+                          <div className="grid grid-cols-3 gap-2 pt-2">
+                            {[0, 1, 2].map((i) => (
+                              <div key={i} className="h-12 rounded-lg bg-slate-200" />
+                            ))}
+                          </div>
                         </div>
-                      );
-                    })}
+                      </div>
+
+                      {/* 우측 체크리스트 영역 */}
+                      <div className="flex flex-col justify-center space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
+                        <p className="text-[13px] font-bold text-slate-800">분석 프로세스</p>
+                        <div className="space-y-3">
+                          {[
+                            { t: 30, l: '데이터 정밀 대조' },
+                            { t: 60, l: '역량 구조 정합 확인' },
+                            { t: 90, l: '최종 리포트 생성' },
+                          ].map((step, idx) => {
+                            const done = progress >= step.t;
+                            const active = progress >= step.t - 30 && progress < step.t;
+                            return (
+                              <div
+                                key={idx}
+                                className={`flex items-center gap-3 transition-opacity duration-300 ${done || active ? 'opacity-100' : 'opacity-40'}`}
+                              >
+                                <div
+                                  className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
+                                    done ? 'border-slate-800 bg-slate-800' : 'border-slate-300'
+                                  }`}
+                                >
+                                  {done && <span className="text-[10px] text-white">✓</span>}
+                                  {active && (
+                                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-800" />
+                                  )}
+                                </div>
+                                <span
+                                  className={`text-xs font-medium ${done ? 'text-slate-900' : 'text-slate-500'}`}
+                                >
+                                  {step.l}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 하단 진행바 */}
+                    <div className="mt-6">
+                      <div className="mb-2 flex justify-between">
+                        <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                          System Status
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-400">Processing...</span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-slate-800 transition-all duration-500 ease-out"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {loading && (
+                  <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 shadow-lg shadow-slate-200/40 backdrop-blur">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[12px] font-bold tracking-wider text-slate-500 uppercase">
+                        합격 전략을 분석 중입니다···
+                      </span>
+                      <span className="text-[12px] font-bold text-slate-500">{progress}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-slate-800 transition-all duration-500 ease-out"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="mb-4 flex items-center gap-3 text-[19px] font-black tracking-tight text-[#1a1a1a]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                      <MousePointerClick className="h-5 w-5" />
+                    </span>
+                    분석 요약
+                  </h4>
+                  <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
+                    <p
+                      className={`text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                        loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                      }`}
+                    >
+                      {loading ? (
+                        '분석 중'
+                      ) : (
+                        <>
+                          <span className="font-black text-blue-500">{headline.highlight}</span>
+                          <br></br>
+                          {headline.line1}
+                        </>
+                      )}
+                    </p>
+                    <p
+                      className={`text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                        loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                      }`}
+                    >
+                      {loading ? '' : <>{headline.line2}</>}
+                    </p>
+                    <p
+                      className={`text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                        loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                      }`}
+                    >
+                      {loading ? '' : headline.line3}
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              {/* 하단 진행바 */}
-              <div className="mt-6">
-                <div className="flex justify-between mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">System Status</span>
-                  <span className="text-[11px] font-bold text-slate-400">Processing...</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full bg-slate-800 transition-all duration-500 ease-out"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
 
                 {error && (
                   <div className="rounded-2xl border border-red-100 bg-red-50/70 px-5 py-4 text-[13px] font-bold text-red-600">
@@ -982,62 +1120,70 @@ function ReasonModal({
                   </div>
                 )}
 
-                {!loading && (
-                  <>
-                {/* 1 */}
-                <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                      <Sparkles className="h-5 w-5" />
-                    </span>
-                    {portfolioFocus?.title ?? '포트폴리오 강조 포인트'}
-                  </h4>
-
-                  <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
-                    <p className="max-w-[62ch] text-[16px] leading-relaxed font-medium text-[#4a4a4a] sm:text-[17px]">
-                      {portfolioFocus?.text ?? '...'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 2 */}
-                <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                      <KeyRound className="h-5 w-5" />
-                    </span>
-                    {writingCheats?.title ?? '지원서 작성 치트키'}
-                  </h4>
-
-                  <div className="flex flex-wrap gap-2.5">
-                    {(writingCheats?.tags ?? ['#...']).map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-xl border-2 border-gray-100 bg-white px-4 py-2 text-[14px] font-bold text-gray-600 shadow-sm"
-                      >
-                        {tag}
+                <>
+                  {/* 1 */}
+                  <div>
+                    <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                        <Sparkles className="h-5 w-5" />
                       </span>
-                    ))}
-                  </div>
-                </div>
+                      {portfolioFocus?.title ?? '포트폴리오 강조 포인트'}
+                    </h4>
 
-                {/* 3 */}
-                <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                      <Puzzle className="h-5 w-5" />
-                    </span>
-                    {strategyGuide?.title ?? '합격 전략 가이드'}
-                  </h4>
-
-                  <div className="rounded-2xl border-2 border-dashed border-[#d6d2c4] bg-[#fcfcfc] p-6 sm:p-7">
-                    <p className="max-w-[62ch] text-[16px] leading-loose font-medium text-[#4a4a4a] sm:text-[17px]">
-                      {strategyGuide?.text ?? '...'}
-                    </p>
+                    <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
+                      <p
+                        className={`w-full text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                          loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                        }`}
+                      >
+                        {loading ? '분석 중' : (portfolioFocus?.text ?? '...')}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                  </>
-                )}
+
+                  {/* 2 */}
+                  <div>
+                    <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                        <KeyRound className="h-5 w-5" />
+                      </span>
+                      {writingCheats?.title ?? '지원서 작성 치트키'}
+                    </h4>
+
+                    <div className="flex flex-wrap gap-2.5">
+                      {(loading ? ['분석 중'] : (writingCheats?.tags ?? ['#...'])).map((tag) => (
+                        <span
+                          key={tag}
+                          className={`rounded-xl border-2 border-gray-100 bg-white px-4 py-2 text-[14px] font-bold shadow-sm ${
+                            loading ? 'text-gray-300' : 'text-gray-600'
+                          }`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3 */}
+                  <div>
+                    <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                        <Puzzle className="h-5 w-5" />
+                      </span>
+                      {strategyGuide?.title ?? '합격 전략 가이드'}
+                    </h4>
+
+                    <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
+                      <p
+                        className={`w-full text-[16px] leading-loose font-medium sm:text-[17px] ${
+                          loading ? 'text-gray-300' : 'text-[#4a4a4a]'
+                        }`}
+                      >
+                        {loading ? '분석 중' : (strategyGuide?.text ?? '...')}
+                      </p>
+                    </div>
+                  </div>
+                </>
               </div>
             </div>
 
@@ -1088,38 +1234,37 @@ export default function RecommendCompanyPage() {
       if (section.key === 'writingCheats') {
         return {
           key: 'writingCheats',
-          title: section.title || 'Writing Cheats',
+          title: '지원서 작성 치트키',
           tags: section.tags ?? [],
         };
       }
       if (section.key === 'portfolioFocus') {
         return {
           key: 'portfolioFocus',
-          title: section.title || 'Portfolio Focus',
+          title: '포트폴리오 강조 포인트',
           text: section.text ?? '',
         };
       }
       if (section.key === 'strategyGuide') {
         return {
           key: 'strategyGuide',
-          title: section.title || 'Strategy Guide',
+          title: '합격 전략 가이드',
           text: section.text ?? '',
         };
       }
       if (section.tags && section.tags.length > 0) {
         return {
           key: 'writingCheats',
-          title: section.title || 'Writing Cheats',
+          title: '지원서 작성 치트키',
           tags: section.tags,
         };
       }
       return {
         key: 'strategyGuide',
-        title: section.title || 'Strategy Guide',
+        title: '합격 전략 가이드',
         text: section.text ?? '',
       };
     });
-
 
   // TODO: 실제 API로 교체 시, companies를 fetch로 받아서 setCompanies 하면 됨
   useEffect(() => {
@@ -1202,17 +1347,13 @@ export default function RecommendCompanyPage() {
     };
   }, [portfolioId]);
 
-
   const companies = apiCompanies;
 
   const companiesWithCounts = useMemo(
     () =>
       companies.map((company) => ({
         ...company,
-        openingsCount:
-          openingsCountMap[company.companyId] ??
-          company.openingsCount ??
-          0,
+        openingsCount: openingsCountMap[company.companyId] ?? company.openingsCount ?? 0,
       })),
     [companies, openingsCountMap],
   );
@@ -1317,10 +1458,6 @@ export default function RecommendCompanyPage() {
 
   const isScore = sortBy === 'matchScore';
   const isOpenings = sortBy === 'openingsCount';
-  const topPortfolioContent = sortedCompanies[0]?.portfolioContent ?? '';
-  const selectedCompany =
-    sortedCompanies.find((company) => company.companyId === selectedCompanyId) ??
-    sortedCompanies[0];
 
   useEffect(() => {
     if (!sortedCompanies.length) return;
@@ -1360,81 +1497,13 @@ export default function RecommendCompanyPage() {
 
         {isLoading && (
           <div className="mb-6 rounded-2xl border border-gray-100 bg-white px-6 py-4 text-[13px] font-bold text-gray-500">
-            추천 기업 데이터를 분석 중입니다…
+            추천 기업 데이터를 분석 중입니다···
           </div>
         )}
 
         {loadError && (
           <div className="mb-6 rounded-2xl border border-red-100 bg-red-50/70 px-6 py-4 text-[13px] font-bold text-red-600">
             {loadError}
-          </div>
-        )}
-
-        {/* 포트폴리오 요약: 페이지당 1회만 표시, 토글 + 색상 강조 */}
-        {sortedCompanies.length > 0 && (
-          <div className="mb-10 pl-6">
-            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
-              <div className="flex flex-col gap-3">
-                <div className="px-6 pt-6">
-                  <p className="text-[12px] font-bold uppercase tracking-wider text-blue-500">
-                    Portfolio vs Company
-                  </p>
-                  <h3 className="mt-1 text-[18px] font-black text-gray-900">
-                    프로젝트·도메인·문제 비교
-                  </h3>
-                  <p className="mt-1 text-[13px] font-medium text-gray-500">
-                    추천 기업을 선택해 내 포트폴리오와 항목별로 비교하세요.
-                  </p>
-                </div>
-                <div className="px-6 pb-6">
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {sortedCompanies.map((company, idx) => {
-                      const selected = company.companyId === selectedCompany?.companyId;
-                      const isTop = idx === 0;
-                      return (
-                        <button
-                          key={company.companyId}
-                          type="button"
-                          onClick={() => setSelectedCompanyId(company.companyId)}
-                          className={`rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition ${
-                            selected
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'border border-gray-200 text-gray-600 hover:border-blue-200 hover:text-blue-600'
-                          }`}
-                        >
-                          {company.name}
-                          {isTop && (
-                            <span
-                              className={`ml-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                selected
-                                  ? 'bg-white/20 text-white'
-                                  : 'bg-blue-50 text-blue-600'
-                              }`}
-                            >
-                              가장 추천
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 px-6 pb-4 text-[12px] font-semibold text-gray-500">
-                <span className="h-2 w-2 rounded-full bg-blue-500" />
-                포트폴리오
-                <span className="ml-3 h-2 w-2 rounded-full bg-indigo-500" />
-                기업 과제
-              </div>
-
-              {selectedCompany && (
-                <ComparisonTable
-                  portfolioContent={topPortfolioContent}
-                  companyContent={selectedCompany.companyContent}
-                  weights={selectedCompany.weights}
-                />
-              )}
-            </div>
           </div>
         )}
 
@@ -1506,4 +1575,3 @@ export default function RecommendCompanyPage() {
     </div>
   );
 }
-
