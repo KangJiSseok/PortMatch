@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useLogout } from '@/hooks/useAuth';
+import { useMessenger } from '@/hooks/useMessenger';
 
 interface NavActionProps {
   to?: string;
@@ -73,9 +74,7 @@ const SearchBar = () => {
       />
       <button
         onClick={handleSearch}
-        className={`absolute top-1/2 right-5 transition-colors duration-300 ${isSearchActive
-          ? 'text-point-blue animate-search-active'
-          : 'text-slate-gray -translate-y-1/2'
+        className={`absolute top-1/2 right-5 transition-colors duration-300 ${isSearchActive ? 'text-point-blue animate-search-active' : 'text-slate-gray -translate-y-1/2'
           }`}
       >
         <svg
@@ -101,6 +100,7 @@ function Navbar() {
   const location = useLocation();
   const { user, isLoggedIn } = useAuthStore();
   const { mutate: performLogout } = useLogout();
+  const { startNewChat } = useMessenger();
   const [logoKey, setLogoKey] = useState(0);
 
   const handleLogout = async () => {
@@ -112,6 +112,18 @@ function Navbar() {
 
   const handleLogoClick = () => {
     setLogoKey((prev) => prev + 1);
+  };
+
+  const handleTestChat = async () => {
+    const targetUid = window.prompt('대화할 상대방의 UID를 입력하세요:');
+    if (!targetUid) return;
+
+    try {
+      await startNewChat(targetUid, '테스트 유저', '');
+    } catch (error) {
+      console.error(error);
+      alert('채팅방 생성에 실패했습니다.');
+    }
   };
 
   const logoPart1 = 'PORT'.split('');
@@ -180,7 +192,12 @@ function Navbar() {
 
           <div className="flex items-center gap-8">
             {user?.role === 'APPLICANT' && <NavAction to="/resumes">이력서 관리</NavAction>}
-            {user?.role === 'COMPANY' && <NavAction to="/company/jobs">공고 관리</NavAction>}
+            {user?.role === 'COMPANY' && (
+              <>
+                <NavAction to="/company/jobs">공고 관리</NavAction>
+                <NavAction onClick={handleTestChat}>채팅 테스트</NavAction>
+              </>
+            )}
           </div>
         </div>
 

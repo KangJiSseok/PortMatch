@@ -8,8 +8,8 @@ import {
   User,
   Building2,
   Calendar,
-  RotateCcw,
   CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { useMessenger } from '../../hooks/useMessenger';
 import { useAuth } from '../../hooks/useAuth';
@@ -20,7 +20,7 @@ import type { ChatRoom, Message } from '../../types/messenger';
 const CompanyLogo = ({ room }: { room: ChatRoom }) => {
   const [imgError, setImgError] = useState(false);
 
-  if (room.senderType === 'company' && room.logoUrl && !imgError) {
+  if (room.logoUrl && !imgError) {
     return (
       <img
         src={room.logoUrl}
@@ -33,7 +33,7 @@ const CompanyLogo = ({ room }: { room: ChatRoom }) => {
 
   return (
     <div className="bg-soft-pebble text-midnight-ink flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
-      {room.senderType === 'company' ? <Building2 size={24} /> : <User size={24} />}
+      {room.companyName ? <Building2 size={24} /> : <User size={24} />}
     </div>
   );
 };
@@ -82,22 +82,17 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
   const {
     rooms,
     messages,
-    setMessages,
     setCurrentRoomId,
     sendMessage,
-    refreshMessages,
     acceptInterview,
+    declineInterview,
   } = useMessenger();
   const { user } = useAuth();
   const [input, setInput] = useState('');
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
-  const [isAccepting, setIsAccepting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const room = rooms.find((r: ChatRoom) => r.id === roomId);
-
-  useEffect(() => {
-    refreshMessages();
-  }, [refreshMessages, roomId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -118,18 +113,30 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
   };
 
   const handleAccept = async (msg: Message) => {
-    if (msg.isAccepted || isAccepting) return;
+    if (msg.isAccepted || msg.isDeclined || isProcessing) return;
     if (!window.confirm('이 면접 제안을 수락하시겠습니까?')) return;
 
-    setIsAccepting(true);
+    setIsProcessing(true);
     try {
       await acceptInterview(msg.id, msg.interviewId || 'pending', room?.name || '기업');
-      alert('면접 제안을 수락했습니다.');
     } catch (error) {
       console.error(error);
-      alert('수락 처리 중 오류가 발생했습니다.');
     } finally {
-      setIsAccepting(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDecline = async (msg: Message) => {
+    if (msg.isAccepted || msg.isDeclined || isProcessing) return;
+    if (!window.confirm('이 면접 제안을 거절하시겠습니까?')) return;
+
+    setIsProcessing(true);
+    try {
+      await declineInterview(msg.id, msg.interviewId || 'pending', room?.name || '기업');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -145,7 +152,7 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
           </button>
           <div className="flex items-center gap-2">
             <span className="text-midnight-ink text-sm font-black tracking-tight">{room.name}</span>
-            {room.senderType === 'company' && (
+            {room.companyName && (
               <span className="bg-point-blue/10 text-point-blue rounded px-1.5 py-0.5 text-[9px] font-black uppercase">
                 Corp
               </span>
@@ -159,106 +166,67 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
         {messages.map((msg: Message) => {
           const isMe = msg.senderId === String(user?.userId);
           const isInterview = msg.type === 'interview';
-          const isError = msg.status === 'error';
-          const isSending = msg.status === 'sending';
 
           return (
             <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
               <div className="group relative max-w-[85%]">
                 <div
-                  className={`rounded-2xl border p-4 shadow-sm transition-all ${
-                    msg.isAccepted
-                      ? 'border-point-blue/30 bg-point-blue/5'
-                      : isError
-                        ? 'border-error/50 bg-error/5 text-error'
-                        : isInterview
-                          ? 'bg-point-blue/5 border-point-blue/30 text-midnight-ink'
-                          : isMe
-                            ? 'bg-point-blue border-point-blue text-pure-white'
-                            : 'bg-pure-white border-soft-pebble text-midnight-ink'
-                  } ${isSending ? 'opacity-70' : 'opacity-100'}`}
+                  className={`rounded-2xl border p-4 shadow-sm transition-all ${msg.isAccepted
+                    ? 'border-point-blue/30 bg-point-blue/5'
+                    : msg.isDeclined
+                      ? 'border-gray-200 bg-gray-50 opacity-80'
+                      : isInterview
+                        ? 'bg-point-blue/5 border-point-blue/30 text-midnight-ink'
+                        : isMe
+                          ? 'bg-point-blue border-point-blue text-pure-white'
+                          : 'bg-pure-white border-soft-pebble text-midnight-ink'
+                    }`}
                 >
                   {isInterview && (
                     <div className="mb-2 flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <Calendar
-                          size={12}
-                          className={msg.isAccepted ? 'text-point-blue' : 'text-point-blue'}
-                        />
-                        <span
-                          className={`text-[10px] font-black uppercase ${msg.isAccepted ? 'text-point-blue' : 'text-point-blue'}`}
-                        >
-                          {msg.isAccepted ? 'Interview Accepted' : 'Interview Request'}
+                        <Calendar size={12} className={msg.isDeclined ? 'text-slate-gray' : 'text-point-blue'} />
+                        <span className={`text-[10px] font-black uppercase ${msg.isDeclined ? 'text-slate-gray' : 'text-point-blue'}`}>
+                          {msg.isAccepted ? 'Accepted' : msg.isDeclined ? 'Declined' : 'Interview Request'}
                         </span>
                       </div>
                       {msg.isAccepted && <CheckCircle2 size={14} className="text-point-blue" />}
+                      {msg.isDeclined && <XCircle size={14} className="text-slate-gray" />}
                     </div>
                   )}
-                  <div
-                    className={`mb-2 flex items-start justify-between border-b pb-2 ${isMe && !isInterview ? 'border-pure-white/20' : 'border-midnight-ink/10'}`}
-                  >
+
+                  <div className={`mb-2 flex items-start justify-between border-b pb-2 ${isMe && !isInterview ? 'border-pure-white/20' : 'border-midnight-ink/10'}`}>
                     <span className="text-[9px] font-black tracking-widest uppercase opacity-70">
                       {isMe ? 'Sent' : 'Received'}
                     </span>
                     <span className="text-[9px] font-bold opacity-70">
-                      {msg.createdAt
-                        ?.toDate()
-                        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  <p
-                    className={`text-xs leading-relaxed font-medium whitespace-pre-wrap ${isInterview ? 'font-bold' : ''}`}
-                  >
+
+                  <p className={`text-xs leading-relaxed font-medium whitespace-pre-wrap ${isInterview ? 'font-bold' : ''}`}>
                     {msg.text}
                   </p>
 
-                  {isInterview && !isMe && (
-                    <div className="mt-4">
-                      {msg.isAccepted ? (
-                        <div className="bg-point-blue/10 text-point-blue flex w-full items-center justify-center gap-2 rounded-lg py-3 text-[11px] font-black">
-                          <CheckCircle2 size={14} /> 수락 완료
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleAccept(msg)}
-                          disabled={isAccepting}
-                          className="bg-point-blue text-pure-white hover:bg-midnight-ink mt-2 w-full rounded-lg py-3 text-[11px] font-black shadow-md transition-all active:scale-95 disabled:opacity-50"
-                        >
-                          {isAccepting ? '처리 중...' : '일정 확인 및 수락하기'}
-                        </button>
-                      )}
+                  {isInterview && !isMe && !msg.isAccepted && !msg.isDeclined && (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => handleAccept(msg)}
+                        disabled={isProcessing}
+                        className="bg-point-blue text-pure-white flex-1 rounded-lg py-3 text-[11px] font-black shadow-md transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        수락
+                      </button>
+                      <button
+                        onClick={() => handleDecline(msg)}
+                        disabled={isProcessing}
+                        className="bg-soft-pebble text-midnight-ink flex-1 rounded-lg py-3 text-[11px] font-black transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        거절
+                      </button>
                     </div>
                   )}
                 </div>
-
-                {isError && isMe && (
-                  <div className="mt-2 flex items-center gap-3">
-                    <span className="text-error text-[10px] font-bold">전송 실패</span>
-                    <button
-                      onClick={() => {
-                        setMessages((prev: Message[]) => prev.filter((m) => m.id !== msg.id));
-                        sendMessage(msg.text, msg.type, msg.interviewId);
-                      }}
-                      className="text-point-blue flex items-center gap-1 text-[10px] font-black hover:underline"
-                    >
-                      <RotateCcw size={10} /> 다시 시도
-                    </button>
-                    <button
-                      onClick={() =>
-                        setMessages((prev: Message[]) => prev.filter((m) => m.id !== msg.id))
-                      }
-                      className="text-silver-mist hover:text-midnight-ink text-[10px] font-bold"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                )}
-
-                {isSending && (
-                  <span className="text-silver-mist mt-1 block animate-pulse text-[9px] font-bold">
-                    전송 중...
-                  </span>
-                )}
               </div>
             </div>
           );
@@ -291,11 +259,8 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all ${
-                  input.trim()
-                    ? 'bg-point-blue text-pure-white shadow-md'
-                    : 'bg-soft-pebble text-silver-mist'
-                }`}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all ${input.trim() ? 'bg-point-blue text-pure-white shadow-md' : 'bg-soft-pebble text-silver-mist'
+                  }`}
               >
                 쪽지 보내기 <Send size={14} />
               </button>
@@ -329,14 +294,22 @@ const MessengerContainer = () => {
         className="bg-point-blue text-pure-white fixed right-8 bottom-8 z-9999 flex h-16 w-16 items-center justify-center rounded-full shadow-2xl transition-transform hover:scale-110 active:scale-95"
       >
         <Mail size={32} />
-        {totalUnreadCount > 0 && (
-          <span className="bg-error border-pure-white text-pure-white absolute -top-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-4 text-[12px] font-black">
-            {totalUnreadCount}
-          </span>
-        )}
-      </button>
+        {
+          totalUnreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-7 w-7 items-center justify-center 
+                   bg-error text-pure-white text-[12px] font-black
+                   rounded-full 
+                   ring-2 ring-pure-white 
+                   shadow-[0_0_10px_rgba(255,59,48,0.5)] 
+                   border border-white/30
+                   animate-bounce-subtle">
+              {totalUnreadCount}
+            </span>
+          )}
+      </button >
     </>
   );
 };
 
 export default MessengerContainer;
+
