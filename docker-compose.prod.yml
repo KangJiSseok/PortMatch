@@ -105,8 +105,8 @@ services:
       - OPENVIDU_HTTPS_PORT=8443
       - HTTPS_PORT=8443
       - CERTIFICATE_TYPE=owncert
-      - OWNCERT_CRT=/etc/letsencrypt/live/i14d205.p.ssafy.io/fullchain.pem
-      - OWNCERT_KEY=/etc/letsencrypt/live/i14d205.p.ssafy.io/privkey.pem
+      - OWNCERT_CERTIFICATE=/etc/letsencrypt/live/i14d205.p.ssafy.io/fullchain.pem
+      - OWNCERT_PRIVATE_KEY=/etc/letsencrypt/live/i14d205.p.ssafy.io/privkey.pem
       - OPENVIDU_PRO_LICENSE=
       - KMS_URIS=["ws://kurento:8888/kurento"]
       - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900
