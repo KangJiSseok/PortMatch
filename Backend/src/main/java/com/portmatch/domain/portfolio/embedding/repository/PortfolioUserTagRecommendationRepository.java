@@ -15,6 +15,9 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
             t.tech_similarity AS techSimilarity,
             t.keyword_similarity AS keywordSimilarity,
             t.architecture_similarity AS architectureSimilarity,
+            t.tech_text AS techText,
+            t.keyword_text AS keywordText,
+            t.architecture_text AS architectureText,
             t.similarity AS similarity
         FROM (
             SELECT
@@ -23,6 +26,9 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
                 COALESCE(tech.tech_similarity, 0) AS tech_similarity,
                 COALESCE(keyword.keyword_similarity, 0) AS keyword_similarity,
                 COALESCE(arch.architecture_similarity, 0) AS architecture_similarity,
+                tech.tech_text AS tech_text,
+                keyword.keyword_text AS keyword_text,
+                arch.architecture_text AS architecture_text,
                 (
                     COALESCE(tech.tech_similarity, 0) * :techWeight
                   + COALESCE(keyword.keyword_similarity, 0) * :keywordWeight
@@ -37,21 +43,33 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
                     ) / (:techWeight + :keywordWeight + :architectureWeight) DESC
                 ) AS rn
             FROM portfolios pf
-            LEFT JOIN (
-                SELECT portfolio_id, MAX(1 - (embedding <=> CAST(:techEmbedding AS vector))) AS tech_similarity
+            LEFT JOIN LATERAL (
+                SELECT
+                    tech_text,
+                    1 - (embedding <=> CAST(:techEmbedding AS vector)) AS tech_similarity
                 FROM portfolio_user_tech_embeddings
-                GROUP BY portfolio_id
-            ) tech ON tech.portfolio_id = pf.id
-            LEFT JOIN (
-                SELECT portfolio_id, MAX(1 - (embedding <=> CAST(:keywordEmbedding AS vector))) AS keyword_similarity
+                WHERE portfolio_id = pf.id
+                ORDER BY tech_similarity DESC
+                LIMIT 1
+            ) tech ON true
+            LEFT JOIN LATERAL (
+                SELECT
+                    keyword_text,
+                    1 - (embedding <=> CAST(:keywordEmbedding AS vector)) AS keyword_similarity
                 FROM portfolio_user_keyword_embeddings
-                GROUP BY portfolio_id
-            ) keyword ON keyword.portfolio_id = pf.id
-            LEFT JOIN (
-                SELECT portfolio_id, MAX(1 - (embedding <=> CAST(:architectureEmbedding AS vector))) AS architecture_similarity
+                WHERE portfolio_id = pf.id
+                ORDER BY keyword_similarity DESC
+                LIMIT 1
+            ) keyword ON true
+            LEFT JOIN LATERAL (
+                SELECT
+                    architecture_text,
+                    1 - (embedding <=> CAST(:architectureEmbedding AS vector)) AS architecture_similarity
                 FROM portfolio_user_architecture_embeddings
-                GROUP BY portfolio_id
-            ) arch ON arch.portfolio_id = pf.id
+                WHERE portfolio_id = pf.id
+                ORDER BY architecture_similarity DESC
+                LIMIT 1
+            ) arch ON true
         ) t
         WHERE t.rn = 1
         ORDER BY t.similarity DESC

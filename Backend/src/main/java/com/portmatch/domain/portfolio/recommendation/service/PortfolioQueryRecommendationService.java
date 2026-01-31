@@ -26,7 +26,7 @@ public class PortfolioQueryRecommendationService {
         this.tagEmbeddingRepository = tagEmbeddingRepository;
     }
 
-    public List<PortfolioQueryRecommendationResponse> recommendByQuery(String query, Integer limit) {
+    public PortfolioQueryRecommendationResponse recommendByQuery(String query, Integer limit) {
         int resolvedLimit = (limit == null || limit <= 0) ? 10 : limit;
         PortfolioQueryEmbeddingResponse embedding = embeddingClient.embedQuery(
                 new PortfolioQueryEmbeddingRequest(query, null)
@@ -50,16 +50,26 @@ public class PortfolioQueryRecommendationService {
                 resolvedLimit
         );
 
-        return rows.stream()
-                .map(r -> new PortfolioQueryRecommendationResponse(
+        List<PortfolioQueryRecommendationResponse.Item> items = rows.stream()
+                .map(r -> new PortfolioQueryRecommendationResponse.Item(
                         r.getUserId(),
                         r.getPortfolioId(),
                         safe(r.getTechSimilarity()),
                         safe(r.getKeywordSimilarity()),
                         safe(r.getArchitectureSimilarity()),
+                        r.getTechText(),
+                        r.getKeywordText(),
+                        r.getArchitectureText(),
                         safe(r.getSimilarity())
                 ))
                 .toList();
+
+        return new PortfolioQueryRecommendationResponse(
+                embedding.tech(),
+                embedding.keywords(),
+                embedding.architectureExperience(),
+                items
+        );
     }
 
     private double safe(Double value) {

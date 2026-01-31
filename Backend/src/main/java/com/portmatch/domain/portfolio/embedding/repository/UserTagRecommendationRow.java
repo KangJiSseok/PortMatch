@@ -6,5 +6,8 @@ public interface UserTagRecommendationRow {
     Double getTechSimilarity();
     Double getKeywordSimilarity();
     Double getArchitectureSimilarity();
+    String getTechText();
+    String getKeywordText();
+    String getArchitectureText();
     Double getSimilarity();
 }

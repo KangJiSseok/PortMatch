@@ -37,7 +37,7 @@ public class PortfolioQueryRecommendationController {
             content = @Content(schema = @Schema(implementation = PortfolioQueryRecommendationResponse.class))
     )
     @PostMapping("/recommendations/users")
-    public BaseApiResponse<List<PortfolioQueryRecommendationResponse>> recommendUsersByQuery(
+    public BaseApiResponse<PortfolioQueryRecommendationResponse> recommendUsersByQuery(
             @RequestBody PortfolioQueryRecommendationRequest request
     ) {
         String query = request == null ? null : request.query();

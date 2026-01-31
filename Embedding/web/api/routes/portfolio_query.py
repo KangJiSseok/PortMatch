@@ -36,20 +36,23 @@ PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You extract structured tags from a Korean user query about portfolio experience. "
+            "You extract structured tags strictly from a Korean user query about portfolio experience. "
+            "Do not infer, guess, or add information that is not explicitly stated in the query. "
+            "If nothing matches, return an empty array for that field. "
             "Return JSON only. No Markdown.",
         ),
         (
             "human",
             "질의:\n{query}\n\n"
             "아래 기준으로 JSON을 만들어 주세요:\n"
-            "- tech: 기술 스택/프레임워크/플랫폼/도구 명칭 (영어 표기 선호)\n"
-            "- keywords: 기능/주제/역량/도메인 키워드 (짧게)\n"
-            "- architecture_experience: 아키텍처/시스템 설계 관점 키워드 (짧게)\n"
+            "- tech: 질의에 '명시된' 기술 스택/프레임워크/플랫폼/도구 명칭만 (영어 표기 선호)\n"
+            "- keywords: 질의에 '명시된' 기능/주제/역량/도메인 키워드만 (짧게)\n"
+            "- architecture_experience: 질의에 '명시된' 아키텍처/시스템 설계 관점의 한 문장 요약만\n"
             "- 각 필드는 문자열 배열\n"
-            "- 추론은 보수적으로, 중복/동의어 제거\n"
+            "- 추론/보완/추가 금지, 동의어 치환 금지 (질의에 없는 단어는 포함 금지)\n"
+            "- 중복만 제거\n"
             "출력 예시:\n"
-            '{{"tech":["Kafka"], "keywords":["실시간 분석"], "architecture_experience":["분산 처리","수평 확장"]}}\n',
+            '{{"tech":["Kafka"], "keywords":["실시간 분석"], "architecture_experience":["단일 서버 구조를 분산 서버 구조로 확장"]}}\n',
         ),
     ]
 )
