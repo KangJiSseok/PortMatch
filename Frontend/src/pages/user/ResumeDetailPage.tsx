@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useBlocker } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -65,6 +65,12 @@ interface ResumeData {
   selectedSelfIntroId: string | null;
 }
 
+interface ApiResponse<T> {
+  status: boolean;
+  data: T;
+  message?: string;
+}
+
 interface SectionCardProps {
   title: string;
   children: React.ReactNode;
@@ -113,6 +119,87 @@ function ResumeDetailPage() {
   const { resumeId } = useParams<{ resumeId: string }>();
   const navigate = useNavigate();
   const [user, setUser] = useState<UserData | null>(null);
+  const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  const mapApiToResume = useCallback((apiData: any, currentUser: UserData | null): ResumeData => {
+    const profile = apiData.profile || {};
+    return {
+      id: String(apiData.id),
+      userId: apiData.userId,
+      title: apiData.title || '제목 없음',
+      name: profile.name || currentUser?.name || '',
+      contact: profile.contact || '',
+      email: profile.email || currentUser?.email || '',
+      address: profile.address || '',
+      profileImage: profile.profileImageUrl || null,
+      experience: (apiData.careers || []).map((c: any) => ({
+        company: c.company,
+        role: c.role,
+        period: `${c.periodStart?.replace(/-/g, '.').slice(0, 7) || ''} - ${c.periodEnd?.replace(/-/g, '.').slice(0, 7) || ''}`,
+      })),
+      education: (apiData.educations || []).map((e: any) => ({
+        school: e.school,
+        major: e.major,
+        status: e.status,
+        period: `${e.periodStart?.replace(/-/g, '.').slice(0, 7) || ''} - ${e.periodEnd?.replace(/-/g, '.').slice(0, 7) || ''}`,
+      })),
+      selectedPortfolioId: apiData.portfolio?.portfolioId || null,
+      selectedSelfIntroId: apiData.selfIntroductions?.[0]?.id || null,
+    };
+  }, []);
+
+  const fetchResumes = useCallback(async () => {
+    try {
+      const response = await fetch('/api/resumes');
+      if (response.ok) {
+        const json: ApiResponse<any[]> = await response.json();
+
+        // [디버깅] 서버에서 실제로 어떤 목록을 주는지 콘솔에서 확인하세요.
+        console.log("Server Resume List:", json.data);
+
+        if (json.status && Array.isArray(json.data)) {
+          const resumeMap: Record<string, ResumeData> = {};
+
+          json.data.forEach((r) => {
+            // ID가 없거나 유효하지 않은 데이터는 목록에 넣지 않음 (유령 방지)
+            if (r.id !== undefined && r.id !== null) {
+              resumeMap[String(r.id)] = {
+                id: String(r.id),
+                title: r.title || '제목 없음',
+              } as ResumeData;
+            }
+          });
+
+          setAllResumes(resumeMap);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch resumes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const fetchResumeDetail = useCallback(async (id: string) => {
+    if (!user) return;
+    try {
+      const response = await fetch(`/api/resumes/${id}`);
+      if (response.ok) {
+        const json = await response.json();
+        if (json.status && json.data) {
+          const mappedResume = mapApiToResume(json.data, user);
+          setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch resume detail:', error);
+    }
+  }, [user, mapApiToResume]);
+
+  useEffect(() => {
+    localStorage.removeItem('resumes');
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -129,7 +216,16 @@ function ResumeDetailPage() {
       }
     };
     fetchUser();
-  }, []);
+    fetchResumes();
+  }, [fetchResumes]);
+
+  useEffect(() => {
+    if (resumeId && resumeId !== 'me' && user) {
+      if (!allResumes[resumeId] || !allResumes[resumeId].name) {
+        fetchResumeDetail(resumeId);
+      }
+    }
+  }, [resumeId, user, fetchResumeDetail, allResumes]);
 
   const startNewChat = (id: string, name: string) => console.log(`${name}님과 채팅방 생성`, id);
 
@@ -139,11 +235,6 @@ function ResumeDetailPage() {
   const expRef = useRef<HTMLDivElement>(null);
   const eduRef = useRef<HTMLDivElement>(null);
   const selfIntroRef = useRef<HTMLDivElement>(null);
-
-  const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>(() => {
-    const saved = localStorage.getItem('resumes');
-    return saved ? JSON.parse(saved) : {};
-  });
 
   const [portfolios, setPortfolios] = useState<Portfolio[]>(() => {
     const saved = localStorage.getItem('portfolios');
@@ -158,15 +249,15 @@ function ResumeDetailPage() {
   const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
 
   const allResumeKeys = Object.keys(allResumes);
-  const isEmpty = allResumeKeys.length === 0;
+  const isEmpty = !isLoading && allResumeKeys.length === 0;
 
   useEffect(() => {
-    if (allResumeKeys.length > 0) {
+    if (!isLoading && allResumeKeys.length > 0) {
       if (!resumeId || resumeId === 'me' || !allResumes[resumeId]) {
         navigate(`/resumes/${allResumeKeys[0]}`, { replace: true });
       }
     }
-  }, [resumeId, allResumeKeys, allResumes, navigate]);
+  }, [resumeId, allResumeKeys, allResumes, navigate, isLoading]);
 
   const targetId = resumeId || allResumeKeys[0];
   const resume = allResumes[targetId];
@@ -243,9 +334,9 @@ function ResumeDetailPage() {
     }
   };
 
-  const handleCreateResume = () => {
+  const handleCreateResume = async () => {
     if (isEditing) return;
-    setResumeSnapshot({ ...allResumes });
+
     const baseTitle = '새로운 이력서';
     let finalTitle = baseTitle;
     let counter = 1;
@@ -254,27 +345,36 @@ function ResumeDetailPage() {
       finalTitle = `${baseTitle} ${counter}`;
       counter++;
     }
-    const newId = `resume-${Date.now()}`;
-    const newResume: ResumeData = {
-      id: newId,
-      userId: user?.userId || 'unknown',
-      title: finalTitle,
-      name: user?.name || '',
-      contact: '',
-      email: user?.email || '',
-      address: '',
-      profileImage: null,
-      education: [],
-      experience: [],
-      selectedPortfolioId: null,
-      selectedSelfIntroId: selfIntros[0]?.id || null,
-    };
-    setAllResumes((prev) => ({ ...prev, [newId]: newResume }));
-    navigate(`/resumes/${newId}`, { replace: true });
-    setTimeout(() => {
-      setIsEditing(true);
-      showToast(`${finalTitle} 작성을 시작합니다.`);
-    }, 0);
+
+    try {
+      const response = await fetch('/api/resumes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: finalTitle }),
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        if (json.status && json.data) {
+          const newResume = mapApiToResume(json.data, user);
+
+          setResumeSnapshot({ ...allResumes });
+          setAllResumes((prev) => ({ ...prev, [String(newResume.id)]: newResume }));
+
+          navigate(`/resumes/${newResume.id}`, { replace: true });
+
+          setTimeout(() => {
+            setIsEditing(true);
+            showToast(`${finalTitle} 작성을 시작합니다.`);
+          }, 0);
+        }
+      } else {
+        showToast('이력서 생성에 실패했습니다.', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to create resume:', error);
+      showToast('서버 통신 중 오류가 발생했습니다.', 'error');
+    }
   };
 
   const toggleEditMode = () => {
@@ -454,20 +554,43 @@ function ResumeDetailPage() {
     }
   };
 
-  const confirmDeleteAction = () => {
+  const confirmDeleteAction = async () => {
     if (!deleteConfirm) return;
-    const { type, index, id } = deleteConfirm;
+    const { type, id, index } = deleteConfirm;
+
     if (type === 'resume' && id !== undefined) {
-      const newAllResumes = { ...allResumes };
-      delete newAllResumes[String(id)];
-      const remainingIds = Object.keys(newAllResumes);
-      setIsEditing(false);
-      setAllResumes(newAllResumes);
-      localStorage.setItem('resumes', JSON.stringify(newAllResumes));
-      if (remainingIds.length > 0) {
-        navigate(`/resumes/${remainingIds[0]}`, { replace: true });
-      } else {
-        navigate('/resumes', { replace: true });
+      const removeLocally = () => {
+        const newAllResumes = { ...allResumes };
+        delete newAllResumes[String(id)];
+        const remainingIds = Object.keys(newAllResumes);
+        setAllResumes(newAllResumes);
+        setIsEditing(false);
+        if (remainingIds.length > 0) {
+          navigate(`/resumes/${remainingIds[0]}`, { replace: true });
+        } else {
+          navigate('/resumes', { replace: true });
+        }
+      };
+
+      try {
+        const response = await fetch(`/api/resumes/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          removeLocally();
+          showToast('이력서가 삭제되었습니다.', 'success');
+        } else {
+          if (window.confirm('서버 삭제에 실패했습니다. 목록에서만 강제로 제거할까요?')) {
+            removeLocally();
+            showToast('목록에서 강제 제거되었습니다.', 'warn');
+          }
+        }
+      } catch (error) {
+        console.error('Delete failed:', error);
+        if (window.confirm('네트워크 오류가 발생했습니다. 목록에서만 강제로 제거할까요?')) {
+          removeLocally();
+        }
       }
     } else {
       if (type === 'experience' && index !== undefined) {
@@ -599,7 +722,7 @@ function ResumeDetailPage() {
                             {Object.values(allResumes).map((r) => (
                               <div
                                 key={r.id}
-                                className={`flex cursor-pointer items-center justify-between border-b border-slate-50 px-6 py-4 transition-colors last:border-0 hover:bg-slate-50 ${r.id === targetId ? 'bg-blue-50/30' : ''}`}
+                                className={`flex cursor-pointer items-center justify-between border-b border-slate-50 px-6 py-4 transition-colors last:border-0 hover:bg-slate-50 ${String(r.id) === targetId ? 'bg-blue-50/30' : ''}`}
                                 onClick={() => {
                                   if (isEditing) {
                                     showToast(
@@ -613,7 +736,7 @@ function ResumeDetailPage() {
                                 }}
                               >
                                 <span
-                                  className={`truncate pr-4 text-lg font-bold ${r.id === targetId ? 'text-blue-600' : 'text-slate-800'}`}
+                                  className={`truncate pr-4 text-lg font-bold ${String(r.id) === targetId ? 'text-blue-600' : 'text-slate-800'}`}
                                 >
                                   {r.title}
                                 </span>
