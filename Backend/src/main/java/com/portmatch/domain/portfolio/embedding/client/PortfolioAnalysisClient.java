@@ -60,6 +60,29 @@ public class PortfolioAnalysisClient {
         }
     }
 
+    public PortfolioEmbeddingResponse embedTags(PortfolioEmbeddingRequest request) {
+        String endpoint = baseUrl + "/embeddings/portfolio-tags";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        try {
+            ResponseEntity<PortfolioEmbeddingResponse> res = restTemplate.exchange(
+                    endpoint,
+                    HttpMethod.POST,
+                    new HttpEntity<>(request, headers),
+                    PortfolioEmbeddingResponse.class
+            );
+            if (res.getBody() == null) {
+                throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_EMPTY);
+            }
+            return res.getBody();
+        } catch (RestClientException e) {
+            log.error("Embedding request failed. endpoint={}", endpoint, e);
+            throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SERVICE_UNAVAILABLE);
+        }
+    }
+
     private String normalize(String url) {
         if (url == null || url.isBlank()) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "portfolio-embedding.base-url is not configured");

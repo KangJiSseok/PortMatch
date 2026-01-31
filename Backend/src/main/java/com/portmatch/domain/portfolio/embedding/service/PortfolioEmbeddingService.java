@@ -4,10 +4,14 @@ import com.portmatch.domain.portfolio.embedding.client.PortfolioAnalysisClient;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingRequest;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingResponse;
 import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectEmbedding;
+import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectTagEmbedding;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectEmbeddingRepository;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectTagEmbeddingRepository;
 import com.portmatch.domain.portfolio.entity.Portfolio;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysis;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProject;
+import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectArchitectureExperience;
+import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectKeyword;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectTech;
 import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
@@ -35,17 +39,20 @@ public class PortfolioEmbeddingService {
     private final PortfolioRepository portfolioRepository;
     private final PortfolioAnalysisRepository analysisRepository;
     private final PortfolioProjectEmbeddingRepository embeddingRepository;
+    private final PortfolioProjectTagEmbeddingRepository tagEmbeddingRepository;
     private final PortfolioAnalysisClient embeddingClient;
 
     public PortfolioEmbeddingService(
             PortfolioRepository portfolioRepository,
             PortfolioAnalysisRepository analysisRepository,
             PortfolioProjectEmbeddingRepository embeddingRepository,
+            PortfolioProjectTagEmbeddingRepository tagEmbeddingRepository,
             PortfolioAnalysisClient embeddingClient
     ) {
         this.portfolioRepository = portfolioRepository;
         this.analysisRepository = analysisRepository;
         this.embeddingRepository = embeddingRepository;
+        this.tagEmbeddingRepository = tagEmbeddingRepository;
         this.embeddingClient = embeddingClient;
     }
 
@@ -88,6 +95,11 @@ public class PortfolioEmbeddingService {
         List<String> textsToEmbed = new ArrayList<>();
         List<FieldEmbeddingIndices> embeddingIndices = new ArrayList<>();
         List<FieldMissingFlags> missingFlags = new ArrayList<>();
+        List<String> tagContents = new ArrayList<>();
+        List<String> tagHashes = new ArrayList<>();
+        List<String> tagTexts = new ArrayList<>();
+        List<TagEmbeddingIndices> tagEmbeddingIndices = new ArrayList<>();
+        List<TagMissingFlags> tagMissingFlags = new ArrayList<>();
 
         for (PortfolioAnalysisProject p : projects) {
             projectIds.add(p.getId());
@@ -101,6 +113,21 @@ public class PortfolioEmbeddingService {
             String techStr = techs.isEmpty()
                     ? "N/A"
                     : techs.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
+
+            List<String> keywords = (p.getKeywords() == null) ? List.of()
+                    : p.getKeywords().stream()
+                    .map(PortfolioAnalysisProjectKeyword::getKeyword)
+                    .filter(k -> k != null && !k.isBlank())
+                    .toList();
+
+            List<String> architectureExperiences = (p.getArchitectureExperiences() == null) ? List.of()
+                    : p.getArchitectureExperiences().stream()
+                    .map(PortfolioAnalysisProjectArchitectureExperience::getArchitectureExperience)
+                    .filter(a -> a != null && !a.isBlank())
+                    .toList();
+
+            String keywordStr = buildTagString(keywords);
+            String architectureStr = buildTagString(architectureExperiences);
 
             String content = buildProjectEmbeddingText(
                     p.getName(),
@@ -140,6 +167,28 @@ public class PortfolioEmbeddingService {
                     isMissing(p.getProblem()),
                     isMissing(p.getSolution()),
                     techs.isEmpty()
+            ));
+
+            String tagContent = buildTagEmbeddingText(techStr, keywordStr, architectureStr);
+            tagContents.add(tagContent);
+            tagHashes.add(sha256Hex(tagContent));
+
+            int techTextIdx = tagTexts.size();
+            tagTexts.add(techStr.isBlank() ? "정보 없음" : techStr);
+            int keywordTextIdx = tagTexts.size();
+            tagTexts.add(keywordStr);
+            int architectureTextIdx = tagTexts.size();
+            tagTexts.add(architectureStr);
+
+            tagEmbeddingIndices.add(new TagEmbeddingIndices(
+                    techTextIdx,
+                    keywordTextIdx,
+                    architectureTextIdx
+            ));
+            tagMissingFlags.add(new TagMissingFlags(
+                    techs.isEmpty(),
+                    keywords.isEmpty(),
+                    architectureExperiences.isEmpty()
             ));
         }
 
@@ -190,6 +239,48 @@ public class PortfolioEmbeddingService {
                     flags.techMissing()
             );
         }
+
+        if (!tagTexts.isEmpty()) {
+            log.info("[portfolio-embedding] request tag embeddings texts={}", tagTexts.size());
+            PortfolioEmbeddingResponse tagResp = embeddingClient.embedTags(
+                    new PortfolioEmbeddingRequest(tagTexts)
+            );
+
+            if (tagResp.vectors() == null || tagResp.vectors().size() != tagTexts.size()) {
+                throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
+            }
+
+            for (int i = 0; i < projectIds.size(); i++) {
+                Long projectId = projectIds.get(i);
+                String content = tagContents.get(i);
+                String contentHash = tagHashes.get(i);
+                TagEmbeddingIndices indices = tagEmbeddingIndices.get(i);
+                TagMissingFlags flags = tagMissingFlags.get(i);
+
+                String techVector = toVectorString(tagResp.vectors().get(indices.techIdx()));
+                String keywordVector = toVectorString(tagResp.vectors().get(indices.keywordIdx()));
+                String architectureVector = toVectorString(tagResp.vectors().get(indices.architectureIdx()));
+
+                Optional<PortfolioProjectTagEmbedding> existingOpt = tagEmbeddingRepository.findByProjectId(projectId);
+                if (existingOpt.isPresent() && contentHash.equals(existingOpt.get().getContentHash())) {
+                    continue;
+                }
+
+                tagEmbeddingRepository.upsertByProjectId(
+                        portfolioId,
+                        analysis.getId(),
+                        projectId,
+                        content,
+                        contentHash,
+                        techVector,
+                        keywordVector,
+                        architectureVector,
+                        flags.techMissing(),
+                        flags.keywordMissing(),
+                        flags.architectureMissing()
+                );
+            }
+        }
         log.info("[portfolio-embedding] done portfolioId={} projects={}", portfolioId, projectIds.size());
     }
 
@@ -206,6 +297,20 @@ public class PortfolioEmbeddingService {
             boolean problemMissing,
             boolean solutionMissing,
             boolean techMissing
+    ) {
+    }
+
+    private record TagEmbeddingIndices(
+            int techIdx,
+            int keywordIdx,
+            int architectureIdx
+    ) {
+    }
+
+    private record TagMissingFlags(
+            boolean techMissing,
+            boolean keywordMissing,
+            boolean architectureMissing
     ) {
     }
 
@@ -228,6 +333,13 @@ public class PortfolioEmbeddingService {
                 + "[기술] " + techStr;
     }
 
+    private String buildTagEmbeddingText(String techStr, String keywordStr, String architectureStr) {
+        return ""
+                + "[기술] " + techStr + "\n"
+                + "[키워드] " + keywordStr + "\n"
+                + "[아키텍처] " + architectureStr;
+    }
+
     private String buildFieldEmbeddingText(String label, String value) {
         return "[" + label + "] " + safe(value);
     }
@@ -240,6 +352,14 @@ public class PortfolioEmbeddingService {
 
     private boolean isMissing(String s) {
         return s == null || s.trim().isBlank();
+    }
+
+    private String buildTagString(List<String> items) {
+        if (items == null || items.isEmpty()) {
+            return "정보 없음";
+        }
+        String joined = items.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
+        return joined.isBlank() ? "정보 없음" : joined;
     }
 
 
