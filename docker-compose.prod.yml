@@ -91,7 +91,7 @@ services:
       - openvidu-server
 
   openvidu-server:
-    image: openvidu/openvidu-dev:2.30.0
+    image: openvidu/openvidu-server:2.30.0
     container_name: openvidu-server
     restart: always
     ports:
