@@ -22,6 +22,8 @@ export interface ChatRoom {
   lastUpdatedAt: Timestamp;
   unreadCount: number;
   logoUrl?: string;
+  companyId?: string;
+  senderType: string;
 }
 
 export interface MessengerContextType {

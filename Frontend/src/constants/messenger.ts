@@ -11,7 +11,7 @@ export const INITIAL_ROOMS: ChatRoom[] = [
     senderType: 'company',
     companyId: '12345',
     logoUrl: 'https://logo.clearbit.com/samsung.com',
-    participants: ['samsung_id', '1'], // 예시 ID
+    participants: ['samsung_id', '1'],
   },
   {
     id: 'portmatch',
