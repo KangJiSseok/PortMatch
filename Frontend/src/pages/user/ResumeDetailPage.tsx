@@ -20,7 +20,7 @@ import {
 import Button from '../../components/Button/Button';
 
 interface UserData {
-  userId: string;
+  userId: number;
   name: string;
   email: string;
   role: string;
@@ -52,7 +52,7 @@ interface Experience {
 
 interface ResumeData {
   id: string;
-  userId: string;
+  userId: string | number;
   title: string;
   name: string;
   contact: string;
@@ -119,8 +119,10 @@ function ResumeDetailPage() {
       try {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
-          const data: UserData = await response.json();
-          setUser(data);
+          const json = await response.json();
+          if (json.status && json.data) {
+            setUser(json.data);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch user data:', error);
@@ -194,7 +196,7 @@ function ResumeDetailPage() {
 
   const authContext = useMemo(() => {
     if (!user || !resume) return { isOwner: false, isCompany: false };
-    const isOwner = user.userId === resume.userId;
+    const isOwner = String(user.userId) === String(resume.userId);
     const isCompany = user.role === 'COMPANY' && !isOwner;
     return { isOwner, isCompany };
   }, [user, resume]);
@@ -312,6 +314,8 @@ function ResumeDetailPage() {
     }
     if (!resume.title?.trim()) errors.push('title');
     if (!resume.name?.trim()) errors.push('name');
+    if (!resume.email?.trim()) errors.push('email');
+
     (resume.experience || []).forEach((exp, i) => {
       if (!exp.company?.trim()) errors.push(`exp_company_${i}`);
       if (!exp.role?.trim()) errors.push(`exp_role_${i}`);
@@ -320,10 +324,11 @@ function ResumeDetailPage() {
       if (!edu.school?.trim()) errors.push(`edu_school_${i}`);
       if (!edu.major?.trim()) errors.push(`edu_major_${i}`);
     });
+
     if (errors.length > 0) {
       setErrorFields(errors);
-      if (errors.includes('title') || errors.includes('name')) {
-        showToast('이력서 제목과 성함을 입력해주세요!', 'warn');
+      if (errors.includes('title') || errors.includes('name') || errors.includes('email')) {
+        showToast('이력서 제목, 성함, 이메일을 모두 입력해주세요!', 'warn');
         scrollToSection(infoRef);
       } else if (errors.some((e) => e.startsWith('exp'))) {
         showToast('경력 사항의 필수 항목을 모두 입력해주세요!', 'warn');
@@ -335,6 +340,15 @@ function ResumeDetailPage() {
       setTimeout(() => setErrorFields([]), 2500);
       return;
     }
+
+    const titles = selfIntros.map((s) => s.title.trim());
+    const uniqueTitles = new Set(titles);
+    if (titles.length !== uniqueTitles.size) {
+      showToast('자기소개 목록에 중복된 제목이 있습니다.', 'warn');
+      scrollToSection(selfIntroRef);
+      return;
+    }
+
     localStorage.setItem('resumes', JSON.stringify(allResumes));
     localStorage.setItem('portfolios', JSON.stringify(portfolios));
     localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
@@ -811,14 +825,19 @@ function ResumeDetailPage() {
                             />
                           </div>
                           <div className="relative">
-                            <label className={labelClass}>이메일</label>
+                            <label className={labelClass}>
+                              이메일 <span className="text-red-500">*</span>
+                            </label>
                             <input
-                              className={inputClass()}
+                              className={inputClass('email')}
                               value={resume?.email || ''}
                               maxLength={MAX_LENGTHS.EMAIL}
                               placeholder="example@mail.com"
                               onChange={(e) => updateCurrentResume({ email: e.target.value })}
                             />
+                            <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                              {(resume?.email || '').length}/{MAX_LENGTHS.EMAIL}
+                            </span>
                           </div>
                           <div className="relative col-span-1 md:col-span-2">
                             <label className={labelClass}>주소</label>
@@ -1165,20 +1184,16 @@ function ResumeDetailPage() {
                             <Plus size={16} className="mr-1" /> 추가
                           </Button>
                           <Button
-                            variant="outline"
-                            size="md"
-                            className="min-w-27.5 rounded-xl bg-white font-black"
-                            onClick={() =>
-                              selfIntros.length > 0 && setShowSelfIntroList(!showSelfIntroList)
-                            }
-                          >
-                            자기소개 선택 <ChevronDown size={16} className="ml-1" />
-                          </Button>
-                          <Button
                             variant="blue"
                             size="md"
                             className="min-w-22.5 rounded-xl font-black"
-                            onClick={() => setInnerEditingIntro(true)}
+                            onClick={() => {
+                              if (!currentSelfIntro) {
+                                showToast('수정할 자기소개를 선택하거나 새로 추가해주세요.', 'warn');
+                                return;
+                              }
+                              setInnerEditingIntro(true);
+                            }}
                           >
                             내용 수정
                           </Button>
@@ -1209,6 +1224,13 @@ function ResumeDetailPage() {
                                 showToast('제목과 내용을 모두 입력해주세요!', 'warn');
                                 return;
                               }
+                              const isDuplicate = selfIntros.some(
+                                (s) => s.id !== current.id && s.title.trim() === current.title.trim(),
+                              );
+                              if (isDuplicate) {
+                                showToast('이미 존재하는 자기소개 제목입니다.', 'warn');
+                                return;
+                              }
                               localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
                               setInnerEditingIntro(false);
                               showToast('자기소개 내용이 저장되었습니다.', 'success');
@@ -1223,45 +1245,95 @@ function ResumeDetailPage() {
                 }
               >
                 <div className="space-y-6">
-                  <div
-                    onClick={() =>
-                      isEditing &&
-                      !innerEditingIntro &&
-                      selfIntros.length > 0 &&
-                      setShowSelfIntroList(!showSelfIntroList)
-                    }
-                    className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing && !innerEditingIntro ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
-                  >
-                    <div className="mr-4 flex min-w-0 flex-1 items-center gap-2">
-                      <FileText
-                        size={20}
-                        className={currentSelfIntro ? 'text-blue-600' : 'text-slate-300'}
-                      />
-                      {innerEditingIntro ? (
-                        <input
-                          className="w-full bg-transparent text-xl font-black text-blue-600 outline-none"
-                          value={currentSelfIntro?.title || ''}
-                          maxLength={MAX_LENGTHS.TITLE}
-                          placeholder="자기소개 제목을 입력하세요"
-                          autoFocus
-                          onChange={(e) =>
-                            setSelfIntros(
-                              selfIntros.map((s) =>
-                                s.id === resume?.selectedSelfIntroId
-                                  ? { ...s, title: e.target.value }
-                                  : s,
-                              ),
-                            )
-                          }
+                  <div className="relative">
+                    <div
+                      onClick={() =>
+                        isEditing &&
+                        !innerEditingIntro &&
+                        selfIntros.length > 0 &&
+                        setShowSelfIntroList(!showSelfIntroList)
+                      }
+                      className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing && !innerEditingIntro ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
+                    >
+                      <div className="mr-4 flex min-w-0 flex-1 items-center gap-2">
+                        <FileText
+                          size={20}
+                          className={currentSelfIntro ? 'text-blue-600' : 'text-slate-300'}
                         />
-                      ) : (
-                        <span
-                          className={`truncate text-xl font-black ${currentSelfIntro ? 'text-blue-600' : 'text-slate-400'}`}
-                        >
-                          {currentSelfIntro?.title || '자기소개를 선택해주세요.'}
-                        </span>
+                        {innerEditingIntro ? (
+                          <input
+                            className="w-full bg-transparent text-xl font-black text-blue-600 outline-none"
+                            value={currentSelfIntro?.title || ''}
+                            maxLength={MAX_LENGTHS.TITLE}
+                            placeholder="자기소개 제목을 입력하세요"
+                            autoFocus
+                            onChange={(e) =>
+                              setSelfIntros(
+                                selfIntros.map((s) =>
+                                  s.id === resume?.selectedSelfIntroId
+                                    ? { ...s, title: e.target.value }
+                                    : s,
+                                ),
+                              )
+                            }
+                          />
+                        ) : (
+                          <span
+                            className={`truncate text-xl font-black ${currentSelfIntro ? 'text-blue-600' : 'text-slate-400'}`}
+                          >
+                            {currentSelfIntro?.title || '등록된 자기소개가 없습니다.'}
+                          </span>
+                        )}
+                      </div>
+                      {isEditing && !innerEditingIntro && (
+                        <ChevronDown
+                          size={20}
+                          className={`text-blue-600 transition-transform ${showSelfIntroList ? 'rotate-180' : ''}`}
+                        />
                       )}
                     </div>
+                    <AnimatePresence>
+                      {showSelfIntroList && isEditing && !innerEditingIntro && (
+                        <>
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-60"
+                            onClick={() => setShowSelfIntroList(false)}
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute top-full left-0 z-70 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
+                          >
+                            {selfIntros.map((s) => (
+                              <div
+                                key={s.id}
+                                className="flex cursor-pointer items-center justify-between px-6 py-4 transition-colors hover:bg-slate-50"
+                                onClick={() => {
+                                  updateCurrentResume({ selectedSelfIntroId: s.id });
+                                  setShowSelfIntroList(false);
+                                }}
+                              >
+                                <span className="mr-4 truncate font-bold text-slate-700">
+                                  {s.title || '(제목 없음)'}
+                                </span>
+                                <Button
+                                  variant="close"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirm({ type: 'selfIntro', id: s.id });
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
                   </div>
                   <div
                     className={`relative overflow-hidden rounded-2xl border p-8 transition-all ${innerEditingIntro ? 'border-blue-600 bg-white ring-4 ring-blue-600/5' : 'border-slate-50 bg-slate-50/30 shadow-inner'}`}
@@ -1283,7 +1355,7 @@ function ResumeDetailPage() {
                       />
                     ) : (
                       <p className="min-h-25 text-lg leading-relaxed font-bold break-all whitespace-pre-wrap text-slate-700">
-                        {currentSelfIntro?.content || '자기소개를 선택해주세요.'}
+                        {currentSelfIntro?.content || '등록된 자기소개가 없습니다.'}
                       </p>
                     )}
                   </div>
