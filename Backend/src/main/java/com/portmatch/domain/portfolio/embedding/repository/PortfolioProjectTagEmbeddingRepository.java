@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PortfolioProjectTagEmbeddingRepository extends JpaRepository<PortfolioProjectTagEmbedding, Long> {
@@ -78,5 +79,54 @@ public interface PortfolioProjectTagEmbeddingRepository extends JpaRepository<Po
             boolean techMissing,
             boolean keywordMissing,
             boolean architectureMissing
+    );
+
+    @Query(value = """
+        SELECT
+            t.user_id AS userId,
+            t.portfolio_id AS portfolioId,
+            t.project_id AS projectId,
+            t.content AS content,
+            t.tech_similarity AS techSimilarity,
+            t.keyword_similarity AS keywordSimilarity,
+            t.architecture_similarity AS architectureSimilarity,
+            t.similarity AS similarity
+        FROM (
+            SELECT
+                pf.user_id,
+                pte.portfolio_id,
+                pte.project_id,
+                pte.content,
+                (1 - (pte.tech_embedding <=> CAST(:techEmbedding AS vector))) AS tech_similarity,
+                (1 - (pte.keyword_embedding <=> CAST(:keywordEmbedding AS vector))) AS keyword_similarity,
+                (1 - (pte.architecture_embedding <=> CAST(:architectureEmbedding AS vector))) AS architecture_similarity,
+                (
+                    (1 - (pte.tech_embedding <=> CAST(:techEmbedding AS vector))) * :techWeight
+                  + (1 - (pte.keyword_embedding <=> CAST(:keywordEmbedding AS vector))) * :keywordWeight
+                  + (1 - (pte.architecture_embedding <=> CAST(:architectureEmbedding AS vector))) * :architectureWeight
+                ) / (:techWeight + :keywordWeight + :architectureWeight) AS similarity,
+                ROW_NUMBER() OVER (
+                    PARTITION BY pf.user_id
+                    ORDER BY (
+                        (1 - (pte.tech_embedding <=> CAST(:techEmbedding AS vector))) * :techWeight
+                      + (1 - (pte.keyword_embedding <=> CAST(:keywordEmbedding AS vector))) * :keywordWeight
+                      + (1 - (pte.architecture_embedding <=> CAST(:architectureEmbedding AS vector))) * :architectureWeight
+                    ) / (:techWeight + :keywordWeight + :architectureWeight) DESC
+                ) AS rn
+            FROM portfolio_project_tag_embeddings pte
+            JOIN portfolios pf ON pf.id = pte.portfolio_id
+        ) t
+        WHERE t.rn = 1
+        ORDER BY t.similarity DESC
+        LIMIT :limit
+        """, nativeQuery = true)
+    List<TagRecommendationRow> findTopUsersByQueryEmbedding(
+            String techEmbedding,
+            String keywordEmbedding,
+            String architectureEmbedding,
+            double techWeight,
+            double keywordWeight,
+            double architectureWeight,
+            int limit
     );
 }

@@ -2,6 +2,8 @@ package com.portmatch.domain.portfolio.embedding.client;
 
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingRequest;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingResponse;
+import com.portmatch.domain.portfolio.embedding.dto.PortfolioQueryEmbeddingRequest;
+import com.portmatch.domain.portfolio.embedding.dto.PortfolioQueryEmbeddingResponse;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
@@ -72,6 +74,29 @@ public class PortfolioAnalysisClient {
                     HttpMethod.POST,
                     new HttpEntity<>(request, headers),
                     PortfolioEmbeddingResponse.class
+            );
+            if (res.getBody() == null) {
+                throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_EMPTY);
+            }
+            return res.getBody();
+        } catch (RestClientException e) {
+            log.error("Embedding request failed. endpoint={}", endpoint, e);
+            throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SERVICE_UNAVAILABLE);
+        }
+    }
+
+    public PortfolioQueryEmbeddingResponse embedQuery(PortfolioQueryEmbeddingRequest request) {
+        String endpoint = baseUrl + "/embeddings/portfolio-query";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        try {
+            ResponseEntity<PortfolioQueryEmbeddingResponse> res = restTemplate.exchange(
+                    endpoint,
+                    HttpMethod.POST,
+                    new HttpEntity<>(request, headers),
+                    PortfolioQueryEmbeddingResponse.class
             );
             if (res.getBody() == null) {
                 throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_EMPTY);
