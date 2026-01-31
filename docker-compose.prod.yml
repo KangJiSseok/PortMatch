@@ -94,6 +94,8 @@ services:
     image: openvidu/openvidu-server:2.30.0
     container_name: openvidu-server
     restart: always
+    volumes:
+      - letsencrypt:/etc/letsencrypt:ro
     ports:
       - "5443:5443"
       - "8443:8443"
@@ -102,7 +104,9 @@ services:
       - DOMAIN_OR_PUBLIC_IP=i14d205.p.ssafy.io
       - OPENVIDU_HTTPS_PORT=8443
       - HTTPS_PORT=8443
-      - CERTIFICATE_TYPE=selfsigned
+      - CERTIFICATE_TYPE=owncert
+      - OWNCERT_CRT=/etc/letsencrypt/live/i14d205.p.ssafy.io/fullchain.pem
+      - OWNCERT_KEY=/etc/letsencrypt/live/i14d205.p.ssafy.io/privkey.pem
       - OPENVIDU_PRO_LICENSE=
       - KMS_URIS=["ws://kurento:8888/kurento"]
       - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900
