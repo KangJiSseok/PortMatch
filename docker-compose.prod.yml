@@ -18,7 +18,7 @@ services:
     restart: always
 
     environment:
-      - OPENVIDU_URL=https://openvidu-server:4443/
+      - OPENVIDU_URL=https://openvidu-server:8443/
       - OPENVIDU_SECRET=MY_SECRET
       - EXPLANATION_URL=http://explanation-llm:8003
       
@@ -96,12 +96,12 @@ services:
     restart: always
     ports:
       - "5443:5443"
-      - "8443:4443"
+      - "8443:8443"
     environment:
       - OPENVIDU_SECRET=MY_SECRET
       - DOMAIN_OR_PUBLIC_IP=i14d205.p.ssafy.io
       - OPENVIDU_HTTPS_PORT=8443
-      - HTTPS_PORT=4443
+      - HTTPS_PORT=8443
       - CERTIFICATE_TYPE=selfsigned
       - OPENVIDU_PRO_LICENSE=
       - KMS_URIS=["ws://kurento:8888/kurento"]
