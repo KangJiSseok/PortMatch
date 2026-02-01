@@ -16,12 +16,11 @@ import {
   Camera,
   MessageSquare,
   Bookmark,
+  Star, // Star 아이콘 추가됨
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import { portfolioApi } from '../../api/portfolioApi';
 import { resumeApi } from '../../api/resumeApi';
-
-// --- Enum Constants & Types ---
 
 const EMPLOYMENT_STATUS = {
   FULL_TIME: '정규직',
@@ -73,8 +72,8 @@ interface Education {
   id?: number;
   school: string;
   major: string;
-  degree: keyof typeof DEGREE_STATUS; // Enum 적용
-  status: keyof typeof GRADUATION_STATUS; // Enum 적용
+  degree: keyof typeof DEGREE_STATUS;
+  status: keyof typeof GRADUATION_STATUS;
   period: string;
 }
 
@@ -82,7 +81,7 @@ interface Experience {
   id?: number;
   company: string;
   role: string;
-  employmentStatus: keyof typeof EMPLOYMENT_STATUS; // Enum 적용
+  employmentStatus: keyof typeof EMPLOYMENT_STATUS;
   period: string;
 }
 
@@ -90,11 +89,13 @@ interface ResumeData {
   id: string;
   userId: string | number;
   title: string;
+  isMain: boolean; // ✅ [추가] 대표 이력서 여부
   name: string;
   contact: string;
   email: string;
   address: string;
   profileImage: string | null;
+  profileImageId?: number | null;
   education: Education[];
   experience: Experience[];
   selectedPortfolioId: string | number | null;
@@ -170,11 +171,13 @@ function ResumeDetailPage() {
       id: String(apiData.id),
       userId: apiData.userId,
       title: apiData.title || '제목 없음',
+      isMain: apiData.isMain || false, // ✅ [매핑] API 값 받아오기
       name: profile.name || currentUser?.name || '',
       contact: profile.contact || '',
       email: profile.email || currentUser?.email || '',
       address: profile.address || '',
       profileImage: profile.profileImageUrl || null,
+      profileImageId: profile.profileImageId || null,
       experience: (apiData.careers || []).map((c: any) => ({
         id: c.id,
         company: c.company,
@@ -218,12 +221,14 @@ function ResumeDetailPage() {
           resumeMap[String(r.id)] = {
             id: String(r.id),
             title: r.title || '제목 없음',
+            isMain: r.isMain || false,
             userId: r.userId,
             name: r.profile?.name || '',
             contact: r.profile?.contact || '',
             email: r.profile?.email || '',
             address: r.profile?.address || '',
             profileImage: r.profile?.profileImageUrl || null,
+            profileImageId: null,
             education: [],
             experience: [],
             selectedPortfolioId: null,
@@ -491,24 +496,26 @@ function ResumeDetailPage() {
       return;
     }
 
+    // ✅ [꼼수] 서버의 replaceResume(PUT) 메서드 버그(500 에러) 회피를 위한 Create-Swap 전략
     const payload = {
       title: resume.title,
-      isMain: true,
+      isMain: resume.isMain, // ✅ 사용자 설정 값 전송
       profile: {
         name: resume.name,
-        contact: resume.contact && resume.contact.length > 10 ? resume.contact : null,
+        contact: resume.contact ? resume.contact : "",
         email: resume.email,
-        address: resume.address || null,
-        profileImageId: undefined
+        address: resume.address || "",
+        // 새 이력서를 만드는 것이므로 ID는 null로 보냅니다.
+        profileImageId: resume.profileImageId ? Number(resume.profileImageId) : null
       },
       portfolio: resume.selectedPortfolioId
         ? { portfolioId: Number(resume.selectedPortfolioId) }
-        : undefined,
+        : null,
 
       careers: resume.experience.map((exp, index) => {
         const periodParts = exp.period ? exp.period.split(' - ') : ['2026.01', '2026.01'];
         return {
-          id: exp.id || undefined,
+          // 새로 만드는 것이므로 id는 제거
           company: exp.company,
           role: exp.role,
           periodStart: convertToDateStr(periodParts[0]),
@@ -522,7 +529,7 @@ function ResumeDetailPage() {
       educations: resume.education.map((edu, index) => {
         const periodParts = edu.period ? edu.period.split(' - ') : ['2026.01', '2026.01'];
         return {
-          id: edu.id || undefined,
+          // 새로 만드는 것이므로 id는 제거
           school: edu.school,
           major: edu.major,
           degree: edu.degree || "BACHELOR",
@@ -534,21 +541,35 @@ function ResumeDetailPage() {
       }),
 
       selfIntroductions: selfIntros.map((intro, index) => ({
-        id: intro.realId || undefined,
+        // 새로 만드는 것이므로 id는 제거
         title: intro.title,
         answerText: intro.content,
         orderIndex: index
       }))
     };
 
-    console.log("Final Payload:", JSON.stringify(payload, null, 2));
+    console.log("Saving via Create-Swap Strategy:", JSON.stringify(payload, null, 2));
 
     try {
-      await resumeApi.updateResume(resume.id, payload);
+      // 🚨 [핵심 변경] PUT(수정) 대신 POST(생성) 호출
+      const newResumeData = await resumeApi.createResume(payload as any);
+      console.log("New resume created:", newResumeData);
+
+      // 🗑️ [핵심 변경] 생성이 성공했다면, 기존 이력서를 삭제
+      try {
+        await resumeApi.deleteResume(resume.id);
+        console.log("Old resume deleted successfully.");
+      } catch (deleteError) {
+        console.warn("Failed to delete old resume (ignoring):", deleteError);
+      }
+
       setResumeSnapshot(null);
       setIsEditing(false);
-      showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
-      fetchResumeDetail(resume.id);
+      showToast('저장이 완료되었습니다!', 'success');
+
+      // ✨ 새 이력서 ID로 URL 이동
+      navigate(`/resumes/${newResumeData.id}`, { replace: true });
+
     } catch (error) {
       console.error('Save failed:', error);
       const errorMessage = error instanceof Error ? error.message : '서버 오류';
@@ -741,6 +762,20 @@ function ResumeDetailPage() {
   const selectClass =
     'rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm';
 
+  // ✅ [추가] 로딩 중이거나 데이터 준비가 안 됐을 때 안전장치
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-pure-white pt-32 pb-32">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+      </div>
+    );
+  }
+
+  // 로딩은 끝났는데 이력서 데이터가 없는 경우 (삭제 직후 등)
+  if (!isLoading && !isEmpty && !resume) {
+    return null;
+  }
+
   return (
     <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
       <AnimatePresence>
@@ -776,7 +811,6 @@ function ResumeDetailPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center pt-20 text-center"
           >
-            {/* ... (이전 코드와 동일: 이력서 없음 UI) ... */}
             <div className="mb-8 flex h-40 w-40 items-center justify-center rounded-full bg-slate-50 text-slate-200 shadow-inner">
               <FileText size={80} strokeWidth={1.5} />
             </div>
@@ -796,7 +830,6 @@ function ResumeDetailPage() {
           </motion.div>
         ) : (
           <>
-            {/* ... (이전 코드와 동일: 헤더 및 기본 정보 섹션) ... */}
             <header className="mb-12 flex items-start justify-between border-l-4 border-blue-600 pl-6">
               <div className="mr-12 min-w-0 flex-1">
                 <div className="relative inline-block w-full">
@@ -894,13 +927,41 @@ function ResumeDetailPage() {
                   : 'border-slate-100 shadow-slate-200/50'
                   }`}
               >
-                {/* ... (기본 정보 섹션 코드 동일) ... */}
-                <div className="mb-8 flex items-center gap-3">
-                  <div className="h-6 w-1.5 rounded-full bg-blue-600" />
-                  <h2 className="text-2xl font-black tracking-tight whitespace-nowrap text-slate-800 uppercase">
-                    기본 정보
-                  </h2>
+                <div className="mb-8 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-6 w-1.5 rounded-full bg-blue-600" />
+                    <h2 className="text-2xl font-black tracking-tight whitespace-nowrap text-slate-800 uppercase">
+                      기본 정보
+                    </h2>
+                  </div>
+                  {isEditing && (
+                    <button
+                      onClick={() => updateCurrentResume({ isMain: !resume?.isMain })}
+                      className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all border ${resume?.isMain
+                        ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
+                        : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
+                        }`}
+                    >
+                      <Star
+                        size={18}
+                        fill={resume?.isMain ? 'currentColor' : 'none'}
+                        className="transition-colors"
+                      />
+                      <span className="text-sm font-bold">
+                        {resume?.isMain ? '대표 이력서' : '대표 설정'}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* 보기 모드일 때도 대표 이력서인지 표시 */}
+                  {!isEditing && resume?.isMain && (
+                    <div className="flex items-center gap-1.5 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-1.5 text-xs font-bold text-yellow-600">
+                      <Star size={12} fill="currentColor" />
+                      <span>대표 이력서</span>
+                    </div>
+                  )}
                 </div>
+
                 <div className="flex flex-wrap gap-12 lg:flex-nowrap">
                   <div className="mx-auto shrink-0 lg:mx-0">
                     <div className="relative h-60 w-48 overflow-hidden rounded-3xl border border-slate-100 bg-slate-50 shadow-inner">
@@ -1030,6 +1091,7 @@ function ResumeDetailPage() {
                               {(resume?.title || '').length}/{MAX_LENGTHS.TITLE}
                             </span>
                           </div>
+
                           <div className="relative">
                             <label className={labelClass}>
                               성함 <span className="text-red-500">*</span>
@@ -1361,7 +1423,6 @@ function ResumeDetailPage() {
                   </div>
                 </SectionCard>
               ))}
-              {/* ... (이하 포트폴리오 및 자기소개 섹션 코드는 이전과 동일) ... */}
               <SectionCard title="포트폴리오">
                 <div className="space-y-6">
                   <div
@@ -1667,7 +1728,6 @@ function ResumeDetailPage() {
                 </div>
               </SectionCard>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-18">
-                {/* ... (저장 버튼 등 하단 UI 동일) ... */}
                 {!isEditing ? (
                   <>
                     {authContext.isOwner && (
@@ -1729,7 +1789,6 @@ function ResumeDetailPage() {
         )}
       </div>
       <AnimatePresence>
-        {/* ... (모달 UI 동일) ... */}
         {(deleteConfirm || (blocker.state === 'blocked' && isEditing)) && (
           <div className="fixed inset-0 z-3000 flex items-center justify-center p-6">
             <motion.div

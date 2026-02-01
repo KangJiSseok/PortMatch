@@ -65,7 +65,7 @@ export interface UpdateResumeRequest {
         email: string;
         contact: string | null;
         address: string | null;
-        profileImageId?: number;
+        profileImageId?: number | null;
     };
     portfolio?: { portfolioId: number };
     careers: Array<{
