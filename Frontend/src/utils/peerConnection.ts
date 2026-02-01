@@ -15,7 +15,7 @@ export function createPeer() {
     typeof import.meta.env.VITE_PEERJS_SECURE === 'string'
       ? import.meta.env.VITE_PEERJS_SECURE === 'true'
       : window.location.protocol === 'https:';
-  const path = import.meta.env.VITE_PEERJS_PATH ?? '/peerjs';
+  const path = import.meta.env.VITE_PEERJS_PATH ?? '/';
 
   return new Peer({
     host,
