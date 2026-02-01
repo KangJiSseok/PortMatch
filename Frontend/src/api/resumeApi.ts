@@ -6,6 +6,13 @@ interface ApiResponse<T> {
     message?: string;
 }
 
+export interface UploadProfileImageResponse {
+    id: number;
+    userId: number;
+    imageUrl: string;
+    imageName: string;
+    createdAt: string;
+}
 export interface ResumeListItem {
     id: number;
     userId: number;
@@ -131,7 +138,6 @@ export const resumeApi = {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Server Error Body:', errorText);
             try {
                 const errorJson = JSON.parse(errorText);
                 throw new Error(errorJson.message || `Server Error: ${response.status}`);
@@ -146,5 +152,30 @@ export const resumeApi = {
             method: 'DELETE',
         });
         if (!response.ok) throw new Error('Failed to delete resume');
+    },
+
+    uploadProfileImage: async (file: File): Promise<UploadProfileImageResponse> => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/profile-images/me', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server 500 Error Body:', errorText);
+
+            try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(errorJson.message || '프로필 이미지 업로드 실패 (서버 오류)');
+            } catch (e) {
+                throw new Error(`서버 오류 (${response.status}): ${errorText.substring(0, 100)}`);
+            }
+        }
+
+        const json: ApiResponse<UploadProfileImageResponse> = await response.json();
+        return json.data;
     },
 };

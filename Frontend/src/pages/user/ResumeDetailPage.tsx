@@ -17,10 +17,12 @@ import {
   MessageSquare,
   Bookmark,
   Star,
+  Lock,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import { portfolioApi } from '../../api/portfolioApi';
 import { resumeApi } from '../../api/resumeApi';
+import { useMessenger } from '../../hooks/useMessenger';
 
 const EMPLOYMENT_STATUS = {
   FULL_TIME: '정규직',
@@ -149,10 +151,13 @@ const SectionCard = ({
 function ResumeDetailPage() {
   const { resumeId } = useParams<{ resumeId: string }>();
   const navigate = useNavigate();
-  const [user, setUser] = useState<UserData | null>(null);
-  const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const { startNewChat } = useMessenger();
 
+  const [user, setUser] = useState<UserData | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
+  const [isResumesLoading, setIsResumesLoading] = useState(true);
+
+  const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>({});
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
 
   const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
@@ -169,7 +174,7 @@ function ResumeDetailPage() {
     const profile = apiData.profile || {};
     return {
       id: String(apiData.id),
-      userId: apiData.userId,
+      userId: apiData.userId || currentUser?.userId || 0,
       title: apiData.title || '제목 없음',
       isMain: apiData.isMain || false,
       name: profile.name || currentUser?.name || '',
@@ -198,6 +203,25 @@ function ResumeDetailPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const json = await response.json();
+          if (json.status && json.data) {
+            setUser(json.data);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+      } finally {
+        setIsUserLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+
   const fetchPortfolios = useCallback(async () => {
     try {
       const portfolioList = await portfolioApi.fetchMyPortfolios();
@@ -212,7 +236,7 @@ function ResumeDetailPage() {
     }
   }, []);
 
-  const fetchResumes = useCallback(async () => {
+  const fetchResumes = useCallback(async (currentUser: UserData | null) => {
     try {
       const data = await resumeApi.getResumes();
       const resumeMap: Record<string, ResumeData> = {};
@@ -222,7 +246,7 @@ function ResumeDetailPage() {
             id: String(r.id),
             title: r.title || '제목 없음',
             isMain: r.isMain || false,
-            userId: r.userId,
+            userId: r.userId || currentUser?.userId || 0,
             name: r.profile?.name || '',
             contact: r.profile?.contact || '',
             email: r.profile?.email || '',
@@ -236,19 +260,18 @@ function ResumeDetailPage() {
           };
         }
       });
-      setAllResumes(resumeMap);
+      setAllResumes(prev => ({ ...prev, ...resumeMap }));
     } catch (error) {
       console.error('Failed to fetch resumes:', error);
     } finally {
-      setIsLoading(false);
+      setIsResumesLoading(false);
     }
   }, []);
 
-  const fetchResumeDetail = useCallback(async (id: string) => {
-    if (!user) return;
+  const fetchResumeDetail = useCallback(async (id: string, currentUser: UserData | null) => {
     try {
       const data = await resumeApi.getResumeDetail(id);
-      const mappedResume = mapApiToResume(data, user);
+      const mappedResume = mapApiToResume(data, currentUser);
 
       if (data.selfIntroductions && Array.isArray(data.selfIntroductions)) {
         const mappedIntros = data.selfIntroductions.map((intro: any) => ({
@@ -264,34 +287,49 @@ function ResumeDetailPage() {
     } catch (error) {
       console.error('Failed to fetch resume detail:', error);
     }
-  }, [user, mapApiToResume]);
+  }, [mapApiToResume]);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const json = await response.json();
-          if (json.status && json.data) {
-            setUser(json.data);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch user data:', error);
-      }
-    };
-    fetchUser();
-    fetchResumes();
-    fetchPortfolios();
-  }, [fetchResumes, fetchPortfolios]);
-
-  useEffect(() => {
-    if (resumeId && resumeId !== 'me' && user) {
-      fetchResumeDetail(resumeId);
+    if (!isUserLoading) {
+      fetchResumes(user);
+      fetchPortfolios();
     }
-  }, [resumeId, user, fetchResumeDetail]);
+  }, [isUserLoading, user, fetchResumes, fetchPortfolios]);
 
-  const startNewChat = (id: string, name: string) => console.log(`${name}님과 채팅방 생성`, id);
+  useEffect(() => {
+    if (resumeId && resumeId !== 'me' && !isUserLoading) {
+      fetchResumeDetail(resumeId, user);
+    }
+  }, [resumeId, user, isUserLoading, fetchResumeDetail]);
+
+  const targetId = resumeId && resumeId !== 'me' ? resumeId : Object.keys(allResumes)[0];
+  const resume = allResumes[targetId];
+
+  const authContext = useMemo(() => {
+    if (!user || !resume) return { isOwner: false, isCompany: false };
+
+    const resumeUserId = String(resume.userId);
+    const currentUserId = String(user.userId);
+
+    let isOwner = resumeUserId === currentUserId;
+
+    if (!isOwner && (resume.userId === 0 || !resume.userId) && Object.keys(allResumes).includes(String(resume.id))) {
+      isOwner = true;
+    }
+
+    const isCompany = user.role === 'COMPANY' && !isOwner;
+
+    return { isOwner, isCompany };
+  }, [user, resume, allResumes]);
+
+  const displayResume = useMemo(() => {
+    if (!resume) return undefined;
+    if (authContext.isOwner) return resume;
+    if (resumeId && resumeId !== 'me') {
+      return resume;
+    }
+    return resume;
+  }, [resume, authContext.isOwner, resumeId]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileImgRef = useRef<HTMLInputElement>(null);
@@ -302,19 +340,14 @@ function ResumeDetailPage() {
 
   const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
 
-  const allResumeKeys = Object.keys(allResumes);
-  const isEmpty = !isLoading && allResumeKeys.length === 0;
+  const isLoading = isUserLoading || isResumesLoading;
+  const isEmpty = !isLoading && Object.keys(allResumes).length === 0;
 
   useEffect(() => {
-    if (!isLoading && allResumeKeys.length > 0) {
-      if (!resumeId || resumeId === 'me' || !allResumes[resumeId]) {
-        navigate(`/resumes/${allResumeKeys[0]}`, { replace: true });
-      }
+    if (!isLoading && authContext.isOwner && !resumeId && Object.keys(allResumes).length > 0) {
+      navigate(`/resumes/${Object.keys(allResumes)[0]}`, { replace: true });
     }
-  }, [resumeId, allResumeKeys, allResumes, navigate, isLoading]);
-
-  const targetId = resumeId || allResumeKeys[0];
-  const resume = allResumes[targetId];
+  }, [isLoading, authContext.isOwner, resumeId, allResumes, navigate]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [showResumeList, setShowResumeList] = useState(false);
@@ -338,13 +371,6 @@ function ResumeDetailPage() {
     ({ currentLocation, nextLocation }) =>
       isEditing && currentLocation.pathname !== nextLocation.pathname,
   );
-
-  const authContext = useMemo(() => {
-    if (!user || !resume) return { isOwner: false, isCompany: false };
-    const isOwner = String(user.userId) === String(resume.userId);
-    const isCompany = user.role === 'COMPANY' && !isOwner;
-    return { isOwner, isCompany };
-  }, [user, resume]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -371,9 +397,10 @@ function ResumeDetailPage() {
   }, [toast]);
 
   const updateCurrentResume = (updates: Partial<ResumeData>) => {
+    if (!displayResume) return;
     setAllResumes((prev) => ({
       ...prev,
-      [targetId]: { ...prev[targetId], ...updates },
+      [displayResume.id]: { ...prev[displayResume.id], ...updates },
     }));
   };
 
@@ -461,21 +488,23 @@ function ResumeDetailPage() {
   };
 
   const validateAndSave = async () => {
+    if (!displayResume) return;
+
     const errors: string[] = [];
     if (innerEditingIntro) {
       showToast("상단의 '내용 저장' 버튼을 먼저 눌러주세요!", 'warn');
       scrollToSection(selfIntroRef);
       return;
     }
-    if (!resume.title?.trim()) errors.push('title');
-    if (!resume.name?.trim()) errors.push('name');
-    if (!resume.email?.trim()) errors.push('email');
+    if (!displayResume.title?.trim()) errors.push('title');
+    if (!displayResume.name?.trim()) errors.push('name');
+    if (!displayResume.email?.trim()) errors.push('email');
 
-    (resume.experience || []).forEach((exp, i) => {
+    (displayResume.experience || []).forEach((exp, i) => {
       if (!exp.company?.trim()) errors.push(`exp_company_${i}`);
       if (!exp.role?.trim()) errors.push(`exp_role_${i}`);
     });
-    (resume.education || []).forEach((edu, i) => {
+    (displayResume.education || []).forEach((edu, i) => {
       if (!edu.school?.trim()) errors.push(`edu_school_${i}`);
       if (!edu.major?.trim()) errors.push(`edu_major_${i}`);
     });
@@ -497,20 +526,20 @@ function ResumeDetailPage() {
     }
 
     const payload = {
-      title: resume.title,
-      isMain: resume.isMain,
+      title: displayResume.title,
+      isMain: displayResume.isMain,
       profile: {
-        name: resume.name,
-        contact: resume.contact ? resume.contact : "",
-        email: resume.email,
-        address: resume.address || "",
-        profileImageId: resume.profileImageId ? Number(resume.profileImageId) : null
+        name: displayResume.name,
+        contact: displayResume.contact ? displayResume.contact : "",
+        email: displayResume.email,
+        address: displayResume.address || "",
+        profileImageId: displayResume.profileImageId ? Number(displayResume.profileImageId) : null
       },
-      portfolio: resume.selectedPortfolioId
-        ? { portfolioId: Number(resume.selectedPortfolioId) }
+      portfolio: displayResume.selectedPortfolioId
+        ? { portfolioId: Number(displayResume.selectedPortfolioId) }
         : null,
 
-      careers: resume.experience.map((exp, index) => {
+      careers: displayResume.experience.map((exp, index) => {
         const periodParts = exp.period ? exp.period.split(' - ') : ['2026.01', '2026.01'];
         return {
           id: exp.id || undefined,
@@ -524,7 +553,7 @@ function ResumeDetailPage() {
         };
       }),
 
-      educations: resume.education.map((edu, index) => {
+      educations: displayResume.education.map((edu, index) => {
         const periodParts = edu.period ? edu.period.split(' - ') : ['2026.01', '2026.01'];
         return {
           id: edu.id || undefined,
@@ -546,15 +575,13 @@ function ResumeDetailPage() {
       }))
     };
 
-    console.log("Final Payload:", JSON.stringify(payload, null, 2));
-
     try {
-      await resumeApi.updateResume(resume.id, payload as any);
+      await resumeApi.updateResume(displayResume.id, payload as any);
 
       setResumeSnapshot(null);
       setIsEditing(false);
       showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
-      fetchResumeDetail(resume.id);
+      fetchResumeDetail(displayResume.id, user);
     } catch (error) {
       console.error('Save failed:', error);
       const errorMessage = error instanceof Error ? error.message : '서버 오류';
@@ -562,12 +589,22 @@ function ResumeDetailPage() {
     }
   };
 
-  const handleInterviewRequest = () => {
+  const handleInterviewRequest = async () => {
+    if (!displayResume) return;
     if (
-      window.confirm(`${resume.name}님께 면접을 요청하시겠습니까?\n확인 시 채팅방으로 연결됩니다.`)
+      window.confirm(`${displayResume.name}님께 면접을 요청하시겠습니까?\n확인 시 채팅방으로 연결됩니다.`)
     ) {
-      startNewChat(resume.id, resume.name);
-      showToast('면접 요청을 보냈습니다.', 'success');
+      try {
+        await startNewChat(
+          String(displayResume.userId),
+          displayResume.name,
+          displayResume.profileImage || undefined
+        );
+        showToast('면접 요청을 보냈습니다.', 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('채팅방 연결에 실패했습니다.', 'error');
+      }
     }
   };
 
@@ -581,7 +618,8 @@ function ResumeDetailPage() {
     field: 'startYear' | 'startMonth' | 'endYear' | 'endMonth',
     value: string,
   ) => {
-    const items = resume[type] || [];
+    if (!displayResume) return;
+    const items = displayResume[type] || [];
     const item = items[index];
     if (!item) return;
     const parts = item.period?.split(' - ') || ['', ''];
@@ -602,11 +640,11 @@ function ResumeDetailPage() {
     }
     const updatedPeriod = `${updated.startYear}.${updated.startMonth} - ${updated.endYear}.${updated.endMonth}`;
     if (type === 'experience') {
-      const newData = [...(resume.experience || [])];
+      const newData = [...(displayResume.experience || [])];
       newData[index] = { ...newData[index], period: updatedPeriod };
       updateCurrentResume({ experience: newData });
     } else {
-      const newData = [...(resume.education || [])];
+      const newData = [...(displayResume.education || [])];
       newData[index] = { ...newData[index], period: updatedPeriod };
       updateCurrentResume({ education: newData });
     }
@@ -664,17 +702,46 @@ function ResumeDetailPage() {
     return `${num.slice(0, 3)}-${num.slice(3, 7)}-${num.slice(7, 11)}`;
   };
 
-  const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => updateCurrentResume({ profileImage: reader.result as string });
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      showToast('JPG, PNG 형식의 이미지 파일만 업로드 가능합니다.', 'warn');
+      return;
+    }
+
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      showToast('파일 크기는 5MB 이하여야 합니다.', 'warn');
+      return;
+    }
+
+    try {
+      const response = await resumeApi.uploadProfileImage(file);
+
+      updateCurrentResume({
+        profileImage: response.imageUrl,
+        profileImageId: response.id
+      });
+
+      showToast('프로필 이미지가 등록되었습니다.', 'success');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : '이미지 업로드에 실패했습니다.';
+      console.error('Profile image upload failed:', err);
+      showToast(errorMessage, 'error');
+    } finally {
+      if (profileImgRef.current) {
+        profileImgRef.current.value = '';
+      }
     }
   };
 
   const confirmDeleteAction = async () => {
     if (!deleteConfirm) return;
+    if (!displayResume) return;
+
     const { type, id, index } = deleteConfirm;
 
     if (type === 'resume' && id !== undefined) {
@@ -704,11 +771,11 @@ function ResumeDetailPage() {
       }
     } else {
       if (type === 'experience' && index !== undefined) {
-        const newData = [...(resume.experience || [])];
+        const newData = [...(displayResume.experience || [])];
         newData.splice(index, 1);
         updateCurrentResume({ experience: newData });
       } else if (type === 'education' && index !== undefined) {
-        const newData = [...(resume.education || [])];
+        const newData = [...(displayResume.education || [])];
         newData.splice(index, 1);
         updateCurrentResume({ education: newData });
       } else if (type === 'portfolio' && id !== undefined) {
@@ -717,7 +784,7 @@ function ResumeDetailPage() {
 
           const filtered = portfolios.filter((p) => String(p.id) !== String(id));
           setPortfolios(filtered);
-          if (String(resume.selectedPortfolioId) === String(id)) {
+          if (String(displayResume.selectedPortfolioId) === String(id)) {
             updateCurrentResume({ selectedPortfolioId: null });
           }
           showToast('포트폴리오가 삭제되었습니다.', 'success');
@@ -730,7 +797,7 @@ function ResumeDetailPage() {
         const filtered = selfIntros.filter((s) => s.id !== id);
         setSelfIntros(filtered);
         localStorage.setItem('selfIntros', JSON.stringify(filtered));
-        if (resume.selectedSelfIntroId === id) {
+        if (displayResume.selectedSelfIntroId === id) {
           updateCurrentResume({ selectedSelfIntroId: filtered[0]?.id || null });
           setInnerEditingIntro(false);
         }
@@ -739,8 +806,8 @@ function ResumeDetailPage() {
     setDeleteConfirm(null);
   };
 
-  const currentPortfolio = portfolios.find((p) => String(p.id) === String(resume?.selectedPortfolioId));
-  const currentSelfIntro = selfIntros.find((s) => String(s.id) === String(resume?.selectedSelfIntroId));
+  const currentPortfolio = portfolios.find((p) => String(p.id) === String(displayResume?.selectedPortfolioId));
+  const currentSelfIntro = selfIntros.find((s) => String(s.id) === String(displayResume?.selectedSelfIntroId));
 
   const inputClass = (fieldId?: string) =>
     `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${errorFields.includes(fieldId || '')
@@ -760,8 +827,23 @@ function ResumeDetailPage() {
     );
   }
 
-  if (!isLoading && !isEmpty && !resume) {
-    return null;
+  if (!isLoading && !displayResume && !authContext.isOwner && !isEmpty) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-pure-white pt-32 pb-32 text-center">
+        <div className="flex h-32 w-32 items-center justify-center rounded-full bg-slate-50 text-slate-300">
+          <Lock size={64} />
+        </div>
+        <div>
+          <h2 className="text-3xl font-black text-slate-900">공개된 이력서가 없습니다</h2>
+          <p className="mt-2 text-lg font-bold text-slate-500">
+            해당 사용자의 대표 이력서가 설정되지 않았습니다.
+          </p>
+        </div>
+        <Button variant="outline" size="lg" onClick={() => navigate(-1)} className="mt-4 rounded-xl">
+          뒤로 가기
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -822,18 +904,20 @@ function ResumeDetailPage() {
               <div className="mr-12 min-w-0 flex-1">
                 <div className="relative inline-block w-full">
                   <button
-                    onClick={() => setShowResumeList(!showResumeList)}
-                    className="flex w-full items-center gap-3 text-left transition-opacity hover:opacity-70"
+                    onClick={() => authContext.isOwner && setShowResumeList(!showResumeList)}
+                    className={`flex w-full items-center gap-3 text-left transition-opacity ${authContext.isOwner ? 'hover:opacity-70 cursor-pointer' : 'cursor-default'}`}
                   >
                     <h1 className="truncate text-4xl font-black tracking-tighter text-slate-900 uppercase">
-                      {resume?.title || 'My Resume'}
+                      {displayResume?.title || 'My Resume'}
                     </h1>
-                    <ChevronDown
-                      className={`shrink-0 text-blue-600 transition-transform ${showResumeList ? 'rotate-180' : ''}`}
-                    />
+                    {authContext.isOwner && (
+                      <ChevronDown
+                        className={`shrink-0 text-blue-600 transition-transform ${showResumeList ? 'rotate-180' : ''}`}
+                      />
+                    )}
                   </button>
                   <AnimatePresence>
-                    {showResumeList && (
+                    {showResumeList && authContext.isOwner && (
                       <div key="resume-list-wrapper">
                         <motion.div
                           key="resume-list-overlay"
@@ -851,37 +935,39 @@ function ResumeDetailPage() {
                           className="absolute top-full left-0 z-50 mt-4 max-w-full min-w-75 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl"
                         >
                           <div className="flex flex-col">
-                            {Object.values(allResumes).map((r) => (
-                              <div
-                                key={r.id}
-                                className={`flex cursor-pointer items-center justify-between border-b border-slate-50 px-6 py-4 transition-colors last:border-0 hover:bg-slate-50 ${String(r.id) === targetId ? 'bg-blue-50/30' : ''}`}
-                                onClick={() => {
-                                  if (isEditing) {
-                                    showToast(
-                                      '수정 중에는 다른 이력서로 이동할 수 없습니다.',
-                                      'warn',
-                                    );
-                                    return;
-                                  }
-                                  navigate(`/resumes/${r.id}`, { replace: true });
-                                  setShowResumeList(false);
-                                }}
-                              >
-                                <span
-                                  className={`truncate pr-4 text-lg font-bold ${String(r.id) === targetId ? 'text-blue-600' : 'text-slate-800'}`}
-                                >
-                                  {r.title}
-                                </span>
-                                <Button
-                                  variant="close"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteConfirm({ type: 'resume', id: r.id });
+                            {Object.values(allResumes)
+                              .filter(r => String(r.userId) === String(user?.userId))
+                              .map((r) => (
+                                <div
+                                  key={r.id}
+                                  className={`flex cursor-pointer items-center justify-between border-b border-slate-50 px-6 py-4 transition-colors last:border-0 hover:bg-slate-50 ${String(r.id) === targetId ? 'bg-blue-50/30' : ''}`}
+                                  onClick={() => {
+                                    if (isEditing) {
+                                      showToast(
+                                        '수정 중에는 다른 이력서로 이동할 수 없습니다.',
+                                        'warn',
+                                      );
+                                      return;
+                                    }
+                                    navigate(`/resumes/${r.id}`, { replace: true });
+                                    setShowResumeList(false);
                                   }}
-                                />
-                              </div>
-                            ))}
+                                >
+                                  <span
+                                    className={`truncate pr-4 text-lg font-bold ${String(r.id) === targetId ? 'text-blue-600' : 'text-slate-800'}`}
+                                  >
+                                    {r.title}
+                                  </span>
+                                  <Button
+                                    variant="close"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteConfirm({ type: 'resume', id: r.id });
+                                    }}
+                                  />
+                                </div>
+                              ))}
                             {!isEditing && (
                               <div
                                 className="flex cursor-pointer items-center justify-center gap-2 bg-slate-50 px-6 py-4 text-sm font-black text-blue-600 transition-colors hover:bg-blue-600 hover:text-white"
@@ -925,24 +1011,24 @@ function ResumeDetailPage() {
 
                   {isEditing && (
                     <button
-                      onClick={() => updateCurrentResume({ isMain: !resume?.isMain })}
-                      className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all border ${resume?.isMain
+                      onClick={() => updateCurrentResume({ isMain: !displayResume?.isMain })}
+                      className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all border ${displayResume?.isMain
                         ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
                         : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
                         }`}
                     >
                       <Star
                         size={18}
-                        fill={resume?.isMain ? 'currentColor' : 'none'}
+                        fill={displayResume?.isMain ? 'currentColor' : 'none'}
                         className="transition-colors"
                       />
                       <span className="text-sm font-bold">
-                        {resume?.isMain ? '대표 이력서' : '대표 설정'}
+                        {displayResume?.isMain ? '대표 이력서' : '대표 설정'}
                       </span>
                     </button>
                   )}
 
-                  {!isEditing && resume?.isMain && (
+                  {!isEditing && displayResume?.isMain && (
                     <div className="flex items-center gap-1.5 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-1.5 text-xs font-bold text-yellow-600">
                       <Star size={12} fill="currentColor" />
                       <span>대표 이력서</span>
@@ -953,9 +1039,9 @@ function ResumeDetailPage() {
                 <div className="flex flex-wrap gap-12 lg:flex-nowrap">
                   <div className="mx-auto shrink-0 lg:mx-0">
                     <div className="relative h-60 w-48 overflow-hidden rounded-3xl border border-slate-100 bg-slate-50 shadow-inner">
-                      {resume?.profileImage ? (
+                      {displayResume?.profileImage ? (
                         <img
-                          src={resume.profileImage}
+                          src={displayResume.profileImage}
                           alt="Profile"
                           className="h-full w-full object-cover"
                         />
@@ -1007,7 +1093,7 @@ function ResumeDetailPage() {
                               Name
                             </span>
                             <h1 className="text-5xl leading-tight font-black tracking-tight break-all text-slate-900">
-                              {resume?.name || '성함을 입력하세요'}
+                              {displayResume?.name || '성함을 입력하세요'}
                             </h1>
                           </div>
                           <div className="flex items-center gap-3">
@@ -1015,7 +1101,7 @@ function ResumeDetailPage() {
                               Resume Title
                             </span>
                             <p className="text-2xl font-bold break-all text-blue-600">
-                              {resume?.title}
+                              {displayResume?.title}
                             </p>
                           </div>
                         </div>
@@ -1029,7 +1115,7 @@ function ResumeDetailPage() {
                                 Contact
                               </p>
                               <p className="text-lg font-bold break-all text-slate-700">
-                                {resume?.contact || '미입력'}
+                                {displayResume?.contact || '미입력'}
                               </p>
                             </div>
                           </div>
@@ -1042,7 +1128,7 @@ function ResumeDetailPage() {
                                 Email
                               </p>
                               <p className="text-lg font-bold break-all text-slate-700">
-                                {resume?.email || '미입력'}
+                                {displayResume?.email || '미입력'}
                               </p>
                             </div>
                           </div>
@@ -1055,7 +1141,7 @@ function ResumeDetailPage() {
                                 Address
                               </p>
                               <p className="text-lg font-bold break-all text-slate-700">
-                                {resume?.address || '미입력'}
+                                {displayResume?.address || '미입력'}
                               </p>
                             </div>
                           </div>
@@ -1070,13 +1156,13 @@ function ResumeDetailPage() {
                             </label>
                             <input
                               className={inputClass('title')}
-                              value={resume?.title || ''}
+                              value={displayResume?.title || ''}
                               maxLength={MAX_LENGTHS.TITLE}
                               placeholder="예) 프론트엔드 개발자 이력서"
                               onChange={(e) => updateCurrentResume({ title: e.target.value })}
                             />
                             <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
-                              {(resume?.title || '').length}/{MAX_LENGTHS.TITLE}
+                              {(displayResume?.title || '').length}/{MAX_LENGTHS.TITLE}
                             </span>
                           </div>
 
@@ -1086,13 +1172,13 @@ function ResumeDetailPage() {
                             </label>
                             <input
                               className={inputClass('name')}
-                              value={resume?.name || ''}
+                              value={displayResume?.name || ''}
                               maxLength={MAX_LENGTHS.NAME}
                               placeholder="이름을 입력하세요"
                               onChange={(e) => updateCurrentResume({ name: e.target.value })}
                             />
                             <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
-                              {(resume?.name || '').length}/{MAX_LENGTHS.NAME}
+                              {(displayResume?.name || '').length}/{MAX_LENGTHS.NAME}
                             </span>
                           </div>
                         </div>
@@ -1101,7 +1187,7 @@ function ResumeDetailPage() {
                             <label className={labelClass}>연락처</label>
                             <input
                               className={inputClass()}
-                              value={resume?.contact || ''}
+                              value={displayResume?.contact || ''}
                               maxLength={MAX_LENGTHS.CONTACT}
                               placeholder="예) 010-1234-5678"
                               onChange={(e) =>
@@ -1115,20 +1201,20 @@ function ResumeDetailPage() {
                             </label>
                             <input
                               className={inputClass('email')}
-                              value={resume?.email || ''}
+                              value={displayResume?.email || ''}
                               maxLength={MAX_LENGTHS.EMAIL}
                               placeholder="예) hong@example.com"
                               onChange={(e) => updateCurrentResume({ email: e.target.value })}
                             />
                             <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
-                              {(resume?.email || '').length}/{MAX_LENGTHS.EMAIL}
+                              {(displayResume?.email || '').length}/{MAX_LENGTHS.EMAIL}
                             </span>
                           </div>
                           <div className="relative col-span-1 md:col-span-2">
                             <label className={labelClass}>주소</label>
                             <input
                               className={inputClass()}
-                              value={resume?.address || ''}
+                              value={displayResume?.address || ''}
                               maxLength={MAX_LENGTHS.ADDRESS}
                               placeholder="예) 서울특별시 강남구 테헤란로"
                               onChange={(e) => updateCurrentResume({ address: e.target.value })}
@@ -1152,15 +1238,16 @@ function ResumeDetailPage() {
                         size="md"
                         className="min-w-20 rounded-xl font-black"
                         onClick={() => {
+                          if (!displayResume) return;
                           if (type === 'experience') {
                             const newData: Experience[] = [
-                              ...(resume.experience || []),
+                              ...(displayResume.experience || []),
                               { company: '', role: '', employmentStatus: 'FULL_TIME', period: '2024.01 - 2024.01' },
                             ];
                             updateCurrentResume({ experience: newData });
                           } else {
                             const newData: Education[] = [
-                              ...(resume.education || []),
+                              ...(displayResume.education || []),
                               { school: '', major: '', degree: 'BACHELOR', status: 'GRADUATED', period: '2024.01 - 2024.01' },
                             ];
                             updateCurrentResume({ education: newData });
@@ -1173,8 +1260,8 @@ function ResumeDetailPage() {
                   }
                 >
                   <div className="space-y-4">
-                    {resume?.[type] && resume[type].length > 0 ? (
-                      resume[type].map((item, i) => (
+                    {displayResume?.[type] && displayResume[type].length > 0 ? (
+                      displayResume[type].map((item, i) => (
                         <div
                           key={i}
                           className={`group relative rounded-2xl border transition-all ${isEditing ? 'border-blue-100 bg-slate-50/50 p-6 pt-10' : 'border-slate-50 bg-white p-6 shadow-sm hover:border-blue-100 hover:shadow-md'}`}
@@ -1241,12 +1328,13 @@ function ResumeDetailPage() {
                                       : (item as Education).school
                                   }
                                   onChange={(e) => {
+                                    if (!displayResume) return;
                                     if (type === 'experience') {
-                                      const newData = [...resume.experience];
+                                      const newData = [...displayResume.experience];
                                       newData[i] = { ...newData[i], company: e.target.value };
                                       updateCurrentResume({ experience: newData });
                                     } else {
-                                      const newData = [...resume.education];
+                                      const newData = [...displayResume.education];
                                       newData[i] = { ...newData[i], school: e.target.value };
                                       updateCurrentResume({ education: newData });
                                     }
@@ -1269,12 +1357,13 @@ function ResumeDetailPage() {
                                       : (item as Education).major
                                   }
                                   onChange={(e) => {
+                                    if (!displayResume) return;
                                     if (type === 'experience') {
-                                      const newData = [...resume.experience];
+                                      const newData = [...displayResume.experience];
                                       newData[i] = { ...newData[i], role: e.target.value };
                                       updateCurrentResume({ experience: newData });
                                     } else {
-                                      const newData = [...resume.education];
+                                      const newData = [...displayResume.education];
                                       newData[i] = { ...newData[i], major: e.target.value };
                                       updateCurrentResume({ education: newData });
                                     }
@@ -1290,7 +1379,8 @@ function ResumeDetailPage() {
                                     className={selectClass}
                                     value={(item as Experience).employmentStatus}
                                     onChange={(e) => {
-                                      const newData = [...resume.experience];
+                                      if (!displayResume) return;
+                                      const newData = [...displayResume.experience];
                                       newData[i] = {
                                         ...newData[i],
                                         employmentStatus: e.target.value as keyof typeof EMPLOYMENT_STATUS,
@@ -1310,7 +1400,8 @@ function ResumeDetailPage() {
                                       className={`${selectClass} flex-1 min-w-0`}
                                       value={(item as Education).degree}
                                       onChange={(e) => {
-                                        const newData = [...resume.education];
+                                        if (!displayResume) return;
+                                        const newData = [...displayResume.education];
                                         newData[i] = {
                                           ...newData[i],
                                           degree: e.target.value as keyof typeof DEGREE_STATUS,
@@ -1328,7 +1419,8 @@ function ResumeDetailPage() {
                                       className={`${selectClass} flex-1 min-w-0`}
                                       value={(item as Education).status}
                                       onChange={(e) => {
-                                        const newData = [...resume.education];
+                                        if (!displayResume) return;
+                                        const newData = [...displayResume.education];
                                         newData[i] = {
                                           ...newData[i],
                                           status: e.target.value as keyof typeof GRADUATION_STATUS,
@@ -1580,8 +1672,9 @@ function ResumeDetailPage() {
                             size="md"
                             className="min-w-22.5 rounded-xl font-black"
                             onClick={() => {
+                              if (!displayResume) return;
                               const current = selfIntros.find(
-                                (s) => String(s.id) === String(resume?.selectedSelfIntroId),
+                                (s) => String(s.id) === String(displayResume?.selectedSelfIntroId),
                               );
                               if (!current?.title?.trim() || !current?.content?.trim()) {
                                 showToast('제목과 내용을 모두 입력해주세요!', 'warn');
@@ -1632,7 +1725,7 @@ function ResumeDetailPage() {
                             onChange={(e) =>
                               setSelfIntros(
                                 selfIntros.map((s) =>
-                                  String(s.id) === String(resume?.selectedSelfIntroId)
+                                  String(s.id) === String(displayResume?.selectedSelfIntroId)
                                     ? { ...s, title: e.target.value }
                                     : s,
                                 ),
@@ -1714,7 +1807,7 @@ function ResumeDetailPage() {
                         onChange={(e) =>
                           setSelfIntros(
                             selfIntros.map((s) =>
-                              String(s.id) === String(resume?.selectedSelfIntroId)
+                              String(s.id) === String(displayResume?.selectedSelfIntroId)
                                 ? { ...s, content: e.target.value }
                                 : s,
                             ),
