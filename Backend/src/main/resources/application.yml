@@ -20,9 +20,9 @@ spring:
 
     properties:
       hibernate:
-        format_sql: true
+        format_sql: ${HIBERNATE_FORMAT_SQL:true}
         dialect: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true
+    show-sql: ${JPA_SHOW_SQL:true}
 
   flyway:
     baseline-on-migrate: true
