@@ -57,6 +57,7 @@ public class PortfolioQueryRecommendationService {
         List<PortfolioQueryRecommendationResponse.Item> items = rows.stream()
                 .map(r -> new PortfolioQueryRecommendationResponse.Item(
                         r.getUserId(),
+                        r.getUserName(),
                         r.getPortfolioId(),
                         safe(r.getTechSimilarity()),
                         safe(r.getKeywordSimilarity()),
