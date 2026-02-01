@@ -5,14 +5,21 @@ import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingRequest;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingResponse;
 import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectEmbedding;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectEmbeddingRepository;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserArchitectureEmbeddingRepository;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserKeywordEmbeddingRepository;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserTechEmbeddingRepository;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserUnifiedEmbeddingRepository;
 import com.portmatch.domain.portfolio.entity.Portfolio;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysis;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProject;
+import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectArchitectureExperience;
+import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectKeyword;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectTech;
 import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional
 public class PortfolioEmbeddingService {
@@ -33,41 +41,81 @@ public class PortfolioEmbeddingService {
     private final PortfolioRepository portfolioRepository;
     private final PortfolioAnalysisRepository analysisRepository;
     private final PortfolioProjectEmbeddingRepository embeddingRepository;
+    private final PortfolioUserTechEmbeddingRepository userTechEmbeddingRepository;
+    private final PortfolioUserKeywordEmbeddingRepository userKeywordEmbeddingRepository;
+    private final PortfolioUserArchitectureEmbeddingRepository userArchitectureEmbeddingRepository;
+    private final PortfolioUserUnifiedEmbeddingRepository userUnifiedEmbeddingRepository;
     private final PortfolioAnalysisClient embeddingClient;
 
     public PortfolioEmbeddingService(
             PortfolioRepository portfolioRepository,
             PortfolioAnalysisRepository analysisRepository,
             PortfolioProjectEmbeddingRepository embeddingRepository,
+            PortfolioUserTechEmbeddingRepository userTechEmbeddingRepository,
+            PortfolioUserKeywordEmbeddingRepository userKeywordEmbeddingRepository,
+            PortfolioUserArchitectureEmbeddingRepository userArchitectureEmbeddingRepository,
+            PortfolioUserUnifiedEmbeddingRepository userUnifiedEmbeddingRepository,
             PortfolioAnalysisClient embeddingClient
     ) {
         this.portfolioRepository = portfolioRepository;
         this.analysisRepository = analysisRepository;
         this.embeddingRepository = embeddingRepository;
+        this.userTechEmbeddingRepository = userTechEmbeddingRepository;
+        this.userKeywordEmbeddingRepository = userKeywordEmbeddingRepository;
+        this.userArchitectureEmbeddingRepository = userArchitectureEmbeddingRepository;
+        this.userUnifiedEmbeddingRepository = userUnifiedEmbeddingRepository;
         this.embeddingClient = embeddingClient;
     }
 
     public void buildForMyPortfolio(Long userId, Long portfolioId) {
-        // 1) ?뚯쑀沅?泥댄겕
+        log.info("[portfolio-embedding] start userId={} portfolioId={}", userId, portfolioId);
+        // 1) 소유권 체크
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
 
-        // 2) 遺꾩꽍 寃곌낵 濡쒕뱶 (?꾩옱 援ы쁽??留욎떠 portfolioId濡?fetch)
-        PortfolioAnalysis analysis = analysisRepository.findWithProjectsByPortfolioId(portfolio.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
+        // 2) 분석 결과 로드 (현재 구현은 portfolioId로 fetch)
+        PortfolioAnalysis analysis;
+        try {
+            log.info("[portfolio-embedding] fetch analysis start portfolioId={}", portfolioId);
+            analysis = analysisRepository.findWithProjectsByPortfolioId(portfolio.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
+            log.info("[portfolio-embedding] fetch analysis done analysisId={}", analysis.getId());
+        } catch (RuntimeException e) {
+            log.error("[portfolio-embedding] fetch analysis failed portfolioId={}", portfolioId, e);
+            throw e;
+        }
 
-        List<PortfolioAnalysisProject> projects = analysis.getProjects();
+        List<PortfolioAnalysisProject> projects;
+        try {
+            projects = analysis.getProjects();
+            log.info("[portfolio-embedding] fetched projects analysisId={} projects={}",
+                    analysis.getId(), projects == null ? 0 : projects.size());
+        } catch (RuntimeException e) {
+            log.error("[portfolio-embedding] fetch projects failed analysisId={}", analysis.getId(), e);
+            throw e;
+        }
         if (projects == null || projects.isEmpty()) {
+            log.info("[portfolio-embedding] skip empty projects portfolioId={}", portfolioId);
             return;
         }
 
-        // 3) ?꾨줈?앺듃蹂?content ?앹꽦 + content_hash
+        // 2.5) 기존 임베딩 제거 (포트폴리오 단위 재생성)
+        userTechEmbeddingRepository.deleteByPortfolioId(portfolioId);
+        userKeywordEmbeddingRepository.deleteByPortfolioId(portfolioId);
+        userArchitectureEmbeddingRepository.deleteByPortfolioId(portfolioId);
+        userUnifiedEmbeddingRepository.deleteByPortfolioId(portfolioId);
+        embeddingRepository.deleteByPortfolioId(portfolioId);
+
+        // 3) 프로젝트별 content 생성 + content_hash
         List<Long> projectIds = new ArrayList<>();
         List<String> contents = new ArrayList<>();
         List<String> hashes = new ArrayList<>();
         List<String> textsToEmbed = new ArrayList<>();
         List<FieldEmbeddingIndices> embeddingIndices = new ArrayList<>();
         List<FieldMissingFlags> missingFlags = new ArrayList<>();
+        List<String> techItems = new ArrayList<>();
+        List<String> keywordItems = new ArrayList<>();
+        List<String> architectureItems = new ArrayList<>();
 
         for (PortfolioAnalysisProject p : projects) {
             projectIds.add(p.getId());
@@ -81,6 +129,22 @@ public class PortfolioEmbeddingService {
             String techStr = techs.isEmpty()
                     ? "N/A"
                     : techs.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
+
+            List<String> keywords = (p.getKeywords() == null) ? List.of()
+                    : p.getKeywords().stream()
+                    .map(PortfolioAnalysisProjectKeyword::getKeyword)
+                    .filter(k -> k != null && !k.isBlank())
+                    .toList();
+
+            List<String> architectureExperiences = (p.getArchitectureExperiences() == null) ? List.of()
+                    : p.getArchitectureExperiences().stream()
+                    .map(PortfolioAnalysisProjectArchitectureExperience::getArchitectureExperience)
+                    .filter(a -> a != null && !a.isBlank())
+                    .toList();
+
+            techItems.addAll(techs);
+            keywordItems.addAll(keywords);
+            architectureItems.addAll(architectureExperiences);
 
             String content = buildProjectEmbeddingText(
                     p.getName(),
@@ -121,9 +185,11 @@ public class PortfolioEmbeddingService {
                     isMissing(p.getSolution()),
                     techs.isEmpty()
             ));
+
         }
 
-        // 4) Portfolio-Analysis濡?諛곗튂 ?꾨쿋???붿껌
+        // 4) Portfolio-Analysis로 배치 임베딩 요청
+        log.info("[portfolio-embedding] request embeddings texts={}", textsToEmbed.size());
         PortfolioEmbeddingResponse resp = embeddingClient.embed(
                 new PortfolioEmbeddingRequest(textsToEmbed)
         );
@@ -131,8 +197,9 @@ public class PortfolioEmbeddingService {
         if (resp.vectors() == null || resp.vectors().size() != textsToEmbed.size()) {
             throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
         }
+        log.info("[portfolio-embedding] response embeddings size={}", resp.vectors().size());
 
-        // 5) upsert + ?곸꽭 寃곌낵 留뚮뱾湲?
+        // 5) upsert + 상세 결과 만들기
         for (int i = 0; i < projectIds.size(); i++) {
             Long projectId = projectIds.get(i);
             String content = contents.get(i);
@@ -168,6 +235,128 @@ public class PortfolioEmbeddingService {
                     flags.techMissing()
             );
         }
+
+        techItems = techItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+        keywordItems = keywordItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+        architectureItems = architectureItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+
+        if (!techItems.isEmpty()) {
+            log.info("[portfolio-embedding] request tech embeddings texts={}", techItems.size());
+            PortfolioEmbeddingResponse techResp = embeddingClient.embedTags(
+                    new PortfolioEmbeddingRequest(techItems)
+            );
+            if (techResp.vectors() == null || techResp.vectors().size() != techItems.size()) {
+                throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
+            }
+            for (int i = 0; i < techItems.size(); i++) {
+                String vector = toVectorString(techResp.vectors().get(i));
+                userTechEmbeddingRepository.upsertTechEmbedding(
+                        userId,
+                        portfolioId,
+                        techItems.get(i),
+                        vector
+                );
+            }
+        }
+
+        if (!keywordItems.isEmpty()) {
+            log.info("[portfolio-embedding] request keyword embeddings texts={}", keywordItems.size());
+            PortfolioEmbeddingResponse keywordResp = embeddingClient.embedTags(
+                    new PortfolioEmbeddingRequest(keywordItems)
+            );
+            if (keywordResp.vectors() == null || keywordResp.vectors().size() != keywordItems.size()) {
+                throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
+            }
+            for (int i = 0; i < keywordItems.size(); i++) {
+                String vector = toVectorString(keywordResp.vectors().get(i));
+                userKeywordEmbeddingRepository.upsertKeywordEmbedding(
+                        userId,
+                        portfolioId,
+                        keywordItems.get(i),
+                        vector
+                );
+            }
+        }
+
+        if (!architectureItems.isEmpty()) {
+            log.info("[portfolio-embedding] request architecture embeddings texts={}", architectureItems.size());
+            PortfolioEmbeddingResponse architectureResp = embeddingClient.embedTags(
+                    new PortfolioEmbeddingRequest(architectureItems)
+            );
+            if (architectureResp.vectors() == null || architectureResp.vectors().size() != architectureItems.size()) {
+                throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
+            }
+            for (int i = 0; i < architectureItems.size(); i++) {
+                String vector = toVectorString(architectureResp.vectors().get(i));
+                userArchitectureEmbeddingRepository.upsertArchitectureEmbedding(
+                        userId,
+                        portfolioId,
+                        architectureItems.get(i),
+                        vector
+                );
+            }
+        }
+
+        // 6) 통합 임베딩 생성: 모든 기술/키워드/아키텍처 경험을 하나의 텍스트로 결합
+        String unifiedText = buildUnifiedExperienceText(techItems, keywordItems, architectureItems, projects);
+        log.info("[portfolio-embedding] request unified embedding portfolioId={}", portfolioId);
+        PortfolioEmbeddingResponse unifiedResp = embeddingClient.embedTags(
+                new PortfolioEmbeddingRequest(List.of(unifiedText))
+        );
+        if (unifiedResp.vectors() == null || unifiedResp.vectors().isEmpty()) {
+            throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
+        }
+        String unifiedVector = toVectorString(unifiedResp.vectors().get(0));
+        userUnifiedEmbeddingRepository.upsertUnifiedEmbedding(
+                userId,
+                portfolioId,
+                unifiedText,
+                unifiedVector
+        );
+
+        log.info("[portfolio-embedding] done portfolioId={} projects={}", portfolioId, projectIds.size());
+    }
+
+    private String buildUnifiedExperienceText(
+            List<String> techItems,
+            List<String> keywordItems,
+            List<String> architectureItems,
+            List<PortfolioAnalysisProject> projects
+    ) {
+        StringBuilder sb = new StringBuilder();
+        
+        // 기술 스택
+        if (!techItems.isEmpty()) {
+            sb.append("[기술] ").append(String.join(", ", techItems)).append("\n");
+        }
+        
+        // 키워드/역량
+        if (!keywordItems.isEmpty()) {
+            sb.append("[역량] ").append(String.join(", ", keywordItems)).append("\n");
+        }
+        
+        // 아키텍처 경험
+        if (!architectureItems.isEmpty()) {
+            sb.append("[아키텍처 경험] ").append(String.join("; ", architectureItems)).append("\n");
+        }
+        
+        // 프로젝트별 문제-해결 요약
+        for (PortfolioAnalysisProject p : projects) {
+            String problem = safe(p.getProblem());
+            String solution = safe(p.getSolution());
+            if (!problem.equals("정보 없음") || !solution.equals("정보 없음")) {
+                sb.append("[프로젝트] ").append(safe(p.getName())).append(": ");
+                if (!problem.equals("정보 없음")) {
+                    sb.append(problem);
+                }
+                if (!solution.equals("정보 없음")) {
+                    sb.append(" → ").append(solution);
+                }
+                sb.append("\n");
+            }
+        }
+        
+        return sb.toString().trim();
     }
 
     private record FieldEmbeddingIndices(
@@ -185,6 +374,7 @@ public class PortfolioEmbeddingService {
             boolean techMissing
     ) {
     }
+
 
     private String buildProjectEmbeddingText(
             String projectName,
@@ -218,6 +408,7 @@ public class PortfolioEmbeddingService {
     private boolean isMissing(String s) {
         return s == null || s.trim().isBlank();
     }
+
 
 
     private String toVectorString(List<Double> vector) {
@@ -256,4 +447,3 @@ public class PortfolioEmbeddingService {
         }
     }
 }
-

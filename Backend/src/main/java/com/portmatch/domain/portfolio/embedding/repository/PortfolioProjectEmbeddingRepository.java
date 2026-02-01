@@ -13,6 +13,13 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
 
     @Modifying
     @Query(value = """
+        DELETE FROM portfolio_project_embeddings
+        WHERE portfolio_id = :portfolioId
+        """, nativeQuery = true)
+    void deleteByPortfolioId(Long portfolioId);
+
+    @Modifying
+    @Query(value = """
         INSERT INTO portfolio_project_embeddings
             (
                 portfolio_id,
