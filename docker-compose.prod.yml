@@ -94,7 +94,7 @@ services:
     restart: always
     ports:
       - "9000:9000"
-    command: ["npm", "start", "--", "--port", "9000", "--path", "/peerjs"]
+    command: ["npm", "start", "--", "--port", "9000"]
 
   certbot:
     image: certbot/certbot:latest

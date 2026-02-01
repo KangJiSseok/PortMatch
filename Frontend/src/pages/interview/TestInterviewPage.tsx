@@ -37,7 +37,7 @@ function toHumanError(err: unknown): string {
     (typeof anyErr?.reason === 'string' && anyErr.reason) ||
     '';
 
-  return msg || (err instanceof Error ? err.message : '¾Ë ¼ö ¾ø´Â ¿À·ù°¡ ¹ß»ıÇß¾î¿ä.');
+  return msg || (err instanceof Error ? err.message : 'ì•Œ ìˆ˜ ì—†ëŠ” ì˜¤ë¥˜ê°€ ë°œìƒí–ˆì–´.');
 }
 
 export default function TestInterviewPage() {
@@ -51,9 +51,7 @@ export default function TestInterviewPage() {
   const [status, setStatus] = useState<ConnectStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const [remotePeerIdInput, setRemotePeerIdInput] = useState<string>(
-    navState.sessionId ?? ''
-  );
+  const [remotePeerIdInput, setRemotePeerIdInput] = useState<string>(navState.sessionId ?? '');
 
   const [micOn, setMicOn] = useState<boolean>(navState.micOn ?? true);
   const [camOn, setCamOn] = useState<boolean>(navState.camOn ?? true);
@@ -61,6 +59,9 @@ export default function TestInterviewPage() {
   const peerRef = useRef<ReturnType<typeof createPeer> | null>(null);
   const callRef = useRef<MediaConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -84,10 +85,7 @@ export default function TestInterviewPage() {
     };
   }, []);
 
-  const canConnect = useMemo(
-    () => remotePeerIdInput.trim().length > 0,
-    [remotePeerIdInput]
-  );
+  const canConnect = useMemo(() => remotePeerIdInput.trim().length > 0, [remotePeerIdInput]);
 
   const getLocalStream = useCallback(async () => {
     if (localStreamRef.current) return localStreamRef.current;
@@ -98,11 +96,40 @@ export default function TestInterviewPage() {
     });
 
     localStreamRef.current = stream;
-    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+    setLocalStream(stream);
     setLocalReady(true);
 
     return stream;
   }, []);
+
+  const attachStreamToVideo = useCallback(
+    (video: HTMLVideoElement | null, stream: MediaStream | null, muted = false) => {
+      if (!video) return;
+
+      if (!stream) {
+        video.srcObject = null;
+        return;
+      }
+
+      if (video.srcObject !== stream) {
+        video.srcObject = stream;
+      }
+
+      video.muted = muted;
+
+      const p = video.play();
+      if (p) p.catch(() => {});
+    },
+    [],
+  );
+
+  useEffect(() => {
+    attachStreamToVideo(localVideoRef.current, localStream, true);
+  }, [attachStreamToVideo, localStream]);
+
+  useEffect(() => {
+    attachStreamToVideo(remoteVideoRef.current, remoteStream, false);
+  }, [attachStreamToVideo, remoteStream]);
 
   const cleanupSession = useCallback(() => {
     if (callRef.current) {
@@ -113,8 +140,8 @@ export default function TestInterviewPage() {
     stopStreamTracks(localStreamRef.current);
     localStreamRef.current = null;
 
-    if (localVideoRef.current) localVideoRef.current.srcObject = null;
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    setLocalStream(null);
+    setRemoteStream(null);
 
     setLocalReady(false);
     setRemoteReady(false);
@@ -126,12 +153,12 @@ export default function TestInterviewPage() {
     const remoteId = remotePeerIdInput.trim();
 
     if (!remoteId) {
-      showToast('»ó´ë¹æ Peer ID°¡ ºñ¾îÀÖ¾î¿ä!');
+      showToast('ìƒëŒ€ Peer IDê°€ ì—†ì–´!');
       return;
     }
 
     if (!peerRef.current) {
-      showToast('Peer ¿¬°á ÁØºñ ÁßÀÌ¿¡¿ä. Àá½Ã¸¸ ±â´Ù·ÁÁÖ¼¼¿ä!');
+      showToast('Peer ì¤€ë¹„ ì¤‘ì…ë‹ˆë‹¤. ì ê¹ë§Œ ê¸°ë‹¤ë ¤ì£¼ì„¸ìš”!');
       return;
     }
 
@@ -147,19 +174,19 @@ export default function TestInterviewPage() {
       const call = peerRef.current.call(remoteId, stream);
 
       if (!call) {
-        throw new Error('ÅëÈ­ ¿¬°áÀ» ½ÃÀÛÇÏÁö ¸øÇß¾î¿ä.');
+        throw new Error('í†µí™” ì‹œì‘ì„ ì‹¤íŒ¨í–ˆì–´.');
       }
 
       callRef.current = call;
 
-      call.on('stream', (remoteStream) => {
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+      call.on('stream', (incomingStream) => {
+        setRemoteStream(incomingStream);
         setRemoteReady(true);
         setStatus('connected');
       });
 
       call.on('close', () => {
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+        setRemoteStream(null);
         setRemoteReady(false);
         setStatus('idle');
       });
@@ -200,14 +227,14 @@ export default function TestInterviewPage() {
 
         call.answer(stream);
 
-        call.on('stream', (remoteStream) => {
-          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+        call.on('stream', (incomingStream) => {
+          setRemoteStream(incomingStream);
           setRemoteReady(true);
           setStatus('connected');
         });
 
         call.on('close', () => {
-          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+          setRemoteStream(null);
           setRemoteReady(false);
           setStatus('idle');
         });
@@ -233,8 +260,8 @@ export default function TestInterviewPage() {
       stopStreamTracks(localStreamRef.current);
       localStreamRef.current = null;
 
-      if (localVideoRef.current) localVideoRef.current.srcObject = null;
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+      setLocalStream(null);
+      setRemoteStream(null);
     };
   }, [camOn, getLocalStream, micOn]);
 
@@ -250,14 +277,14 @@ export default function TestInterviewPage() {
     stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
   }, [camOn]);
 
-  // ÆäÀÌÁö ¾ğ¸¶¿îÆ® ½Ã Á¤¸®
+  // í˜ì´ì§€ ì–¸ë§ˆìš´íŠ¸ ì‹œ ì •ë¦¬
   useEffect(() => {
     return () => {
       cleanupSession();
     };
   }, [cleanupSession]);
 
-  // µé¾î¿ÀÀÚ¸¶ÀÚ peerId°¡ ÀÖÀ¸¸é ÀÚµ¿ ¿¬°á(Å×½ºÆ® ÆíÀÇ)
+  // ì´ˆëŒ€ ë§í¬/ë„¤ë¹„ê²Œì´ì…˜ì—ì„œ ìƒëŒ€ Peer IDê°€ ë„˜ì–´ì˜¤ë©´ ìë™ ì—°ê²°(í…ŒìŠ¤íŠ¸)
   useEffect(() => {
     if (!navState.sessionId) return;
     const cleanup = defer(() => {
@@ -268,14 +295,14 @@ export default function TestInterviewPage() {
 
   const copyMyPeerId = useCallback(async () => {
     if (!myPeerId) {
-      showToast('¾ÆÁ÷ ³» Peer ID°¡ ÁØºñµÇÁö ¾Ê¾Ò¾î¿ä!');
+      showToast('ì•„ì§ ë‚´ Peer IDê°€ ì¤€ë¹„ë˜ì§€ ì•Šì•˜ì–´!');
       return;
     }
     try {
       await navigator.clipboard.writeText(myPeerId);
-      showToast('³» Peer ID º¹»ç ¿Ï·á!');
+      showToast('ë‚´ Peer ID ë³µì‚¬ ì™„ë£Œ!');
     } catch {
-      showToast('º¹»ç ½ÇÆĞ¡¦ Á÷Á¢ µå·¡±×ÇØ¼­ º¹»çÇØÁà!');
+      showToast('ë³µì‚¬ ì‹¤íŒ¨â€¦ ì§ì ‘ ë“œë˜ê·¸í•´ì„œ ë³µì‚¬í•´ì¤˜!');
     }
   }, [myPeerId, showToast]);
 
@@ -289,7 +316,7 @@ export default function TestInterviewPage() {
                 test interview room
               </p>
               <p className="mt-4 truncate text-lg font-bold text-zinc-600 sm:text-xl">
-                PeerJS ¿¬°á Å×½ºÆ® (DB Á¶È¸ ¾øÀ½)
+                PeerJS í†µí™” í…ŒìŠ¤íŠ¸ (DB ì¡°íšŒ ì—†ìŒ)
               </p>
             </div>
 
@@ -301,10 +328,10 @@ export default function TestInterviewPage() {
                 className="rounded-2xl"
                 onClick={() => navigate(-1)}
               >
-                µÚ·Î
+                ë’¤ë¡œ
               </Button>
               <Button type="button" variant="red" size="md" className="rounded-2xl" onClick={leave}>
-                ³ª°¡±â
+                ë‚˜ê°€ê¸°
               </Button>
             </div>
           </div>
@@ -317,11 +344,11 @@ export default function TestInterviewPage() {
             <div className="mt-4 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
               <p className="text-sm font-black">My Peer ID</p>
               <p className="mt-1 text-xs font-semibold text-zinc-500">
-                »ó´ë¹æ¿¡°Ô ³» Peer ID¸¦ °øÀ¯ÇÏ¼¼¿ä.
+                ìƒëŒ€ì—ê²Œ ë‚´ Peer IDë¥¼ ê³µìœ í•˜ì„¸ìš”.
               </p>
 
               <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-black text-zinc-700">
-                {myPeerId || '¹ß±Ş Áß...'}
+                {myPeerId || 'ë°œê¸‰ ì¤‘...'}
               </div>
 
               <div className="mt-3 flex gap-2">
@@ -332,21 +359,21 @@ export default function TestInterviewPage() {
                   className="flex-1 rounded-2xl"
                   onClick={copyMyPeerId}
                 >
-                  º¹»ç
+                  ë³µì‚¬
                 </Button>
               </div>
             </div>
 
             <div className="mt-6 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
-              <p className="text-sm font-black">»ó´ë¹æ Peer ID</p>
+              <p className="text-sm font-black">ìƒëŒ€ Peer ID</p>
               <p className="mt-1 text-xs font-semibold text-zinc-500">
-                »ó´ë¹æÀÇ Peer ID¸¦ ÀÔ·ÂÇÏ°í ÅëÈ­¸¦ ½ÃÀÛÇÏ¼¼¿ä.
+                ìƒëŒ€ì˜ Peer IDë¥¼ ì…ë ¥í•˜ê³  í†µí™”ë¥¼ ì‹œì‘í•˜ì„¸ìš”.
               </p>
 
               <input
                 value={remotePeerIdInput}
                 onChange={(e) => setRemotePeerIdInput(e.target.value)}
-                placeholder="¿¹: peer_xxx123"
+                placeholder="ì˜ˆ: peer_xxx123"
                 className={[
                   'mt-3 w-full rounded-2xl border bg-white px-4 py-3 text-base font-bold text-zinc-700',
                   'focus:ring-midnight-ink border-zinc-200 outline-none focus:ring-2',
@@ -361,14 +388,14 @@ export default function TestInterviewPage() {
                   className="flex-1 rounded-2xl"
                   onClick={() => setRemotePeerIdInput('')}
                 >
-                  ºñ¿ì±â
+                  ë¹„ìš°ê¸°
                 </Button>
               </div>
             </div>
 
             <div className="mt-6 space-y-3">
               <div className="flex items-center justify-between rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
-                <p className="text-sm font-black">¸¶ÀÌÅ©</p>
+                <p className="text-sm font-black">ë§ˆì´í¬</p>
                 <Button
                   type="button"
                   variant="filter"
@@ -382,7 +409,7 @@ export default function TestInterviewPage() {
               </div>
 
               <div className="flex items-center justify-between rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
-                <p className="text-sm font-black">Ä«¸Ş¶ó</p>
+                <p className="text-sm font-black">ì¹´ë©”ë¼</p>
                 <Button
                   type="button"
                   variant="filter"
@@ -398,7 +425,7 @@ export default function TestInterviewPage() {
 
             {status === 'error' && errorMessage ? (
               <div className="mt-6 rounded-3xl border border-red-100 bg-red-50 p-4">
-                <p className="text-sm font-black text-red-600">¿¬°á ½ÇÆĞ</p>
+                <p className="text-sm font-black text-red-600">ì—°ê²° ì˜¤ë¥˜</p>
                 <p className="mt-2 text-xs font-semibold break-words text-red-600/80">
                   {errorMessage}
                 </p>
@@ -415,10 +442,10 @@ export default function TestInterviewPage() {
                 disabled={!canConnect || status === 'connecting'}
               >
                 {status === 'connected'
-                  ? 'Àç¿¬°á'
+                  ? 'ì—°ê²°ë¨'
                   : status === 'connecting'
-                    ? '¿¬°á Áß...'
-                    : 'ÅëÈ­ ½ÃÀÛ'}
+                    ? 'ì—°ê²° ì¤‘...'
+                    : 'í†µí™” ì‹œì‘'}
               </Button>
 
               <Button
@@ -429,30 +456,28 @@ export default function TestInterviewPage() {
                 onClick={cleanupSession}
                 disabled={status !== 'connected' && status !== 'connecting'}
               >
-                ¿¬°á ²÷±â
+                ì—°ê²° ì¢…ë£Œ
               </Button>
 
               <p className="mt-2 text-sm font-semibold text-zinc-500">
-                »óÅÂ:{' '}
+                ìƒíƒœ:{' '}
                 <span className="font-black">
                   {status === 'idle'
-                    ? '´ë±â'
+                    ? 'ëŒ€ê¸°'
                     : status === 'connecting'
-                      ? '¿¬°á Áß'
+                      ? 'ì—°ê²° ì¤‘'
                       : status === 'connected'
-                        ? '¿¬°áµÊ'
-                        : '¿À·ù'}
+                        ? 'ì—°ê²°ë¨'
+                        : 'ì˜¤ë¥˜'}
                 </span>
-                <span className="text-zinc-300"> ¡¤ </span>
-                Âü°¡ÀÚ{' '}
-                <span className="font-black">
-                  {(localReady ? 1 : 0) + (remoteReady ? 1 : 0)}
-                </span>
+                <span className="text-zinc-300"> Â· </span>
+                ì¤€ë¹„ë¨{' '}
+                <span className="font-black">{(localReady ? 1 : 0) + (remoteReady ? 1 : 0)}</span>
               </p>
 
               {isCorporate ? (
                 <p className="text-xs font-semibold text-zinc-400">
-                  ±â¾÷ °èÁ¤¿¡¼­´Â »ó´ë¹æ Peer ID¸¦ ²À È®ÀÎÇØÁÖ¼¼¿ä.
+                  ì§€ì›ì í™”ë©´ì—ì„œëŠ” ìƒëŒ€ Peer IDë¥¼ ê¼­ í™•ì¸í•´ ì£¼ì„¸ìš”.
                 </p>
               ) : null}
             </div>
@@ -461,9 +486,9 @@ export default function TestInterviewPage() {
           <section className="col-span-2 rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-lg font-black tracking-tighter">È­»ó Å×½ºÆ®</p>
+                <p className="text-lg font-black tracking-tighter">í™”ë©´ í…ŒìŠ¤íŠ¸</p>
                 <p className="mt-1 text-sm font-semibold text-zinc-500">
-                  ·ÎÄÃ(³» È­¸é) + ¸®¸ğÆ®(»ó´ë È­¸é) µÑ ´Ù ¶°¾ß ¼º°ø!
+                  ë¡œì»¬(ë‚´ í™”ë©´) + ë¦¬ëª¨íŠ¸(ìƒëŒ€ í™”ë©´) ë‘˜ ë‹¤ ì •ìƒ ë‚˜ì˜¤ë©´ ì„±ê³µ!
                 </p>
               </div>
 
