@@ -57,13 +57,12 @@ public class ResumeServiceImpl implements ResumeService {
     public ResumeResponse createResume(Long userId, ResumeCreateRequest request) {
         User user = getUser(userId);
         boolean hasMain = resumeRepository.existsByUser_IdAndIsMainTrue(userId);
-        boolean isMain = request.getIsMain() != null && request.getIsMain();
-        if (!hasMain) {
-            isMain = true;
-        }
-        Resume resume = Resume.create(user, request.getTitle(), isMain);
+        boolean requestMain = Boolean.TRUE.equals(request.getIsMain());
+        boolean shouldBeMain = requestMain || !hasMain;
+        boolean createAsMain = shouldBeMain && !hasMain;
+        Resume resume = Resume.create(user, request.getTitle(), createAsMain);
         Resume saved = resumeRepository.save(resume);
-        if (isMain) {
+        if (shouldBeMain && hasMain) {
             resumeRepository.unsetMainForUser(userId);
             saved.markMain(true);
             saved = resumeRepository.save(saved);
@@ -108,12 +107,14 @@ public class ResumeServiceImpl implements ResumeService {
         Resume resume = getResumeOwned(userId, resumeId);
         resume.updateTitle(request.getTitle());
         if (request.getIsMain() != null) {
-            if (request.getIsMain()) {
+            boolean requestMain = Boolean.TRUE.equals(request.getIsMain());
+            if (requestMain) {
                 resumeRepository.unsetMainForUser(userId);
                 resume.markMain(true);
                 resumeRepository.save(resume);
             } else {
                 resume.markMain(false);
+                resumeRepository.save(resume);
             }
         }
 
