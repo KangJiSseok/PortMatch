@@ -11,8 +11,9 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -24,9 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class LoggingAspect {
 
     private static final int MAX_ARG_LENGTH = 500;
-    private static final Marker HTTP_2XX = MarkerFactory.getMarker("HTTP_2XX");
-    private static final Marker HTTP_4XX = MarkerFactory.getMarker("HTTP_4XX");
-    private static final Marker HTTP_5XX = MarkerFactory.getMarker("HTTP_5XX");
+    private static final Logger HTTP_STATUS_LOG = LoggerFactory.getLogger("HTTP_STATUS");
 
     @Pointcut("within(com.portmatch.domain..controller..*)")
     public void controllerLayer() {
@@ -53,18 +52,16 @@ public class LoggingAspect {
             long tookMs = System.currentTimeMillis() - start;
             String resultType = result == null ? "void" : result.getClass().getSimpleName();
             int status = resolveResponseStatus();
-            Marker marker = markerForStatus(status);
-            if (marker != null) {
-                log.info(marker, "[HTTP] {} {} status={} resultType={} tookMs={}", requestInfo, signature, status,
-                        resultType, tookMs);
-            } else {
-                log.info("[HTTP] {} {} status={} resultType={} tookMs={}", requestInfo, signature, status, resultType,
-                        tookMs);
-            }
+            String group = groupForStatus(status);
+            withHttpGroup(group, () -> HTTP_STATUS_LOG.info(
+                    "[HTTP] {} {} status={} resultType={} tookMs={}",
+                    requestInfo, signature, status, resultType, tookMs
+            ));
             return result;
         } catch (Exception ex) {
             long tookMs = System.currentTimeMillis() - start;
-            log.warn("[HTTP] {} {} failed tookMs={} message={}", requestInfo, signature, tookMs, ex.getMessage());
+            HTTP_STATUS_LOG.warn("[HTTP] {} {} failed tookMs={} message={}", requestInfo, signature, tookMs,
+                    ex.getMessage());
             throw ex;
         }
     }
@@ -106,17 +103,26 @@ public class LoggingAspect {
         return status == 0 ? 200 : status;
     }
 
-    private Marker markerForStatus(int status) {
+    private String groupForStatus(int status) {
         if (status >= 200 && status < 300) {
-            return HTTP_2XX;
+            return "2xx";
         }
         if (status >= 400 && status < 500) {
-            return HTTP_4XX;
+            return "4xx";
         }
         if (status >= 500 && status < 600) {
-            return HTTP_5XX;
+            return "5xx";
         }
-        return null;
+        return "other";
+    }
+
+    private void withHttpGroup(String group, Runnable action) {
+        MDC.put("http_status_group", group);
+        try {
+            action.run();
+        } finally {
+            MDC.remove("http_status_group");
+        }
     }
 
     private String formatArgs(Object[] args) {

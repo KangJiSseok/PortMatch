@@ -5,6 +5,9 @@ import com.portmatch.global.response.ResponseCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -17,17 +20,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
 import java.util.List;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Marker HTTP_5XX = MarkerFactory.getMarker("HTTP_5XX");
-    private static final Marker HTTP_4XX = MarkerFactory.getMarker("HTTP_4XX");
+    private static final Logger HTTP_STATUS_LOG = LoggerFactory.getLogger("HTTP_STATUS");
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<BaseApiResponse<?>> handleBusiness(BusinessException ex) {
@@ -35,11 +34,15 @@ public class GlobalExceptionHandler {
         HttpStatus status = mapToHttpStatus(code.getCode());
 
         if (status.is5xxServerError()) {
-            log.error(HTTP_5XX, "[HTTP-5XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
-                    code.getCode(), ex.getMessage(), ex);
+            withHttpGroup("5xx", () -> HTTP_STATUS_LOG.error(
+                    "[HTTP-5XX] {} status={} code={} message={}",
+                    resolveRequestInfo(), status.value(), code.getCode(), ex.getMessage(), ex
+            ));
         } else if (status.is4xxClientError()) {
-            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
-                    code.getCode(), ex.getMessage());
+            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
+                    "[HTTP-4XX] {} status={} code={} message={}",
+                    resolveRequestInfo(), status.value(), code.getCode(), ex.getMessage()
+            ));
         }
 
         if (ex.getField() != null) {
@@ -64,8 +67,10 @@ public class GlobalExceptionHandler {
         HttpStatus status = mapToHttpStatus(code.getCode());
 
         if (status.is4xxClientError()) {
-            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
-                    code.getCode(), code.getMessage());
+            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
+                    "[HTTP-4XX] {} status={} code={} message={}",
+                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
+            ));
         }
 
         return ResponseEntity
@@ -85,8 +90,10 @@ public class GlobalExceptionHandler {
         HttpStatus status = mapToHttpStatus(code.getCode());
 
         if (status.is4xxClientError()) {
-            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
-                    code.getCode(), code.getMessage());
+            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
+                    "[HTTP-4XX] {} status={} code={} message={}",
+                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
+            ));
         }
 
         return ResponseEntity
@@ -100,8 +107,10 @@ public class GlobalExceptionHandler {
         HttpStatus status = mapToHttpStatus(code.getCode());
 
         if (status.is4xxClientError()) {
-            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
-                    code.getCode(), code.getMessage());
+            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
+                    "[HTTP-4XX] {} status={} code={} message={}",
+                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
+            ));
         }
 
         return ResponseEntity
@@ -115,8 +124,10 @@ public class GlobalExceptionHandler {
         HttpStatus status = mapToHttpStatus(code.getCode());
 
         if (status.is4xxClientError()) {
-            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
-                    code.getCode(), code.getMessage());
+            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
+                    "[HTTP-4XX] {} status={} code={} message={}",
+                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
+            ));
         }
 
         return ResponseEntity
@@ -130,8 +141,10 @@ public class GlobalExceptionHandler {
         HttpStatus status = mapToHttpStatus(code.getCode());
 
         if (status.is4xxClientError()) {
-            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
-                    code.getCode(), code.getMessage());
+            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
+                    "[HTTP-4XX] {} status={} code={} message={}",
+                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
+            ));
         }
 
         return ResponseEntity
@@ -144,8 +157,10 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.INTERNAL_SERVER_ERROR;
         HttpStatus status = mapToHttpStatus(code.getCode());
 
-        log.error(HTTP_5XX, "[HTTP-5XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
-                code.getCode(), e.getMessage(), e);
+        withHttpGroup("5xx", () -> HTTP_STATUS_LOG.error(
+                "[HTTP-5XX] {} status={} code={} message={}",
+                resolveRequestInfo(), status.value(), code.getCode(), e.getMessage(), e
+        ));
 
         return ResponseEntity
                 .status(status)
@@ -174,6 +189,15 @@ public class GlobalExceptionHandler {
             return HttpStatus.INTERNAL_SERVER_ERROR;
         }
         return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+
+    private void withHttpGroup(String group, Runnable action) {
+        MDC.put("http_status_group", group);
+        try {
+            action.run();
+        } finally {
+            MDC.remove("http_status_group");
+        }
     }
 
     private String resolveRequestInfo() {
