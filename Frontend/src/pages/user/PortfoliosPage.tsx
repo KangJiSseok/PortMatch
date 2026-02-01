@@ -1,7 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, ChevronDown, Search, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+  FileText,
+  ChevronDown,
+  Search,
+  Upload,
+  AlertCircle,
+  CheckCircle2,
+  Layers,
+  Cpu,
+  ArrowRight,
+  X,
+  ArrowDownCircle,
+  Lightbulb,
+  AlertTriangle,
+  Network,
+  Hash
+} from 'lucide-react';
 import Button from '../../components/Button/Button';
 import { portfolioApi } from '../../api/portfolioApi';
 import type {
@@ -20,6 +36,36 @@ interface ModalConfig {
   type: 'alert' | 'confirm';
   onConfirm?: () => void;
 }
+
+const ResultSection = ({
+  title,
+  icon,
+  children,
+  className = '',
+  sectionRef,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  sectionRef?: React.RefObject<HTMLDivElement | null>;
+}) => (
+  <motion.section
+    ref={sectionRef}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className={`bg-pure-white flex shrink-0 flex-col rounded-3xl border border-gray-100 p-7 shadow-[0_22px_45px_-11px_rgba(0,0,0,0.06)] ${className}`}
+  >
+    <div className="mb-6 flex shrink-0 items-center gap-2">
+      <div className="bg-point-blue h-5 w-1.5 rounded-full" />
+      {icon && <span className="text-midnight-ink ml-1">{icon}</span>}
+      <h2 className="text-midnight-ink text-xl font-black tracking-tight whitespace-nowrap uppercase">
+        {title}
+      </h2>
+    </div>
+    <div className="relative flex flex-col">{children}</div>
+  </motion.section>
+);
 
 const STAGES = [
   {
@@ -61,7 +107,18 @@ function PortfoliosPage() {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const projectSectionRef = useRef<HTMLDivElement>(null);
+  const techSectionRef = useRef<HTMLDivElement>(null);
+
   const activeStageId = [...STAGES].reverse().find((s) => progress >= s.threshold)?.id ?? 0;
+
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+    if (ref.current) {
+      const yOffset = -100;
+      const y = ref.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
 
   const mapAnalysisData = (response: AnalysisResponse): AnalysisData => {
     const projects = response.projects || [];
@@ -377,71 +434,157 @@ function PortfoliosPage() {
 
         <AnimatePresence>
           {selectedProject && (
-            <div className="fixed inset-0 z-50 flex items-start justify-center p-6 pt-28">
+            <div className="fixed inset-0 z-[100] flex items-start justify-center p-6 pt-24">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSelectedProject(null)}
-                className="bg-midnight-ink/60 fixed inset-0 backdrop-blur-sm"
+                className="bg-midnight-ink/40 fixed inset-0 backdrop-blur-xl transition-all"
               />
+
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                initial={{ opacity: 0, scale: 0.98, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 30 }}
-                className="bg-pure-white relative flex max-h-[80vh] w-160 flex-col overflow-hidden rounded-4xl shadow-2xl"
+                exit={{ opacity: 0, scale: 0.98, y: 20 }}
+                className="bg-pure-white relative flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2.5rem] shadow-2xl ring-1 ring-black/5"
               >
-                <div className="flex shrink-0 items-center justify-between border-b border-gray-100 p-8">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-point-blue h-10 w-1.5 rounded-full" />
-                    <h3 className="text-midnight-ink text-2xl font-black tracking-tighter">
+                {/* 1. 모달 헤더 */}
+                <div className="flex shrink-0 items-start justify-between border-b border-gray-100 bg-white/50 px-10 py-8 backdrop-blur-sm">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-point-blue text-pure-white shadow-point-blue/20 inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-black uppercase shadow-lg">
+                        <Layers size={12} strokeWidth={3} />
+                        프로젝트 상세
+                      </span>
+                      <span className="text-slate-gray text-sm font-bold tracking-tight opacity-50">
+                        {selectedProject.domain || 'General'}
+                      </span>
+                    </div>
+                    <h3 className="text-midnight-ink text-4xl font-black tracking-tighter leading-tight">
                       {selectedProject.name}
                     </h3>
                   </div>
+                  <button
+                    onClick={() => setSelectedProject(null)}
+                    className="bg-gray-50 text-silver-mist hover:bg-gray-100 hover:text-midnight-ink flex h-10 w-10 items-center justify-center rounded-full transition-all"
+                  >
+                    <X size={24} strokeWidth={2.5} />
+                  </button>
                 </div>
-                <div className="custom-scrollbar space-y-8 overflow-y-auto p-10">
-                  <section>
-                    <h4 className="text-midnight-ink mb-4 text-xs font-black tracking-widest uppercase opacity-40">
-                      Problem & Context
-                    </h4>
-                    <div className="bg-cloud-dancer/40 rounded-3xl p-7">
-                      <p className="text-midnight-ink text-lg leading-relaxed font-bold break-keep opacity-90">
-                        {selectedProject.problem}
-                      </p>
-                    </div>
-                  </section>
-                  <section>
-                    <h4 className="text-midnight-ink mb-4 text-xs font-black tracking-widest uppercase opacity-40">
-                      Key Solution
-                    </h4>
-                    <div className="rounded-3xl border border-emerald-500/10 bg-emerald-500/5 p-7">
-                      <p className="text-midnight-ink text-lg leading-relaxed font-bold break-keep">
-                        {selectedProject.solution}
-                      </p>
-                    </div>
-                  </section>
-                  <section>
-                    <h4 className="text-midnight-ink mb-5 text-xs font-black tracking-widest uppercase opacity-40">
-                      Stack Used
-                    </h4>
-                    <div className="flex flex-wrap gap-2.5">
-                      {selectedProject.tech.map((t) => (
-                        <div
-                          key={t}
-                          className="bg-pure-white border-silver-mist flex items-center gap-2 rounded-xl border px-4 py-2.5 shadow-sm"
-                        >
-                          <div className="bg-point-blue h-1 w-1 rounded-full" />
-                          <span className="text-midnight-ink text-xs font-black">{t}</span>
+
+                {/* 2. 모달 본문 (스크롤 영역) */}
+                <div className="custom-scrollbar flex-1 space-y-8 overflow-y-auto px-10 py-8">
+
+                  {/* Row 1: 문제 정의 & 핵심 해결 */}
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {/* Problem Section (Error Color 활용) */}
+                    <section className="bg-slate-50 relative flex flex-col rounded-[2rem] border border-gray-100 p-8">
+                      <div className="absolute top-8 right-8 text-gray-200">
+                        <AlertTriangle size={80} strokeWidth={1} />
+                      </div>
+                      <div className="relative z-10">
+                        <div className="text-error mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">
+                          <AlertTriangle size={24} />
                         </div>
-                      ))}
-                    </div>
-                  </section>
+                        <h4 className="text-midnight-ink mb-3 text-sm font-black tracking-widest opacity-40">
+                          문제 정의 및 배경
+                        </h4>
+                        <p className="text-midnight-ink text-lg leading-relaxed font-bold break-keep opacity-80">
+                          {selectedProject.problem}
+                        </p>
+                      </div>
+                    </section>
+
+                    {/* Solution Section (Point Blue 활용) */}
+                    <section className="bg-point-blue/5 relative flex flex-col rounded-[2rem] border border-blue-100 p-8">
+                      <div className="absolute top-8 right-8 text-blue-100">
+                        <Lightbulb size={80} strokeWidth={1} />
+                      </div>
+                      <div className="relative z-10">
+                        <div className="text-point-blue mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">
+                          <Lightbulb size={24} />
+                        </div>
+                        <h4 className="text-point-blue mb-3 text-sm font-black tracking-widest opacity-60">
+                          핵심 해결 방안
+                        </h4>
+                        <p className="text-midnight-ink text-lg leading-relaxed font-bold break-keep">
+                          {selectedProject.solution}
+                        </p>
+                      </div>
+                    </section>
+                  </div>
+
+                  {/* Row 2: 아키텍처 및 기술적 경험 (색상 통일: Point Blue) */}
+                  {selectedProject.architecture_experience && selectedProject.architecture_experience.length > 0 && (
+                    <section className="border-silver-mist rounded-[2rem] border bg-white p-8 shadow-sm">
+                      <div className="mb-6 flex items-center gap-3">
+                        <div className="bg-point-blue/10 text-point-blue flex h-10 w-10 items-center justify-center rounded-xl">
+                          <Network size={20} />
+                        </div>
+                        <h4 className="text-midnight-ink text-xl font-black tracking-tight">설계 및 기술적 의사결정</h4>
+                      </div>
+                      <div className="grid gap-3">
+                        {selectedProject.architecture_experience.map((exp, idx) => (
+                          <div key={idx} className="flex items-start gap-4 rounded-2xl bg-gray-50/50 border border-gray-100 px-5 py-4">
+                            <div className="bg-point-blue mt-2 h-1.5 w-1.5 shrink-0 rounded-full" />
+                            <span className="text-midnight-ink text-lg font-bold leading-relaxed opacity-80">
+                              {exp}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Row 3: 기술 스택 & 키워드 (디자인 통일) */}
+                  <div className="space-y-6">
+                    {/* Tech Stack */}
+                    <section className="border-silver-mist bg-pure-white rounded-[2rem] border p-8 shadow-sm">
+                      <div className="mb-6 flex items-center gap-3">
+                        <div className="bg-point-blue/10 text-point-blue flex h-10 w-10 items-center justify-center rounded-xl">
+                          <Cpu size={20} />
+                        </div>
+                        <h4 className="text-midnight-ink text-xl font-black tracking-tight">사용 기술 스택</h4>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {selectedProject.tech.map((t) => (
+                          <div key={t} className="flex items-center gap-3 rounded-2xl bg-gray-50/50 border border-gray-100 px-5 py-3.5">
+                            <div className="bg-point-blue h-1.5 w-1.5 shrink-0 rounded-full" />
+                            <span className="text-midnight-ink text-base font-bold tracking-tight">{t}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    {/* Keywords */}
+                    {selectedProject.keywords && selectedProject.keywords.length > 0 && (
+                      <section className="border-silver-mist bg-pure-white rounded-[2rem] border p-8 shadow-sm">
+                        <div className="mb-6 flex items-center gap-3">
+                          <div className="bg-point-blue/10 text-point-blue flex h-10 w-10 items-center justify-center rounded-xl">
+                            <Hash size={20} />
+                          </div>
+                          <h4 className="text-midnight-ink text-xl font-black tracking-tight">관련 키워드</h4>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                          {selectedProject.keywords.map((k) => (
+                            <div key={k} className="flex items-center gap-2 rounded-2xl bg-gray-50/50 border border-gray-100 px-5 py-3.5">
+                              <Hash size={14} className="text-slate-gray opacity-50" />
+                              <span className="text-midnight-ink text-base font-bold tracking-tight">{k}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                  </div>
                 </div>
-                <div className="border-t border-gray-100 p-8">
+
+                {/* 3. 모달 푸터 */}
+                <div className="flex shrink-0 justify-end border-t border-gray-100 bg-gray-50/50 px-10 py-6">
                   <Button
                     variant="dark"
                     size="lg"
-                    className="w-full rounded-2xl font-black"
+                    className="w-full rounded-2xl py-4 text-lg font-black shadow-xl md:w-auto md:px-12"
                     onClick={() => setSelectedProject(null)}
                   >
                     확인
@@ -780,123 +923,148 @@ function PortfoliosPage() {
             {step === 'result' && analysisData && (
               <motion.div
                 key="result"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-8"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="grid grid-cols-1 gap-6"
               >
-                <div className="border-midnight-ink -mt-4 flex items-end justify-between border-b-4 pb-6">
-                  <h2 className="text-midnight-ink text-5xl font-black tracking-tighter">
-                    진단 리포트
-                  </h2>
-                  <div className="text-right">
-                    <p className="text-slate-gray text-sm font-bold opacity-40">TARGET FILE</p>
-                    <p className="text-midnight-ink max-w-xs truncate text-lg font-black">
-                      {selectedPortfolio?.name}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="border-silver-mist bg-cloud-dancer/30 flex flex-1 items-center justify-between rounded-3xl border px-8 py-5 shadow-sm">
-                    <p className="text-slate-gray text-sm font-black uppercase opacity-50">
+                <div className="grid grid-cols-2 gap-5">
+                  <button
+                    onClick={() => scrollToSection(projectSectionRef)}
+                    className="group border-silver-mist bg-pure-white hover:border-point-blue/50 hover:shadow-lg relative flex flex-col items-start justify-center overflow-hidden rounded-3xl border p-6 text-left transition-all"
+                  >
+                    <div className="absolute -right-6 -bottom-6 opacity-5 transition-opacity group-hover:opacity-10">
+                      <Layers size={120} />
+                    </div>
+                    <div className="bg-point-blue/10 mb-3 flex h-10 w-10 items-center justify-center rounded-xl">
+                      <Layers size={20} className="text-point-blue" />
+                    </div>
+                    <p className="text-slate-gray text-xs font-black uppercase opacity-60">
                       Total Projects
                     </p>
-                    <p className="text-midnight-ink text-3xl font-black">
-                      {analysisData.projects?.length || 0}
-                    </p>
-                  </div>
-                  <div className="border-silver-mist bg-cloud-dancer/30 flex flex-1 items-center justify-between rounded-3xl border px-8 py-5 shadow-sm">
-                    <p className="text-slate-gray text-sm font-black uppercase opacity-50">
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-midnight-ink text-4xl font-black tracking-tighter">
+                        {analysisData.projects?.length || 0}
+                      </span>
+                      <span className="text-midnight-ink text-lg font-bold">건</span>
+                      <ArrowDownCircle
+                        size={18}
+                        className="text-point-blue/40 group-hover:text-point-blue ml-auto transition-colors"
+                      />
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => scrollToSection(techSectionRef)}
+                    className="group border-silver-mist bg-pure-white hover:border-emerald-500/50 hover:shadow-lg relative flex flex-col items-start justify-center overflow-hidden rounded-3xl border p-6 text-left transition-all"
+                  >
+                    <div className="absolute -right-6 -bottom-6 opacity-5 transition-opacity group-hover:opacity-10">
+                      <Cpu size={120} />
+                    </div>
+                    <div className="bg-emerald-500/10 mb-3 flex h-10 w-10 items-center justify-center rounded-xl">
+                      <Cpu size={20} className="text-emerald-600" />
+                    </div>
+                    <p className="text-slate-gray text-xs font-black uppercase opacity-60">
                       Key Tech Stacks
                     </p>
-                    <p className="text-midnight-ink text-3xl font-black">
-                      {analysisData.techStacks.length}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-12">
-                  <section>
-                    <div className="mb-8 flex items-center gap-3">
-                      <div className="bg-point-blue h-6 w-1.5 rounded-full" />
-                      <h3 className="text-midnight-ink text-2xl font-black tracking-tight">
-                        상세 프로젝트 분석
-                      </h3>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-midnight-ink text-4xl font-black tracking-tighter">
+                        {analysisData.techStacks.length}
+                      </span>
+                      <span className="text-midnight-ink text-lg font-bold">개</span>
+                      <ArrowDownCircle
+                        size={18}
+                        className="text-emerald-600/40 group-hover:text-emerald-600 ml-auto transition-colors"
+                      />
                     </div>
-                    <div className="grid gap-6">
-                      {analysisData.projects?.map((proj, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => setSelectedProject(proj)}
-                          className="group border-silver-mist bg-pure-white flex w-full cursor-pointer items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
-                        >
-                          <div className="flex items-center gap-7">
-                            <span className="bg-pure-white text-point-blue border-silver-mist group-hover:bg-point-blue flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-xl font-black tabular-nums transition-colors group-hover:text-white">
-                              {(idx + 1).toString().padStart(2, '0')}
-                            </span>
-                            <div className="min-w-0">
-                              <h4 className="text-midnight-ink group-hover:text-point-blue truncate text-2xl font-black tracking-tight transition-colors">
+                  </button>
+                </div>
+
+                <ResultSection
+                  title="상세 프로젝트 분석"
+                  icon={<Layers size={22} />}
+                  sectionRef={projectSectionRef}
+                >
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    {analysisData.projects?.map((proj, idx) => (
+                      <motion.div
+                        key={idx}
+                        layout
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="group bg-pure-white relative flex h-full min-h-60 shrink-0 cursor-pointer flex-col overflow-hidden rounded-3xl border border-slate-100 p-6 shadow-sm transition-all hover:border-transparent hover:shadow-xl"
+                        onClick={() => setSelectedProject(proj)}
+                      >
+                        <div className="bg-point-blue absolute top-0 bottom-0 left-0 w-1 transition-all group-hover:w-1.5" />
+                        <div className="mb-4 flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1 pl-2">
+                            <div className="flex flex-col items-start gap-2">
+                              <span className="bg-point-blue text-pure-white max-w-full truncate rounded-md px-2.5 py-0.5 text-[11px] font-black tracking-wider whitespace-nowrap uppercase shadow-sm">
+                                Project {idx + 1}
+                              </span>
+                              <h4 className="text-midnight-ink group-hover:text-point-blue w-full truncate text-xl leading-tight font-black break-keep transition-colors">
                                 {proj.name}
                               </h4>
-                              <div className="mt-2 flex gap-2.5">
-                                {proj.tech.slice(0, 4).map((t) => (
-                                  <span
-                                    key={t}
-                                    className="rounded-full bg-emerald-50 px-4 py-1 text-sm font-black tracking-tight text-emerald-600"
-                                  >
-                                    #{t}
-                                  </span>
-                                ))}
-                                {proj.tech.length > 4 && (
-                                  <span className="text-slate-gray py-1 text-xs font-bold opacity-40">
-                                    외 {proj.tech.length - 4}개
-                                  </span>
-                                )}
-                              </div>
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </section>
-                  <section>
-                    <div className="mb-8 flex items-center gap-3">
-                      <div className="bg-point-blue h-6 w-1.5 rounded-full" />
-                      <h3 className="text-midnight-ink text-2xl font-black tracking-tight">
-                        기술 스택 인벤토리
-                      </h3>
-                    </div>
-                    <div className="border-silver-mist bg-pure-white rounded-4xl border p-10 shadow-sm">
-                      <div className="flex flex-wrap gap-3.5">
-                        {analysisData.techStacks.map((tech) => (
-                          <div
-                            key={tech}
-                            className="border-silver-mist bg-cloud-dancer/20 hover:border-point-blue/40 hover:bg-point-blue/5 flex items-center gap-3 rounded-2xl border px-6 py-4.5 shadow-sm transition-all hover:-translate-y-1"
-                          >
-                            <div className="bg-point-blue h-2 w-2 rounded-full" />
-                            <span className="text-midnight-ink text-base font-black tracking-tight">
-                              {tech}
+
+                        <div className="relative mb-5 flex flex-wrap items-start gap-1 pl-2">
+                          {proj.tech.slice(0, 4).map((t) => (
+                            <span
+                              key={t}
+                              className="bg-point-blue/5 text-point-blue rounded-md px-2 py-1 text-[11px] font-black whitespace-nowrap"
+                            >
+                              {t}
                             </span>
+                          ))}
+                          {proj.tech.length > 4 && (
+                            <span className="text-slate-gray px-2 py-1 text-[11px] font-bold opacity-60">
+                              +{proj.tech.length - 4}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-auto flex shrink-0 items-center justify-end border-t border-slate-50 pt-3 pl-2">
+                          <div className="group/link relative flex items-center gap-1">
+                            <span className="text-point-blue text-[11px] font-black whitespace-nowrap transition-transform group-hover/link:translate-x-1">
+                              자세히 보기
+                            </span>
+                            <ArrowRight
+                              size={12}
+                              className="text-point-blue transition-transform group-hover/link:translate-x-1"
+                            />
                           </div>
-                        ))}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </ResultSection>
+
+                <ResultSection
+                  title="기술 스택 인벤토리"
+                  icon={<Cpu size={22} />}
+                  sectionRef={techSectionRef}
+                >
+                  <div className="flex flex-wrap gap-2.5">
+                    {analysisData.techStacks.map((tech) => (
+                      <div
+                        key={tech}
+                        className="border-silver-mist bg-cloud-dancer/10 hover:border-point-blue/30 hover:bg-point-blue/5 flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors"
+                      >
+                        <div className="bg-point-blue h-1.5 w-1.5 rounded-full" />
+                        <span className="text-midnight-ink text-sm font-bold tracking-tight">
+                          {tech}
+                        </span>
                       </div>
-                    </div>
-                  </section>
-                </div>
-                <div className="flex gap-5 pt-10">
-                  <Button
-                    variant="blue"
-                    size="xl"
-                    className="shadow-point-blue/20 flex-2 rounded-2xl py-6! text-xl! font-black shadow-xl"
-                    onClick={() => {
-                      if (!selectedPortfolioId) return;
-                      navigate(`/recommend/companies?portfolioId=${selectedPortfolioId}`);
-                    }}
-                  >
-                    이 역량으로 맞춤 공고 확인하기
-                  </Button>
+                    ))}
+                  </div>
+                </ResultSection>
+
+                <div className="mt-4 flex gap-4">
                   <Button
                     variant="outline"
                     size="xl"
-                    className="flex-1 rounded-2xl py-6! text-xl! font-black"
+                    className="flex-1 rounded-2xl py-5! text-lg! font-black"
                     onClick={() => {
                       setSelectedPortfolioId(null);
                       setStep('upload');
@@ -905,6 +1073,17 @@ function PortfoliosPage() {
                     }}
                   >
                     다시 분석하기
+                  </Button>
+                  <Button
+                    variant="blue"
+                    size="xl"
+                    className="shadow-point-blue/20 flex-2 rounded-2xl py-5! text-lg! font-black shadow-xl"
+                    onClick={() => {
+                      if (!selectedPortfolioId) return;
+                      navigate(`/recommend/companies?portfolioId=${selectedPortfolioId}`);
+                    }}
+                  >
+                    이 역량으로 맞춤 공고 확인하기 <ArrowRight size={20} className="ml-2" />
                   </Button>
                 </div>
               </motion.div>

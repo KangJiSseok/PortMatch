@@ -10,9 +10,12 @@ export interface PortfolioResponse {
 
 export interface Project {
   name: string;
+  domain: string;
   problem: string;
   solution: string;
   tech: string[];
+  architecture_experience: string[];
+  keywords: string[];
 }
 
 export interface AnalysisResponse {
