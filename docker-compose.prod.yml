@@ -18,8 +18,6 @@ services:
     restart: always
 
     environment:
-      - OPENVIDU_URL=https://openvidu-server:8443/
-      - OPENVIDU_SECRET=MY_SECRET
       - EXPLANATION_URL=http://explanation-llm:8003
       
     env_file:
@@ -88,46 +86,15 @@ services:
       - "443:443"
     depends_on:
       - backend
-      - openvidu-server
+      - peerjs-server
 
-  openvidu-server:
-    image: openvidu/openvidu-server:2.30.0
-    container_name: openvidu-server
-    restart: always
-    volumes:
-      - letsencrypt:/etc/letsencrypt:ro
-    ports:
-      - "5443:5443"
-      - "8443:8443"
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        mkdir -p /opt/openvidu/owncert &&
-        ln -sf /etc/letsencrypt/live/i14d205.p.ssafy.io/fullchain.pem /opt/openvidu/owncert/certificate.cert &&
-        ln -sf /etc/letsencrypt/live/i14d205.p.ssafy.io/privkey.pem /opt/openvidu/owncert/certificate.key &&
-        exec /usr/local/bin/entrypoint.sh
-    environment:
-      - OPENVIDU_SECRET=MY_SECRET
-      - DOMAIN_OR_PUBLIC_IP=i14d205.p.ssafy.io
-      - OPENVIDU_PUBLIC_URL=https://i14d205.p.ssafy.io/openvidu
-      - OPENVIDU_HTTPS_PORT=8443
-      - HTTPS_PORT=8443
-      - CERTIFICATE_TYPE=owncert
-      - OPENVIDU_PRO_LICENSE=
-      - KMS_URIS=["ws://kurento:8888/kurento"]
-      - OPENVIDU_SESSIONS_GARBAGE_INTERVAL=900
-      - OPENVIDU_SESSIONS_GARBAGE_THRESHOLD=3600
-      - OPENVIDU_WEBHOOK=true
-      - OPENVIDU_WEBHOOK_ENDPOINT=http://portmatch-backend-prod:8080/api/interview/webhook
-      - OPENVIDU_WEBHOOK_EVENTS=["sessionDestroyed", "participantJoined", "participantLeft"]
-  
-  kurento:
-    image: kurento/kurento-media-server:7.0.1
-    container_name: kurento
+  peerjs-server:
+    image: peerjs/peerjs-server
+    container_name: peerjs-server
     restart: always
     ports:
-      - "8888:8888"
+      - "9000:9000"
+    command: ["npm", "start", "--", "--port", "9000", "--path", "/peerjs"]
 
   certbot:
     image: certbot/certbot:latest
