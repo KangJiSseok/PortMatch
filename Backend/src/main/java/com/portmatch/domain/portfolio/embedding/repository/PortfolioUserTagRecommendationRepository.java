@@ -11,6 +11,7 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
     @Query(value = """
         SELECT
             t.user_id AS userId,
+            t.user_name AS userName,
             t.portfolio_id AS portfolioId,
             t.tech_similarity AS techSimilarity,
             t.keyword_similarity AS keywordSimilarity,
@@ -24,6 +25,7 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
         FROM (
             SELECT
                 pf.user_id,
+                u.name AS user_name,
                 pf.id AS portfolio_id,
                 COALESCE(tech.tech_similarity, 0) AS tech_similarity,
                 COALESCE(keyword.keyword_similarity, 0) AS keyword_similarity,
@@ -47,6 +49,7 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
                     ) / (:unifiedWeight + :architectureWeight + :techWeight) DESC
                 ) AS rn
             FROM portfolios pf
+            JOIN users u ON u.id = pf.user_id
             LEFT JOIN LATERAL (
                 SELECT
                     tech_text,
