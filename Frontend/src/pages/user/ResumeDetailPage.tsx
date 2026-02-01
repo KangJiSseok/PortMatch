@@ -618,6 +618,11 @@ function ResumeDetailPage() {
       return;
     }
 
+    if (portfolios.some(p => p.name === file.name)) {
+      showToast('이미 동일한 이름의 파일이 존재합니다.', 'warn');
+      return;
+    }
+
     try {
       const response = await portfolioApi.uploadPortfolio(file);
 
@@ -745,7 +750,7 @@ function ResumeDetailPage() {
   const labelClass =
     'mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase';
   const selectClass =
-    'rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm';
+    'w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm h-[58px]';
 
   if (isLoading) {
     return (
@@ -918,7 +923,6 @@ function ResumeDetailPage() {
                     </h2>
                   </div>
 
-                  {/* 수정 모드일 때만 오른쪽에 '대표 이력서' 버튼 표시 */}
                   {isEditing && (
                     <button
                       onClick={() => updateCurrentResume({ isMain: !resume?.isMain })}
@@ -1099,7 +1103,7 @@ function ResumeDetailPage() {
                               className={inputClass()}
                               value={resume?.contact || ''}
                               maxLength={MAX_LENGTHS.CONTACT}
-                              placeholder="010-0000-0000"
+                              placeholder="예) 010-1234-5678"
                               onChange={(e) =>
                                 updateCurrentResume({ contact: formatPhoneNumber(e.target.value) })
                               }
@@ -1113,7 +1117,7 @@ function ResumeDetailPage() {
                               className={inputClass('email')}
                               value={resume?.email || ''}
                               maxLength={MAX_LENGTHS.EMAIL}
-                              placeholder="example@mail.com"
+                              placeholder="예) hong@example.com"
                               onChange={(e) => updateCurrentResume({ email: e.target.value })}
                             />
                             <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
@@ -1126,7 +1130,7 @@ function ResumeDetailPage() {
                               className={inputClass()}
                               value={resume?.address || ''}
                               maxLength={MAX_LENGTHS.ADDRESS}
-                              placeholder="주소를 입력하세요"
+                              placeholder="예) 서울특별시 강남구 테헤란로"
                               onChange={(e) => updateCurrentResume({ address: e.target.value })}
                             />
                           </div>
@@ -1220,7 +1224,7 @@ function ResumeDetailPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-12">
+                            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-12">
                               <div className="relative col-span-1 md:col-span-4">
                                 <label className={labelClass}>
                                   {type === 'experience' ? '회사명' : '학교명'}{' '}
@@ -1230,6 +1234,7 @@ function ResumeDetailPage() {
                                   className={inputClass(
                                     type === 'experience' ? `exp_company_${i}` : `edu_school_${i}`,
                                   )}
+                                  placeholder={type === 'experience' ? '예) 삼성전자' : '예) 한국대학교'}
                                   value={
                                     type === 'experience'
                                       ? (item as Experience).company
@@ -1248,100 +1253,103 @@ function ResumeDetailPage() {
                                   }}
                                 />
                               </div>
-                              <div className="relative col-span-1 md:col-span-3">
+                              <div className="relative col-span-1 md:col-span-4">
                                 <label className={labelClass}>
-                                  {type === 'experience' ? '직무 / 근무형태' : '전공 / 학위 / 상태'}{' '}
+                                  {type === 'experience' ? '직무' : '전공'}{' '}
                                   <span className="ml-1 text-red-500">*</span>
                                 </label>
-                                <div className="flex flex-col gap-2">
-                                  <input
-                                    className={inputClass(
-                                      type === 'experience' ? `exp_role_${i}` : `edu_major_${i}`,
-                                    )}
-                                    placeholder={type === 'experience' ? '직무 입력' : '전공 입력'}
-                                    value={
-                                      type === 'experience'
-                                        ? (item as Experience).role
-                                        : (item as Education).major
+                                <input
+                                  className={inputClass(
+                                    type === 'experience' ? `exp_role_${i}` : `edu_major_${i}`,
+                                  )}
+                                  placeholder={type === 'experience' ? '예) 프론트엔드 개발' : '예) 컴퓨터공학'}
+                                  value={
+                                    type === 'experience'
+                                      ? (item as Experience).role
+                                      : (item as Education).major
+                                  }
+                                  onChange={(e) => {
+                                    if (type === 'experience') {
+                                      const newData = [...resume.experience];
+                                      newData[i] = { ...newData[i], role: e.target.value };
+                                      updateCurrentResume({ experience: newData });
+                                    } else {
+                                      const newData = [...resume.education];
+                                      newData[i] = { ...newData[i], major: e.target.value };
+                                      updateCurrentResume({ education: newData });
                                     }
+                                  }}
+                                />
+                              </div>
+                              <div className="relative col-span-1 md:col-span-4">
+                                <label className={labelClass}>
+                                  {type === 'experience' ? '고용형태' : '학위/상태'}
+                                </label>
+                                {type === 'experience' ? (
+                                  <select
+                                    className={selectClass}
+                                    value={(item as Experience).employmentStatus}
                                     onChange={(e) => {
-                                      if (type === 'experience') {
-                                        const newData = [...resume.experience];
-                                        newData[i] = { ...newData[i], role: e.target.value };
-                                        updateCurrentResume({ experience: newData });
-                                      } else {
-                                        const newData = [...resume.education];
-                                        newData[i] = { ...newData[i], major: e.target.value };
-                                        updateCurrentResume({ education: newData });
-                                      }
+                                      const newData = [...resume.experience];
+                                      newData[i] = {
+                                        ...newData[i],
+                                        employmentStatus: e.target.value as keyof typeof EMPLOYMENT_STATUS,
+                                      };
+                                      updateCurrentResume({ experience: newData });
                                     }}
-                                  />
-                                  {type === 'experience' ? (
+                                  >
+                                    {Object.entries(EMPLOYMENT_STATUS).map(([key, label]) => (
+                                      <option key={key} value={key}>
+                                        {label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <div className="flex gap-2">
                                     <select
-                                      className={selectClass}
-                                      value={(item as Experience).employmentStatus}
+                                      className={`${selectClass} flex-1 min-w-0`}
+                                      value={(item as Education).degree}
                                       onChange={(e) => {
-                                        const newData = [...resume.experience];
+                                        const newData = [...resume.education];
                                         newData[i] = {
                                           ...newData[i],
-                                          employmentStatus: e.target.value as keyof typeof EMPLOYMENT_STATUS,
+                                          degree: e.target.value as keyof typeof DEGREE_STATUS,
                                         };
-                                        updateCurrentResume({ experience: newData });
+                                        updateCurrentResume({ education: newData });
                                       }}
                                     >
-                                      {Object.entries(EMPLOYMENT_STATUS).map(([key, label]) => (
+                                      {Object.entries(DEGREE_STATUS).map(([key, label]) => (
                                         <option key={key} value={key}>
                                           {label}
                                         </option>
                                       ))}
                                     </select>
-                                  ) : (
-                                    <div className="flex gap-2">
-                                      <select
-                                        className={`${selectClass} flex-1`}
-                                        value={(item as Education).degree}
-                                        onChange={(e) => {
-                                          const newData = [...resume.education];
-                                          newData[i] = {
-                                            ...newData[i],
-                                            degree: e.target.value as keyof typeof DEGREE_STATUS,
-                                          };
-                                          updateCurrentResume({ education: newData });
-                                        }}
-                                      >
-                                        {Object.entries(DEGREE_STATUS).map(([key, label]) => (
-                                          <option key={key} value={key}>
-                                            {label}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <select
-                                        className={`${selectClass} flex-1`}
-                                        value={(item as Education).status}
-                                        onChange={(e) => {
-                                          const newData = [...resume.education];
-                                          newData[i] = {
-                                            ...newData[i],
-                                            status: e.target.value as keyof typeof GRADUATION_STATUS,
-                                          };
-                                          updateCurrentResume({ education: newData });
-                                        }}
-                                      >
-                                        {Object.entries(GRADUATION_STATUS).map(([key, label]) => (
-                                          <option key={key} value={key}>
-                                            {label}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  )}
-                                </div>
+                                    <select
+                                      className={`${selectClass} flex-1 min-w-0`}
+                                      value={(item as Education).status}
+                                      onChange={(e) => {
+                                        const newData = [...resume.education];
+                                        newData[i] = {
+                                          ...newData[i],
+                                          status: e.target.value as keyof typeof GRADUATION_STATUS,
+                                        };
+                                        updateCurrentResume({ education: newData });
+                                      }}
+                                    >
+                                      {Object.entries(GRADUATION_STATUS).map(([key, label]) => (
+                                        <option key={key} value={key}>
+                                          {label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
                               </div>
-                              <div className="col-span-1 md:col-span-5">
+                              <div className="col-span-1 md:col-span-12">
                                 <label className={labelClass}>기간</label>
-                                <div className="flex flex-wrap items-center gap-1 sm:flex-nowrap">
+                                <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                                   <select
-                                    className={selectClass}
+                                    className={`${selectClass} flex-1 w-full`}
                                     value={item.period?.split(' - ')[0]?.split('.')[0]}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'startYear', e.target.value)
@@ -1354,7 +1362,7 @@ function ResumeDetailPage() {
                                     ))}
                                   </select>
                                   <select
-                                    className={selectClass}
+                                    className={`${selectClass} flex-1 w-full`}
                                     value={item.period?.split(' - ')[0]?.split('.')[1]}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'startMonth', e.target.value)
@@ -1366,9 +1374,9 @@ function ResumeDetailPage() {
                                       </option>
                                     ))}
                                   </select>
-                                  <span className="font-black text-slate-300">-</span>
+                                  <span className="shrink-0 font-black text-slate-300">-</span>
                                   <select
-                                    className={selectClass}
+                                    className={`${selectClass} flex-1 w-full`}
                                     value={item.period?.split(' - ')[1]?.split('.')[0]}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'endYear', e.target.value)
@@ -1381,7 +1389,7 @@ function ResumeDetailPage() {
                                     ))}
                                   </select>
                                   <select
-                                    className={selectClass}
+                                    className={`${selectClass} flex-1 w-full`}
                                     value={item.period?.split(' - ')[1]?.split('.')[1]}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'endMonth', e.target.value)
@@ -1419,7 +1427,6 @@ function ResumeDetailPage() {
                       <div
                         onClick={() =>
                           isEditing &&
-                          portfolios.length > 0 &&
                           setShowPortfolioList(!showPortfolioList)
                         }
                         className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
@@ -1458,28 +1465,34 @@ function ResumeDetailPage() {
                               exit={{ opacity: 0 }}
                               className="absolute top-full left-0 z-70 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
                             >
-                              {portfolios.map((p) => (
-                                <div
-                                  key={p.id}
-                                  className="flex cursor-pointer items-center justify-between px-6 py-4 transition-colors hover:bg-slate-50"
-                                  onClick={() => {
-                                    updateCurrentResume({ selectedPortfolioId: p.id });
-                                    setShowPortfolioList(false);
-                                  }}
-                                >
-                                  <span className="mr-4 truncate font-bold text-slate-700">
-                                    {p.name}
-                                  </span>
-                                  <Button
-                                    variant="close"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeleteConfirm({ type: 'portfolio', id: p.id });
-                                    }}
-                                  />
+                              {portfolios.length === 0 ? (
+                                <div className="px-6 py-4 text-center text-sm font-bold text-slate-400">
+                                  업로드된 포트폴리오가 없습니다.
                                 </div>
-                              ))}
+                              ) : (
+                                portfolios.map((p) => (
+                                  <div
+                                    key={p.id}
+                                    className="flex cursor-pointer items-center justify-between px-6 py-4 transition-colors hover:bg-slate-50"
+                                    onClick={() => {
+                                      updateCurrentResume({ selectedPortfolioId: p.id });
+                                      setShowPortfolioList(false);
+                                    }}
+                                  >
+                                    <span className="mr-4 truncate font-bold text-slate-700">
+                                      {p.name}
+                                    </span>
+                                    <Button
+                                      variant="close"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeleteConfirm({ type: 'portfolio', id: p.id });
+                                      }}
+                                    />
+                                  </div>
+                                ))
+                              )}
                             </motion.div>
                           </>
                         )}
@@ -1600,7 +1613,6 @@ function ResumeDetailPage() {
                       onClick={() =>
                         isEditing &&
                         !innerEditingIntro &&
-                        selfIntros.length > 0 &&
                         setShowSelfIntroList(!showSelfIntroList)
                       }
                       className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing && !innerEditingIntro ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
@@ -1615,7 +1627,7 @@ function ResumeDetailPage() {
                             className="w-full bg-transparent text-xl font-black text-blue-600 outline-none"
                             value={currentSelfIntro?.title || ''}
                             maxLength={MAX_LENGTHS.TITLE}
-                            placeholder="자기소개 제목을 입력하세요"
+                            placeholder="예) 성장 과정"
                             autoFocus
                             onChange={(e) =>
                               setSelfIntros(
@@ -1658,28 +1670,34 @@ function ResumeDetailPage() {
                             exit={{ opacity: 0 }}
                             className="absolute top-full left-0 z-70 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-2xl"
                           >
-                            {selfIntros.map((s) => (
-                              <div
-                                key={s.id}
-                                className="flex cursor-pointer items-center justify-between px-6 py-4 transition-colors hover:bg-slate-50"
-                                onClick={() => {
-                                  updateCurrentResume({ selectedSelfIntroId: s.id });
-                                  setShowSelfIntroList(false);
-                                }}
-                              >
-                                <span className="mr-4 truncate font-bold text-slate-700">
-                                  {s.title || '(제목 없음)'}
-                                </span>
-                                <Button
-                                  variant="close"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteConfirm({ type: 'selfIntro', id: s.id });
-                                  }}
-                                />
+                            {selfIntros.length === 0 ? (
+                              <div className="px-6 py-4 text-center text-sm font-bold text-slate-400">
+                                작성된 자기소개가 없습니다.
                               </div>
-                            ))}
+                            ) : (
+                              selfIntros.map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="flex cursor-pointer items-center justify-between px-6 py-4 transition-colors hover:bg-slate-50"
+                                  onClick={() => {
+                                    updateCurrentResume({ selectedSelfIntroId: s.id });
+                                    setShowSelfIntroList(false);
+                                  }}
+                                >
+                                  <span className="mr-4 truncate font-bold text-slate-700">
+                                    {s.title || '(제목 없음)'}
+                                  </span>
+                                  <Button
+                                    variant="close"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteConfirm({ type: 'selfIntro', id: s.id });
+                                    }}
+                                  />
+                                </div>
+                              ))
+                            )}
                           </motion.div>
                         </>
                       )}
