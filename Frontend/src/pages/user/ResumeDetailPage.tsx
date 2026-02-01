@@ -16,8 +16,37 @@ import {
   Camera,
   MessageSquare,
   Bookmark,
+  Star,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
+import { portfolioApi } from '../../api/portfolioApi';
+import { resumeApi } from '../../api/resumeApi';
+
+const EMPLOYMENT_STATUS = {
+  FULL_TIME: '정규직',
+  PART_TIME: '파트타임',
+  INTERN: '인턴',
+  CONTRACT: '계약직',
+  FREELANCE: '프리랜서',
+  OTHER: '기타',
+} as const;
+
+const DEGREE_STATUS = {
+  HIGH_SCHOOL: '고등학교',
+  ASSOCIATE: '전문학사',
+  BACHELOR: '학사',
+  MASTER: '석사',
+  DOCTORATE: '박사',
+  OTHER: '기타',
+} as const;
+
+const GRADUATION_STATUS = {
+  ENROLLED: '재학',
+  GRADUATED: '졸업',
+  LEAVE: '휴학',
+  DROPPED: '중퇴',
+  OTHER: '기타',
+} as const;
 
 interface UserData {
   userId: number;
@@ -29,24 +58,30 @@ interface UserData {
 interface Portfolio {
   id: string | number;
   name: string;
+  fileUrl?: string;
 }
 
 interface SelfIntro {
   id: string;
+  realId?: number;
   title: string;
   content: string;
 }
 
 interface Education {
+  id?: number;
   school: string;
   major: string;
-  status: string;
+  degree: keyof typeof DEGREE_STATUS;
+  status: keyof typeof GRADUATION_STATUS;
   period: string;
 }
 
 interface Experience {
+  id?: number;
   company: string;
   role: string;
+  employmentStatus: keyof typeof EMPLOYMENT_STATUS;
   period: string;
 }
 
@@ -54,21 +89,17 @@ interface ResumeData {
   id: string;
   userId: string | number;
   title: string;
+  isMain: boolean;
   name: string;
   contact: string;
   email: string;
   address: string;
   profileImage: string | null;
+  profileImageId?: number | null;
   education: Education[];
   experience: Experience[];
   selectedPortfolioId: string | number | null;
   selectedSelfIntroId: string | null;
-}
-
-interface ApiResponse<T> {
-  status: boolean;
-  data: T;
-  message?: string;
 }
 
 interface SectionCardProps {
@@ -122,58 +153,90 @@ function ResumeDetailPage() {
   const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>({});
   const [isLoading, setIsLoading] = useState(true);
 
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+
+  const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
+    const saved = localStorage.getItem('selfIntros');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const formatDateToDot = (dateStr?: string) => {
+    if (!dateStr) return '';
+    return dateStr.substring(0, 7).replace(/-/g, '.');
+  };
+
   const mapApiToResume = useCallback((apiData: any, currentUser: UserData | null): ResumeData => {
     const profile = apiData.profile || {};
     return {
       id: String(apiData.id),
       userId: apiData.userId,
       title: apiData.title || '제목 없음',
+      isMain: apiData.isMain || false,
       name: profile.name || currentUser?.name || '',
       contact: profile.contact || '',
       email: profile.email || currentUser?.email || '',
       address: profile.address || '',
       profileImage: profile.profileImageUrl || null,
+      profileImageId: profile.profileImageId || null,
       experience: (apiData.careers || []).map((c: any) => ({
+        id: c.id,
         company: c.company,
         role: c.role,
-        period: `${c.periodStart?.replace(/-/g, '.').slice(0, 7) || ''} - ${c.periodEnd?.replace(/-/g, '.').slice(0, 7) || ''}`,
+        employmentStatus: c.employmentStatus || 'FULL_TIME',
+        period: `${formatDateToDot(c.periodStart)} - ${formatDateToDot(c.periodEnd)}`,
       })),
       education: (apiData.educations || []).map((e: any) => ({
+        id: e.id,
         school: e.school,
         major: e.major,
-        status: e.status,
-        period: `${e.periodStart?.replace(/-/g, '.').slice(0, 7) || ''} - ${e.periodEnd?.replace(/-/g, '.').slice(0, 7) || ''}`,
+        degree: e.degree || 'BACHELOR',
+        status: e.status || 'GRADUATED',
+        period: `${formatDateToDot(e.periodStart)} - ${formatDateToDot(e.periodEnd)}`,
       })),
       selectedPortfolioId: apiData.portfolio?.portfolioId || null,
-      selectedSelfIntroId: apiData.selfIntroductions?.[0]?.id || null,
+      selectedSelfIntroId: apiData.selfIntroductions?.[0]?.id ? String(apiData.selfIntroductions[0].id) : null,
     };
+  }, []);
+
+  const fetchPortfolios = useCallback(async () => {
+    try {
+      const portfolioList = await portfolioApi.fetchMyPortfolios();
+      const mappedPortfolios: Portfolio[] = portfolioList.map((p) => ({
+        id: p.id,
+        name: p.originalFilename,
+        fileUrl: '',
+      }));
+      setPortfolios(mappedPortfolios);
+    } catch (error) {
+      console.error('Failed to fetch portfolios:', error);
+    }
   }, []);
 
   const fetchResumes = useCallback(async () => {
     try {
-      const response = await fetch('/api/resumes');
-      if (response.ok) {
-        const json: ApiResponse<any[]> = await response.json();
-
-        // [디버깅] 서버에서 실제로 어떤 목록을 주는지 콘솔에서 확인하세요.
-        console.log("Server Resume List:", json.data);
-
-        if (json.status && Array.isArray(json.data)) {
-          const resumeMap: Record<string, ResumeData> = {};
-
-          json.data.forEach((r) => {
-            // ID가 없거나 유효하지 않은 데이터는 목록에 넣지 않음 (유령 방지)
-            if (r.id !== undefined && r.id !== null) {
-              resumeMap[String(r.id)] = {
-                id: String(r.id),
-                title: r.title || '제목 없음',
-              } as ResumeData;
-            }
-          });
-
-          setAllResumes(resumeMap);
+      const data = await resumeApi.getResumes();
+      const resumeMap: Record<string, ResumeData> = {};
+      data.forEach((r) => {
+        if (r.id !== undefined && r.id !== null) {
+          resumeMap[String(r.id)] = {
+            id: String(r.id),
+            title: r.title || '제목 없음',
+            isMain: r.isMain || false,
+            userId: r.userId,
+            name: r.profile?.name || '',
+            contact: r.profile?.contact || '',
+            email: r.profile?.email || '',
+            address: r.profile?.address || '',
+            profileImage: r.profile?.profileImageUrl || null,
+            profileImageId: null,
+            education: [],
+            experience: [],
+            selectedPortfolioId: null,
+            selectedSelfIntroId: null,
+          };
         }
-      }
+      });
+      setAllResumes(resumeMap);
     } catch (error) {
       console.error('Failed to fetch resumes:', error);
     } finally {
@@ -184,22 +247,24 @@ function ResumeDetailPage() {
   const fetchResumeDetail = useCallback(async (id: string) => {
     if (!user) return;
     try {
-      const response = await fetch(`/api/resumes/${id}`);
-      if (response.ok) {
-        const json = await response.json();
-        if (json.status && json.data) {
-          const mappedResume = mapApiToResume(json.data, user);
-          setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
-        }
+      const data = await resumeApi.getResumeDetail(id);
+      const mappedResume = mapApiToResume(data, user);
+
+      if (data.selfIntroductions && Array.isArray(data.selfIntroductions)) {
+        const mappedIntros = data.selfIntroductions.map((intro: any) => ({
+          id: String(intro.id),
+          realId: intro.id,
+          title: intro.title,
+          content: intro.answerText
+        }));
+        setSelfIntros(mappedIntros);
       }
+
+      setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
     } catch (error) {
       console.error('Failed to fetch resume detail:', error);
     }
   }, [user, mapApiToResume]);
-
-  useEffect(() => {
-    localStorage.removeItem('resumes');
-  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -217,15 +282,14 @@ function ResumeDetailPage() {
     };
     fetchUser();
     fetchResumes();
-  }, [fetchResumes]);
+    fetchPortfolios();
+  }, [fetchResumes, fetchPortfolios]);
 
   useEffect(() => {
     if (resumeId && resumeId !== 'me' && user) {
-      if (!allResumes[resumeId] || !allResumes[resumeId].name) {
-        fetchResumeDetail(resumeId);
-      }
+      fetchResumeDetail(resumeId);
     }
-  }, [resumeId, user, fetchResumeDetail, allResumes]);
+  }, [resumeId, user, fetchResumeDetail]);
 
   const startNewChat = (id: string, name: string) => console.log(`${name}님과 채팅방 생성`, id);
 
@@ -235,16 +299,6 @@ function ResumeDetailPage() {
   const expRef = useRef<HTMLDivElement>(null);
   const eduRef = useRef<HTMLDivElement>(null);
   const selfIntroRef = useRef<HTMLDivElement>(null);
-
-  const [portfolios, setPortfolios] = useState<Portfolio[]>(() => {
-    const saved = localStorage.getItem('portfolios');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
-    const saved = localStorage.getItem('selfIntros');
-    return saved ? JSON.parse(saved) : [];
-  });
 
   const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
 
@@ -347,30 +401,23 @@ function ResumeDetailPage() {
     }
 
     try {
-      const response = await fetch('/api/resumes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: finalTitle }),
+      const data = await resumeApi.createResume({
+        title: finalTitle,
+        isMain: Object.keys(allResumes).length === 0
       });
 
-      if (response.ok) {
-        const json = await response.json();
-        if (json.status && json.data) {
-          const newResume = mapApiToResume(json.data, user);
+      const newResume = mapApiToResume(data, user);
 
-          setResumeSnapshot({ ...allResumes });
-          setAllResumes((prev) => ({ ...prev, [String(newResume.id)]: newResume }));
+      setResumeSnapshot({ ...allResumes });
+      setAllResumes((prev) => ({ ...prev, [String(newResume.id)]: newResume }));
 
-          navigate(`/resumes/${newResume.id}`, { replace: true });
+      navigate(`/resumes/${newResume.id}`, { replace: true });
 
-          setTimeout(() => {
-            setIsEditing(true);
-            showToast(`${finalTitle} 작성을 시작합니다.`);
-          }, 0);
-        }
-      } else {
-        showToast('이력서 생성에 실패했습니다.', 'error');
-      }
+      setTimeout(() => {
+        setIsEditing(true);
+        showToast(`${finalTitle} 작성을 시작합니다.`);
+      }, 0);
+
     } catch (error) {
       console.error('Failed to create resume:', error);
       showToast('서버 통신 중 오류가 발생했습니다.', 'error');
@@ -395,9 +442,7 @@ function ResumeDetailPage() {
         navigate('/resumes', { replace: true });
       }
     }
-    const savedP = localStorage.getItem('portfolios');
     const savedS = localStorage.getItem('selfIntros');
-    if (savedP) setPortfolios(JSON.parse(savedP));
     if (savedS) setSelfIntros(JSON.parse(savedS));
     setResumeSnapshot(null);
     setIsEditing(false);
@@ -405,7 +450,17 @@ function ResumeDetailPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const validateAndSave = () => {
+
+  const convertToDateStr = (dotDate?: string) => {
+    if (!dotDate) return '2026-01-01';
+    const parts = dotDate.split('.');
+    if (parts.length < 2) return `${dotDate.trim()}-01-01`.substring(0, 10);
+    const year = parts[0].trim();
+    const month = parts[1].trim();
+    return `${year}-${month}-01`;
+  };
+
+  const validateAndSave = async () => {
     const errors: string[] = [];
     if (innerEditingIntro) {
       showToast("상단의 '내용 저장' 버튼을 먼저 눌러주세요!", 'warn');
@@ -441,20 +496,70 @@ function ResumeDetailPage() {
       return;
     }
 
-    const titles = selfIntros.map((s) => s.title.trim());
-    const uniqueTitles = new Set(titles);
-    if (titles.length !== uniqueTitles.size) {
-      showToast('자기소개 목록에 중복된 제목이 있습니다.', 'warn');
-      scrollToSection(selfIntroRef);
-      return;
-    }
+    const payload = {
+      title: resume.title,
+      isMain: resume.isMain,
+      profile: {
+        name: resume.name,
+        contact: resume.contact ? resume.contact : "",
+        email: resume.email,
+        address: resume.address || "",
+        profileImageId: resume.profileImageId ? Number(resume.profileImageId) : null
+      },
+      portfolio: resume.selectedPortfolioId
+        ? { portfolioId: Number(resume.selectedPortfolioId) }
+        : null,
 
-    localStorage.setItem('resumes', JSON.stringify(allResumes));
-    localStorage.setItem('portfolios', JSON.stringify(portfolios));
-    localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
-    setResumeSnapshot(null);
-    setIsEditing(false);
-    showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
+      careers: resume.experience.map((exp, index) => {
+        const periodParts = exp.period ? exp.period.split(' - ') : ['2026.01', '2026.01'];
+        return {
+          id: exp.id || undefined,
+          company: exp.company,
+          role: exp.role,
+          periodStart: convertToDateStr(periodParts[0]),
+          periodEnd: convertToDateStr(periodParts[1]),
+          employmentStatus: exp.employmentStatus || "FULL_TIME",
+          description: "",
+          orderIndex: index
+        };
+      }),
+
+      educations: resume.education.map((edu, index) => {
+        const periodParts = edu.period ? edu.period.split(' - ') : ['2026.01', '2026.01'];
+        return {
+          id: edu.id || undefined,
+          school: edu.school,
+          major: edu.major,
+          degree: edu.degree || "BACHELOR",
+          periodStart: convertToDateStr(periodParts[0]),
+          periodEnd: convertToDateStr(periodParts[1]),
+          status: edu.status || "GRADUATED",
+          orderIndex: index
+        };
+      }),
+
+      selfIntroductions: selfIntros.map((intro, index) => ({
+        id: intro.realId || undefined,
+        title: intro.title,
+        answerText: intro.content,
+        orderIndex: index
+      }))
+    };
+
+    console.log("Final Payload:", JSON.stringify(payload, null, 2));
+
+    try {
+      await resumeApi.updateResume(resume.id, payload as any);
+
+      setResumeSnapshot(null);
+      setIsEditing(false);
+      showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
+      fetchResumeDetail(resume.id);
+    } catch (error) {
+      console.error('Save failed:', error);
+      const errorMessage = error instanceof Error ? error.message : '서버 오류';
+      showToast(`저장 실패: ${errorMessage}`, 'error');
+    }
   };
 
   const handleInterviewRequest = () => {
@@ -507,19 +612,28 @@ function ResumeDetailPage() {
     }
   };
 
-  const handlePortfolioUpload = (file: File) => {
+  const handlePortfolioUpload = async (file: File) => {
     if (file.type !== 'application/pdf') {
       showToast('PDF 형식의 파일만 업로드 가능합니다.', 'warn');
       return;
     }
-    const isDuplicate = portfolios.some((p) => p.name === file.name);
-    if (isDuplicate) {
-      showToast('이미 등록된 파일 이름입니다.', 'warn');
-      return;
+
+    try {
+      const response = await portfolioApi.uploadPortfolio(file);
+
+      const newP: Portfolio = {
+        id: response.id,
+        name: response.originalFilename,
+      };
+
+      setPortfolios((prev) => [newP, ...prev]);
+      updateCurrentResume({ selectedPortfolioId: newP.id });
+      showToast('포트폴리오가 업로드되었습니다.', 'success');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
+      console.error('Portfolio upload failed:', err);
+      showToast(`업로드 실패: ${errorMessage}`, 'error');
     }
-    const newP = { id: Date.now(), name: file.name };
-    setPortfolios((prev) => [newP, ...prev]);
-    updateCurrentResume({ selectedPortfolioId: newP.id });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -573,23 +687,14 @@ function ResumeDetailPage() {
       };
 
       try {
-        const response = await fetch(`/api/resumes/${id}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          removeLocally();
-          showToast('이력서가 삭제되었습니다.', 'success');
-        } else {
-          if (window.confirm('서버 삭제에 실패했습니다. 목록에서만 강제로 제거할까요?')) {
-            removeLocally();
-            showToast('목록에서 강제 제거되었습니다.', 'warn');
-          }
-        }
+        await resumeApi.deleteResume(id);
+        removeLocally();
+        showToast('이력서가 삭제되었습니다.', 'success');
       } catch (error) {
         console.error('Delete failed:', error);
-        if (window.confirm('네트워크 오류가 발생했습니다. 목록에서만 강제로 제거할까요?')) {
+        if (window.confirm('서버 삭제에 실패했습니다. 목록에서만 강제로 제거할까요?')) {
           removeLocally();
+          showToast('목록에서 강제 제거되었습니다.', 'warn');
         }
       }
     } else {
@@ -602,10 +707,20 @@ function ResumeDetailPage() {
         newData.splice(index, 1);
         updateCurrentResume({ education: newData });
       } else if (type === 'portfolio' && id !== undefined) {
-        const filtered = portfolios.filter((p) => p.id !== id);
-        setPortfolios(filtered);
-        localStorage.setItem('portfolios', JSON.stringify(filtered));
-        if (resume.selectedPortfolioId === id) updateCurrentResume({ selectedPortfolioId: null });
+        try {
+          await portfolioApi.deletePortfolio(id);
+
+          const filtered = portfolios.filter((p) => String(p.id) !== String(id));
+          setPortfolios(filtered);
+          if (String(resume.selectedPortfolioId) === String(id)) {
+            updateCurrentResume({ selectedPortfolioId: null });
+          }
+          showToast('포트폴리오가 삭제되었습니다.', 'success');
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : '삭제 처리 중 오류가 발생했습니다.';
+          console.error('Portfolio delete failed:', err);
+          showToast(errorMessage, 'error');
+        }
       } else if (type === 'selfIntro' && id !== undefined) {
         const filtered = selfIntros.filter((s) => s.id !== id);
         setSelfIntros(filtered);
@@ -619,8 +734,8 @@ function ResumeDetailPage() {
     setDeleteConfirm(null);
   };
 
-  const currentPortfolio = portfolios.find((p) => p.id === resume?.selectedPortfolioId);
-  const currentSelfIntro = selfIntros.find((s) => s.id === resume?.selectedSelfIntroId);
+  const currentPortfolio = portfolios.find((p) => String(p.id) === String(resume?.selectedPortfolioId));
+  const currentSelfIntro = selfIntros.find((s) => String(s.id) === String(resume?.selectedSelfIntroId));
 
   const inputClass = (fieldId?: string) =>
     `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${errorFields.includes(fieldId || '')
@@ -631,6 +746,18 @@ function ResumeDetailPage() {
     'mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase';
   const selectClass =
     'rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm';
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-pure-white pt-32 pb-32">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+      </div>
+    );
+  }
+
+  if (!isLoading && !isEmpty && !resume) {
+    return null;
+  }
 
   return (
     <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
@@ -783,12 +910,42 @@ function ResumeDetailPage() {
                   : 'border-slate-100 shadow-slate-200/50'
                   }`}
               >
-                <div className="mb-8 flex items-center gap-3">
-                  <div className="h-6 w-1.5 rounded-full bg-blue-600" />
-                  <h2 className="text-2xl font-black tracking-tight whitespace-nowrap text-slate-800 uppercase">
-                    기본 정보
-                  </h2>
+                <div className="mb-8 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-6 w-1.5 rounded-full bg-blue-600" />
+                    <h2 className="text-2xl font-black tracking-tight whitespace-nowrap text-slate-800 uppercase">
+                      기본 정보
+                    </h2>
+                  </div>
+
+                  {/* 수정 모드일 때만 오른쪽에 '대표 이력서' 버튼 표시 */}
+                  {isEditing && (
+                    <button
+                      onClick={() => updateCurrentResume({ isMain: !resume?.isMain })}
+                      className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all border ${resume?.isMain
+                        ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
+                        : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
+                        }`}
+                    >
+                      <Star
+                        size={18}
+                        fill={resume?.isMain ? 'currentColor' : 'none'}
+                        className="transition-colors"
+                      />
+                      <span className="text-sm font-bold">
+                        {resume?.isMain ? '대표 이력서' : '대표 설정'}
+                      </span>
+                    </button>
+                  )}
+
+                  {!isEditing && resume?.isMain && (
+                    <div className="flex items-center gap-1.5 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-1.5 text-xs font-bold text-yellow-600">
+                      <Star size={12} fill="currentColor" />
+                      <span>대표 이력서</span>
+                    </div>
+                  )}
                 </div>
+
                 <div className="flex flex-wrap gap-12 lg:flex-nowrap">
                   <div className="mx-auto shrink-0 lg:mx-0">
                     <div className="relative h-60 w-48 overflow-hidden rounded-3xl border border-slate-100 bg-slate-50 shadow-inner">
@@ -918,6 +1075,7 @@ function ResumeDetailPage() {
                               {(resume?.title || '').length}/{MAX_LENGTHS.TITLE}
                             </span>
                           </div>
+
                           <div className="relative">
                             <label className={labelClass}>
                               성함 <span className="text-red-500">*</span>
@@ -993,13 +1151,13 @@ function ResumeDetailPage() {
                           if (type === 'experience') {
                             const newData: Experience[] = [
                               ...(resume.experience || []),
-                              { company: '', role: '', period: '2024.01 - 2024.01' },
+                              { company: '', role: '', employmentStatus: 'FULL_TIME', period: '2024.01 - 2024.01' },
                             ];
                             updateCurrentResume({ experience: newData });
                           } else {
                             const newData: Education[] = [
                               ...(resume.education || []),
-                              { school: '', major: '', status: '', period: '2024.01 - 2024.01' },
+                              { school: '', major: '', degree: 'BACHELOR', status: 'GRADUATED', period: '2024.01 - 2024.01' },
                             ];
                             updateCurrentResume({ education: newData });
                           }
@@ -1040,13 +1198,20 @@ function ResumeDetailPage() {
                               </div>
                               <div className="flex min-w-0 flex-1 items-center px-6">
                                 <span className="mr-3 shrink-0 rounded bg-slate-100 px-2 py-1 text-sm font-black tracking-tighter text-slate-400 uppercase">
-                                  {type === 'experience' ? '역할' : '전공'}
+                                  {type === 'experience' ? '직무/형태' : '전공/학위'}
                                 </span>
-                                <span className="truncate text-lg font-bold break-all text-slate-600">
-                                  {type === 'experience'
-                                    ? (item as Experience).role
-                                    : (item as Education).major}
-                                </span>
+                                <div className="flex flex-col">
+                                  <span className="truncate text-lg font-bold break-all text-slate-600">
+                                    {type === 'experience'
+                                      ? `${(item as Experience).role}`
+                                      : `${(item as Education).major}`}
+                                  </span>
+                                  <span className="text-xs text-slate-400 font-bold">
+                                    {type === 'experience'
+                                      ? EMPLOYMENT_STATUS[(item as Experience).employmentStatus]
+                                      : `${DEGREE_STATUS[(item as Education).degree]} / ${GRADUATION_STATUS[(item as Education).status]}`}
+                                  </span>
+                                </div>
                               </div>
                               <div className="flex items-center pl-6">
                                 <span className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-base font-black whitespace-nowrap text-blue-600">
@@ -1085,30 +1250,92 @@ function ResumeDetailPage() {
                               </div>
                               <div className="relative col-span-1 md:col-span-3">
                                 <label className={labelClass}>
-                                  {type === 'experience' ? '직무' : '전공/상태'}{' '}
+                                  {type === 'experience' ? '직무 / 근무형태' : '전공 / 학위 / 상태'}{' '}
                                   <span className="ml-1 text-red-500">*</span>
                                 </label>
-                                <input
-                                  className={inputClass(
-                                    type === 'experience' ? `exp_role_${i}` : `edu_major_${i}`,
-                                  )}
-                                  value={
-                                    type === 'experience'
-                                      ? (item as Experience).role
-                                      : (item as Education).major
-                                  }
-                                  onChange={(e) => {
-                                    if (type === 'experience') {
-                                      const newData = [...resume.experience];
-                                      newData[i] = { ...newData[i], role: e.target.value };
-                                      updateCurrentResume({ experience: newData });
-                                    } else {
-                                      const newData = [...resume.education];
-                                      newData[i] = { ...newData[i], major: e.target.value };
-                                      updateCurrentResume({ education: newData });
+                                <div className="flex flex-col gap-2">
+                                  <input
+                                    className={inputClass(
+                                      type === 'experience' ? `exp_role_${i}` : `edu_major_${i}`,
+                                    )}
+                                    placeholder={type === 'experience' ? '직무 입력' : '전공 입력'}
+                                    value={
+                                      type === 'experience'
+                                        ? (item as Experience).role
+                                        : (item as Education).major
                                     }
-                                  }}
-                                />
+                                    onChange={(e) => {
+                                      if (type === 'experience') {
+                                        const newData = [...resume.experience];
+                                        newData[i] = { ...newData[i], role: e.target.value };
+                                        updateCurrentResume({ experience: newData });
+                                      } else {
+                                        const newData = [...resume.education];
+                                        newData[i] = { ...newData[i], major: e.target.value };
+                                        updateCurrentResume({ education: newData });
+                                      }
+                                    }}
+                                  />
+                                  {type === 'experience' ? (
+                                    <select
+                                      className={selectClass}
+                                      value={(item as Experience).employmentStatus}
+                                      onChange={(e) => {
+                                        const newData = [...resume.experience];
+                                        newData[i] = {
+                                          ...newData[i],
+                                          employmentStatus: e.target.value as keyof typeof EMPLOYMENT_STATUS,
+                                        };
+                                        updateCurrentResume({ experience: newData });
+                                      }}
+                                    >
+                                      {Object.entries(EMPLOYMENT_STATUS).map(([key, label]) => (
+                                        <option key={key} value={key}>
+                                          {label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <div className="flex gap-2">
+                                      <select
+                                        className={`${selectClass} flex-1`}
+                                        value={(item as Education).degree}
+                                        onChange={(e) => {
+                                          const newData = [...resume.education];
+                                          newData[i] = {
+                                            ...newData[i],
+                                            degree: e.target.value as keyof typeof DEGREE_STATUS,
+                                          };
+                                          updateCurrentResume({ education: newData });
+                                        }}
+                                      >
+                                        {Object.entries(DEGREE_STATUS).map(([key, label]) => (
+                                          <option key={key} value={key}>
+                                            {label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <select
+                                        className={`${selectClass} flex-1`}
+                                        value={(item as Education).status}
+                                        onChange={(e) => {
+                                          const newData = [...resume.education];
+                                          newData[i] = {
+                                            ...newData[i],
+                                            status: e.target.value as keyof typeof GRADUATION_STATUS,
+                                          };
+                                          updateCurrentResume({ education: newData });
+                                        }}
+                                      >
+                                        {Object.entries(GRADUATION_STATUS).map(([key, label]) => (
+                                          <option key={key} value={key}>
+                                            {label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                               <div className="col-span-1 md:col-span-5">
                                 <label className={labelClass}>기간</label>
@@ -1341,14 +1568,14 @@ function ResumeDetailPage() {
                             className="min-w-22.5 rounded-xl font-black"
                             onClick={() => {
                               const current = selfIntros.find(
-                                (s) => s.id === resume?.selectedSelfIntroId,
+                                (s) => String(s.id) === String(resume?.selectedSelfIntroId),
                               );
                               if (!current?.title?.trim() || !current?.content?.trim()) {
                                 showToast('제목과 내용을 모두 입력해주세요!', 'warn');
                                 return;
                               }
                               const isDuplicate = selfIntros.some(
-                                (s) => s.id !== current.id && s.title.trim() === current.title.trim(),
+                                (s) => String(s.id) !== String(current.id) && s.title.trim() === current.title.trim(),
                               );
                               if (isDuplicate) {
                                 showToast('이미 존재하는 자기소개 제목입니다.', 'warn');
@@ -1393,7 +1620,7 @@ function ResumeDetailPage() {
                             onChange={(e) =>
                               setSelfIntros(
                                 selfIntros.map((s) =>
-                                  s.id === resume?.selectedSelfIntroId
+                                  String(s.id) === String(resume?.selectedSelfIntroId)
                                     ? { ...s, title: e.target.value }
                                     : s,
                                 ),
@@ -1469,7 +1696,7 @@ function ResumeDetailPage() {
                         onChange={(e) =>
                           setSelfIntros(
                             selfIntros.map((s) =>
-                              s.id === resume?.selectedSelfIntroId
+                              String(s.id) === String(resume?.selectedSelfIntroId)
                                 ? { ...s, content: e.target.value }
                                 : s,
                             ),
