@@ -61,11 +61,13 @@ public class ResumeServiceImpl implements ResumeService {
         if (!hasMain) {
             isMain = true;
         }
-        if (isMain) {
-            unsetMainIfExists(userId);
-        }
         Resume resume = Resume.create(user, request.getTitle(), isMain);
         Resume saved = resumeRepository.save(resume);
+        if (isMain) {
+            resumeRepository.unsetMainForUser(userId);
+            saved.markMain(true);
+            saved = resumeRepository.save(saved);
+        }
         Long resumeId = saved.getId();
 
         if (request.getProfile() != null) {
@@ -107,8 +109,9 @@ public class ResumeServiceImpl implements ResumeService {
         resume.updateTitle(request.getTitle());
         if (request.getIsMain() != null) {
             if (request.getIsMain()) {
-                unsetMainIfExists(userId);
+                resumeRepository.unsetMainForUser(userId);
                 resume.markMain(true);
+                resumeRepository.save(resume);
             } else {
                 resume.markMain(false);
             }
@@ -149,17 +152,22 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
+    public ResumeResponse setMainResume(Long userId, Long resumeId) {
+        Resume resume = getResumeOwned(userId, resumeId);
+        resumeRepository.unsetMainForUser(userId);
+        resume.markMain(true);
+        resumeRepository.save(resume);
+        return toResumeResponse(resume);
+    }
+
+    @Override
     public void deleteResume(Long userId, Long resumeId) {
         Resume resume = getResumeOwned(userId, resumeId);
-        List<Resume> resumes = resumeRepository.findAllByUser_IdOrderByUpdatedAtDesc(userId);
-        if (resumes.size() <= 1) {
-            throw new BusinessException(ResponseCode.INVALID_PARAMETER);
-        }
         boolean wasMain = Boolean.TRUE.equals(resume.getIsMain());
         resumeRepository.delete(resume);
         if (wasMain) {
-            resumes.stream()
-                    .filter(item -> !item.getId().equals(resumeId))
+            resumeRepository.unsetMainForUser(userId);
+            resumeRepository.findAllByUser_IdOrderByUpdatedAtDesc(userId).stream()
                     .findFirst()
                     .ifPresent(item -> item.markMain(true));
         }
@@ -269,10 +277,6 @@ public class ResumeServiceImpl implements ResumeService {
                 .orElseThrow(() -> new BusinessException(ResponseCode.PROFILE_IMAGE_NOT_FOUND));
     }
 
-    private void unsetMainIfExists(Long userId) {
-        resumeRepository.findByUser_IdAndIsMainTrue(userId)
-                .ifPresent(item -> item.markMain(false));
-    }
 
     private int nextOrderIndex(List<Integer> existingOrderIndexes) {
         return existingOrderIndexes.stream()
