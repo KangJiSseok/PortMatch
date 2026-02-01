@@ -111,6 +111,7 @@ services:
     environment:
       - OPENVIDU_SECRET=MY_SECRET
       - DOMAIN_OR_PUBLIC_IP=i14d205.p.ssafy.io
+      - OPENVIDU_PUBLIC_URL=https://i14d205.p.ssafy.io/openvidu
       - OPENVIDU_HTTPS_PORT=8443
       - HTTPS_PORT=8443
       - CERTIFICATE_TYPE=owncert
