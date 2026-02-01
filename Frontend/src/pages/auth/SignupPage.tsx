@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -22,7 +22,7 @@ const DAYS = Array.from({ length: 31 }, (_, i) => ({ value: `${i + 1}`, label: `
 const COMPANY_SIZE_OPTIONS = [
   { value: '', label: '선택' },
   { value: 'large', label: '대기업' },
-  { value: 'affiliate', label: '대기업 계올사·자회사' },
+  { value: 'affiliate', label: '대기업 계열사·자회사' },
   { value: 'small', label: '중소기업(300명이하)' },
   { value: 'medium', label: '중견기업(300명이상)' },
   { value: 'venture', label: '벤처기업' },
@@ -37,6 +37,7 @@ function SignupPage() {
   const [userType, setUserType] = useState<UserRole>('APPLICANT');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeField, setShakeField] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -57,7 +58,9 @@ function SignupPage() {
   });
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const { mutate: signupMutate, isPending: isLoading } = useSignup();
+  const { mutate: signupMutate, isPending: isMutationLoading } = useSignup();
+
+  const isLoading = isSubmitting || isMutationLoading;
 
   const validateField = (field: string, value: string, currentFormData = formData) => {
     let error = '';
@@ -77,11 +80,14 @@ function SignupPage() {
           ? '비밀번호가 일치하지 않습니다.'
           : '';
 
-      setErrors((prev) => ({
-        ...prev,
-        password: error,
-        passwordConfirm: passwordConfirmError,
-      }));
+      setErrors((prev) => {
+        const { submit, ...rest } = prev;
+        return {
+          ...rest,
+          password: error,
+          passwordConfirm: passwordConfirmError,
+        };
+      });
       return;
     }
 
@@ -94,7 +100,10 @@ function SignupPage() {
       error = '필수 입력 항목입니다.';
     }
 
-    setErrors((prev) => ({ ...prev, [field]: error }));
+    setErrors((prev) => {
+      const { submit, ...rest } = prev;
+      return { ...rest, [field]: error };
+    });
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -121,6 +130,18 @@ function SignupPage() {
     validateField(field, processedValue, nextFormData);
   };
 
+  const handleRollback = async (error: unknown) => {
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        await deleteUser(user);
+      } catch (deleteErr) {
+        console.error('롤백 실패:', deleteErr);
+      }
+    }
+    handleApiError(error);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
@@ -141,6 +162,7 @@ function SignupPage() {
         ];
 
     const newErrors: Record<string, string> = { ...errors };
+    delete newErrors.submit;
     let firstErrorField: string | null = null;
 
     requiredFields.forEach((field) => {
@@ -163,6 +185,7 @@ function SignupPage() {
     }
 
     try {
+      setIsSubmitting(true);
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const uid = userCredential.user.uid;
 
@@ -188,7 +211,13 @@ function SignupPage() {
             },
           },
           {
-            onError: handleApiError,
+            onSuccess: () => {
+              setIsSubmitting(false);
+            },
+            onError: async (error) => {
+              await handleRollback(error);
+              setIsSubmitting(false);
+            },
           },
         );
       } else {
@@ -207,11 +236,18 @@ function SignupPage() {
             },
           },
           {
-            onError: handleApiError,
+            onSuccess: () => {
+              setIsSubmitting(false);
+            },
+            onError: async (error) => {
+              await handleRollback(error);
+              setIsSubmitting(false);
+            },
           },
         );
       }
     } catch (err: unknown) {
+      setIsSubmitting(false);
       if (err instanceof FirebaseError) {
         let message = '회원가입 처리 중 오류가 발생했습니다.';
         if (err.code === 'auth/email-already-in-use') message = '이미 사용 중인 이메일입니다.';
