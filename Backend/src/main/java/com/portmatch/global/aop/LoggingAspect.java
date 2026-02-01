@@ -11,6 +11,8 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -22,6 +24,9 @@ import org.springframework.web.multipart.MultipartFile;
 public class LoggingAspect {
 
     private static final int MAX_ARG_LENGTH = 500;
+    private static final Marker HTTP_2XX = MarkerFactory.getMarker("HTTP_2XX");
+    private static final Marker HTTP_4XX = MarkerFactory.getMarker("HTTP_4XX");
+    private static final Marker HTTP_5XX = MarkerFactory.getMarker("HTTP_5XX");
 
     @Pointcut("within(com.portmatch.domain..controller..*)")
     public void controllerLayer() {
@@ -47,7 +52,15 @@ public class LoggingAspect {
             Object result = joinPoint.proceed();
             long tookMs = System.currentTimeMillis() - start;
             String resultType = result == null ? "void" : result.getClass().getSimpleName();
-            log.info("[HTTP] {} {} resultType={} tookMs={}", requestInfo, signature, resultType, tookMs);
+            int status = resolveResponseStatus();
+            Marker marker = markerForStatus(status);
+            if (marker != null) {
+                log.info(marker, "[HTTP] {} {} status={} resultType={} tookMs={}", requestInfo, signature, status,
+                        resultType, tookMs);
+            } else {
+                log.info("[HTTP] {} {} status={} resultType={} tookMs={}", requestInfo, signature, status, resultType,
+                        tookMs);
+            }
             return result;
         } catch (Exception ex) {
             long tookMs = System.currentTimeMillis() - start;
@@ -82,6 +95,28 @@ public class LoggingAspect {
             return "-";
         }
         return attributes.getRequest().getMethod() + " " + attributes.getRequest().getRequestURI();
+    }
+
+    private int resolveResponseStatus() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null || attributes.getResponse() == null) {
+            return 200;
+        }
+        int status = attributes.getResponse().getStatus();
+        return status == 0 ? 200 : status;
+    }
+
+    private Marker markerForStatus(int status) {
+        if (status >= 200 && status < 300) {
+            return HTTP_2XX;
+        }
+        if (status >= 400 && status < 500) {
+            return HTTP_4XX;
+        }
+        if (status >= 500 && status < 600) {
+            return HTTP_5XX;
+        }
+        return null;
     }
 
     private String formatArgs(Object[] args) {

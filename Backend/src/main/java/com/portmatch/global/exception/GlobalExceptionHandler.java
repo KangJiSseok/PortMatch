@@ -4,26 +4,43 @@ import com.portmatch.global.api.BaseApiResponse;
 import com.portmatch.global.response.ResponseCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.util.List;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Marker HTTP_5XX = MarkerFactory.getMarker("HTTP_5XX");
+    private static final Marker HTTP_4XX = MarkerFactory.getMarker("HTTP_4XX");
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<BaseApiResponse<?>> handleBusiness(BusinessException ex) {
         ResponseCode code = ex.getResponseCode();
         HttpStatus status = mapToHttpStatus(code.getCode());
+
+        if (status.is5xxServerError()) {
+            log.error(HTTP_5XX, "[HTTP-5XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
+                    code.getCode(), ex.getMessage(), ex);
+        } else if (status.is4xxClientError()) {
+            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
+                    code.getCode(), ex.getMessage());
+        }
 
         if (ex.getField() != null) {
             List<ErrorField> errors = List.of(new ErrorField(ex.getField(), ex.getMessage()));
@@ -44,9 +61,15 @@ public class GlobalExceptionHandler {
                 .toList();
 
         ResponseCode code = ResponseCode.VALIDATION_ERROR;
+        HttpStatus status = mapToHttpStatus(code.getCode());
+
+        if (status.is4xxClientError()) {
+            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
+                    code.getCode(), code.getMessage());
+        }
 
         return ResponseEntity
-                .status(mapToHttpStatus(code.getCode()))
+                .status(status)
                 .body(new BaseApiResponse<>(code.getStatus(), code.getCode(), code.getMessage(), errors));
     }
 
@@ -59,45 +82,73 @@ public class GlobalExceptionHandler {
                 .toList();
 
         ResponseCode code = ResponseCode.VALIDATION_ERROR;
+        HttpStatus status = mapToHttpStatus(code.getCode());
+
+        if (status.is4xxClientError()) {
+            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
+                    code.getCode(), code.getMessage());
+        }
 
         return ResponseEntity
-                .status(mapToHttpStatus(code.getCode()))
+                .status(status)
                 .body(new BaseApiResponse<>(code.getStatus(), code.getCode(), code.getMessage(), errors));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<BaseApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
         ResponseCode code = ResponseCode.INVALID_PARAMETER;
+        HttpStatus status = mapToHttpStatus(code.getCode());
+
+        if (status.is4xxClientError()) {
+            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
+                    code.getCode(), code.getMessage());
+        }
 
         return ResponseEntity
-                .status(mapToHttpStatus(code.getCode()))
+                .status(status)
                 .body(BaseApiResponse.error(code));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<BaseApiResponse<?>> handleMissingParam(MissingServletRequestParameterException e) {
         ResponseCode code = ResponseCode.INVALID_PARAMETER;
+        HttpStatus status = mapToHttpStatus(code.getCode());
+
+        if (status.is4xxClientError()) {
+            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
+                    code.getCode(), code.getMessage());
+        }
 
         return ResponseEntity
-                .status(mapToHttpStatus(code.getCode()))
+                .status(status)
                 .body(BaseApiResponse.error(code));
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<BaseApiResponse<?>> handleNotFound(NoHandlerFoundException e) {
         ResponseCode code = ResponseCode.NOT_FOUND;
+        HttpStatus status = mapToHttpStatus(code.getCode());
+
+        if (status.is4xxClientError()) {
+            log.warn(HTTP_4XX, "[HTTP-4XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
+                    code.getCode(), code.getMessage());
+        }
 
         return ResponseEntity
-                .status(mapToHttpStatus(code.getCode()))
+                .status(status)
                 .body(BaseApiResponse.error(code));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseApiResponse<?>> handleException(Exception e) {
         ResponseCode code = ResponseCode.INTERNAL_SERVER_ERROR;
+        HttpStatus status = mapToHttpStatus(code.getCode());
+
+        log.error(HTTP_5XX, "[HTTP-5XX] {} status={} code={} message={}", resolveRequestInfo(), status.value(),
+                code.getCode(), e.getMessage(), e);
 
         return ResponseEntity
-                .status(mapToHttpStatus(code.getCode()))
+                .status(status)
                 .body(BaseApiResponse.error(code));
     }
 
@@ -123,5 +174,13 @@ public class GlobalExceptionHandler {
             return HttpStatus.INTERNAL_SERVER_ERROR;
         }
         return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+
+    private String resolveRequestInfo() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null || attributes.getRequest() == null) {
+            return "-";
+        }
+        return attributes.getRequest().getMethod() + " " + attributes.getRequest().getRequestURI();
     }
 }
