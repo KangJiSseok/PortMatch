@@ -85,13 +85,6 @@ public class SessionController {
             Connection connection = session.createConnection(properties);
             String originalToken = connection.getToken();
             // 예: ws://localhost:4443?sessionId=ses_abc&token=tok_123
-
-            // 순수 토큰 값만 추출 (token= 뒤의 문자열만 가져오기)
-            String pureToken = originalToken.split("token=")[1];
-
-            // 로그로 확인 (배포 후 터미널에서 꼭 확인해봐!)
-            System.out.println("프론트에 전달할 순수 토큰: " + pureToken);
-
             // 프론트가 기대하는 대로 문자열(String)만 리턴
             return new ResponseEntity<>(originalToken, HttpStatus.OK);
 
@@ -121,28 +114,18 @@ public class SessionController {
     @PostMapping(value = "/webhook")
     @Transactional
     public ResponseEntity<Void> handleOpenViduWebhook(@RequestBody Map<String, Object> callbackData) {
-        // 전체 Webhook 데이터 로깅
-        System.out.println("=== OpenVidu Webhook 수신 ===");
-        System.out.println("전체 데이터: " + callbackData);
-
         String event = (String) callbackData.get("event");
-        System.out.println("이벤트 타입: " + event);
 
         if ("sessionDestroyed".equals(event)) {
             String sessionId = (String) callbackData.get("sessionId");
-            System.out.println("세션 종료 감지 - sessionId: " + sessionId);
 
             interviewRepository.findBySessionId(sessionId).ifPresentOrElse(
                     session -> {
-                        System.out.println("DB에서 세션 찾음: " + sessionId);
                         session.finish();
                         interviewRepository.save(session);
-                        System.out.println("세션 상태 업데이트 완료: " + sessionId);
                     },
-                    () -> System.out.println("DB에서 세션을 찾을 수 없음: " + sessionId)
+                    () -> {}
             );
-        } else {
-            System.out.println("무시된 이벤트: " + event);
         }
 
         return new ResponseEntity<>(HttpStatus.OK);

@@ -14,7 +14,6 @@ import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -36,7 +35,6 @@ import java.util.Map;
 
 @Service
 @Transactional
-@Slf4j
 public class PortfolioAnalysisService {
 
     private final PortfolioService portfolioService;
@@ -79,7 +77,6 @@ public class PortfolioAnalysisService {
         try {
             payloadJson = objectMapper.writeValueAsString(Map.of("s3_url", presigned.getUrl()));
         } catch (JsonProcessingException exception) {
-            log.error("Failed to prepare portfolio analysis request payload", exception);
             throw new BusinessException(ResponseCode.PORTFOLIO_ANALYSIS_PAYLOAD_FAILED);
         }
 
@@ -92,7 +89,6 @@ public class PortfolioAnalysisService {
             persistResult(portfolio, body);
             return body;
         } catch (RestClientException exception) {
-            log.error("Portfolio analysis request failed. endpoint={}", endpoint, exception);
             throw new BusinessException(ResponseCode.PORTFOLIO_ANALYSIS_SERVICE_UNAVAILABLE);
         }
     }

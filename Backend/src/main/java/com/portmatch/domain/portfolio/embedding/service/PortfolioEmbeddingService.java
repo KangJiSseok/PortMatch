@@ -19,7 +19,6 @@ import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +32,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 @Transactional
 public class PortfolioEmbeddingService {
@@ -68,7 +66,6 @@ public class PortfolioEmbeddingService {
     }
 
     public void buildForMyPortfolio(Long userId, Long portfolioId) {
-        log.info("[portfolio-embedding] start userId={} portfolioId={}", userId, portfolioId);
         // 1) 소유권 체크
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
@@ -76,26 +73,19 @@ public class PortfolioEmbeddingService {
         // 2) 분석 결과 로드 (현재 구현은 portfolioId로 fetch)
         PortfolioAnalysis analysis;
         try {
-            log.info("[portfolio-embedding] fetch analysis start portfolioId={}", portfolioId);
             analysis = analysisRepository.findWithProjectsByPortfolioId(portfolio.getId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
-            log.info("[portfolio-embedding] fetch analysis done analysisId={}", analysis.getId());
         } catch (RuntimeException e) {
-            log.error("[portfolio-embedding] fetch analysis failed portfolioId={}", portfolioId, e);
             throw e;
         }
 
         List<PortfolioAnalysisProject> projects;
         try {
             projects = analysis.getProjects();
-            log.info("[portfolio-embedding] fetched projects analysisId={} projects={}",
-                    analysis.getId(), projects == null ? 0 : projects.size());
         } catch (RuntimeException e) {
-            log.error("[portfolio-embedding] fetch projects failed analysisId={}", analysis.getId(), e);
             throw e;
         }
         if (projects == null || projects.isEmpty()) {
-            log.info("[portfolio-embedding] skip empty projects portfolioId={}", portfolioId);
             return;
         }
 
@@ -189,7 +179,6 @@ public class PortfolioEmbeddingService {
         }
 
         // 4) Portfolio-Analysis로 배치 임베딩 요청
-        log.info("[portfolio-embedding] request embeddings texts={}", textsToEmbed.size());
         PortfolioEmbeddingResponse resp = embeddingClient.embed(
                 new PortfolioEmbeddingRequest(textsToEmbed)
         );
@@ -197,7 +186,6 @@ public class PortfolioEmbeddingService {
         if (resp.vectors() == null || resp.vectors().size() != textsToEmbed.size()) {
             throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
         }
-        log.info("[portfolio-embedding] response embeddings size={}", resp.vectors().size());
 
         // 5) upsert + 상세 결과 만들기
         for (int i = 0; i < projectIds.size(); i++) {
@@ -241,7 +229,6 @@ public class PortfolioEmbeddingService {
         architectureItems = architectureItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
 
         if (!techItems.isEmpty()) {
-            log.info("[portfolio-embedding] request tech embeddings texts={}", techItems.size());
             PortfolioEmbeddingResponse techResp = embeddingClient.embedTags(
                     new PortfolioEmbeddingRequest(techItems)
             );
@@ -260,7 +247,6 @@ public class PortfolioEmbeddingService {
         }
 
         if (!keywordItems.isEmpty()) {
-            log.info("[portfolio-embedding] request keyword embeddings texts={}", keywordItems.size());
             PortfolioEmbeddingResponse keywordResp = embeddingClient.embedTags(
                     new PortfolioEmbeddingRequest(keywordItems)
             );
@@ -279,7 +265,6 @@ public class PortfolioEmbeddingService {
         }
 
         if (!architectureItems.isEmpty()) {
-            log.info("[portfolio-embedding] request architecture embeddings texts={}", architectureItems.size());
             PortfolioEmbeddingResponse architectureResp = embeddingClient.embedTags(
                     new PortfolioEmbeddingRequest(architectureItems)
             );
@@ -299,7 +284,6 @@ public class PortfolioEmbeddingService {
 
         // 6) 통합 임베딩 생성: 모든 기술/키워드/아키텍처 경험을 하나의 텍스트로 결합
         String unifiedText = buildUnifiedExperienceText(techItems, keywordItems, architectureItems, projects);
-        log.info("[portfolio-embedding] request unified embedding portfolioId={}", portfolioId);
         PortfolioEmbeddingResponse unifiedResp = embeddingClient.embedTags(
                 new PortfolioEmbeddingRequest(List.of(unifiedText))
         );
@@ -313,8 +297,6 @@ public class PortfolioEmbeddingService {
                 unifiedText,
                 unifiedVector
         );
-
-        log.info("[portfolio-embedding] done portfolioId={} projects={}", portfolioId, projectIds.size());
     }
 
     private String buildUnifiedExperienceText(

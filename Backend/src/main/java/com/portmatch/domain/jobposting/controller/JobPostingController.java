@@ -10,13 +10,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @Tag(name = "채용 공고", description = "채용 공고 조회 및 관리 API")
-@Slf4j
 @RestController
 @RequestMapping("/api/job-postings")
 @RequiredArgsConstructor
@@ -28,7 +26,6 @@ public class JobPostingController {
     @Operation(summary = "전체 공고 목록 조회", description = "등록된 모든 채용 공고 리스트를 반환합니다.")
     @GetMapping
     public BaseApiResponse<List<JobPostingDto>> getAllJobs() {
-        log.info("모든 채용 공고 조회 요청");
         List<JobPostingDto> jobs = jobPostingService.getAllJobPostings();
         return BaseApiResponse.ok(jobs);
     }
@@ -41,8 +38,6 @@ public class JobPostingController {
     @GetMapping("/{id}")
     public BaseApiResponse<JobPostingDto> getJobDetail(
             @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long id) {
-        log.info("공고 상세 조회 요청 - ID: {}", id);
-
         // 서비스 내부에서 BusinessException을 던지므로 try-catch가 필요 없음!
         jobPostingService.updateViewCount(id);
         JobPostingDto jobDetail = jobPostingService.getJobDetail(id);
@@ -52,7 +47,6 @@ public class JobPostingController {
     @Operation(summary = "새로운 공고 등록", description = "기업 ID와 기술 스택 ID 리스트를 포함하여 공고를 등록합니다.")
     @PostMapping
     public BaseApiResponse<String> createJob(@RequestBody JobPostingDto dto) {
-        log.info("새로운 공고 등록 요청: {}", dto.getTitle());
         jobPostingService.saveJobPostingWithStacks(dto);
         return BaseApiResponse.ok("공고와 기술 스택이 성공적으로 등록되었습니다.");
     }
@@ -61,7 +55,6 @@ public class JobPostingController {
     @GetMapping("/search-stack")
     public BaseApiResponse<List<JobPostingDto>> getJobsByStacks(
             @RequestParam("stackIds") List<Long> stackIds) {
-        log.info("기술 스택 필터링 조회 - Stack IDs: {}", stackIds);
         List<JobPostingDto> jobs = jobPostingService.getJobsByStacks(stackIds);
         return BaseApiResponse.ok(jobs);
     }
@@ -70,7 +63,6 @@ public class JobPostingController {
     @PutMapping("/{id}")
     public BaseApiResponse<String> updateJob(
             @PathVariable Long id, @RequestBody JobPostingDto dto) {
-        log.info("공고 수정 요청 - ID: {}", id);
         dto.setId(id);
         jobPostingService.saveJobPosting(dto);
         return BaseApiResponse.ok("공고 정보가 수정되었습니다.");
@@ -79,7 +71,6 @@ public class JobPostingController {
     @Operation(summary = "공고 삭제", description = "공고 ID를 통해 해당 공고를 삭제합니다.")
     @DeleteMapping("/{id}")
     public BaseApiResponse<String> deleteJob(@PathVariable Long id) {
-        log.info("공고 삭제 요청 - ID: {}", id);
         jobPostingService.deleteJobPosting(id);
         return BaseApiResponse.ok("공고가 삭제되었습니다.");
     }
@@ -87,7 +78,6 @@ public class JobPostingController {
     @Operation(summary = "기업별 공고 조회", description = "특정 기업(cid)이 등록한 모든 공고를 조회합니다.")
     @GetMapping("/company/{cid}")
     public BaseApiResponse<List<JobPostingDto>> getJobsByCompany(@PathVariable("cid") String cid) {
-        log.info("기업 별 공고 조회 요청 - CID: {}", cid);
         List<JobPostingDto> jobs = jobPostingService.getJobsByCompany(cid);
         return BaseApiResponse.ok(jobs);
     }
@@ -95,7 +85,6 @@ public class JobPostingController {
     @Operation(summary = "제목 키워드 검색", description = "공고 제목에 키워드가 포함된 공고를 검색합니다.")
     @GetMapping("/search")
     public BaseApiResponse<List<JobPostingDto>> getJobsByTitle(@RequestParam("keyword") String keyword) {
-        log.info("제목 키워드 검색 요청 - Keyword: {}", keyword);
         List<JobPostingDto> jobs = jobPostingService.getJobsByTitleKeyword(keyword);
         return BaseApiResponse.ok(jobs);
     }

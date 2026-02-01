@@ -12,13 +12,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @Tag(name = "기업 관리", description = "기업 정보 등록, 조회, 수정, 삭제를 담당하는 API입니다.")
-@Slf4j
 @RestController
 @RequestMapping("/api/companies")
 @RequiredArgsConstructor
@@ -34,8 +32,6 @@ public class CompaniesController {
     })
     @PostMapping
     public BaseApiResponse<String> createCompany(@RequestBody CompaniesDto dto) {
-        log.info("새로운 기업 생성 요청: {}", dto.getCorpName());
-
         if (dto.getCorpName() == null || dto.getCorpName().isEmpty()) {
             return BaseApiResponse.error(ResponseCode.INVALID_PARAMETER.getCode(), "기업명이 누락되었습니다.");
         }
@@ -48,7 +44,6 @@ public class CompaniesController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping
     public BaseApiResponse<List<CompaniesDto>> getAllCompanys() {
-        log.info("전체 기업 리스트 조회 요청");
         List<CompaniesDto> companyList = jobCompaniesService.getAllCompanys();
         return BaseApiResponse.ok(companyList);
     }
@@ -61,7 +56,6 @@ public class CompaniesController {
     @GetMapping("/{cid}")
     public BaseApiResponse<CompaniesDto> getCompany(
             @Parameter(description = "조회할 기업의 ID", example = "12345") @PathVariable String cid) {
-        log.info("기업 상세 조회 요청: {}", cid);
         CompaniesDto dto = jobCompaniesService.getCompany(cid);
 
         if (dto == null) {
@@ -80,7 +74,6 @@ public class CompaniesController {
     public BaseApiResponse<String> updateCompany(
             @Parameter(description = "수정할 기업의 ID", example = "12345") @PathVariable String cid,
             @RequestBody CompaniesDto dto) {
-        log.info("기업 수정 요청 - ID: {}", cid);
         dto.setCid(cid);
 
         try {
@@ -99,7 +92,6 @@ public class CompaniesController {
     @DeleteMapping("/{cid}")
     public BaseApiResponse<String> deleteCompany(
             @Parameter(description = "삭제할 기업의 ID", example = "12345") @PathVariable String cid) {
-        log.info("기업 삭제 요청: {}", cid);
         try {
             jobCompaniesService.deleteCompany(cid);
             return BaseApiResponse.ok("기업 삭제가 완료되었습니다.");

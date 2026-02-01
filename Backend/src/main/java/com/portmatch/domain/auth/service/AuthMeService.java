@@ -7,11 +7,9 @@ import com.portmatch.domain.auth.enums.Role;
 import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.domain.companies.entity.Company;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -27,7 +25,6 @@ public class AuthMeService {
             cid = companyRepository.findByUserId(user.getId())
                     .map(Company::getCid)
                     .orElse(null);
-            log.info("get cid");
         }
 
         return authResponseMapper.toMeResponse(user, cid);

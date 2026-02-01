@@ -10,7 +10,6 @@ import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.global.config.AwsS3Properties;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,7 +30,6 @@ import java.util.UUID;
 
 @Service
 @Transactional
-@Slf4j
 public class PortfolioService {
 
     private final PortfolioRepository portfolioRepository;

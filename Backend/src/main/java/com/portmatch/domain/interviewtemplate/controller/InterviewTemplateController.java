@@ -8,14 +8,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @Tag(name = "인터뷰 템플릿", description = "인터뷰 질문 템플릿 관리 API")
-@Slf4j
 @RestController
 @RequestMapping("/api/interview-templates")
 @RequiredArgsConstructor
@@ -30,7 +28,6 @@ public class InterviewTemplateController {
             @Valid @RequestBody TemplateCreateRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("템플릿 생성 요청 - UID: {}", userId);
         return BaseApiResponse.ok(interviewTemplateService.createTemplate(userId, request));
     }
 
@@ -40,7 +37,6 @@ public class InterviewTemplateController {
             @AuthenticationPrincipal UserPrincipal principal
     ) {
         Long userId = principal.getUser().getId();
-        log.info("템플릿 목록 조회 요청 - UID: {}", userId);
         return BaseApiResponse.ok(interviewTemplateService.getTemplates(userId));
     }
 
@@ -51,7 +47,6 @@ public class InterviewTemplateController {
             @PathVariable Long templateId
     ) {
         Long userId = principal.getUser().getId();
-        log.info("템플릿 상세 조회 요청 - UID: {}, templateId: {}", userId, templateId);
         return BaseApiResponse.ok(interviewTemplateService.getTemplate(userId, templateId));
     }
 
@@ -63,7 +58,6 @@ public class InterviewTemplateController {
             @Valid @RequestBody TemplateUpdateRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("템플릿 수정 요청 - UID: {}, templateId: {}", userId, templateId);
         return BaseApiResponse.ok(interviewTemplateService.updateTemplate(userId, templateId, request));
     }
 
@@ -74,7 +68,6 @@ public class InterviewTemplateController {
             @PathVariable Long templateId
     ) {
         Long userId = principal.getUser().getId();
-        log.info("템플릿 삭제 요청 - UID: {}, templateId: {}", userId, templateId);
         interviewTemplateService.deleteTemplate(userId, templateId);
         return BaseApiResponse.ok(null);
     }
@@ -87,7 +80,6 @@ public class InterviewTemplateController {
             @Valid @RequestBody TopicCreateRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("토픽 추가 요청 - UID: {}, templateId: {}", userId, templateId);
         return BaseApiResponse.ok(interviewTemplateService.addTopic(userId, templateId, request));
     }
 
@@ -100,7 +92,6 @@ public class InterviewTemplateController {
             @Valid @RequestBody TopicUpdateRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("토픽 수정 요청 - UID: {}, templateId: {}, topicId: {}", userId, templateId, topicId);
         return BaseApiResponse.ok(interviewTemplateService.updateTopic(userId, templateId, topicId, request));
     }
 
@@ -112,7 +103,6 @@ public class InterviewTemplateController {
             @PathVariable Long topicId
     ) {
         Long userId = principal.getUser().getId();
-        log.info("토픽 삭제 요청 - UID: {}, templateId: {}, topicId: {}", userId, templateId, topicId);
         interviewTemplateService.deleteTopic(userId, templateId, topicId);
         return BaseApiResponse.ok(null);
     }
@@ -125,7 +115,6 @@ public class InterviewTemplateController {
             @Valid @RequestBody TopicReorderRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("토픽 순서 변경 요청 - UID: {}, templateId: {}", userId, templateId);
         interviewTemplateService.reorderTopics(userId, templateId, request);
         return BaseApiResponse.ok(null);
     }
@@ -139,7 +128,6 @@ public class InterviewTemplateController {
             @Valid @RequestBody QuestionCreateRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("질문 추가 요청 - UID: {}, templateId: {}, topicId: {}", userId, templateId, topicId);
         return BaseApiResponse.ok(interviewTemplateService.addQuestion(userId, templateId, topicId, request));
     }
 
@@ -153,7 +141,6 @@ public class InterviewTemplateController {
             @Valid @RequestBody QuestionUpdateRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("질문 수정 요청 - UID: {}, templateId: {}, topicId: {}, questionId: {}", userId, templateId, topicId, questionId);
         return BaseApiResponse.ok(interviewTemplateService.updateQuestion(userId, templateId, topicId, questionId, request));
     }
 
@@ -166,7 +153,6 @@ public class InterviewTemplateController {
             @PathVariable Long questionId
     ) {
         Long userId = principal.getUser().getId();
-        log.info("질문 삭제 요청 - UID: {}, templateId: {}, topicId: {}, questionId: {}", userId, templateId, topicId, questionId);
         interviewTemplateService.deleteQuestion(userId, templateId, topicId, questionId);
         return BaseApiResponse.ok(null);
     }
@@ -180,7 +166,6 @@ public class InterviewTemplateController {
             @Valid @RequestBody QuestionReorderRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("질문 순서 변경 요청 - UID: {}, templateId: {}, topicId: {}", userId, templateId, topicId);
         interviewTemplateService.reorderQuestions(userId, templateId, topicId, request);
         return BaseApiResponse.ok(null);
     }

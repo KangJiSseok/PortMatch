@@ -25,7 +25,6 @@ import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProjectTech;
 import com.portmatch.domain.portfolio.repository.PortfolioAnalysisProjectRepository;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -34,7 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@Slf4j
 @Transactional
 public class CompanyProjectAnalysisService {
 
@@ -89,7 +87,6 @@ public class CompanyProjectAnalysisService {
                         exception.getReason()
                 ));
             } catch (Exception exception) {
-                log.error("Unexpected company project analysis error. companyName={}", companyName, exception);
                 results.add(new CompanyProjectAnalysisResult(
                         companyName,
                         false,
@@ -149,8 +146,6 @@ public class CompanyProjectAnalysisService {
                     exception.getReason()
             );
         } catch (Exception exception) {
-            log.error("Unexpected explanation error. companyId={}, portfolioProjectId={}, companyProjectId={}",
-                    companyId, portfolioProjectId, companyProjectId, exception);
             return new ExplanationMatchResponseItem(
                     companyId,
                     portfolioProjectId,
