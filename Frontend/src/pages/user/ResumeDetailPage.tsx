@@ -16,7 +16,7 @@ import {
   Camera,
   MessageSquare,
   Bookmark,
-  Star, // Star 아이콘 추가됨
+  Star,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import { portfolioApi } from '../../api/portfolioApi';
@@ -89,7 +89,7 @@ interface ResumeData {
   id: string;
   userId: string | number;
   title: string;
-  isMain: boolean; // ✅ [추가] 대표 이력서 여부
+  isMain: boolean;
   name: string;
   contact: string;
   email: string;
@@ -171,7 +171,7 @@ function ResumeDetailPage() {
       id: String(apiData.id),
       userId: apiData.userId,
       title: apiData.title || '제목 없음',
-      isMain: apiData.isMain || false, // ✅ [매핑] API 값 받아오기
+      isMain: apiData.isMain || false,
       name: profile.name || currentUser?.name || '',
       contact: profile.contact || '',
       email: profile.email || currentUser?.email || '',
@@ -496,16 +496,14 @@ function ResumeDetailPage() {
       return;
     }
 
-    // ✅ [꼼수] 서버의 replaceResume(PUT) 메서드 버그(500 에러) 회피를 위한 Create-Swap 전략
     const payload = {
       title: resume.title,
-      isMain: resume.isMain, // ✅ 사용자 설정 값 전송
+      isMain: resume.isMain,
       profile: {
         name: resume.name,
         contact: resume.contact ? resume.contact : "",
         email: resume.email,
         address: resume.address || "",
-        // 새 이력서를 만드는 것이므로 ID는 null로 보냅니다.
         profileImageId: resume.profileImageId ? Number(resume.profileImageId) : null
       },
       portfolio: resume.selectedPortfolioId
@@ -515,7 +513,7 @@ function ResumeDetailPage() {
       careers: resume.experience.map((exp, index) => {
         const periodParts = exp.period ? exp.period.split(' - ') : ['2026.01', '2026.01'];
         return {
-          // 새로 만드는 것이므로 id는 제거
+          id: exp.id || undefined,
           company: exp.company,
           role: exp.role,
           periodStart: convertToDateStr(periodParts[0]),
@@ -529,7 +527,7 @@ function ResumeDetailPage() {
       educations: resume.education.map((edu, index) => {
         const periodParts = edu.period ? edu.period.split(' - ') : ['2026.01', '2026.01'];
         return {
-          // 새로 만드는 것이므로 id는 제거
+          id: edu.id || undefined,
           school: edu.school,
           major: edu.major,
           degree: edu.degree || "BACHELOR",
@@ -541,35 +539,22 @@ function ResumeDetailPage() {
       }),
 
       selfIntroductions: selfIntros.map((intro, index) => ({
-        // 새로 만드는 것이므로 id는 제거
+        id: intro.realId || undefined,
         title: intro.title,
         answerText: intro.content,
         orderIndex: index
       }))
     };
 
-    console.log("Saving via Create-Swap Strategy:", JSON.stringify(payload, null, 2));
+    console.log("Final Payload:", JSON.stringify(payload, null, 2));
 
     try {
-      // 🚨 [핵심 변경] PUT(수정) 대신 POST(생성) 호출
-      const newResumeData = await resumeApi.createResume(payload as any);
-      console.log("New resume created:", newResumeData);
-
-      // 🗑️ [핵심 변경] 생성이 성공했다면, 기존 이력서를 삭제
-      try {
-        await resumeApi.deleteResume(resume.id);
-        console.log("Old resume deleted successfully.");
-      } catch (deleteError) {
-        console.warn("Failed to delete old resume (ignoring):", deleteError);
-      }
+      await resumeApi.updateResume(resume.id, payload as any);
 
       setResumeSnapshot(null);
       setIsEditing(false);
-      showToast('저장이 완료되었습니다!', 'success');
-
-      // ✨ 새 이력서 ID로 URL 이동
-      navigate(`/resumes/${newResumeData.id}`, { replace: true });
-
+      showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
+      fetchResumeDetail(resume.id);
     } catch (error) {
       console.error('Save failed:', error);
       const errorMessage = error instanceof Error ? error.message : '서버 오류';
@@ -762,7 +747,6 @@ function ResumeDetailPage() {
   const selectClass =
     'rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none focus:border-blue-600 focus:bg-white transition-all shadow-sm';
 
-  // ✅ [추가] 로딩 중이거나 데이터 준비가 안 됐을 때 안전장치
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-pure-white pt-32 pb-32">
@@ -771,7 +755,6 @@ function ResumeDetailPage() {
     );
   }
 
-  // 로딩은 끝났는데 이력서 데이터가 없는 경우 (삭제 직후 등)
   if (!isLoading && !isEmpty && !resume) {
     return null;
   }
@@ -934,6 +917,8 @@ function ResumeDetailPage() {
                       기본 정보
                     </h2>
                   </div>
+
+                  {/* 수정 모드일 때만 오른쪽에 '대표 이력서' 버튼 표시 */}
                   {isEditing && (
                     <button
                       onClick={() => updateCurrentResume({ isMain: !resume?.isMain })}
@@ -953,7 +938,6 @@ function ResumeDetailPage() {
                     </button>
                   )}
 
-                  {/* 보기 모드일 때도 대표 이력서인지 표시 */}
                   {!isEditing && resume?.isMain && (
                     <div className="flex items-center gap-1.5 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-1.5 text-xs font-bold text-yellow-600">
                       <Star size={12} fill="currentColor" />
