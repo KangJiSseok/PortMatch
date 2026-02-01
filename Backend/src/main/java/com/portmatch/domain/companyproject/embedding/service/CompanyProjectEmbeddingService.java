@@ -53,7 +53,7 @@ public class CompanyProjectEmbeddingService {
             return 0;
         }
 
-        // 1) ?꾨줈?앺듃蹂??띿뒪??content) ?앹꽦
+        // 1) 프로젝트별 텍스트(content) 생성
         List<Long> projectIds = new ArrayList<>();
         List<String> contents = new ArrayList<>();
         List<String> textsToEmbed = new ArrayList<>();
@@ -114,7 +114,7 @@ public class CompanyProjectEmbeddingService {
             ));
         }
 
-        // 2) inference濡?諛곗튂 ?꾨쿋???붿껌
+        // 2) inference로 배치 임베딩 요청
         CompanyEmbeddingResponse resp = embeddingClient.embed(
                 new CompanyEmbeddingRequest(textsToEmbed)
         );
@@ -123,7 +123,7 @@ public class CompanyProjectEmbeddingService {
             throw new BusinessException(ResponseCode.COMPANY_EMBEDDING_SIZE_MISMATCH);
         }
 
-        // 3) project_id 湲곗? upsert ???
+        // 3) project_id 기준 upsert 처리
         for (int i = 0; i < projectIds.size(); i++) {
             Long projectId = projectIds.get(i);
             String content = contents.get(i);
