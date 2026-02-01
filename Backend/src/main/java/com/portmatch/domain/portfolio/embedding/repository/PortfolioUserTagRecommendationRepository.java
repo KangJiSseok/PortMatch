@@ -15,9 +15,11 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
             t.tech_similarity AS techSimilarity,
             t.keyword_similarity AS keywordSimilarity,
             t.architecture_similarity AS architectureSimilarity,
+            t.unified_similarity AS unifiedSimilarity,
             t.tech_text AS techText,
             t.keyword_text AS keywordText,
             t.architecture_text AS architectureText,
+            t.unified_text AS unifiedText,
             t.similarity AS similarity
         FROM (
             SELECT
@@ -26,21 +28,23 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
                 COALESCE(tech.tech_similarity, 0) AS tech_similarity,
                 COALESCE(keyword.keyword_similarity, 0) AS keyword_similarity,
                 COALESCE(arch.architecture_similarity, 0) AS architecture_similarity,
+                COALESCE(unified.unified_similarity, 0) AS unified_similarity,
                 tech.tech_text AS tech_text,
                 keyword.keyword_text AS keyword_text,
                 arch.architecture_text AS architecture_text,
+                unified.unified_text AS unified_text,
                 (
-                    COALESCE(tech.tech_similarity, 0) * :techWeight
-                  + COALESCE(keyword.keyword_similarity, 0) * :keywordWeight
+                    COALESCE(unified.unified_similarity, 0) * :unifiedWeight
                   + COALESCE(arch.architecture_similarity, 0) * :architectureWeight
-                ) / (:techWeight + :keywordWeight + :architectureWeight) AS similarity,
+                  + COALESCE(tech.tech_similarity, 0) * :techWeight
+                ) / (:unifiedWeight + :architectureWeight + :techWeight) AS similarity,
                 ROW_NUMBER() OVER (
                     PARTITION BY pf.user_id
                     ORDER BY (
-                        COALESCE(tech.tech_similarity, 0) * :techWeight
-                      + COALESCE(keyword.keyword_similarity, 0) * :keywordWeight
+                        COALESCE(unified.unified_similarity, 0) * :unifiedWeight
                       + COALESCE(arch.architecture_similarity, 0) * :architectureWeight
-                    ) / (:techWeight + :keywordWeight + :architectureWeight) DESC
+                      + COALESCE(tech.tech_similarity, 0) * :techWeight
+                    ) / (:unifiedWeight + :architectureWeight + :techWeight) DESC
                 ) AS rn
             FROM portfolios pf
             LEFT JOIN LATERAL (
@@ -70,6 +74,14 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
                 ORDER BY architecture_similarity DESC
                 LIMIT 1
             ) arch ON true
+            LEFT JOIN LATERAL (
+                SELECT
+                    unified_text,
+                    1 - (embedding <=> CAST(:unifiedEmbedding AS vector)) AS unified_similarity
+                FROM portfolio_user_unified_embeddings
+                WHERE portfolio_id = pf.id
+                LIMIT 1
+            ) unified ON true
         ) t
         WHERE t.rn = 1
         ORDER BY t.similarity DESC
@@ -79,9 +91,11 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
             String techEmbedding,
             String keywordEmbedding,
             String architectureEmbedding,
+            String unifiedEmbedding,
             double techWeight,
-            double keywordWeight,
             double architectureWeight,
+            double unifiedWeight,
             int limit
     );
 }
+

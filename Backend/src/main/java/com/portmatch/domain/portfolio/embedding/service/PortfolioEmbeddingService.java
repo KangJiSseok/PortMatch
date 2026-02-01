@@ -8,6 +8,7 @@ import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectEmbed
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserArchitectureEmbeddingRepository;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserKeywordEmbeddingRepository;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserTechEmbeddingRepository;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserUnifiedEmbeddingRepository;
 import com.portmatch.domain.portfolio.entity.Portfolio;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysis;
 import com.portmatch.domain.portfolio.entity.PortfolioAnalysisProject;
@@ -43,6 +44,7 @@ public class PortfolioEmbeddingService {
     private final PortfolioUserTechEmbeddingRepository userTechEmbeddingRepository;
     private final PortfolioUserKeywordEmbeddingRepository userKeywordEmbeddingRepository;
     private final PortfolioUserArchitectureEmbeddingRepository userArchitectureEmbeddingRepository;
+    private final PortfolioUserUnifiedEmbeddingRepository userUnifiedEmbeddingRepository;
     private final PortfolioAnalysisClient embeddingClient;
 
     public PortfolioEmbeddingService(
@@ -52,6 +54,7 @@ public class PortfolioEmbeddingService {
             PortfolioUserTechEmbeddingRepository userTechEmbeddingRepository,
             PortfolioUserKeywordEmbeddingRepository userKeywordEmbeddingRepository,
             PortfolioUserArchitectureEmbeddingRepository userArchitectureEmbeddingRepository,
+            PortfolioUserUnifiedEmbeddingRepository userUnifiedEmbeddingRepository,
             PortfolioAnalysisClient embeddingClient
     ) {
         this.portfolioRepository = portfolioRepository;
@@ -60,6 +63,7 @@ public class PortfolioEmbeddingService {
         this.userTechEmbeddingRepository = userTechEmbeddingRepository;
         this.userKeywordEmbeddingRepository = userKeywordEmbeddingRepository;
         this.userArchitectureEmbeddingRepository = userArchitectureEmbeddingRepository;
+        this.userUnifiedEmbeddingRepository = userUnifiedEmbeddingRepository;
         this.embeddingClient = embeddingClient;
     }
 
@@ -99,6 +103,7 @@ public class PortfolioEmbeddingService {
         userTechEmbeddingRepository.deleteByPortfolioId(portfolioId);
         userKeywordEmbeddingRepository.deleteByPortfolioId(portfolioId);
         userArchitectureEmbeddingRepository.deleteByPortfolioId(portfolioId);
+        userUnifiedEmbeddingRepository.deleteByPortfolioId(portfolioId);
         embeddingRepository.deleteByPortfolioId(portfolioId);
 
         // 3) 프로젝트별 content 생성 + content_hash
@@ -291,7 +296,67 @@ public class PortfolioEmbeddingService {
                 );
             }
         }
+
+        // 6) 통합 임베딩 생성: 모든 기술/키워드/아키텍처 경험을 하나의 텍스트로 결합
+        String unifiedText = buildUnifiedExperienceText(techItems, keywordItems, architectureItems, projects);
+        log.info("[portfolio-embedding] request unified embedding portfolioId={}", portfolioId);
+        PortfolioEmbeddingResponse unifiedResp = embeddingClient.embedTags(
+                new PortfolioEmbeddingRequest(List.of(unifiedText))
+        );
+        if (unifiedResp.vectors() == null || unifiedResp.vectors().isEmpty()) {
+            throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
+        }
+        String unifiedVector = toVectorString(unifiedResp.vectors().get(0));
+        userUnifiedEmbeddingRepository.upsertUnifiedEmbedding(
+                userId,
+                portfolioId,
+                unifiedText,
+                unifiedVector
+        );
+
         log.info("[portfolio-embedding] done portfolioId={} projects={}", portfolioId, projectIds.size());
+    }
+
+    private String buildUnifiedExperienceText(
+            List<String> techItems,
+            List<String> keywordItems,
+            List<String> architectureItems,
+            List<PortfolioAnalysisProject> projects
+    ) {
+        StringBuilder sb = new StringBuilder();
+        
+        // 기술 스택
+        if (!techItems.isEmpty()) {
+            sb.append("[기술] ").append(String.join(", ", techItems)).append("\n");
+        }
+        
+        // 키워드/역량
+        if (!keywordItems.isEmpty()) {
+            sb.append("[역량] ").append(String.join(", ", keywordItems)).append("\n");
+        }
+        
+        // 아키텍처 경험
+        if (!architectureItems.isEmpty()) {
+            sb.append("[아키텍처 경험] ").append(String.join("; ", architectureItems)).append("\n");
+        }
+        
+        // 프로젝트별 문제-해결 요약
+        for (PortfolioAnalysisProject p : projects) {
+            String problem = safe(p.getProblem());
+            String solution = safe(p.getSolution());
+            if (!problem.equals("정보 없음") || !solution.equals("정보 없음")) {
+                sb.append("[프로젝트] ").append(safe(p.getName())).append(": ");
+                if (!problem.equals("정보 없음")) {
+                    sb.append(problem);
+                }
+                if (!solution.equals("정보 없음")) {
+                    sb.append(" → ").append(solution);
+                }
+                sb.append("\n");
+            }
+        }
+        
+        return sb.toString().trim();
     }
 
     private record FieldEmbeddingIndices(

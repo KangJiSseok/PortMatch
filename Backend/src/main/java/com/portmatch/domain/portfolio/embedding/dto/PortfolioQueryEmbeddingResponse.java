@@ -10,6 +10,8 @@ public record PortfolioQueryEmbeddingResponse(
         List<String> keywords,
         @JsonProperty("architecture_experience")
         List<String> architectureExperience,
+        @JsonProperty("expanded_concepts")
+        List<String> expandedConcepts,
         @JsonProperty("embedding_model")
         String embeddingModel,
         @JsonProperty("embedding_dim")
@@ -20,6 +22,8 @@ public record PortfolioQueryEmbeddingResponse(
         List<Double> keywordEmbedding,
         @JsonProperty("architecture_embedding")
         List<Double> architectureEmbedding,
+        @JsonProperty("unified_embedding")
+        List<Double> unifiedEmbedding,
         @JsonProperty("tech_missing")
         boolean techMissing,
         @JsonProperty("keyword_missing")
@@ -27,3 +31,4 @@ public record PortfolioQueryEmbeddingResponse(
         @JsonProperty("architecture_missing")
         boolean architectureMissing
 ) {}
+

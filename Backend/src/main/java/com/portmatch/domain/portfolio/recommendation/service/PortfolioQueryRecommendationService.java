@@ -35,18 +35,22 @@ public class PortfolioQueryRecommendationService {
         String techVector = toVectorString(embedding.techEmbedding());
         String keywordVector = toVectorString(embedding.keywordEmbedding());
         String architectureVector = toVectorString(embedding.architectureEmbedding());
+        String unifiedVector = toVectorString(embedding.unifiedEmbedding());
 
+        // 새로운 가중치: unified 0.5, architecture 0.3, tech 0.2
+        // missing인 경우 가중치를 낮춤
         double techWeight = embedding.techMissing() ? 0.1 : 0.2;
-        double keywordWeight = embedding.keywordMissing() ? 0.2 : 0.3;
-        double architectureWeight = embedding.architectureMissing() ? 0.3 : 0.5;
+        double architectureWeight = embedding.architectureMissing() ? 0.15 : 0.3;
+        double unifiedWeight = 0.5;
 
         List<UserTagRecommendationRow> rows = tagEmbeddingRepository.findTopUsersByQueryEmbedding(
                 techVector,
                 keywordVector,
                 architectureVector,
+                unifiedVector,
                 techWeight,
-                keywordWeight,
                 architectureWeight,
+                unifiedWeight,
                 resolvedLimit
         );
 
@@ -57,9 +61,11 @@ public class PortfolioQueryRecommendationService {
                         safe(r.getTechSimilarity()),
                         safe(r.getKeywordSimilarity()),
                         safe(r.getArchitectureSimilarity()),
+                        safe(r.getUnifiedSimilarity()),
                         r.getTechText(),
                         r.getKeywordText(),
                         r.getArchitectureText(),
+                        r.getUnifiedText(),
                         safe(r.getSimilarity())
                 ))
                 .toList();
@@ -68,6 +74,7 @@ public class PortfolioQueryRecommendationService {
                 embedding.tech(),
                 embedding.keywords(),
                 embedding.architectureExperience(),
+                embedding.expandedConcepts(),
                 items
         );
     }
@@ -86,3 +93,4 @@ public class PortfolioQueryRecommendationService {
                 .orElse("") + "]";
     }
 }
+

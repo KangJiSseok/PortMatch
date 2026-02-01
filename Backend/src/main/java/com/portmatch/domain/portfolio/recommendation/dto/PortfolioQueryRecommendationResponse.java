@@ -11,6 +11,8 @@ public record PortfolioQueryRecommendationResponse(
         List<String> keywords,
         @JsonProperty("architecture_experience")
         List<String> architectureExperience,
+        @JsonProperty("expanded_concepts")
+        List<String> expandedConcepts,
         @JsonProperty("recommendations")
         List<Item> recommendations
 ) {
@@ -20,9 +22,12 @@ public record PortfolioQueryRecommendationResponse(
             double techSimilarity,
             double keywordSimilarity,
             double architectureSimilarity,
+            double unifiedSimilarity,
             String techText,
             String keywordText,
             String architectureText,
+            String unifiedText,
             double similarity
     ) {}
 }
+
