@@ -1,6 +1,8 @@
 package com.portmatch.domain.companies.entity;
 
 import com.portmatch.domain.auth.entity.User;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -105,7 +107,7 @@ public class Company {
 
     public void assignUser(User user) {
         if (this.user != null) {
-            throw new IllegalStateException("이미 가입된 기업입니다.");
+            throw new BusinessException(ResponseCode.COMPANY_ALREADY_ASSIGNED);
         }
         this.user = user;
     }

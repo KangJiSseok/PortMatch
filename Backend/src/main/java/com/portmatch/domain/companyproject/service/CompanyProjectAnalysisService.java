@@ -27,7 +27,6 @@ import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,13 +78,6 @@ public class CompanyProjectAnalysisService {
                         null,
                         exception.getMessage()
                 ));
-            } catch (ResponseStatusException exception) {
-                results.add(new CompanyProjectAnalysisResult(
-                        companyName,
-                        false,
-                        null,
-                        exception.getReason()
-                ));
             } catch (Exception exception) {
                 results.add(new CompanyProjectAnalysisResult(
                         companyName,
@@ -135,15 +127,6 @@ public class CompanyProjectAnalysisService {
                     false,
                     null,
                     exception.getMessage()
-            );
-        } catch (ResponseStatusException exception) {
-            return new ExplanationMatchResponseItem(
-                    companyId,
-                    portfolioProjectId,
-                    companyProjectId,
-                    false,
-                    null,
-                    exception.getReason()
             );
         } catch (Exception exception) {
             return new ExplanationMatchResponseItem(

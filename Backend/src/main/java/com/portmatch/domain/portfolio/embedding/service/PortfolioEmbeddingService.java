@@ -19,10 +19,8 @@ import com.portmatch.domain.portfolio.repository.PortfolioAnalysisRepository;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -68,13 +66,13 @@ public class PortfolioEmbeddingService {
     public void buildForMyPortfolio(Long userId, Long portfolioId) {
         // 1) 소유권 체크
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio not found"));
+                .orElseThrow(() -> new BusinessException(ResponseCode.PORTFOLIO_NOT_FOUND));
 
         // 2) 분석 결과 로드 (현재 구현은 portfolioId로 fetch)
         PortfolioAnalysis analysis;
         try {
             analysis = analysisRepository.findWithProjectsByPortfolioId(portfolio.getId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Portfolio analysis not found"));
+                    .orElseThrow(() -> new BusinessException(ResponseCode.ANALYSIS_NOT_FOUND));
         } catch (RuntimeException e) {
             throw e;
         }
@@ -402,7 +400,7 @@ public class PortfolioEmbeddingService {
 
     private List<Double> normalizeVector(List<Double> vector) {
         if (vector == null || vector.isEmpty()) {
-            throw new IllegalArgumentException("Vector must not be null or empty");
+            throw new BusinessException(ResponseCode.EMBEDDING_VECTOR_EMPTY);
         }
         double normSq = 0.0;
         for (Double v : vector) {
@@ -425,7 +423,7 @@ public class PortfolioEmbeddingService {
             byte[] digest = md.digest(text.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest);
         } catch (Exception e) {
-            throw new IllegalStateException("SHA-256 not available", e);
+            throw new BusinessException(ResponseCode.HASH_ALGORITHM_NOT_AVAILABLE);
         }
     }
 }

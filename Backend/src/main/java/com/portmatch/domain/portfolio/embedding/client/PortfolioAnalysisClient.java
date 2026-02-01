@@ -14,7 +14,6 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 
@@ -110,7 +109,7 @@ public class PortfolioAnalysisClient {
 
     private String normalize(String url) {
         if (url == null || url.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "portfolio-embedding.base-url is not configured");
+            throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_BASE_URL_NOT_CONFIGURED);
         }
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }

@@ -6,6 +6,8 @@ import com.portmatch.domain.portfolio.embedding.dto.PortfolioQueryEmbeddingRespo
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserTagRecommendationRepository;
 import com.portmatch.domain.portfolio.embedding.repository.UserTagRecommendationRow;
 import com.portmatch.domain.portfolio.recommendation.dto.PortfolioQueryRecommendationResponse;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,7 +88,7 @@ public class PortfolioQueryRecommendationService {
 
     private String toVectorString(List<Double> vector) {
         if (vector == null || vector.isEmpty()) {
-            throw new IllegalArgumentException("Vector must not be null or empty");
+            throw new BusinessException(ResponseCode.EMBEDDING_VECTOR_EMPTY);
         }
         return "[" + vector.stream()
                 .map(String::valueOf)

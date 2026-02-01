@@ -9,10 +9,10 @@ import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysis;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysisProject;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysisProjectTech;
 import com.portmatch.domain.companyproject.repository.CompanyProjectAnalysisRepository;
-import org.springframework.http.HttpStatus;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +41,7 @@ public class CompanyProjectEmbeddingService {
 
     public int embedAndSaveByAnalysisId(Long analysisId) {
         CompanyProjectAnalysis analysis = analysisRepository.findByIdWithProjects(analysisId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "analysis not found: " + analysisId));
+                .orElseThrow(() -> new BusinessException(ResponseCode.COMPANY_PROJECT_ANALYSIS_NOT_FOUND));
 
         analysis.getProjects().forEach(p -> p.getTechs().size());
 
@@ -120,7 +120,7 @@ public class CompanyProjectEmbeddingService {
         );
 
         if (resp.vectors() == null || resp.vectors().size() != textsToEmbed.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding response size mismatch");
+            throw new BusinessException(ResponseCode.COMPANY_EMBEDDING_SIZE_MISMATCH);
         }
 
         // 3) project_id 湲곗? upsert ???
@@ -218,7 +218,7 @@ public class CompanyProjectEmbeddingService {
 
     private List<Double> normalizeVector(List<Double> vector) {
         if (vector == null || vector.isEmpty()) {
-            throw new IllegalArgumentException("Vector must not be null or empty");
+            throw new BusinessException(ResponseCode.EMBEDDING_VECTOR_EMPTY);
         }
         double normSq = 0.0;
         for (Double v : vector) {
