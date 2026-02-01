@@ -1,17 +1,10 @@
-ï»¿// src/pages/TestInterviewPage.tsx
+// src/pages/interview/TestInterviewPage.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import {
-  OpenVidu,
-  type Publisher,
-  type Session,
-  type StreamManager,
-  type Subscriber,
-} from 'openvidu-browser';
+import type { MediaConnection } from 'peerjs';
 
 import Button from '../../components/Button/Button';
-import axiosInstance from '../../api/axiosInstance';
+import { createPeer } from '../../utils/peerConnection';
 
 type UserRole = 'guest' | 'individual' | 'corporate';
 
@@ -28,88 +21,15 @@ function defer(fn: () => void) {
   return () => window.clearTimeout(id);
 }
 
-function stopStreamTracks(sm: StreamManager | null) {
+function stopStreamTracks(stream: MediaStream | null) {
   try {
-    const ms = sm?.stream?.getMediaStream?.();
-    if (!ms) return;
-    ms.getTracks().forEach((t) => t.stop());
+    stream?.getTracks().forEach((t) => t.stop());
   } catch {
     // ignore
   }
 }
 
-function StreamVideo({
-  streamManager,
-  muted,
-}: {
-  streamManager: StreamManager | null;
-  muted?: boolean;
-}) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el || !streamManager) return;
-
-    streamManager.addVideoElement(el);
-    if (muted) el.muted = true;
-
-    return () => {
-      if (el) el.srcObject = null;
-    };
-  }, [muted, streamManager]);
-
-  return (
-    <video
-      ref={videoRef}
-      className="h-full w-full object-cover"
-      autoPlay
-      playsInline
-      muted={muted}
-    />
-  );
-}
-
-/**
- * í† í°ë§Œ ë°›ì•„ì„œ ë¶™ëŠ” í…ŒìŠ¤íŠ¸ (DB ì¡°íšŒ X)
- * - POST /api/interview/sessions/{sessionId}/connections
- */
-async function fetchOpenViduToken(sessionId: string): Promise<string> {
-  const sid = encodeURIComponent(sessionId);
-  const res = await axiosInstance.post(`/interview/sessions/${sid}/connections`, {});
-
-  const payload = res.data as unknown;
-  const data = (payload as { data?: unknown })?.data ?? payload;
-
-  // 1) ì„œë²„ê°€ stringìœ¼ë¡œ ë°”ë¡œ ë‚´ë ¤ì£¼ëŠ” ê²½ìš°
-  if (typeof data === 'string') return data;
-
-  // 2) { token: "..." } / { connectionToken: "..." } ê°™ì€ ê²½ìš°
-  if (typeof data === 'object' && data) {
-    const obj = data as Record<string, unknown>;
-    const token =
-      (typeof obj.token === 'string' && obj.token) ||
-      (typeof obj.connectionToken === 'string' && obj.connectionToken) ||
-      (typeof obj.wsToken === 'string' && obj.wsToken);
-
-    if (token) return token;
-  }
-
-  throw new Error('í† í° ì‘ë‹µ í˜•ì‹ì´ ì˜ˆìƒê³¼ ë‹¬ë¼ìš”.');
-}
-
 function toHumanError(err: unknown): string {
-  // axios ì—ëŸ¬
-  if (axios.isAxiosError(err)) {
-    const http = err.response?.status;
-    const msg =
-      (typeof err.response?.data === 'string' && err.response.data) ||
-      (err.response?.data as { message?: string } | undefined)?.message ||
-      err.message;
-    return http ? `(${http}) ${msg}` : msg;
-  }
-
-  // OpenVidu connect ì—ëŸ¬
   const anyErr = err as Record<string, unknown> | null;
   const msg =
     (typeof anyErr?.message === 'string' && anyErr.message) ||
@@ -117,15 +37,7 @@ function toHumanError(err: unknown): string {
     (typeof anyErr?.reason === 'string' && anyErr.reason) ||
     '';
 
-  if (msg.includes('Token') && msg.includes('401')) {
-    return [
-      'OpenVidu í† í° ì¸ì¦ ì‹¤íŒ¨(401).',
-      'í† í° ë°œê¸‰ ì„œë²„(/connections)ì™€ ì‹¤ì œ OpenVidu ì¸ìŠ¤í„´ìŠ¤ê°€ ê°™ì€ ê³³ì„ ë³´ê³  ìˆëŠ”ì§€ í™•ì¸í•˜ì„¸ìš”.',
-      '(nginx ë¼ìš°íŒ…/í¬íŠ¸/secret ì„¤ì • ë¶ˆì¼ì¹˜ê°€ í”í•œ ì›ì¸)',
-    ].join(' ');
-  }
-
-  return msg || (err instanceof Error ? err.message : 'ì•Œ ìˆ˜ ì—†ëŠ” ì˜¤ë¥˜ê°€ ë°œìƒí–ˆì–´ìš”.');
+  return msg || (err instanceof Error ? err.message : '¾Ë ¼ö ¾ø´Â ¿À·ù°¡ ¹ß»ıÇß¾î¿ä.');
 }
 
 export default function TestInterviewPage() {
@@ -139,17 +51,23 @@ export default function TestInterviewPage() {
   const [status, setStatus] = useState<ConnectStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const [sessionIdInput, setSessionIdInput] = useState<string>(navState.sessionId ?? '');
+  const [remotePeerIdInput, setRemotePeerIdInput] = useState<string>(
+    navState.sessionId ?? ''
+  );
 
   const [micOn, setMicOn] = useState<boolean>(navState.micOn ?? true);
   const [camOn, setCamOn] = useState<boolean>(navState.camOn ?? true);
 
-  const ovSessionRef = useRef<Session | null>(null);
-  const publisherRef = useRef<Publisher | null>(null);
-  const connectOpRef = useRef(0);
+  const peerRef = useRef<ReturnType<typeof createPeer> | null>(null);
+  const callRef = useRef<MediaConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
 
-  const [publisher, setPublisher] = useState<Publisher | null>(null);
-  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const [myPeerId, setMyPeerId] = useState<string>('');
+  const [localReady, setLocalReady] = useState(false);
+  const [remoteReady, setRemoteReady] = useState(false);
 
   const [toast, setToast] = useState<string>('');
   const toastTimerRef = useRef<number | null>(null);
@@ -166,34 +84,54 @@ export default function TestInterviewPage() {
     };
   }, []);
 
-  const canConnect = useMemo(() => sessionIdInput.trim().length > 0, [sessionIdInput]);
+  const canConnect = useMemo(
+    () => remotePeerIdInput.trim().length > 0,
+    [remotePeerIdInput]
+  );
+
+  const getLocalStream = useCallback(async () => {
+    if (localStreamRef.current) return localStreamRef.current;
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: true,
+    });
+
+    localStreamRef.current = stream;
+    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+    setLocalReady(true);
+
+    return stream;
+  }, []);
 
   const cleanupSession = useCallback(() => {
-    const s = ovSessionRef.current;
-    const p = publisherRef.current;
-
-    stopStreamTracks(p);
-
-    try {
-      s?.disconnect();
-    } catch {
-      // ignore
+    if (callRef.current) {
+      callRef.current.close();
+      callRef.current = null;
     }
 
-    ovSessionRef.current = null;
-    publisherRef.current = null;
+    stopStreamTracks(localStreamRef.current);
+    localStreamRef.current = null;
 
-    setPublisher(null);
-    setSubscribers([]);
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+
+    setLocalReady(false);
+    setRemoteReady(false);
     setStatus('idle');
     setErrorMessage('');
   }, []);
 
   const connect = useCallback(async () => {
-    const sid = sessionIdInput.trim();
+    const remoteId = remotePeerIdInput.trim();
 
-    if (!sid) {
-      showToast('sessionId ë¹„ì–´ìˆìŒ!');
+    if (!remoteId) {
+      showToast('»ó´ë¹æ Peer ID°¡ ºñ¾îÀÖ¾î¿ä!');
+      return;
+    }
+
+    if (!peerRef.current) {
+      showToast('Peer ¿¬°á ÁØºñ ÁßÀÌ¿¡¿ä. Àá½Ã¸¸ ±â´Ù·ÁÁÖ¼¼¿ä!');
       return;
     }
 
@@ -201,107 +139,125 @@ export default function TestInterviewPage() {
     setStatus('connecting');
     setErrorMessage('');
 
-    const opId = ++connectOpRef.current;
-
     try {
-      // 1) í† í° ë°›ê¸°
-      const token = await fetchOpenViduToken(sid);
+      const stream = await getLocalStream();
+      stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
+      stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
 
-      // eslint-disable-next-line no-console
-      console.log('OV TOKEN  =', token);
-      // eslint-disable-next-line no-console
-      console.log('OV PUBLIC =', import.meta.env.VITE_OPENVIDU_PUBLIC_URL);
+      const call = peerRef.current.call(remoteId, stream);
 
-      if (opId !== connectOpRef.current) return;
-
-      // 2) ì„¸ì…˜ ìƒì„±/ì´ë²¤íŠ¸ ë°”ì¸ë”©
-      const ov = new OpenVidu();
-      const session = ov.initSession();
-      ovSessionRef.current = session;
-
-      session.on('streamCreated', (event) => {
-        const sub = session.subscribe(event.stream, undefined);
-        setSubscribers((prev) => [...prev, sub]);
-      });
-
-      session.on('streamDestroyed', (event) => {
-        const deadId = event.stream.streamId;
-        setSubscribers((prev) => prev.filter((s) => s.stream.streamId !== deadId));
-      });
-
-      session.on('exception', (event) => {
-        // eslint-disable-next-line no-console
-        console.warn('OpenVidu exception:', event);
-      });
-
-      // 3) connect
-      await session.connect(token, {
-        clientData: isCorporate ? 'corporate' : role,
-      });
-
-      if (opId !== connectOpRef.current) {
-        session.disconnect();
-        return;
+      if (!call) {
+        throw new Error('ÅëÈ­ ¿¬°áÀ» ½ÃÀÛÇÏÁö ¸øÇß¾î¿ä.');
       }
 
-      // 4) í¼ë¸”ë¦¬ì…” ìƒì„± + publish
-      const publisherObj = await ov.initPublisherAsync(undefined, {
-        audioSource: undefined,
-        videoSource: undefined,
-        publishAudio: micOn,
-        publishVideo: camOn,
-        mirror: true,
-        resolution: '1280x720',
-        frameRate: 30,
+      callRef.current = call;
+
+      call.on('stream', (remoteStream) => {
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+        setRemoteReady(true);
+        setStatus('connected');
       });
 
-      publisherRef.current = publisherObj;
-      setPublisher(publisherObj);
+      call.on('close', () => {
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+        setRemoteReady(false);
+        setStatus('idle');
+      });
 
-      session.publish(publisherObj);
-
-      setStatus('connected');
+      call.on('error', (err) => {
+        setStatus('error');
+        setErrorMessage(toHumanError(err));
+      });
     } catch (err) {
       cleanupSession();
       setStatus('error');
       setErrorMessage(toHumanError(err));
     }
-  }, [camOn, cleanupSession, isCorporate, micOn, role, sessionIdInput, showToast]);
+  }, [camOn, cleanupSession, getLocalStream, micOn, remotePeerIdInput, showToast]);
 
   const leave = useCallback(() => {
     cleanupSession();
     navigate(-1);
   }, [cleanupSession, navigate]);
 
-  // mic/cam ìƒíƒœ ë³€ê²½ ì‹œ publisher ë°˜ì˜
   useEffect(() => {
-    const p = publisherRef.current;
-    if (!p) return;
-    try {
-      p.publishAudio(micOn);
-    } catch {
-      // ignore
-    }
+    const peer = createPeer();
+    peerRef.current = peer;
+
+    peer.on('open', (id) => {
+      setMyPeerId(id);
+    });
+
+    peer.on('call', async (call) => {
+      try {
+        setStatus('connecting');
+        callRef.current?.close();
+        callRef.current = call;
+
+        const stream = await getLocalStream();
+        stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
+        stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
+
+        call.answer(stream);
+
+        call.on('stream', (remoteStream) => {
+          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+          setRemoteReady(true);
+          setStatus('connected');
+        });
+
+        call.on('close', () => {
+          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+          setRemoteReady(false);
+          setStatus('idle');
+        });
+
+        call.on('error', (err) => {
+          setStatus('error');
+          setErrorMessage(toHumanError(err));
+        });
+      } catch (err) {
+        setStatus('error');
+        setErrorMessage(toHumanError(err));
+      }
+    });
+
+    peer.on('error', (err) => {
+      setStatus('error');
+      setErrorMessage(toHumanError(err));
+    });
+
+    return () => {
+      callRef.current?.close();
+      peer.destroy();
+      stopStreamTracks(localStreamRef.current);
+      localStreamRef.current = null;
+
+      if (localVideoRef.current) localVideoRef.current.srcObject = null;
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    };
+  }, [camOn, getLocalStream, micOn]);
+
+  useEffect(() => {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+    stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
   }, [micOn]);
 
   useEffect(() => {
-    const p = publisherRef.current;
-    if (!p) return;
-    try {
-      p.publishVideo(camOn);
-    } catch {
-      // ignore
-    }
+    const stream = localStreamRef.current;
+    if (!stream) return;
+    stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
   }, [camOn]);
 
-  // í˜ì´ì§€ ì–¸ë§ˆìš´íŠ¸ ì‹œ ì •ë¦¬
+  // ÆäÀÌÁö ¾ğ¸¶¿îÆ® ½Ã Á¤¸®
   useEffect(() => {
     return () => {
       cleanupSession();
     };
   }, [cleanupSession]);
 
-  // ë“¤ì–´ì˜¤ìë§ˆì sessionIdê°€ ìˆìœ¼ë©´ ìë™ ì—°ê²°(í…ŒìŠ¤íŠ¸ í¸ì˜)
+  // µé¾î¿ÀÀÚ¸¶ÀÚ peerId°¡ ÀÖÀ¸¸é ÀÚµ¿ ¿¬°á(Å×½ºÆ® ÆíÀÇ)
   useEffect(() => {
     if (!navState.sessionId) return;
     const cleanup = defer(() => {
@@ -310,22 +266,18 @@ export default function TestInterviewPage() {
     return cleanup;
   }, [connect, navState.sessionId]);
 
-  const copySessionId = useCallback(async () => {
-    const sid = sessionIdInput.trim();
-    if (!sid) {
-      showToast('ë³µì‚¬í•  sessionIdê°€ ë¹„ì–´ìˆì–´ìš”!');
+  const copyMyPeerId = useCallback(async () => {
+    if (!myPeerId) {
+      showToast('¾ÆÁ÷ ³» Peer ID°¡ ÁØºñµÇÁö ¾Ê¾Ò¾î¿ä!');
       return;
     }
     try {
-      await navigator.clipboard.writeText(sid);
-      showToast('sessionId ë³µì‚¬ ì™„ë£Œ!');
+      await navigator.clipboard.writeText(myPeerId);
+      showToast('³» Peer ID º¹»ç ¿Ï·á!');
     } catch {
-      showToast('ë³µì‚¬ ì‹¤íŒ¨â€¦ ì§ì ‘ ë“œë˜ê·¸í•´ì„œ ë³µì‚¬í•´ì¤˜!');
+      showToast('º¹»ç ½ÇÆĞ¡¦ Á÷Á¢ µå·¡±×ÇØ¼­ º¹»çÇØÁà!');
     }
-  }, [sessionIdInput, showToast]);
-
-  const remoteMain = subscribers[0] ?? null;
-  const remoteRest = subscribers.slice(1);
+  }, [myPeerId, showToast]);
 
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
@@ -337,7 +289,7 @@ export default function TestInterviewPage() {
                 test interview room
               </p>
               <p className="mt-4 truncate text-lg font-bold text-zinc-600 sm:text-xl">
-                OpenVidu ì—°ê²° í…ŒìŠ¤íŠ¸ (DB ì¡°íšŒ ì—†ìŒ)
+                PeerJS ¿¬°á Å×½ºÆ® (DB Á¶È¸ ¾øÀ½)
               </p>
             </div>
 
@@ -349,10 +301,10 @@ export default function TestInterviewPage() {
                 className="rounded-2xl"
                 onClick={() => navigate(-1)}
               >
-                ë’¤ë¡œ
+                µÚ·Î
               </Button>
               <Button type="button" variant="red" size="md" className="rounded-2xl" onClick={leave}>
-                ë‚˜ê°€ê¸°
+                ³ª°¡±â
               </Button>
             </div>
           </div>
@@ -363,15 +315,38 @@ export default function TestInterviewPage() {
             <p className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">controls</p>
 
             <div className="mt-4 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
-              <p className="text-sm font-black">Session ID</p>
+              <p className="text-sm font-black">My Peer ID</p>
               <p className="mt-1 text-xs font-semibold text-zinc-500">
-                ê°™ì€ sessionIdë¡œ ì„œë¡œ ë“¤ì–´ì˜¤ë©´ ê°™ì€ ë°©ì—ì„œ ë§Œë‚˜ìš”.
+                »ó´ë¹æ¿¡°Ô ³» Peer ID¸¦ °øÀ¯ÇÏ¼¼¿ä.
+              </p>
+
+              <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-black text-zinc-700">
+                {myPeerId || '¹ß±Ş Áß...'}
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  className="flex-1 rounded-2xl"
+                  onClick={copyMyPeerId}
+                >
+                  º¹»ç
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
+              <p className="text-sm font-black">»ó´ë¹æ Peer ID</p>
+              <p className="mt-1 text-xs font-semibold text-zinc-500">
+                »ó´ë¹æÀÇ Peer ID¸¦ ÀÔ·ÂÇÏ°í ÅëÈ­¸¦ ½ÃÀÛÇÏ¼¼¿ä.
               </p>
 
               <input
-                value={sessionIdInput}
-                onChange={(e) => setSessionIdInput(e.target.value)}
-                placeholder="ì˜ˆ: ses_dummy_test_001"
+                value={remotePeerIdInput}
+                onChange={(e) => setRemotePeerIdInput(e.target.value)}
+                placeholder="¿¹: peer_xxx123"
                 className={[
                   'mt-3 w-full rounded-2xl border bg-white px-4 py-3 text-base font-bold text-zinc-700',
                   'focus:ring-midnight-ink border-zinc-200 outline-none focus:ring-2',
@@ -384,25 +359,16 @@ export default function TestInterviewPage() {
                   variant="outline"
                   size="md"
                   className="flex-1 rounded-2xl"
-                  onClick={copySessionId}
+                  onClick={() => setRemotePeerIdInput('')}
                 >
-                  ë³µì‚¬
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  className="flex-1 rounded-2xl"
-                  onClick={() => setSessionIdInput('')}
-                >
-                  ë¹„ìš°ê¸°
+                  ºñ¿ì±â
                 </Button>
               </div>
             </div>
 
             <div className="mt-6 space-y-3">
               <div className="flex items-center justify-between rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
-                <p className="text-sm font-black">ë§ˆì´í¬</p>
+                <p className="text-sm font-black">¸¶ÀÌÅ©</p>
                 <Button
                   type="button"
                   variant="filter"
@@ -416,7 +382,7 @@ export default function TestInterviewPage() {
               </div>
 
               <div className="flex items-center justify-between rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
-                <p className="text-sm font-black">ì¹´ë©”ë¼</p>
+                <p className="text-sm font-black">Ä«¸Ş¶ó</p>
                 <Button
                   type="button"
                   variant="filter"
@@ -432,12 +398,9 @@ export default function TestInterviewPage() {
 
             {status === 'error' && errorMessage ? (
               <div className="mt-6 rounded-3xl border border-red-100 bg-red-50 p-4">
-                <p className="text-sm font-black text-red-600">ì—°ê²° ì‹¤íŒ¨</p>
+                <p className="text-sm font-black text-red-600">¿¬°á ½ÇÆĞ</p>
                 <p className="mt-2 text-xs font-semibold break-words text-red-600/80">
                   {errorMessage}
-                </p>
-                <p className="mt-2 text-xs font-semibold text-red-600/70">
-                  (íŠ¹íˆ 401ì´ë©´) í† í° ë°œê¸‰ OpenViduì™€ ì‹¤ì œ ì ‘ì† OpenViduê°€ ê°™ì€ ê³³ì¸ì§€ í™•ì¸!
                 </p>
               </div>
             ) : null}
@@ -452,10 +415,10 @@ export default function TestInterviewPage() {
                 disabled={!canConnect || status === 'connecting'}
               >
                 {status === 'connected'
-                  ? 'ì¬ì—°ê²°'
+                  ? 'Àç¿¬°á'
                   : status === 'connecting'
-                    ? 'ì—°ê²° ì¤‘...'
-                    : 'ì—°ê²°'}
+                    ? '¿¬°á Áß...'
+                    : 'ÅëÈ­ ½ÃÀÛ'}
               </Button>
 
               <Button
@@ -464,35 +427,43 @@ export default function TestInterviewPage() {
                 size="md"
                 className="w-full rounded-2xl"
                 onClick={cleanupSession}
-                disabled={status !== 'connected'}
+                disabled={status !== 'connected' && status !== 'connecting'}
               >
-                ì—°ê²° ëŠê¸°
+                ¿¬°á ²÷±â
               </Button>
 
               <p className="mt-2 text-sm font-semibold text-zinc-500">
-                ìƒíƒœ:{' '}
+                »óÅÂ:{' '}
                 <span className="font-black">
                   {status === 'idle'
-                    ? 'ëŒ€ê¸°'
+                    ? '´ë±â'
                     : status === 'connecting'
-                      ? 'ì—°ê²° ì¤‘'
+                      ? '¿¬°á Áß'
                       : status === 'connected'
-                        ? 'ì—°ê²°ë¨'
-                        : 'ì˜¤ë¥˜'}
+                        ? '¿¬°áµÊ'
+                        : '¿À·ù'}
                 </span>
-                <span className="text-zinc-300"> Â· </span>
-                ì°¸ê°€ì{' '}
-                <span className="font-black">{subscribers.length + (publisher ? 1 : 0)}</span>
+                <span className="text-zinc-300"> ¡¤ </span>
+                Âü°¡ÀÚ{' '}
+                <span className="font-black">
+                  {(localReady ? 1 : 0) + (remoteReady ? 1 : 0)}
+                </span>
               </p>
+
+              {isCorporate ? (
+                <p className="text-xs font-semibold text-zinc-400">
+                  ±â¾÷ °èÁ¤¿¡¼­´Â »ó´ë¹æ Peer ID¸¦ ²À È®ÀÎÇØÁÖ¼¼¿ä.
+                </p>
+              ) : null}
             </div>
           </section>
 
           <section className="col-span-2 rounded-4xl border border-zinc-100 bg-zinc-50 p-6 shadow-sm">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-lg font-black tracking-tighter">í™”ìƒ í…ŒìŠ¤íŠ¸</p>
+                <p className="text-lg font-black tracking-tighter">È­»ó Å×½ºÆ®</p>
                 <p className="mt-1 text-sm font-semibold text-zinc-500">
-                  ë¡œì»¬(ë‚´ í™”ë©´) + ë¦¬ëª¨íŠ¸(ìƒëŒ€ í™”ë©´) ë‘˜ ë‹¤ ë– ì•¼ ì„±ê³µ!
+                  ·ÎÄÃ(³» È­¸é) + ¸®¸ğÆ®(»ó´ë È­¸é) µÑ ´Ù ¶°¾ß ¼º°ø!
                 </p>
               </div>
 
@@ -511,16 +482,23 @@ export default function TestInterviewPage() {
                 <div className="flex items-center justify-between border-b border-zinc-100 bg-white px-6 py-4">
                   <p className="text-sm font-black text-zinc-600">REMOTE</p>
                   <span className="text-xs font-black tracking-[0.25em] text-zinc-400 uppercase">
-                    subscriber
+                    peer
                   </span>
                 </div>
 
                 <div className="bg-midnight-ink relative flex h-[420px] items-center justify-center">
-                  {remoteMain ? (
-                    <StreamVideo streamManager={remoteMain} />
+                  {remoteReady ? (
+                    <video
+                      ref={remoteVideoRef}
+                      className="h-full w-full object-cover"
+                      autoPlay
+                      playsInline
+                    />
                   ) : (
                     <span className="text-cloud-dancer text-sm font-black tracking-[0.3em] uppercase">
-                      {status === 'connected' ? 'waiting for peer...' : 'not connected'}
+                      {status === 'connected' || status === 'connecting'
+                        ? 'waiting for peer...'
+                        : 'not connected'}
                     </span>
                   )}
 
@@ -541,8 +519,14 @@ export default function TestInterviewPage() {
                 </div>
 
                 <div className="bg-midnight-ink relative flex h-[420px] items-center justify-center">
-                  {publisher ? (
-                    <StreamVideo streamManager={publisher} muted />
+                  {localReady ? (
+                    <video
+                      ref={localVideoRef}
+                      className="h-full w-full object-cover"
+                      autoPlay
+                      playsInline
+                      muted
+                    />
                   ) : (
                     <span className="text-cloud-dancer text-sm font-black tracking-[0.3em] uppercase">
                       {status === 'connecting' ? 'initializing...' : 'no local stream'}
@@ -551,24 +535,6 @@ export default function TestInterviewPage() {
                 </div>
               </div>
             </div>
-
-            {remoteRest.length > 0 ? (
-              <div className="mt-4 rounded-3xl border border-zinc-100 bg-white p-4 shadow-sm">
-                <p className="text-sm font-black text-zinc-700">ì¶”ê°€ ì°¸ê°€ì</p>
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  {remoteRest.map((s) => (
-                    <div
-                      key={s.stream.streamId}
-                      className="bg-midnight-ink/90 overflow-hidden rounded-3xl border border-zinc-100"
-                    >
-                      <div className="h-40">
-                        <StreamVideo streamManager={s} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </section>
         </div>
       </div>
