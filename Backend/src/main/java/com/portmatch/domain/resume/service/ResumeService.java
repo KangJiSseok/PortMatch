@@ -16,5 +16,7 @@ public interface ResumeService {
 
     ResumeResponse replaceResume(Long userId, Long resumeId, ResumeCreateRequest request);
 
+    ResumeResponse setMainResume(Long userId, Long resumeId);
+
     void deleteResume(Long userId, Long resumeId);
 }

@@ -80,4 +80,15 @@ public class ResumeController {
         log.info("이력서 전체 교체 요청 - UID: {}, resumeId: {}", userId, resumeId);
         return BaseApiResponse.ok(resumeService.replaceResume(userId, resumeId, request));
     }
+
+    @PutMapping("/{resumeId}/main")
+    @Operation(summary = "메인 이력서 교체", description = "해당 이력서를 메인으로 설정하고 나머지는 메인이력서에서 제외합니다.")
+    public BaseApiResponse<ResumeResponse> setMainResume(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long resumeId
+    ) {
+        Long userId = principal.getUser().getId();
+        log.info("메인 이력서 교체 요청 - UID: {}, resumeId: {}", userId, resumeId);
+        return BaseApiResponse.ok(resumeService.setMainResume(userId, resumeId));
+    }
 }
