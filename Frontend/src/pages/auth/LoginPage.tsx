@@ -15,7 +15,8 @@ import type { UserRole } from '../../types/auth';
 function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { mutate: loginMutate, isPending: isLoading } = useLogin();
+  const { mutate: loginMutate, isPending: isMutationLoading } = useLogin();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [userType, setUserType] = useState<UserRole>(
     (location.state?.userType as UserRole) || 'APPLICANT',
@@ -26,6 +27,7 @@ function LoginPage() {
   const [shakeField, setShakeField] = useState<string | null>(null);
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const isLoading = isSubmitting || isMutationLoading;
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -33,7 +35,10 @@ function LoginPage() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: '' }));
+    setErrors((prev) => {
+      const { auth, ...rest } = prev;
+      return { ...rest, [field]: '' };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,16 +61,18 @@ function LoginPage() {
       if (!firstError) firstError = 'password';
     }
 
-    setErrors(newErrors);
-
     if (firstError) {
+      setErrors(newErrors);
       setShakeField(firstError);
       fieldRefs.current[firstError]?.querySelector('input')?.focus();
       setTimeout(() => setShakeField(null), 500);
       return;
     }
+    setErrors({});
 
     try {
+      setIsSubmitting(true);
+
       await signInWithEmailAndPassword(firebaseAuth, formData.email, formData.password);
 
       loginMutate(
@@ -76,8 +83,12 @@ function LoginPage() {
           rememberMe,
         },
         {
-          onSuccess: () => navigate('/main'),
-          onError: (error: unknown) => {
+          onSuccess: () => {
+            navigate('/main');
+          },
+          onError: async (error: unknown) => {
+            await firebaseAuth.signOut();
+
             if (axios.isAxiosError(error)) {
               const serverMessage = error.response?.data?.message;
               setErrors({
@@ -89,10 +100,13 @@ function LoginPage() {
             } else {
               setErrors({ auth: '예상치 못한 오류가 발생했습니다.' });
             }
+            setIsSubmitting(false);
           },
         },
       );
     } catch (err: unknown) {
+      setIsSubmitting(false);
+
       if (err instanceof FirebaseError) {
         let message = '로그인 처리 중 오류가 발생했습니다.';
         if (
