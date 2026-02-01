@@ -7,13 +7,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @Tag(name = "스크랩", description = "공고 스크랩 등록 및 조회 API")
-@Slf4j
 @RestController
 @RequestMapping("/api/scraps")
 @RequiredArgsConstructor
@@ -27,8 +25,6 @@ public class ScrapController {
     public BaseApiResponse<Boolean> toggleScrap(
             @Parameter(description = "사용자 고유 ID", example = "1") @RequestParam("uid") Long uid,
             @Parameter(description = "채용 공고 고유 ID (pid)", example = "job_001") @RequestParam("pid") Long pid) {
-
-        log.info("스크랩 토글 요청 - UID: {}, PID: {}", uid, pid);
         boolean isScraped = scrapService.toggleScrap(uid, pid);
         return BaseApiResponse.ok(isScraped);
     }
@@ -37,8 +33,6 @@ public class ScrapController {
     @GetMapping("/{uid}")
     public BaseApiResponse<List<ScrapDto>> getMyScraps(
             @Parameter(description = "사용자 고유 ID", example = "1") @PathVariable("uid") Long uid) {
-
-        log.info("내 스크랩 목록 조회 요청 - UID: {}", uid);
         List<ScrapDto> scraps = scrapService.getMyScraps(uid);
         return BaseApiResponse.ok(scraps);
     }
@@ -48,8 +42,6 @@ public class ScrapController {
     public BaseApiResponse<Boolean> checkScrapStatus(
             @Parameter(description = "사용자 고유 ID", example = "1") @RequestParam("uid") Long uid,
             @Parameter(description = "채용 공고 고유 ID (pid)", example = "job_001") @RequestParam("pid") Long pid) {
-
-        log.info("스크랩 여부 확인 요청 - UID: {}, PID: {}", uid, pid);
         boolean status = scrapService.isScraped(uid, pid);
         return BaseApiResponse.ok(status);
     }

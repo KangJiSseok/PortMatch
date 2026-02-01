@@ -2,20 +2,20 @@ package com.portmatch.domain.companyproject.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -54,11 +54,7 @@ public class CompanyProjectAnalysisClient {
             payloadJson = objectMapper.writeValueAsString(Map.of("company_name", companyName));
         } catch (JsonProcessingException exception) {
             log.error("Failed to prepare company project analysis request payload", exception);
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to prepare analysis request",
-                    exception
-            );
+            throw new BusinessException(ResponseCode.COMPANY_PROJECT_ANALYSIS_PAYLOAD_FAILED);
         }
 
         byte[] payloadBytes = payloadJson.getBytes(StandardCharsets.UTF_8);
@@ -69,20 +65,13 @@ public class CompanyProjectAnalysisClient {
             return response.getBody();
         } catch (RestClientException exception) {
             log.error("Company project analysis request failed. endpoint={}", endpoint, exception);
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Company project analysis service unavailable",
-                    exception
-            );
+            throw new BusinessException(ResponseCode.COMPANY_PROJECT_ANALYSIS_SERVICE_UNAVAILABLE);
         }
     }
 
     private String normalizeBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Company project analysis base URL is not configured"
-            );
+            throw new BusinessException(ResponseCode.COMPANY_PROJECT_ANALYSIS_BASE_URL_NOT_CONFIGURED);
         }
         return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }

@@ -9,7 +9,6 @@ import com.portmatch.domain.portfolio.embedding.service.PortfolioEmbeddingServic
 import com.portmatch.domain.portfolio.service.PortfolioService;
 import com.portmatch.domain.auth.entity.User;
 import com.portmatch.global.api.BaseApiResponse;
-import lombok.extern.slf4j.Slf4j;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -24,7 +23,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/portfolios")
 @Tag(name = "포트폴리오", description = "포트폴리오 업로드 및 분석 API")

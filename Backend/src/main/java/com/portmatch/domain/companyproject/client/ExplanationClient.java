@@ -4,20 +4,20 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portmatch.domain.companyproject.dto.ExplanationMatchPayload;
 import com.portmatch.domain.companyproject.dto.ExplanationServiceRequest;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -55,11 +55,7 @@ public class ExplanationClient {
             payloadJson = objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {
             log.error("Failed to prepare explanation request payload", exception);
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to prepare explanation request",
-                    exception
-            );
+            throw new BusinessException(ResponseCode.EXPLANATION_PAYLOAD_FAILED);
         }
 
         byte[] payloadBytes = payloadJson.getBytes(StandardCharsets.UTF_8);
@@ -71,25 +67,18 @@ public class ExplanationClient {
                     restTemplate.exchange(endpoint, HttpMethod.POST, request, ExplanationMatchPayload.class);
             ExplanationMatchPayload body = response.getBody();
             if (body == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Explanation response empty");
+                throw new BusinessException(ResponseCode.EXPLANATION_RESPONSE_EMPTY);
             }
             return body;
         } catch (RestClientException exception) {
             log.error("Explanation request failed. endpoint={}", endpoint, exception);
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Explanation service unavailable",
-                    exception
-            );
+            throw new BusinessException(ResponseCode.EXPLANATION_SERVICE_UNAVAILABLE);
         }
     }
 
     private String normalizeBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Explanation base URL is not configured"
-            );
+            throw new BusinessException(ResponseCode.EXPLANATION_BASE_URL_NOT_CONFIGURED);
         }
         return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }

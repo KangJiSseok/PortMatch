@@ -9,13 +9,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @Tag(name = "기술 스택", description = "기술 스택 조회 및 관리 API")
-@Slf4j
 @RestController
 @RequestMapping("/api/stacks")
 @RequiredArgsConstructor
@@ -27,7 +25,6 @@ public class StackController {
     @Operation(summary = "전체 기술 스택 목록 조회", description = "데이터베이스에 등록된 모든 기술 스택(Java, Spring 등)을 조회합니다.")
     @GetMapping
     public BaseApiResponse<List<TechStackDto>> getAllStacks() {
-        log.info("전체 기술 스택 목록 조회 요청");
         List<TechStackDto> stacks = stackService.getAllTechStacks();
         return BaseApiResponse.ok(stacks);
     }
@@ -36,7 +33,6 @@ public class StackController {
     @GetMapping("/posting/{postingId}")
     public BaseApiResponse<List<TechStackDto>> getStacksByPosting(
             @Parameter(description = "공고 ID", example = "job_001") @PathVariable Long postingId) {
-        log.info("공고별 스택 조회 요청 - 공고 ID: {}", postingId);
         List<TechStackDto> stacks = stackService.getPostingStacks(postingId);
         return BaseApiResponse.ok(stacks);
     }
@@ -45,8 +41,6 @@ public class StackController {
     @ApiResponse(responseCode = "200", description = "등록 성공")
     @PostMapping
     public BaseApiResponse<String> createStack(@RequestBody TechStackDto techStackDto) {
-        log.info("새로운 기술 스택 등록 요청 - ID: {}, Name: {}",
-                techStackDto.getStackId(), techStackDto.getStackName());
         stackService.createStack(techStackDto.getStackId(), techStackDto.getStackName());
         return BaseApiResponse.ok("기술 스택이 성공적으로 등록되었습니다.");
     }
@@ -59,7 +53,6 @@ public class StackController {
     @GetMapping("/{id}")
     public BaseApiResponse<TechStackDto> getStackById(
             @Parameter(description = "스택 고유 ID", example = "1") @PathVariable Long id) {
-        log.info("stack id로 기술 스택 조회 요청 - ID: {}", id);
         TechStackDto stack = stackService.getTechStackById(id);
         return BaseApiResponse.ok(stack);
     }

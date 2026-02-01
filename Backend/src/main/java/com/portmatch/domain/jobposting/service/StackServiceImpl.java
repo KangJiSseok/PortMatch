@@ -8,14 +8,12 @@ import com.portmatch.domain.jobposting.repository.TechStackRepository;
 import com.portmatch.global.exception.BusinessException; // 공통 예외
 import com.portmatch.global.response.ResponseCode; // 공통 응답 코드
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -28,17 +26,13 @@ public class StackServiceImpl implements StackService {
     @Override
     @Transactional
     public void createStack(Long id, String stackName) {
-        log.info("새로운 기술 스택 등록: {} {}", id, stackName);
-
         // (선택사항) 이미 존재하는 스택인지 체크하면 더 좋아!
 
         if (techStackRepository.existsById(id)) {
-            log.warn("이미 존재하는 ID: {}", id);
             throw new BusinessException(ResponseCode.INVALID_PARAMETER); // 혹은 적절한 에러코드
         }
 
         if (techStackRepository.existsByStackName(stackName)) {
-            log.warn("이미 존재하는 스택: {}", stackName);
             throw new BusinessException(ResponseCode.INVALID_PARAMETER);
         }
 
@@ -52,7 +46,6 @@ public class StackServiceImpl implements StackService {
     // 2. 전체 기술 스택 목록 조회
     @Override
     public List<TechStackDto> getAllTechStacks() {
-        log.info("전체 기술 스택 목록 조회");
         return techStackRepository.findAll().stream()
                 .map(TechStackDto::fromEntity)
                 .collect(Collectors.toList());
@@ -61,8 +54,6 @@ public class StackServiceImpl implements StackService {
     // 3. 특정 공고에 포함된 스택 리스트 조회
     @Override
     public List<TechStackDto> getPostingStacks(Long postingId) {
-        log.info("공고별 스택 조회 요청 - ID: {}", postingId);
-
         List<PostingStackEntity> entities = postingStackRepository.findByJobPostingId(postingId);
 
         return entities.stream()
@@ -72,8 +63,6 @@ public class StackServiceImpl implements StackService {
 
     @Override
     public TechStackDto getTechStackById(Long id) {
-        log.info("stack id로 stack 조회: {}", id);
-
         // 핵심 변경 사항: RuntimeException 대신 BusinessException 던지기!
         return techStackRepository.findById(id)
                 .map(this::convertToDto)

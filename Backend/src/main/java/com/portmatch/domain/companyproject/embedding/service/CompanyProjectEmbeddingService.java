@@ -9,10 +9,10 @@ import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysis;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysisProject;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysisProjectTech;
 import com.portmatch.domain.companyproject.repository.CompanyProjectAnalysisRepository;
-import org.springframework.http.HttpStatus;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +41,7 @@ public class CompanyProjectEmbeddingService {
 
     public int embedAndSaveByAnalysisId(Long analysisId) {
         CompanyProjectAnalysis analysis = analysisRepository.findByIdWithProjects(analysisId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "analysis not found: " + analysisId));
+                .orElseThrow(() -> new BusinessException(ResponseCode.COMPANY_PROJECT_ANALYSIS_NOT_FOUND));
 
         analysis.getProjects().forEach(p -> p.getTechs().size());
 
@@ -53,7 +53,7 @@ public class CompanyProjectEmbeddingService {
             return 0;
         }
 
-        // 1) ?꾨줈?앺듃蹂??띿뒪??content) ?앹꽦
+        // 1) 프로젝트별 텍스트(content) 생성
         List<Long> projectIds = new ArrayList<>();
         List<String> contents = new ArrayList<>();
         List<String> textsToEmbed = new ArrayList<>();
@@ -114,16 +114,16 @@ public class CompanyProjectEmbeddingService {
             ));
         }
 
-        // 2) inference濡?諛곗튂 ?꾨쿋???붿껌
+        // 2) inference로 배치 임베딩 요청
         CompanyEmbeddingResponse resp = embeddingClient.embed(
                 new CompanyEmbeddingRequest(textsToEmbed)
         );
 
         if (resp.vectors() == null || resp.vectors().size() != textsToEmbed.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding response size mismatch");
+            throw new BusinessException(ResponseCode.COMPANY_EMBEDDING_SIZE_MISMATCH);
         }
 
-        // 3) project_id 湲곗? upsert ???
+        // 3) project_id 기준 upsert 처리
         for (int i = 0; i < projectIds.size(); i++) {
             Long projectId = projectIds.get(i);
             String content = contents.get(i);
@@ -218,7 +218,7 @@ public class CompanyProjectEmbeddingService {
 
     private List<Double> normalizeVector(List<Double> vector) {
         if (vector == null || vector.isEmpty()) {
-            throw new IllegalArgumentException("Vector must not be null or empty");
+            throw new BusinessException(ResponseCode.EMBEDDING_VECTOR_EMPTY);
         }
         double normSq = 0.0;
         for (Double v : vector) {

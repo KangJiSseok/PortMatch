@@ -10,13 +10,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/resumes")
 @Tag(name = "이력서", description = "이력서 관리 API")
@@ -32,7 +30,6 @@ public class ResumeController {
             @Valid @RequestBody ResumeCreateRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("이력서 생성 요청 - UID: {}", userId);
         return BaseApiResponse.ok(resumeService.createResume(userId, request));
     }
 
@@ -42,7 +39,6 @@ public class ResumeController {
             @AuthenticationPrincipal UserPrincipal principal
     ) {
         Long userId = principal.getUser().getId();
-        log.info("이력서 목록 조회 요청 - UID: {}", userId);
         return BaseApiResponse.ok(resumeService.getResumes(userId));
     }
 
@@ -53,7 +49,6 @@ public class ResumeController {
             @PathVariable Long resumeId
     ) {
         Long userId = principal.getUser().getId();
-        log.info("이력서 상세 조회 요청 - UID: {}, resumeId: {}", userId, resumeId);
         return BaseApiResponse.ok(resumeService.getResume(userId, resumeId));
     }
 
@@ -64,7 +59,6 @@ public class ResumeController {
             @PathVariable Long resumeId
     ) {
         Long userId = principal.getUser().getId();
-        log.info("이력서 삭제 요청 - UID: {}, resumeId: {}", userId, resumeId);
         resumeService.deleteResume(userId, resumeId);
         return BaseApiResponse.ok(null);
     }
@@ -77,7 +71,6 @@ public class ResumeController {
             @Valid @RequestBody ResumeCreateRequest request
     ) {
         Long userId = principal.getUser().getId();
-        log.info("이력서 전체 교체 요청 - UID: {}, resumeId: {}", userId, resumeId);
         return BaseApiResponse.ok(resumeService.replaceResume(userId, resumeId, request));
     }
 
@@ -88,7 +81,6 @@ public class ResumeController {
             @PathVariable Long resumeId
     ) {
         Long userId = principal.getUser().getId();
-        log.info("메인 이력서 교체 요청 - UID: {}, resumeId: {}", userId, resumeId);
         return BaseApiResponse.ok(resumeService.setMainResume(userId, resumeId));
     }
 }

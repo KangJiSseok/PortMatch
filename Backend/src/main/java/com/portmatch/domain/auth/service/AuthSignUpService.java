@@ -12,14 +12,12 @@ import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -33,16 +31,11 @@ public class AuthSignUpService {
     /* ===================== 개인 회원가입 ===================== */
 
     public void signUpApplicant(ApplicantSignUpRequest req) {
-
-        log.info("dd");
-
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new BusinessException(ResponseCode.DUPLICATE_EMAIL, "email", "이미 사용 중인 이메일입니다.");
         }
-        log.info("ee");
         String phone = requirePhone(req.getPhone(), "phone", "연락처는 필수입니다.");
         String username = generateUniqueUsername(req.getEmail());
-        log.info("aa");
         User user = new User(
                 username,
                 passwordEncoder.encode(req.getPassword()),
@@ -53,7 +46,6 @@ public class AuthSignUpService {
         );
         userRepository.save(user);
 
-        log.info("bb");
         Applicant applicant = new Applicant(
                 user,
                 req.getBirthDate(),
@@ -61,8 +53,6 @@ public class AuthSignUpService {
                 req.getTotalExperienceYears()
         );
         applicantRepository.save(applicant);
-
-        log.info("cc");
     }
 
     /* ===================== 기업 회원가입 ===================== */

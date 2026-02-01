@@ -26,6 +26,8 @@ public enum ResponseCode {
     PORTFOLIO_FILE_REQUIRED(false, 2203, "포트폴리오 파일은 필수입니다."),
     PROFILE_IMAGE_REQUIRED(false, 2204, "프로필 이미지는 필수입니다."),
     PROFILE_IMAGE_NOT_FOUND(false, 2205, "프로필 이미지를 찾을 수 없습니다."),
+    COMPANY_ALREADY_ASSIGNED(false, 2206, "이미 가입된 기업입니다."),
+    COMPANY_PROJECT_ANALYSIS_NOT_FOUND(false, 2207, "회사 프로젝트 분석 결과가 없습니다."),
 
     // 5000: server error (5xx)
 
@@ -40,6 +42,20 @@ public enum ResponseCode {
     PORTFOLIO_EMBEDDING_SERVICE_UNAVAILABLE(false, 5008, "포트폴리오 임베딩 서비스가 응답하지 않습니다."),
     PORTFOLIO_EMBEDDING_SIZE_MISMATCH(false, 5009, "포트폴리오 임베딩 결과 사이즈 불일치"),
     PROFILE_IMAGE_S3_UPLOAD_FAILED(false, 5010, "프로필 이미지 업로드에 실패했습니다."),
+    PORTFOLIO_EMBEDDING_BASE_URL_NOT_CONFIGURED(false, 5011, "포트폴리오 임베딩 URL 설정이 없습니다."),
+    COMPANY_PROJECT_ANALYSIS_PAYLOAD_FAILED(false, 5012, "회사 프로젝트 분석 요청 생성에 실패했습니다."),
+    COMPANY_PROJECT_ANALYSIS_SERVICE_UNAVAILABLE(false, 5013, "회사 프로젝트 분석 서비스가 응답하지 않습니다."),
+    COMPANY_PROJECT_ANALYSIS_BASE_URL_NOT_CONFIGURED(false, 5014, "회사 프로젝트 분석 URL 설정이 없습니다."),
+    EXPLANATION_PAYLOAD_FAILED(false, 5015, "설명 서비스 요청 생성에 실패했습니다."),
+    EXPLANATION_SERVICE_UNAVAILABLE(false, 5016, "설명 서비스가 응답하지 않습니다."),
+    EXPLANATION_RESPONSE_EMPTY(false, 5017, "설명 서비스 응답이 비어있습니다."),
+    EXPLANATION_BASE_URL_NOT_CONFIGURED(false, 5018, "설명 서비스 URL 설정이 없습니다."),
+    COMPANY_EMBEDDING_BASE_URL_NOT_CONFIGURED(false, 5019, "회사 임베딩 URL 설정이 없습니다."),
+    COMPANY_EMBEDDING_SERVICE_UNAVAILABLE(false, 5020, "회사 임베딩 서비스가 응답하지 않습니다."),
+    COMPANY_EMBEDDING_EMPTY(false, 5021, "회사 임베딩 결과가 비어있습니다."),
+    COMPANY_EMBEDDING_SIZE_MISMATCH(false, 5022, "회사 임베딩 결과 사이즈 불일치"),
+    EMBEDDING_VECTOR_EMPTY(false, 5023, "임베딩 벡터가 비어있습니다."),
+    HASH_ALGORITHM_NOT_AVAILABLE(false, 5024, "해시 알고리즘을 사용할 수 없습니다."),
 
     // openai
     OPENAI_BASE_URL_NOT_CONFIGURED(false, 5100, "OpenAI URL 설정이 없습니다."),

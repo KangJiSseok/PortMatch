@@ -2,6 +2,8 @@ package com.portmatch.domain.companyproject.embedding.client;
 
 import com.portmatch.domain.companyproject.embedding.dto.CompanyEmbeddingRequest;
 import com.portmatch.domain.companyproject.embedding.dto.CompanyEmbeddingResponse;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -10,7 +12,6 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 
@@ -52,16 +53,16 @@ public class CompanyEmbeddingClient {
                 return response.getBody();
             }
 
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service returned empty body");
+            throw new BusinessException(ResponseCode.COMPANY_EMBEDDING_EMPTY);
         } catch (RestClientException e) {
             log.error("Embedding request failed. endpoint={}", endpoint, e);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service unavailable", e);
+            throw new BusinessException(ResponseCode.COMPANY_EMBEDDING_SERVICE_UNAVAILABLE);
         }
     }
 
     private String normalize(String url) {
         if (url == null || url.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "company-embedding.base-url is not set");
+            throw new BusinessException(ResponseCode.COMPANY_EMBEDDING_BASE_URL_NOT_CONFIGURED);
         }
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
