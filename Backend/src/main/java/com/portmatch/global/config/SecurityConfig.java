@@ -59,6 +59,7 @@ public class SecurityConfig {
                                 "/api/interview/sessions/**",
                                 "/api/stacks/**",
                                 "/api/interview/webhook",
+                                "/api/company-scraps/**",
 
                                 // ✅ Swagger / OpenAPI 허용 (springdoc 기본 경로)
                                 "/v3/api-docs/**",
