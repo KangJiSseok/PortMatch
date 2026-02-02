@@ -144,18 +144,9 @@ public class JobPostingMatchingService {
         String companyName = jobPostingOpt
                 .map(jp -> jp.getCompany() != null ? jp.getCompany().getCompaniesName() : "")
                 .orElse("");
-        String companyContent = jobPostingOpt
-                .map(jp -> {
-                    if (jp.getCompany() != null && jp.getCompany().getBusiCont() != null) {
-                        return jp.getCompany().getBusiCont();
-                    }
-                    return jp.getDetail();
-                })
-                .orElse("");
-        if (companyContent == null) {
-            companyContent = "";
-        }
+        
         String portfolioContent = scored.portfolioContent() != null ? scored.portfolioContent() : "";
+        String jobPostingContent = formatJobPostingContent(emb);
 
         // tech JSON 파싱
         List<String> techList = parseJsonArray(emb.getTech());
@@ -176,8 +167,41 @@ public class JobPostingMatchingService {
                 scored.architectureSim(),
                 scored.keywordsSim(),
                 portfolioContent,
-                companyContent
+                jobPostingContent
         );
+    }
+
+    private String formatJobPostingContent(JobPostingEmbedding emb) {
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append("[프로젝트명] ").append(safe(emb.getName())).append("\n");
+        sb.append("[도메인] ").append(safe(emb.getDomain())).append("\n");
+        sb.append("[문제] ").append(safe(emb.getProblem())).append("\n");
+        sb.append("[해결] ").append(safe(emb.getSolution())).append("\n");
+        
+        // tech 파싱
+        List<String> techList = parseJsonArray(emb.getTech());
+        String techStr = techList.isEmpty() ? "정보 없음" : String.join(", ", techList);
+        sb.append("[기술] ").append(techStr).append("\n");
+        
+        // architecture 파싱
+        List<String> archList = parseJsonArray(emb.getArchitectureExperience());
+        String archStr = archList.isEmpty() ? "정보 없음" : String.join("; ", archList);
+        sb.append("[아키텍처] ").append(archStr).append("\n");
+        
+        // keywords 파싱
+        List<String> keywordsList = parseJsonArray(emb.getKeywords());
+        String keywordsStr = keywordsList.isEmpty() ? "정보 없음" : String.join(", ", keywordsList);
+        sb.append("[키워드] ").append(keywordsStr);
+        
+        return sb.toString();
+    }
+
+    private String safe(String s) {
+        if (s == null || s.isBlank()) {
+            return "정보 없음";
+        }
+        return s.trim();
     }
 
     private List<String> parseJsonArray(String json) {

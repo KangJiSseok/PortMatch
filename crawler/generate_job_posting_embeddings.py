@@ -85,7 +85,7 @@ def gemini_embed_batch(texts: list[str]) -> list[list[float]]:
 
 
 def build_field_text(label: str, value: str) -> str:
-    """필드별 임베딩용 텍스트 생성"""
+    """필드별 임베딩용 텍스트 생성 - 포트폴리오와 동일한 포맷 사용"""
     if not value or value.strip() == "":
         return f"[{label}] 정보 없음"
     return f"[{label}] {value.strip()}"
@@ -168,9 +168,9 @@ def process_job_postings():
                 else:
                     kw_str = "정보 없음"
                 
-                # 각 필드별 텍스트 생성
+                # 각 필드별 텍스트 생성 (포트폴리오와 동일한 라벨 사용)
                 texts = [
-                    build_field_text("name", name or ""),
+                    build_field_text("project", name or ""),  # name -> project 통일
                     build_field_text("domain", domain or ""),
                     build_field_text("problem", problem or ""),
                     build_field_text("solution", solution or ""),

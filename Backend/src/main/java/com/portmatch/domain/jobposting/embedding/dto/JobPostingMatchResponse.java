@@ -21,6 +21,6 @@ public record JobPostingMatchResponse(
             double architectureSimilarity,
             double keywordsSimilarity,
             String portfolioContent,
-            String companyContent
+            String jobPostingContent
     ) {}
 }

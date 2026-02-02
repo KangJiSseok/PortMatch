@@ -182,14 +182,14 @@ public class PortfolioEmbeddingService {
 
             // 아키텍처 경험 (프로젝트별)
             String architectureStr = architectureExperiences.isEmpty()
-                    ? "N/A"
+                    ? "정보 없음"
                     : architectureExperiences.stream().collect(Collectors.joining("; "));
             int architectureIdx = textsToEmbed.size();
             textsToEmbed.add(buildFieldEmbeddingText("architecture", architectureStr));
 
             // 키워드 (프로젝트별)
             String keywordStr = keywords.isEmpty()
-                    ? "N/A"
+                    ? "정보 없음"
                     : keywords.stream().collect(Collectors.joining(", "));
             int keywordsIdx = textsToEmbed.size();
             textsToEmbed.add(buildFieldEmbeddingText("keywords", keywordStr));
