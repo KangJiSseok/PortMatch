@@ -1,4 +1,4 @@
-// src/pages/InterviewLobbyPage.tsx
+﻿// src/pages/InterviewLobbyPage.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -67,13 +67,16 @@ function LobbyHeader({ onBack }: { onBack: () => void }) {
   return (
     <header className="absolute top-0 right-0 left-0 z-10 flex items-center justify-between px-8 py-6">
       <div className="flex items-center gap-3">
-        <button
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm font-bold text-zinc-700 shadow-sm ring-1 ring-zinc-200 backdrop-blur-md transition-all hover:bg-white hover:text-zinc-900 hover:ring-zinc-300"
           onClick={onBack}
-          className="flex items-center gap-2 rounded-full bg-white/50 px-4 py-2 text-sm font-bold text-zinc-600 backdrop-blur-md transition-colors hover:bg-white/80"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>목록으로</span>
-        </button>
+        </Button>
         <div className="h-4 w-px bg-zinc-400/30" />
         <span className="text-xs font-black tracking-[0.2em] text-zinc-500 uppercase">
           Interview Lobby
@@ -102,6 +105,7 @@ export default function InterviewLobbyPage() {
   // Media State
   const [micOn, setMicOn] = useState<boolean>(navState.initialMicOn ?? false);
   const [camOn, setCamOn] = useState<boolean>(navState.initialCamOn ?? false);
+  const [mirrorOn, setMirrorOn] = useState(true);
 
   // Preview Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -283,6 +287,7 @@ export default function InterviewLobbyPage() {
     const opId = ++micOpIdRef.current;
     const run = async () => {
       if (!alive.current) return;
+      console.log('[Lobby][Mic] toggle', { micOn });
       if (!micOn) {
         setMediaError('');
         const current = streamRef.current;
@@ -292,14 +297,17 @@ export default function InterviewLobbyPage() {
           if (current.getTracks().length === 0) setMediaStream(null);
           setStreamRev((v) => v + 1);
         }
+        showToast('마이크 OFF');
         return;
       }
       if (!ensureMediaSupported()) return;
       setMediaError('');
+      showToast('마이크 권한 요청 중...');
       const base = streamRef.current;
       if (base && base.getAudioTracks().length > 0) {
         base.getAudioTracks().forEach((t) => (t.enabled = true));
         setStreamRev((v) => v + 1);
+        showToast('마이크 ON');
         return;
       }
       try {
@@ -309,16 +317,20 @@ export default function InterviewLobbyPage() {
           return;
         }
         const at = s.getAudioTracks()[0];
+        if (at) at.enabled = true;
         const latest = streamRef.current;
         if (latest) {
           latest.addTrack(at);
           setStreamRev((v) => v + 1);
         } else {
           setMediaStream(new MediaStream([at]));
+          setStreamRev((v) => v + 1);
         }
+        showToast('마이크 ON');
       } catch (e) {
         setMediaError('???????? ??????????????.');
         setMicLevel(0);
+        showToast('마이크 권한 요청 실패');
       }
     };
     void run();
@@ -361,10 +373,12 @@ export default function InterviewLobbyPage() {
     }
     const s = streamRef.current;
     if (!s || s.getAudioTracks().length === 0) {
+      showToast('마이크 트랙이 없습니다.');
       return () => {
         alive.current = false;
       };
     }
+    s.getAudioTracks().forEach((t) => (t.enabled = true));
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) {
       return () => {
@@ -391,9 +405,13 @@ export default function InterviewLobbyPage() {
       setMicLevel(level);
       rafRef.current = requestAnimationFrame(tick);
     };
-    ctx.resume().then(() => {
-      if (alive.current) tick();
-    });
+    ctx.resume()
+      .then(() => {
+        if (alive.current) tick();
+      })
+      .catch(() => {
+        showToast('오디오 컨텍스트 활성화 실패');
+      });
     return () => {
       alive.current = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -416,20 +434,21 @@ export default function InterviewLobbyPage() {
 
   return (
     // 배경색: InterviewPage와 통일 (bg-white)
-    <div className="bg-white text-midnight-ink flex min-h-screen w-full flex-col overflow-hidden pt-20 pb-10">
+    <div className="bg-white text-midnight-ink relative flex min-h-screen w-full flex-col overflow-hidden pt-12 pb-10">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(40%_40%_at_20%_20%,rgba(59,130,246,0.08),transparent),radial-gradient(35%_35%_at_80%_30%,rgba(16,185,129,0.06),transparent)]" />
       <LobbyHeader onBack={goList} />
 
-      <main className="mx-auto flex w-full max-w-[1280px] flex-1 items-center justify-center gap-8 px-6">
+      <main className="mx-auto flex w-full max-w-[1400px] flex-1 items-stretch justify-center gap-12 px-8 pt-8">
         {/* --- LEFT: Preview Section (Dark Theme like Room) --- */}
-        <section className="relative flex-1">
-          <div className="bg-midnight-ink relative aspect-video w-full overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-black/5">
+        <section className="relative flex-1" style={{ height: 'min(700px, 80vh)' }}>
+          <div className="bg-midnight-ink relative h-full w-full overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-black/5">
             {/* Camera View */}
             <div className="flex h-full w-full items-center justify-center">
               {camOn ? (
                 showPreview ? (
                   <video
                     ref={videoRef}
-                    className="h-full w-full scale-x-[-1] object-cover" // 거울 모드
+                    className={`h-full w-full object-cover ${mirrorOn ? 'scale-x-[-1]' : ''}`}
                     playsInline
                     autoPlay
                     muted
@@ -506,10 +525,10 @@ export default function InterviewLobbyPage() {
         </section>
 
         {/* --- RIGHT: Controls & Info Section (Light Card) --- */}
-        <section className="flex w-[400px] flex-col gap-6">
-          <div className="rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-zinc-100">
+        <section className="flex w-[420px] flex-col gap-8" style={{ height: 'min(700px, 80vh)' }}>
+          <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-10 shadow-xl ring-1 ring-zinc-100">
             {/* Session Info */}
-            <div className="mb-6 space-y-1">
+            <div className="space-y-2">
               <p className="text-xs font-black tracking-widest text-zinc-400 uppercase">
                 {session.companyName}
               </p>
@@ -524,7 +543,7 @@ export default function InterviewLobbyPage() {
 
             {/* Corporate: Invite Link Section */}
             {isCorporate && (
-              <div className="mb-8 rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+              <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-1 text-xs font-bold text-zinc-500">
                     <Share2 className="h-3 w-3" /> 지원자 초대 링크
@@ -543,7 +562,7 @@ export default function InterviewLobbyPage() {
             )}
 
             {/* Device Controls */}
-            <div className="mb-8 flex justify-center gap-4">
+            <div className="flex justify-center gap-5">
               <button
                 onClick={() => setMicOn((v) => !v)}
                 className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm ring-1 transition-all ring-inset ${
@@ -574,6 +593,25 @@ export default function InterviewLobbyPage() {
               >
                 <Settings2 className="h-6 w-6" />
               </button>
+            </div>
+
+            {/* Quick Settings */}
+            <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-5">
+              <p className="mb-3 text-xs font-black tracking-widest text-zinc-400 uppercase">
+                Quick Settings
+              </p>
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => setMirrorOn((v) => !v)}
+                  className="flex w-full items-center justify-between rounded-xl bg-white px-3 py-2 text-sm font-bold text-zinc-700 shadow-sm ring-1 ring-zinc-100"
+                >
+                  <span>내 화면 미러링</span>
+                  <span className={mirrorOn ? 'text-green-600' : 'text-zinc-400'}>
+                    {mirrorOn ? 'ON' : 'OFF'}
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* Main Action */}
@@ -680,3 +718,5 @@ function LobbySkeleton({ onBack }: { onBack: () => void }) {
     </div>
   );
 }
+
+

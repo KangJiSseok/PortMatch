@@ -494,7 +494,7 @@ export default function InterviewPage() {
 
   return (
     <div
-      className={`flex h-screen w-full items-center justify-center overflow-hidden bg-white px-4 pt-24 pb-4 ${
+      className={`flex h-screen w-full items-center justify-center overflow-hidden bg-white px-4 pt-4 pb-4 ${
         showRightSide ? 'gap-4' : ''
       }`}
     >
