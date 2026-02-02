@@ -16,7 +16,7 @@ import {
   Lightbulb,
   AlertTriangle,
   Network,
-  Hash
+  Hash,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import { portfolioApi } from '../../api/portfolioApi';
@@ -434,7 +434,7 @@ function PortfoliosPage() {
 
         <AnimatePresence>
           {selectedProject && (
-            <div className="fixed inset-0 z-[100] flex items-start justify-center p-6 pt-24">
+            <div className="fixed inset-0 z-100 flex items-start justify-center p-6 pt-24">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -449,7 +449,6 @@ function PortfoliosPage() {
                 exit={{ opacity: 0, scale: 0.98, y: 20 }}
                 className="bg-pure-white relative flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-[2.5rem] shadow-2xl ring-1 ring-black/5"
               >
-                {/* 1. 모달 헤더 */}
                 <div className="flex shrink-0 items-start justify-between border-b border-gray-100 bg-white/50 px-10 py-8 backdrop-blur-sm">
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-3">
@@ -461,25 +460,20 @@ function PortfoliosPage() {
                         {selectedProject.domain || 'General'}
                       </span>
                     </div>
-                    <h3 className="text-midnight-ink text-4xl font-black tracking-tighter leading-tight">
+                    <h3 className="text-midnight-ink text-4xl leading-tight font-black tracking-tighter">
                       {selectedProject.name}
                     </h3>
                   </div>
                   <button
                     onClick={() => setSelectedProject(null)}
-                    className="bg-gray-50 text-silver-mist hover:bg-gray-100 hover:text-midnight-ink flex h-10 w-10 items-center justify-center rounded-full transition-all"
+                    className="text-silver-mist hover:text-midnight-ink flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 transition-all hover:bg-gray-100"
                   >
                     <X size={24} strokeWidth={2.5} />
                   </button>
                 </div>
-
-                {/* 2. 모달 본문 (스크롤 영역) */}
                 <div className="custom-scrollbar flex-1 space-y-8 overflow-y-auto px-10 py-8">
-
-                  {/* Row 1: 문제 정의 & 핵심 해결 */}
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    {/* Problem Section (Error Color 활용) */}
-                    <section className="bg-slate-50 relative flex flex-col rounded-[2rem] border border-gray-100 p-8">
+                    <section className="relative flex flex-col rounded-4xl border border-gray-100 bg-slate-50 p-8">
                       <div className="absolute top-8 right-8 text-gray-200">
                         <AlertTriangle size={80} strokeWidth={1} />
                       </div>
@@ -496,8 +490,7 @@ function PortfoliosPage() {
                       </div>
                     </section>
 
-                    {/* Solution Section (Point Blue 활용) */}
-                    <section className="bg-point-blue/5 relative flex flex-col rounded-[2rem] border border-blue-100 p-8">
+                    <section className="bg-point-blue/5 relative flex flex-col rounded-4xl border border-blue-100 p-8">
                       <div className="absolute top-8 right-8 text-blue-100">
                         <Lightbulb size={80} strokeWidth={1} />
                       </div>
@@ -515,62 +508,78 @@ function PortfoliosPage() {
                     </section>
                   </div>
 
-                  {/* Row 2: 아키텍처 및 기술적 경험 (색상 통일: Point Blue) */}
-                  {selectedProject.architecture_experience && selectedProject.architecture_experience.length > 0 && (
-                    <section className="border-silver-mist rounded-[2rem] border bg-white p-8 shadow-sm">
+                  {selectedProject.architecture_experience &&
+                    selectedProject.architecture_experience.length > 0 && (
+                      <section className="border-silver-mist rounded-4xl border bg-white p-8 shadow-sm">
+                        <div className="mb-6 flex items-center gap-3">
+                          <div className="bg-point-blue/10 text-point-blue flex h-10 w-10 items-center justify-center rounded-xl">
+                            <Network size={20} />
+                          </div>
+                          <h4 className="text-midnight-ink text-xl font-black tracking-tight">
+                            설계 및 기술적 의사결정
+                          </h4>
+                        </div>
+                        <div className="grid gap-3">
+                          {selectedProject.architecture_experience.map((exp, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-start gap-4 rounded-2xl border border-gray-100 bg-gray-50/50 px-5 py-4"
+                            >
+                              <div className="bg-point-blue mt-2 h-1.5 w-1.5 shrink-0 rounded-full" />
+                              <span className="text-midnight-ink text-lg leading-relaxed font-bold opacity-80">
+                                {exp}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                  <div className="space-y-6">
+                    <section className="border-silver-mist bg-pure-white rounded-4xl border p-8 shadow-sm">
                       <div className="mb-6 flex items-center gap-3">
                         <div className="bg-point-blue/10 text-point-blue flex h-10 w-10 items-center justify-center rounded-xl">
-                          <Network size={20} />
+                          <Cpu size={20} />
                         </div>
-                        <h4 className="text-midnight-ink text-xl font-black tracking-tight">설계 및 기술적 의사결정</h4>
+                        <h4 className="text-midnight-ink text-xl font-black tracking-tight">
+                          사용 기술 스택
+                        </h4>
                       </div>
-                      <div className="grid gap-3">
-                        {selectedProject.architecture_experience.map((exp, idx) => (
-                          <div key={idx} className="flex items-start gap-4 rounded-2xl bg-gray-50/50 border border-gray-100 px-5 py-4">
-                            <div className="bg-point-blue mt-2 h-1.5 w-1.5 shrink-0 rounded-full" />
-                            <span className="text-midnight-ink text-lg font-bold leading-relaxed opacity-80">
-                              {exp}
+                      <div className="flex flex-wrap gap-3">
+                        {selectedProject.tech.map((t) => (
+                          <div
+                            key={t}
+                            className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/50 px-5 py-3.5"
+                          >
+                            <div className="bg-point-blue h-1.5 w-1.5 shrink-0 rounded-full" />
+                            <span className="text-midnight-ink text-base font-bold tracking-tight">
+                              {t}
                             </span>
                           </div>
                         ))}
                       </div>
                     </section>
-                  )}
 
-                  {/* Row 3: 기술 스택 & 키워드 (디자인 통일) */}
-                  <div className="space-y-6">
-                    {/* Tech Stack */}
-                    <section className="border-silver-mist bg-pure-white rounded-[2rem] border p-8 shadow-sm">
-                      <div className="mb-6 flex items-center gap-3">
-                        <div className="bg-point-blue/10 text-point-blue flex h-10 w-10 items-center justify-center rounded-xl">
-                          <Cpu size={20} />
-                        </div>
-                        <h4 className="text-midnight-ink text-xl font-black tracking-tight">사용 기술 스택</h4>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        {selectedProject.tech.map((t) => (
-                          <div key={t} className="flex items-center gap-3 rounded-2xl bg-gray-50/50 border border-gray-100 px-5 py-3.5">
-                            <div className="bg-point-blue h-1.5 w-1.5 shrink-0 rounded-full" />
-                            <span className="text-midnight-ink text-base font-bold tracking-tight">{t}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-
-                    {/* Keywords */}
                     {selectedProject.keywords && selectedProject.keywords.length > 0 && (
-                      <section className="border-silver-mist bg-pure-white rounded-[2rem] border p-8 shadow-sm">
+                      <section className="border-silver-mist bg-pure-white rounded-4xl border p-8 shadow-sm">
                         <div className="mb-6 flex items-center gap-3">
                           <div className="bg-point-blue/10 text-point-blue flex h-10 w-10 items-center justify-center rounded-xl">
                             <Hash size={20} />
                           </div>
-                          <h4 className="text-midnight-ink text-xl font-black tracking-tight">관련 키워드</h4>
+                          <h4 className="text-midnight-ink text-xl font-black tracking-tight">
+                            관련 키워드
+                          </h4>
                         </div>
                         <div className="flex flex-wrap gap-3">
                           {selectedProject.keywords.map((k) => (
-                            <div key={k} className="flex items-center gap-2 rounded-2xl bg-gray-50/50 border border-gray-100 px-5 py-3.5">
+                            <div
+                              key={k}
+                              className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50/50 px-5 py-3.5"
+                            >
                               <Hash size={14} className="text-slate-gray opacity-50" />
-                              <span className="text-midnight-ink text-base font-bold tracking-tight">{k}</span>
+                              <span className="text-midnight-ink text-base font-bold tracking-tight">
+                                {k}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -579,7 +588,6 @@ function PortfoliosPage() {
                   </div>
                 </div>
 
-                {/* 3. 모달 푸터 */}
                 <div className="flex shrink-0 justify-end border-t border-gray-100 bg-gray-50/50 px-10 py-6">
                   <Button
                     variant="dark"
@@ -930,7 +938,7 @@ function PortfoliosPage() {
                 <div className="grid grid-cols-2 gap-5">
                   <button
                     onClick={() => scrollToSection(projectSectionRef)}
-                    className="group border-silver-mist bg-pure-white hover:border-point-blue/50 hover:shadow-lg relative flex flex-col items-start justify-center overflow-hidden rounded-3xl border p-6 text-left transition-all"
+                    className="group border-silver-mist bg-pure-white hover:border-point-blue/50 relative flex flex-col items-start justify-center overflow-hidden rounded-3xl border p-6 text-left transition-all hover:shadow-lg"
                   >
                     <div className="absolute -right-6 -bottom-6 opacity-5 transition-opacity group-hover:opacity-10">
                       <Layers size={120} />
@@ -955,12 +963,12 @@ function PortfoliosPage() {
 
                   <button
                     onClick={() => scrollToSection(techSectionRef)}
-                    className="group border-silver-mist bg-pure-white hover:border-emerald-500/50 hover:shadow-lg relative flex flex-col items-start justify-center overflow-hidden rounded-3xl border p-6 text-left transition-all"
+                    className="group border-silver-mist bg-pure-white relative flex flex-col items-start justify-center overflow-hidden rounded-3xl border p-6 text-left transition-all hover:border-emerald-500/50 hover:shadow-lg"
                   >
                     <div className="absolute -right-6 -bottom-6 opacity-5 transition-opacity group-hover:opacity-10">
                       <Cpu size={120} />
                     </div>
-                    <div className="bg-emerald-500/10 mb-3 flex h-10 w-10 items-center justify-center rounded-xl">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
                       <Cpu size={20} className="text-emerald-600" />
                     </div>
                     <p className="text-slate-gray text-xs font-black uppercase opacity-60">
@@ -973,7 +981,7 @@ function PortfoliosPage() {
                       <span className="text-midnight-ink text-lg font-bold">개</span>
                       <ArrowDownCircle
                         size={18}
-                        className="text-emerald-600/40 group-hover:text-emerald-600 ml-auto transition-colors"
+                        className="ml-auto text-emerald-600/40 transition-colors group-hover:text-emerald-600"
                       />
                     </div>
                   </button>

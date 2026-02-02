@@ -2,8 +2,22 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart } from 'lucide-react';
+import { Heart, Globe, MapPin, Building2 } from 'lucide-react';
 import Button from '../../components/Button/Button';
+
+interface UserData {
+  userId: number;
+  email: string;
+  name: string;
+  role: string;
+}
+
+interface ApiResponse<T> {
+  status: boolean;
+  code: number;
+  message: string;
+  data: T;
+}
 
 interface Project {
   id: number;
@@ -32,15 +46,8 @@ interface CompanyDetails {
   revenue: string;
   website: string;
   isScrapped: boolean;
-  scrapCount: number;
   enterpriseType: string;
   projects: Project[];
-}
-
-interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
 }
 
 interface CompanyBackendData {
@@ -53,7 +60,6 @@ interface CompanyBackendData {
   homePg: string;
   busiCont: string;
   logo: string;
-  scrapCount?: number;
   isScrapped?: boolean;
   projects?: Project[];
 }
@@ -92,53 +98,102 @@ function CompanyDetailsPage() {
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isScraping, setIsScraping] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [toast, setToast] = useState<{ message: React.ReactNode; visible: boolean }>({
     message: '',
     visible: false,
   });
 
-  const isApplicant = (() => {
-    try {
-      const authData = localStorage.getItem('auth-storage');
-      if (authData) {
-        const parsed = JSON.parse(authData);
-        return parsed.state?.user?.role?.toUpperCase() === 'APPLICANT';
-      }
-    } catch {
-      return false;
-    }
-    return false;
-  })();
+  const isApplicant = currentUser?.role === 'APPLICANT';
 
   useEffect(() => {
     window.scrollTo(0, 0);
     const fetchData = async () => {
       setIsLoading(true);
-      try {
-        const token = localStorage.getItem('accessToken');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        let targetId = paramId;
 
-        if (!targetId || targetId === 'undefined') {
-          const listRes = await axios.get<ApiResponse<CompanyBackendData[]>>('/api/companies', {
-            headers,
-          });
-          if (listRes.data.code === 1000 && listRes.data.data.length > 0)
-            targetId = listRes.data.data[0].cid;
+      const axiosConfig = {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+      const userPromise = (async () => {
+        try {
+          const res = await axios.get<ApiResponse<UserData>>('/api/auth/me', axiosConfig);
+          if ((res.data.code === 1000 || res.data.code === 0) && res.data.data) {
+            return res.data.data;
+          }
+          return null;
+        } catch {
+          return null;
         }
-        if (!targetId) return;
+      })();
 
-        const [companyRes, jobsRes] = await Promise.all([
-          axios.get<ApiResponse<CompanyBackendData>>(`/api/companies/${targetId}`, { headers }),
+      let targetId = paramId;
+      if (!targetId || targetId === 'undefined') {
+        try {
+          const listRes = await axios.get<ApiResponse<CompanyBackendData[]>>(
+            '/api/companies',
+            axiosConfig,
+          );
+          if (
+            (listRes.data.code === 1000 || listRes.data.code === 0) &&
+            listRes.data.data.length > 0
+          )
+            targetId = listRes.data.data[0].cid;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (!targetId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const [fetchedUser, companyRes, jobsRes] = await Promise.all([
+          userPromise,
+          axios.get<ApiResponse<CompanyBackendData>>(`/api/companies/${targetId}`, axiosConfig),
           axios
-            .get<ApiResponse<JobPosting[]>>(`/api/job-postings/company/${targetId}`, { headers })
+            .get<ApiResponse<JobPosting[]>>(`/api/job-postings/company/${targetId}`, axiosConfig)
             .catch(() => ({
-              data: { code: 0, message: '', data: [] } as ApiResponse<JobPosting[]>,
+              data: {
+                code: 0,
+                message: '',
+                data: [],
+                status: false,
+              } as ApiResponse<JobPosting[]>,
             })),
         ]);
 
-        if (companyRes.data.code === 1000) {
+        if (fetchedUser) {
+          setCurrentUser(fetchedUser);
+        }
+
+        if (companyRes.data.code === 1000 || companyRes.data.code === 0) {
           const b = companyRes.data.data;
+          let initialIsScrapped = false;
+
+          if (fetchedUser && fetchedUser.role === 'APPLICANT') {
+            try {
+              const scrapCheckRes = await axios.get<ApiResponse<boolean>>(
+                '/api/company-scraps/check',
+                {
+                  ...axiosConfig,
+                  params: { uid: fetchedUser.userId, cid: targetId },
+                },
+              );
+
+              if (scrapCheckRes.data.code === 1000 || scrapCheckRes.data.code === 0) {
+                initialIsScrapped = scrapCheckRes.data.data;
+              }
+            } catch (err) {
+              console.error(err);
+            }
+          }
+
           setCompany({
             id: b.cid,
             name: b.corpName,
@@ -150,8 +205,7 @@ function CompanyDetailsPage() {
             revenue: formatRevenue(b.yrSalesAmt),
             website: b.homePg,
             enterpriseType: b.busiSize,
-            isScrapped: b.isScrapped || false,
-            scrapCount: b.scrapCount || 0,
+            isScrapped: initialIsScrapped,
             projects: b.projects || [],
           });
         }
@@ -180,27 +234,24 @@ function CompanyDetailsPage() {
   };
 
   const handleScrap = async () => {
-    if (!company || isScraping || !isApplicant) return;
+    if (!company || isScraping || !isApplicant || !currentUser) return;
 
     const prevScrapped = company.isScrapped;
-    const prevCount = company.scrapCount;
 
     setIsScraping(true);
 
     setCompany({
       ...company,
       isScrapped: !prevScrapped,
-      scrapCount: prevScrapped ? prevCount - 1 : prevCount + 1,
     });
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      await axios.post('/api/company-scraps', null, {
+        withCredentials: true,
+        params: { uid: currentUser.userId, cid: company.id },
+      });
 
-      if (prevScrapped) {
-        await axios.delete(`/api/companies/${company.id}/scrap`, { headers });
-      } else {
-        await axios.post(`/api/companies/${company.id}/scrap`, {}, { headers });
+      if (!prevScrapped) {
         showToastMessage(
           <span>
             스크랩되었습니다!{' '}
@@ -216,7 +267,6 @@ function CompanyDetailsPage() {
       setCompany({
         ...company,
         isScrapped: prevScrapped,
-        scrapCount: prevCount,
       });
       alert('스크랩 처리 중 오류가 발생했습니다.');
     } finally {
@@ -263,67 +313,111 @@ function CompanyDetailsPage() {
         exit={{ opacity: 0 }}
         className="bg-pure-white text-midnight-ink min-h-screen min-w-7xl pb-20"
       >
-        <section className="bg-midnight-ink relative flex min-h-100 w-full flex-col justify-end overflow-hidden pb-16">
-          <div className="from-point-blue/20 absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--tw-gradient-stops))] via-transparent to-transparent" />
+        <section className="relative flex min-h-120 w-full flex-col justify-end overflow-hidden pb-16">
+          <div className="absolute inset-0 bg-slate-900">
+            <div className="absolute inset-0 bg-[radial-gradient(#ffffff33_1px,transparent_1px)] bg-size-[20px_20px] opacity-30" />
+            <div className="absolute inset-0 bg-linear-to-b from-transparent to-slate-950/80" />
+          </div>
+
           <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col px-8">
-            <div className="flex flex-row items-end gap-12">
-              <div className="border-pure-white bg-pure-white h-40 w-40 shrink-0 overflow-hidden rounded-3xl border-4 shadow-xl transition-all duration-300">
-                <img src={company.logo} className="h-full w-full object-contain p-4" alt="logo" />
-              </div>
-              <div className="flex w-full min-w-0 flex-1 flex-col items-start">
-                <div className="mb-4 flex items-center justify-start gap-2">
+            <div className="flex flex-row items-end gap-10">
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="relative shrink-0"
+              >
+                <div className="bg-pure-white relative flex h-44 w-44 items-center justify-center overflow-hidden rounded-4xl shadow-2xl ring-1 ring-white/10">
+                  <img src={company.logo} className="h-full w-full object-contain p-6" alt="logo" />
+                </div>
+              </motion.div>
+
+              <div className="flex w-full min-w-0 flex-1 flex-col items-start pb-2">
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="mb-5 flex flex-wrap items-center gap-3"
+                >
                   <span
-                    className={`${jobPostings.length > 0 ? 'bg-point-blue' : 'bg-white/20'} text-pure-white rounded-md px-4 py-1.5 text-sm font-black ring-1 ring-white/10 backdrop-blur-sm transition-colors duration-300`}
+                    className={`${
+                      jobPostings.length > 0
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-zinc-700 text-zinc-300'
+                    } rounded-full px-4 py-1.5 text-sm font-bold transition-all duration-300`}
                   >
                     {jobPostings.length > 0 ? '채용중' : '채용 없음'}
                   </span>
-                  <span className="text-pure-white rounded-md bg-black/60 px-4 py-1.5 text-sm font-bold ring-1 ring-white/30 backdrop-blur-sm">
+                  <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/20">
+                    <Building2 size={14} className="opacity-70" />
                     {company.enterpriseType}
                   </span>
-                </div>
-                <h1 className="text-pure-white line-clamp-1 text-left text-4xl font-black tracking-tighter">
+                  <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/20">
+                    <MapPin size={14} className="opacity-70" />
+                    {company.location.split(' ')[0]}
+                  </span>
+                </motion.div>
+
+                <motion.h1
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-pure-white mb-3 line-clamp-1 w-full text-left text-5xl font-black tracking-tight"
+                >
                   {company.name}
-                </h1>
-                <p className="text-pure-white mt-4 text-left text-lg font-bold opacity-90">
+                </motion.h1>
+
+                <motion.p
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="line-clamp-1 text-left text-lg font-medium text-slate-300"
+                >
                   {company.industry}
-                </p>
+                </motion.p>
               </div>
-              <div className="flex shrink-0 items-center justify-end gap-3">
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="flex shrink-0 items-center justify-end gap-3 pb-2"
+              >
                 <Button
                   variant="light"
                   size="lg"
-                  className="h-14 rounded-2xl px-6"
+                  className="group h-14 rounded-2xl bg-white/10 px-6 text-white ring-1 ring-white/10 transition-all hover:bg-white/20 hover:text-white"
                   onClick={() => window.open(company.website, '_blank')}
                 >
-                  기업 홈페이지 〉
+                  <Globe size={18} className="mr-2 opacity-70 group-hover:opacity-100" />
+                  홈페이지
                 </Button>
                 <motion.button
                   disabled={!isApplicant || isScraping}
                   onClick={handleScrap}
                   whileHover={isApplicant && !isScraping ? { scale: 1.05 } : {}}
                   whileTap={isApplicant && !isScraping ? { scale: 0.95 } : {}}
-                  className={`flex h-14 min-w-14 flex-col items-center justify-center rounded-2xl border-2 shadow-xl transition-colors duration-300 ${
+                  className={`flex h-14 w-14 items-center justify-center rounded-2xl border transition-all duration-300 ${
                     !isApplicant
-                      ? 'cursor-not-allowed border-transparent bg-white/10 text-white opacity-40 grayscale'
+                      ? 'cursor-not-allowed border-transparent bg-white/5 text-white/40 grayscale'
                       : company.isScrapped
-                        ? 'border-red-500 bg-white text-red-500'
-                        : 'text-midnight-ink border-zinc-100 bg-white'
+                        ? 'border-red-500/50 bg-red-500/10 text-red-400'
+                        : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
                   }`}
                 >
                   <Heart
-                    size={20}
-                    fill={company.isScrapped ? '#ef4444' : 'none'}
-                    stroke={company.isScrapped ? '#ef4444' : 'currentColor'}
+                    size={24}
+                    fill={company.isScrapped ? 'currentColor' : 'none'}
+                    stroke={company.isScrapped ? 'currentColor' : 'currentColor'}
                     strokeWidth={2.5}
                   />
-                  <span className="text-[11px] font-black">{company.scrapCount}</span>
                 </motion.button>
-              </div>
+              </motion.div>
             </div>
           </div>
         </section>
 
-        <div className="mx-auto mt-16 w-full max-w-7xl px-8">
+        <div className="mx-auto mt-12 w-full max-w-7xl px-8">
           <div className="grid grid-cols-12 gap-12">
             <div className="col-span-8 space-y-12">
               <section
