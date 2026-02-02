@@ -9,12 +9,12 @@ import {
 import type { BaseTickContentProps, TickItem } from 'recharts/types/util/types';
 import type { CandidateFactor, CandidateWeights } from '@/types/recommendCandidate';
 
-const FACTOR_ORDER: CandidateFactor[] = ['기술', '키워드', '아키텍처', '종합'];
+const FACTOR_ORDER: CandidateFactor[] = ['기술', '주제', '아키텍처', '맥락'];
 const FACTOR_LABEL: Record<CandidateFactor, string> = {
   기술: '기술',
-  키워드: '키워드',
+  주제: '주제',
   아키텍처: '아키텍처',
-  종합: '종합',
+  맥락: '맥락',
 };
 
 const RANK_FONT_SIZES = [13, 11, 11, 11];

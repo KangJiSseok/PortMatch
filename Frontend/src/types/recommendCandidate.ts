@@ -112,8 +112,8 @@ export type CandidateCardModel = {
  */
 export type CandidateFactor =
   | '기술'
-  | '키워드'
+  | '주제'
   | '아키텍처'
-  | '종합';
+  | '맥락';
 
 export type CandidateWeights = Record<CandidateFactor, number>;

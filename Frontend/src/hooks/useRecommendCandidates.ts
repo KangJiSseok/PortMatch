@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchRecommendedCandidates } from '@/api/recommendCandidates';
+import { fetchRecommendedCandidates } from '@/api/company/recommendCandidates';
 import type {
   RecommendCandidatesRequest,
   RecommendCandidatesResponse,
@@ -12,7 +12,7 @@ import type {
 
 /** ---------------- Factor 정의 ---------------- */
 
-const FACTOR_ORDER: CandidateFactor[] = ['기술', '키워드', '아키텍처', '종합'];
+const FACTOR_ORDER: CandidateFactor[] = ['기술', '주제', '아키텍처', '맥락'];
 
 /** ---------------- Utils ---------------- */
 
@@ -42,9 +42,9 @@ function pickTopFactors(weights: CandidateWeights, n = 2): CandidateFactor[] {
 function mapToCardModel(item: RecommendCandidate, index: number): CandidateCardModel {
   const weights = similaritiesToScores({
     기술: item.techSimilarity,
-    키워드: item.keywordSimilarity,
+    주제: item.keywordSimilarity,
     아키텍처: item.architectureSimilarity,
-    종합: item.unifiedSimilarity,
+    맥락: item.unifiedSimilarity,
   });
 
   return {

@@ -32,33 +32,21 @@ const POINT_BLUE = '#5563C1';
 
 /** ---------------- Factor ---------------- */
 
-const FACTOR_ORDER: CandidateFactor[] = ['기술', '키워드', '아키텍처', '종합'];
+const FACTOR_ORDER: CandidateFactor[] = ['기술', '주제', '아키텍처', '맥락'];
 const FACTOR_LABEL: Record<CandidateFactor, string> = {
   기술: '기술',
-  키워드: '키워드',
+  주제: '주제',
   아키텍처: '아키텍처',
-  종합: '종합',
+  맥락: '맥락',
 };
 
 const FACTOR_COLOR: Record<CandidateFactor, string> = {
-  기술: '#60A5FA',
-  키워드: '#F59E0B',
-  아키텍처: '#10B981',
-  종합: '#A78BFA',
+  기술: '#64748B',
+  주제: '#94A3B8',
+  아키텍처: '#475569',
+  맥락: POINT_BLUE,
 };
 
-/** ---------------- Buttons ---------------- */
-
-const BTN_BASE =
-  'relative w-full rounded-xl font-bold transition-all duration-200 outline-none cursor-pointer ' +
-  'focus-visible:ring-2 focus-visible:ring-black/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white ' +
-  'hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99]';
-
-const BTN_INSET =
-  "overflow-hidden after:content-[''] after:absolute after:inset-0 after:pointer-events-none " +
-  'after:rounded-[inherit] after:opacity-0 after:transition-opacity after:duration-200 ' +
-  'after:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-1px_0_rgba(0,0,0,0.06)] ' +
-  'hover:after:opacity-100 focus-visible:after:opacity-100';
 
 /** ---------------- Small Utils ---------------- */
 
@@ -106,6 +94,8 @@ function parseStructured(content: string): Record<string, string> {
 
 /** ---------------- Criteria (모달 밖 1번) ---------------- */
 
+
+
 function EvaluationCriteria() {
   const [open, setOpen] = useState(false);
 
@@ -116,9 +106,9 @@ function EvaluationCriteria() {
       color: FACTOR_COLOR['기술'],
     },
     {
-      id: '키워드',
-      desc: '프로젝트/경험에서 드러난 핵심 역량의 유사도를 평가합니다.',
-      color: FACTOR_COLOR['키워드'],
+      id: '주제',
+      desc: '프로젝트/경험에서 드러난 핵심 주제의 유사도를 평가합니다.',
+      color: FACTOR_COLOR['주제'],
     },
     {
       id: '아키텍처',
@@ -126,9 +116,9 @@ function EvaluationCriteria() {
       color: FACTOR_COLOR['아키텍처'],
     },
     {
-      id: '종합',
-      desc: '전체 텍스트/역량/프로젝트 맥락 기반으로 프로젝트 점수를 산출합니다.',
-      color: FACTOR_COLOR['종합'],
+      id: '맥락',
+      desc: '전체 텍스트/역량/프로젝트 맥락 기반으로 점수를 산출합니다.',
+      color: FACTOR_COLOR['맥락'],
     },
   ];
 
@@ -163,7 +153,7 @@ function EvaluationCriteria() {
               이 리포트는 입력한 검색 문장(쿼리)을 기준으로, 후보자의 포트폴리오 내용을 비교해
               <br />
               <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
-                “기술 · 키워드 · 아키텍처 · 프로젝트 맥락”
+                ?기술 ? 주제 ? 아키텍처 ? 맥락?
               </span>
               의 유사도를 계산합니다.
             </p>
@@ -223,6 +213,7 @@ function lockBodyScroll(lock: boolean) {
 
 /** ---------------- Detail Modal ---------------- */
 
+
 function CandidateDetailModal({
   open,
   candidate,
@@ -252,9 +243,9 @@ function CandidateDetailModal({
 
   const parsed = parseStructured(candidate.unifiedText);
   const tech = parsed['기술'] || parsed['기술스택'] || candidate.summary.tech;
-  const skill = parsed['역량'] || '';
+  const topic = parsed['역량'] || candidate.summary.keyword || '';
   const arch = parsed['아키텍처 경험'] || candidate.summary.architecture;
-  const project = parsed['프로젝트'] || '';
+  const context = parsed['프로젝트'] || '';
 
   const top1 = candidate.topFactors?.[0] ?? '프로젝트';
   const top2 = candidate.topFactors?.[1] ?? '기술';
@@ -325,92 +316,81 @@ function CandidateDetailModal({
                 `}
               </style>
 
-              <div className="space-y-10">
-                {/* Weight bars */}
-                <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-                  <div className="mb-3 text-[13px] font-black text-gray-700">유사도 지표</div>
-                  <div className="space-y-4">
-                    {FACTOR_ORDER.map((f) => (
-                      <div key={f} className="text-[12px]">
-                        <div className="mb-1.5 flex justify-between">
-                          <span className="font-bold text-gray-600">{FACTOR_LABEL[f]}</span>
-                          <span className="font-bold text-[#4a4a4a]">{candidate.weights[f]}점</span>
-                        </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-black/5">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${candidate.weights[f]}%` }}
-                            className="h-full rounded-full"
-                            style={{ backgroundColor: FACTOR_COLOR[f] }}
-                          />
-                        </div>
+              <div className="space-y-6">
+                {/* Score summary */}
+                <div className="grid grid-cols-2 gap-3">
+                  {FACTOR_ORDER.map((f) => (
+                    <div
+                      key={f}
+                      className="rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm"
+                    >
+                      <div className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">
+                        {FACTOR_LABEL[f]}
                       </div>
-                    ))}
-                  </div>
+                      <div className="mt-1 flex items-end gap-2">
+                        <span className="text-[20px] font-black text-gray-900">
+                          {candidate.weights[f]}
+                        </span>
+                        <span className="text-[11px] font-bold text-gray-500">?</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                {/* Sections */}
-                <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
-                      <FileText className="h-5 w-5" />
+                {/* Summary */}
+                <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-5 shadow-sm">
+                  <h4 className="mb-3 flex items-center gap-2 text-[16px] font-black text-[#1a1a1a]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-600">
+                      <FileText className="h-4 w-4" />
                     </span>
                     요약 정보
                   </h4>
 
-                  <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7 space-y-4">
+                  <div className="space-y-3 text-[13px]">
                     <div>
-                      <div className="text-[12px] font-black tracking-wider text-gray-400 uppercase">
-                        기술
+                      <div className="text-[11px] font-black tracking-wider text-gray-400 uppercase">
+                        기술 
                       </div>
-                      <p className="mt-1 text-[14px] leading-relaxed font-semibold text-gray-700">
+                      <p className="mt-1 font-semibold text-gray-700">
                         {tech || '기술 요약이 없습니다.'}
                       </p>
                     </div>
-
                     <div>
-                      <div className="text-[12px] font-black tracking-wider text-gray-400 uppercase">
+                      <div className="text-[11px] font-black tracking-wider text-gray-400 uppercase">
                         역량
                       </div>
-                      <p className="mt-1 text-[14px] leading-relaxed font-semibold text-gray-700">
-                        {skill || '역량 요약이 없습니다.'}
+                      <p className="mt-1 font-semibold text-gray-700">
+                        {topic || '역량 요약이 없습니다.'}
                       </p>
                     </div>
-
                     <div>
-                      <div className="text-[12px] font-black tracking-wider text-gray-400 uppercase">
-                        아키텍처 경험
+                      <div className="text-[11px] font-black tracking-wider text-gray-400 uppercase">
+                        아기텍처 경험
                       </div>
-                      <p className="mt-1 text-[14px] leading-relaxed font-semibold text-gray-700">
+                      <p className="mt-1 font-semibold text-gray-700">
                         {arch || '아키텍처 경험 요약이 없습니다.'}
                       </p>
                     </div>
-
                     <div>
-                      <div className="text-[12px] font-black tracking-wider text-gray-400 uppercase">
+                      <div className="text-[11px] font-black tracking-wider text-gray-400 uppercase">
                         프로젝트
                       </div>
-                      <p className="mt-1 text-[14px] leading-relaxed font-semibold text-gray-700">
-                        {project || '프로젝트 요약이 없습니다.'}
+                      <p className="mt-1 font-semibold text-gray-700">
+                        {context || '프로젝트 요약이 없습니다.'}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Raw */}
-                <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                      <Sparkles className="h-5 w-5" />
-                    </span>
-                    원문 (unifiedText)
-                  </h4>
-                  <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-                    <pre className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-gray-700">
-                      {candidate.unifiedText || '원문 데이터가 없습니다.'}
-                    </pre>
-                  </div>
-                </div>
+                {/* Raw (collapsed) */}
+                <details className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <summary className="cursor-pointer text-[13px] font-bold text-gray-600">
+                    원문
+                  </summary>
+                  <pre className="mt-3 max-h-[200px] overflow-auto whitespace-pre-wrap break-words text-[12px] leading-relaxed text-gray-700">
+                    {candidate.unifiedText || '원문 데이터가 없습니다.'}
+                  </pre>
+                </details>
               </div>
             </div>
 
@@ -431,7 +411,9 @@ function CandidateDetailModal({
   );
 }
 
+
 /** ---------------- Candidate Card ---------------- */
+
 
 function CandidateCard({
   candidate,
@@ -441,12 +423,6 @@ function CandidateCard({
   onOpen: (c: CandidateCardModel) => void;
 }) {
   const [isFlipped, setIsFlipped] = useState(false);
-
-  // const excerpt = useMemo(() => {
-  //   const parsed = parseStructured(candidate.unifiedText);
-  //   const project = parsed['프로젝트'] || '';
-  //   return firstSentence(project || candidate.unifiedText);
-  // }, [candidate.unifiedText]);
 
   return (
     <motion.div
@@ -470,7 +446,7 @@ function CandidateCard({
         style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)' }}
       />
 
-      {/* Flip 영역 */}
+      {/* Flip ?? */}
       <div className="relative flex-shrink-0 cursor-pointer [perspective:1000px]" style={{ height: 300 }}>
         <motion.div
           className="relative h-full w-full [transform-style:preserve-3d]"
@@ -563,34 +539,43 @@ function CandidateCard({
 
       {/* 하단 */}
       <div className="-mt-4 flex min-h-0 flex-1 flex-col gap-2 px-4 pt-0 pb-2">
-        <div className="mt-10 space-y-2 pt-1">
+        <div className="mt-10 space-y-3 pt-1">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onOpen(candidate);
             }}
-            className={`${BTN_BASE} ${BTN_INSET} w-full py-3 text-[13px] text-white shadow-md`}
-            style={{ backgroundColor: POINT_BLUE }}
+            className="group relative w-full overflow-hidden rounded-2xl py-3.5 text-[13px] font-bold text-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]"
+            style={{
+              background: `linear-gradient(135deg, ${POINT_BLUE} 0%, #7B8AE6 50%, ${POINT_BLUE} 100%)`,
+              backgroundSize: '200% 200%',
+            }}
           >
-            상세 리포트 보기
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <span className="relative z-10">상세 리포트 보기</span>
           </button>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={(e) => e.stopPropagation()}
-              className={`${BTN_BASE} ${BTN_INSET} py-2.5 text-[12px] text-white shadow-sm`}
-              style={{ backgroundColor: '#334155' }}
+              className="group relative overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 py-2.5 text-[12px] font-semibold shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-blue-300"
+              style={{ color: POINT_BLUE }}
             >
-              이력서 조회
+              <div
+                className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+                style={{ background: `linear-gradient(135deg, ${POINT_BLUE}, transparent)` }}
+              />
+              <span className="relative z-10">이력서 조회</span>
             </button>
+
             <button
               type="button"
               onClick={(e) => e.stopPropagation()}
-              className={`${BTN_BASE} ${BTN_INSET} py-2.5 text-[12px] text-white shadow-sm`}
-              style={{ backgroundColor: '#0EA5E9' }}
+              className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 py-2.5 text-[12px] font-semibold text-white shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:from-slate-500 hover:to-slate-600"
             >
-              PDF 조회
+              <div className="absolute inset-0 bg-gradient-to-t from-white/0 via-white/5 to-white/10" />
+              <span className="relative z-10">PDF 조회</span>
             </button>
           </div>
         </div>
@@ -598,6 +583,7 @@ function CandidateCard({
     </motion.div>
   );
 }
+
 
 /** ---------------- Main Page ---------------- */
 
@@ -651,9 +637,12 @@ export default function RecommendCandidatesPage() {
           </p>
         </header>
 
+
+
         {/* Criteria */}
         <EvaluationCriteria />
 
+        
         {/* Search Bar */}
         <div className="mb-8 pl-6">
           <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
