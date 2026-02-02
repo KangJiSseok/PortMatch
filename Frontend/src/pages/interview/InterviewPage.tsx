@@ -166,6 +166,15 @@ export default function InterviewPage() {
   }, [attachStreamToVideo, remoteStream]);
 
   useEffect(() => {
+    if (!camOn && !micOn) return;
+    if (localStreamRef.current) return;
+    void getLocalStream().catch((err) => {
+      setStatus('error');
+      setErrorMessage(toHumanError(err));
+    });
+  }, [camOn, getLocalStream, micOn]);
+
+  useEffect(() => {
     const stream = localStreamRef.current;
     if (!stream) return;
     stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
