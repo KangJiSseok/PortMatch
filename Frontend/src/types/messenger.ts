@@ -15,15 +15,17 @@ export interface Message {
 
 export interface ChatRoom {
   id: string;
-  name: string;
-  companyName?: string;
   participants: string[];
+  applicantId: string;
+  applicantName: string;
+  companyId: string;
+  companyName: string;
   lastMessage: string;
   lastUpdatedAt: Timestamp;
   unreadCount: number;
-  logoUrl?: string;
-  companyId?: string;
-  senderType: string;
+  lastSenderId: string;
+  logoUrl: string;
+  senderType: 'company' | 'user';
 }
 
 export interface MessengerContextType {
