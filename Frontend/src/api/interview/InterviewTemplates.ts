@@ -43,6 +43,15 @@ export type InterviewTemplateDetail = {
   topics: InterviewTemplateTopic[];
 };
 
+export type InterviewQuestionMemo = {
+  id: number | string;
+  content: string;
+  orderIndex: number;
+  memoContent: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export async function fetchInterviewTemplates() {
   const response = await axiosInstance.get<ApiResponse<InterviewTemplateSummary[]>>(
     '/interview-templates',
@@ -53,6 +62,30 @@ export async function fetchInterviewTemplates() {
 export async function fetchInterviewTemplateDetail(templateId: number | string) {
   const response = await axiosInstance.get<ApiResponse<InterviewTemplateDetail>>(
     `/interview-templates/${templateId}`,
+  );
+  return response.data;
+}
+
+export async function fetchInterviewQuestionMemo(
+  templateId: number | string,
+  topicId: number | string,
+  questionId: number | string,
+) {
+  const response = await axiosInstance.get<ApiResponse<InterviewQuestionMemo>>(
+    `/interview-templates/${templateId}/topics/${topicId}/questions/${questionId}/memo`,
+  );
+  return response.data;
+}
+
+export async function updateInterviewQuestionMemo(
+  templateId: number | string,
+  topicId: number | string,
+  questionId: number | string,
+  memoContent: string,
+) {
+  const response = await axiosInstance.patch<ApiResponse<InterviewQuestionMemo>>(
+    `/interview-templates/${templateId}/topics/${topicId}/questions/${questionId}/memo`,
+    { memoContent },
   );
   return response.data;
 }

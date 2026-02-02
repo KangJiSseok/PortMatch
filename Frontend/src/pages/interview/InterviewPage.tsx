@@ -1,4 +1,4 @@
-// src/pages/interview/InterviewPage.tsx
+﻿// src/pages/interview/InterviewPage.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { MediaConnection } from 'peerjs';
@@ -11,13 +11,15 @@ import {
   type InterviewTemplateSummary,
   type InterviewTemplateDetail,
   fetchInterviewTemplateDetail,
+  fetchInterviewQuestionMemo,
+  updateInterviewQuestionMemo,
 } from '../../api/interview/InterviewTemplates';
 
 // --- Types ---
 
 type RoomNavState = {
   sessionId?: string;
-  title?: string; // 면접 이름 추가
+  title?: string; // 면접 이름 (추후)
   micOn?: boolean;
   camOn?: boolean;
 };
@@ -46,7 +48,7 @@ function toHumanError(err: unknown): string {
     (typeof anyErr?.reason === 'string' && anyErr.reason) ||
     '';
 
-  return msg || (err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요');
+  return msg || (err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
 }
 
 // --- Component ---
@@ -64,7 +66,7 @@ export default function InterviewPage() {
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   const remotePeerIdInput = navState.sessionId ?? '';
-  const interviewTitle = navState.title ?? '포트매치 기술 면접'; // 면접 이름 (기본값 설정)
+  const interviewTitle = navState.title ?? '포트매치 기술 면접'; // 면접 이름 (기본값)
 
   const [micOn, setMicOn] = useState<boolean>(navState.micOn ?? true);
   const [camOn, setCamOn] = useState<boolean>(navState.camOn ?? true);
@@ -88,17 +90,27 @@ export default function InterviewPage() {
   const [toast, setToast] = useState<string>('');
   const toastTimerRef = useRef<number | null>(null);
 
+  // --- Templates & Memos State ---
   const [templates, setTemplates] = useState<InterviewTemplateSummary[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templatesError, setTemplatesError] = useState('');
-  const [memo, setMemo] = useState('');
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | number | null>(null);
   const [templateDetailById, setTemplateDetailById] = useState<
     Record<string | number, InterviewTemplateDetail | null>
   >({});
+
+  // [수정] 문법 오류가 있던 State 선언부 수정
   const [templateDetailLoadingId, setTemplateDetailLoadingId] = useState<string | number | null>(
     null,
   );
+
+  const [memoByKey, setMemoByKey] = useState<Record<string, string>>({});
+  const [memoOpenByKey, setMemoOpenByKey] = useState<Record<string, boolean>>({});
+  const [memoLoadingByKey, setMemoLoadingByKey] = useState<Record<string, boolean>>({});
+  const [memoSavingByKey, setMemoSavingByKey] = useState<Record<string, boolean>>({});
+  const [memoErrorByKey, setMemoErrorByKey] = useState<Record<string, string>>({});
+  const [hasTemplateScrollbar, setHasTemplateScrollbar] = useState(false);
+  const templateListRef = useRef<HTMLDivElement | null>(null);
 
   const pipRef = useRef<HTMLDivElement | null>(null);
 
@@ -128,7 +140,7 @@ export default function InterviewPage() {
       return stream;
     } catch (err) {
       console.error(err);
-      throw new Error('카메라와 마이크 권한이 필요합니다');
+      throw new Error('카메라 / 마이크 권한이 필요합니다.');
     }
   }, []);
 
@@ -216,7 +228,7 @@ export default function InterviewPage() {
     }
 
     stream.getVideoTracks().forEach((t) => (t.enabled = true));
-  }, [camOn]);
+  }, [camOn, getLocalStream]);
 
   // --- Connect Logic ---
   const connect = useCallback(async () => {
@@ -251,7 +263,7 @@ export default function InterviewPage() {
         setRemoteStream(null);
         setRemoteReady(false);
         setStatus('idle');
-        showToast('연결이 종료되었습니다');
+        showToast('연결이 종료되었습니다.');
       });
       call.on('error', (err) => {
         setStatus('error');
@@ -301,7 +313,7 @@ export default function InterviewPage() {
           setRemoteStream(null);
           setRemoteReady(false);
           setStatus('idle');
-          showToast('상대방이 나갔습니다');
+          showToast('상대방이 나갔습니다.');
         });
         call.on('error', (err) => {
           setStatus('error');
@@ -336,6 +348,28 @@ export default function InterviewPage() {
     const cleanup = defer(() => void connect());
     return cleanup;
   }, [connect, navState.sessionId, peerReady, remotePeerIdInput, status]);
+
+  useEffect(() => {
+    const el = templateListRef.current;
+    if (!el) return;
+
+    const update = () => setHasTemplateScrollbar(el.scrollHeight > el.clientHeight);
+    update();
+
+    const handleResize = () => update();
+    window.addEventListener('resize', handleResize);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => update());
+      ro.observe(el);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      ro?.disconnect();
+    };
+  }, [templates, expandedTemplateId, memoOpenByKey]);
 
   useEffect(() => {
     let ignore = false;
@@ -395,6 +429,65 @@ export default function InterviewPage() {
       }
     },
     [expandedTemplateId, templateDetailById, templateDetailLoadingId],
+  );
+
+  const getMemoKey = (
+    templateId: string | number,
+    topicId: string | number,
+    questionId: string | number,
+  ) => `${templateId}:${topicId}:${questionId}`;
+
+  const handleToggleMemo = useCallback(
+    async (templateId: string | number, topicId: string | number, questionId: string | number) => {
+      const key = getMemoKey(templateId, topicId, questionId);
+      const willOpen = !memoOpenByKey[key];
+      setMemoOpenByKey((prev) => ({ ...prev, [key]: !prev[key] }));
+      if (!willOpen) return;
+
+      if (memoByKey[key] !== undefined) return;
+
+      setMemoLoadingByKey((prev) => ({ ...prev, [key]: true }));
+      setMemoErrorByKey((prev) => ({ ...prev, [key]: '' }));
+      try {
+        const result = await fetchInterviewQuestionMemo(templateId, topicId, questionId);
+        if (result.status) {
+          setMemoByKey((prev) => ({ ...prev, [key]: result.data.memoContent ?? '' }));
+        } else {
+          setMemoByKey((prev) => ({ ...prev, [key]: '' }));
+        }
+      } catch (err) {
+        setMemoErrorByKey((prev) => ({ ...prev, [key]: toHumanError(err) }));
+      } finally {
+        setMemoLoadingByKey((prev) => ({ ...prev, [key]: false }));
+      }
+    },
+    [memoByKey, memoOpenByKey],
+  );
+
+  const handleSaveMemo = useCallback(
+    async (templateId: string | number, topicId: string | number, questionId: string | number) => {
+      const key = getMemoKey(templateId, topicId, questionId);
+      const memoContent = memoByKey[key] ?? '';
+
+      setMemoSavingByKey((prev) => ({ ...prev, [key]: true }));
+      setMemoErrorByKey((prev) => ({ ...prev, [key]: '' }));
+      try {
+        const result = await updateInterviewQuestionMemo(
+          templateId,
+          topicId,
+          questionId,
+          memoContent,
+        );
+        if (result.status) {
+          setMemoByKey((prev) => ({ ...prev, [key]: result.data.memoContent ?? memoContent }));
+        }
+      } catch (err) {
+        setMemoErrorByKey((prev) => ({ ...prev, [key]: toHumanError(err) }));
+      } finally {
+        setMemoSavingByKey((prev) => ({ ...prev, [key]: false }));
+      }
+    },
+    [memoByKey],
   );
 
   const showRightSide = isCorporate;
@@ -472,9 +565,7 @@ export default function InterviewPage() {
             <div className="relative h-full w-full">
               <video
                 ref={localVideoRef}
-                className={`h-full w-full transform object-cover ${
-                  !camOn ? 'hidden' : ''
-                } scale-x-[-1]`}
+                className={`h-full w-full transform object-cover ${!camOn ? 'hidden' : ''} scale-x-[-1]`}
                 autoPlay
                 playsInline
                 muted
@@ -484,8 +575,8 @@ export default function InterviewPage() {
                   <CameraOff className="text-silver-mist h-8 w-8" />
                 </div>
               )}
-              <div className="bg-midnight-ink/60 text-pure-white absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm">
-                나 (You)
+              <div className="bg-midnight-ink/20 text-pure-white absolute bottom-2 left-2 rounded px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm">
+                내 화면
               </div>
             </div>
           ) : (
@@ -554,14 +645,14 @@ export default function InterviewPage() {
       {/* --- RIGHT SIDE: Corporate Only --- */}
       {showRightSide && (
         <aside className="bg-midnight-ink hidden h-full w-[420px] flex-col gap-4 rounded-[2rem] p-6 shadow-2xl ring-1 ring-black/5 xl:flex">
-          <section className="bg-slate-gray/20 flex min-h-0 flex-[2] flex-col rounded-2xl p-5">
+          <section className="flex min-h-0 flex-[2] flex-col">
             <div className="mb-4 flex items-center gap-3">
               <div className="bg-slate-gray/30 flex h-10 w-10 items-center justify-center rounded-xl">
                 <FileText className="text-point-blue h-5 w-5 opacity-90" />
               </div>
               <div>
-                <p className="text-pure-white text-base font-bold">Template List</p>
-                <p className="text-silver-mist text-xs">Corporate templates</p>
+                <p className="text-pure-white text-lg font-bold">Template List</p>
+                <p className="text-silver-mist text-sm">Corporate templates</p>
               </div>
             </div>
 
@@ -579,7 +670,16 @@ export default function InterviewPage() {
                   No templates yet.
                 </div>
               ) : (
-                <div className="custom-scrollbar -mr-2 flex-1 space-y-3 overflow-y-auto pr-2">
+                <div
+                  ref={templateListRef}
+                  className={`custom-scrollbar flex-1 space-y-3 overflow-y-auto ${
+                    hasTemplateScrollbar ? 'pl-2 pr-1' : 'px-2'
+                  } [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-white/30 [&::-webkit-scrollbar-thumb]:bg-clip-padding hover:[&::-webkit-scrollbar-thumb]:bg-white/45 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-white/5`}
+                  style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(255,255,255,0.35) transparent',
+                  }}
+                >
                   {templates.map((template) => (
                     <div
                       key={template.id}
@@ -592,10 +692,10 @@ export default function InterviewPage() {
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="bg-point-blue/20 text-point-blue max-w-[70%] truncate rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase">
+                            <span className="bg-point-blue/20 text-point-blue max-w-[70%] truncate rounded-full px-3 py-1 text-[12px] font-bold uppercase">
                               {template.targetRole || 'Role'}
                             </span>
-                            <span className="text-silver-mist text-[11px] font-medium">
+                            <span className="text-silver-mist text-[12px] font-medium">
                               {template.updatedAt || template.createdAt
                                 ? new Date(
                                     template.updatedAt || template.createdAt || '',
@@ -603,41 +703,98 @@ export default function InterviewPage() {
                                 : ''}
                             </span>
                           </div>
-                          <p className="text-pure-white mt-1 text-sm font-semibold">
+                          <p className="text-pure-white mt-1 text-base font-semibold">
                             {template.title}
                           </p>
                         </div>
-                        <span className="text-silver-mist text-xs">
-                          {expandedTemplateId === template.id ? '접기' : '보기'}
+                        <span className="text-silver-mist text-sm">
+                          {expandedTemplateId === template.id ? '닫기' : '보기'}
                         </span>
                       </button>
 
                       {expandedTemplateId === template.id && (
                         <div className="border-soft-pebble/20 mt-2 border-t pt-3">
                           {templateDetailLoadingId === template.id ? (
-                            <div className="text-silver-mist text-xs">상세 불러오는 중...</div>
+                            <div className="text-silver-mist text-sm">상세 불러오는 중..</div>
                           ) : templateDetailById[template.id] ? (
                             <div className="space-y-3">
                               {templateDetailById[template.id]?.topics?.length ? (
                                 templateDetailById[template.id]?.topics.map((topic) => (
                                   <div key={topic.id} className="space-y-2">
-                                    <p className="text-pure-white text-xs font-bold">
+                                    <p className="text-pure-white text-sm font-bold">
                                       {topic.name}
                                     </p>
-                                    <div className="space-y-1">
-                                      {(topic.questions || []).map((q, idx) => (
-                                        <p
-                                          key={q.id}
-                                          className="text-silver-mist text-[11px] leading-relaxed"
-                                        >
-                                          Q{idx + 1}. {q.content}
-                                        </p>
-                                      ))}
+                                    <div className="space-y-2">
+                                      {(topic.questions || []).map((q, idx) => {
+                                        const memoKey = getMemoKey(template.id, topic.id, q.id);
+                                        const memoOpen = memoOpenByKey[memoKey];
+                                        const memoLoading = memoLoadingByKey[memoKey];
+                                        const memoSaving = memoSavingByKey[memoKey];
+                                        const memoError = memoErrorByKey[memoKey];
+                                        const memoValue = memoByKey[memoKey] ?? '';
+                                        return (
+                                          <div key={q.id} className="space-y-2">
+                                            <div className="flex items-start justify-between gap-2">
+                                              <p className="text-silver-mist text-[12px] leading-relaxed">
+                                                Q{idx + 1}. {q.content}
+                                              </p>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleToggleMemo(template.id, topic.id, q.id)
+                                                }
+                                                className="text-point-blue/80 text-[11px] font-semibold"
+                                              >
+                                                {memoOpen ? '메모 닫기' : '메모 열기'}
+                                              </button>
+                                            </div>
+
+                                            {memoOpen && (
+                                              <div className="space-y-2">
+                                                {memoLoading ? (
+                                                  <div className="text-silver-mist text-[11px]">
+                                                    메모 불러오는 중..
+                                                  </div>
+                                                ) : (
+                                                  <textarea
+                                                    value={memoValue}
+                                                    onChange={(e) =>
+                                                      setMemoByKey((prev) => ({
+                                                        ...prev,
+                                                        [memoKey]: e.target.value,
+                                                      }))
+                                                    }
+                                                    placeholder="질문 메모를 입력하세요."
+                                                    className="bg-midnight-ink/60 border-soft-pebble/30 text-pure-white placeholder:text-silver-mist/70 min-h-16 w-full resize-none rounded-lg border p-2 text-[12px] leading-relaxed outline-none"
+                                                  />
+                                                )}
+                                                <div className="flex items-center justify-between gap-2">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      handleSaveMemo(template.id, topic.id, q.id)
+                                                    }
+                                                    disabled={memoSaving}
+                                                    className="bg-point-blue text-pure-white rounded-md px-3 py-1.5 text-[11px] font-semibold disabled:opacity-60"
+                                                  >
+                                                    {memoSaving ? '저장 중..' : '저장'}
+                                                  </button>
+                                                  {memoError && (
+                                                    <span className="text-error/80 text-[11px]">
+                                                      {memoError}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   </div>
                                 ))
                               ) : (
-                                <div className="text-silver-mist text-xs">
+                                <div className="text-silver-mist text-sm">
                                   등록된 질문이 없습니다.
                                 </div>
                               )}
@@ -655,21 +812,9 @@ export default function InterviewPage() {
               )}
             </div>
           </section>
-
-          <section className="bg-slate-gray/20 flex min-h-0 flex-[1] flex-col rounded-2xl p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-pure-white text-base font-bold">Memo</p>
-              <span className="text-silver-mist text-xs">Quick notes</span>
-            </div>
-            <textarea
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              placeholder="Write notes here..."
-              className="bg-midnight-ink/60 border-soft-pebble/30 text-pure-white placeholder:text-silver-mist/70 h-full min-h-0 resize-none rounded-xl border p-4 text-sm leading-relaxed outline-none"
-            />
-          </section>
         </aside>
       )}
     </div>
   );
 }
+
