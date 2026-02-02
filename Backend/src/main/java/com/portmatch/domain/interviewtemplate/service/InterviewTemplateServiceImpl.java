@@ -269,8 +269,28 @@ public class InterviewTemplateServiceImpl implements InterviewTemplateService {
                 .id(question.getId())
                 .content(question.getContent())
                 .orderIndex(question.getOrderIndex())
+                .memoContent(question.getMemoContent())
                 .createdAt(question.getCreatedAt())
                 .updatedAt(question.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public QuestionResponse updateQuestionMemo(Long userId, Long templateId, Long topicId, Long questionId, QuestionMemoUpdateRequest request) {
+        getTopicOwned(userId, templateId, topicId);
+        InterviewQuestionEntity question = questionRepository.findByIdAndTopicId(questionId, topicId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+        question.updateMemo(request.getMemoContent());
+        return toQuestionResponse(question);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuestionResponse getQuestion(Long userId, Long templateId, Long topicId, Long questionId) {
+        getTopicOwned(userId, templateId, topicId);
+        InterviewQuestionEntity question = questionRepository.findByIdAndTopicId(questionId, topicId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+        return toQuestionResponse(question);
     }
 }
