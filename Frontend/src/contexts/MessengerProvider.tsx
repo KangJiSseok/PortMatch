@@ -9,7 +9,7 @@ import {
   updateDoc,
   doc,
   increment,
-  onSnapshot
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -25,15 +25,15 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     if (!user) {
-      setRooms([]);
-      return;
+      const timer = setTimeout(() => setRooms([]), 0);
+      return () => clearTimeout(timer);
     }
 
     const currentUserId = String(user.userId);
 
     const q = query(
       collection(db, 'rooms'),
-      where('participants', 'array-contains', currentUserId)
+      where('participants', 'array-contains', currentUserId),
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -49,14 +49,11 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     if (!currentRoomId) {
-      setMessages([]);
-      return;
+      const timer = setTimeout(() => setMessages([]), 0);
+      return () => clearTimeout(timer);
     }
 
-    const q = query(
-      collection(db, `rooms/${currentRoomId}/messages`),
-      orderBy('createdAt', 'asc')
-    );
+    const q = query(collection(db, `rooms/${currentRoomId}/messages`), orderBy('createdAt', 'asc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -99,7 +96,7 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.error(error);
       }
     },
-    [user, rooms]
+    [user, rooms],
   );
 
   const sendMessage = useCallback(
@@ -125,7 +122,7 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.error(error);
       }
     },
-    [currentRoomId, user]
+    [currentRoomId, user],
   );
 
   const acceptInterview = useCallback(
@@ -150,7 +147,7 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.error(error);
       }
     },
-    [currentRoomId, user, sendMessage]
+    [currentRoomId, user, sendMessage],
   );
 
   const declineInterview = useCallback(
@@ -174,12 +171,12 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.error(error);
       }
     },
-    [currentRoomId, user, sendMessage]
+    [currentRoomId, user, sendMessage],
   );
 
   const totalUnreadCount = useMemo(
     () => rooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0),
-    [rooms]
+    [rooms],
   );
 
   return (

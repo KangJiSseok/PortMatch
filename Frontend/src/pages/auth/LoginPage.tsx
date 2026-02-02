@@ -36,8 +36,9 @@ function LoginPage() {
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
-      const { auth, ...rest } = prev;
-      return { ...rest, [field]: '' };
+      const newErrors = { ...prev };
+      delete newErrors.auth;
+      return { ...newErrors, [field]: '' };
     });
   };
 
