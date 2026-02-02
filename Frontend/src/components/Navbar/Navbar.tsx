@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useLogout } from '@/hooks/useAuth';
 import { useMessenger } from '@/hooks/useMessenger';
+import { resumeApi } from '@/api/resumeApi';
 
 interface NavActionProps {
   to?: string;
@@ -13,8 +14,9 @@ interface NavActionProps {
 }
 
 const NavAction = ({ to, onClick, children, isError, noDefaultUnderline }: NavActionProps) => {
-  const baseClassName = `group relative py-2 text-lg font-bold transition-colors duration-300 cursor-pointer ${isError ? 'hover:text-point-blue text-midnight-ink' : 'text-midnight-ink'
-    }`;
+  const baseClassName = `group relative py-2 text-lg font-bold transition-colors duration-300 cursor-pointer ${
+    isError ? 'hover:text-point-blue text-midnight-ink' : 'text-midnight-ink'
+  }`;
 
   const underlineColor = isError ? 'bg-point-blue' : 'bg-midnight-ink';
 
@@ -74,8 +76,11 @@ const SearchBar = () => {
       />
       <button
         onClick={handleSearch}
-        className={`absolute top-1/2 right-5 transition-colors duration-300 ${isSearchActive ? 'text-point-blue animate-search-active' : 'text-slate-gray -translate-y-1/2'
-          }`}
+        className={`absolute top-1/2 right-5 transition-colors duration-300 ${
+          isSearchActive
+            ? 'text-point-blue animate-search-active'
+            : 'text-slate-gray -translate-y-1/2'
+        }`}
       >
         <svg
           width="20"
@@ -108,6 +113,27 @@ function Navbar() {
     setTimeout(() => {
       performLogout();
     }, 0);
+  };
+
+  const handleResumeManagement = async () => {
+    try {
+      const resumes = await resumeApi.getResumes();
+
+      if (resumes.length === 0) {
+        navigate('/resumes/me');
+        return;
+      }
+
+      const mainResume = resumes.find((r) => r.isMain);
+      if (mainResume) {
+        navigate(`/resumes/${mainResume.id}`);
+      } else {
+        navigate(`/resumes/${resumes[0].id}`);
+      }
+    } catch (error) {
+      console.error('Failed to fetch resumes navigation info:', error);
+      navigate('/resumes/me');
+    }
   };
 
   const handleLogoClick = () => {
@@ -191,7 +217,9 @@ function Navbar() {
           </Link>
 
           <div className="flex items-center gap-8">
-            {user?.role === 'APPLICANT' && <NavAction to="/resumes">이력서 관리</NavAction>}
+            {user?.role === 'APPLICANT' && (
+              <NavAction onClick={handleResumeManagement}>이력서 관리</NavAction>
+            )}
             {user?.role === 'COMPANY' && (
               <>
                 <NavAction to="/company/jobs">공고 관리</NavAction>

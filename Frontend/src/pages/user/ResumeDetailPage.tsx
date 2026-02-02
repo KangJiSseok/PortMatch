@@ -15,7 +15,6 @@ import {
   Upload,
   Camera,
   MessageSquare,
-  Bookmark,
   Star,
   Lock,
 } from 'lucide-react';
@@ -102,6 +101,7 @@ interface ResumeData {
   experience: Experience[];
   selectedPortfolioId: string | number | null;
   selectedSelfIntroId: string | null;
+  isDetail?: boolean;
 }
 
 interface SectionCardProps {
@@ -110,6 +110,95 @@ interface SectionCardProps {
   actions?: React.ReactNode;
   className?: string;
   sectionRef?: React.RefObject<HTMLDivElement | null>;
+}
+
+interface ApiProfile {
+  name: string;
+  contact: string;
+  email: string;
+  address: string;
+  profileImageUrl: string | null;
+  profileImageId?: number | null;
+}
+
+interface ApiCareer {
+  id?: number;
+  company: string;
+  role: string;
+  employmentStatus: string;
+  periodStart: string;
+  periodEnd: string;
+}
+
+interface ApiEducation {
+  id?: number;
+  school: string;
+  major: string;
+  degree: string;
+  status: string;
+  periodStart: string;
+  periodEnd: string;
+}
+
+interface ApiPortfolio {
+  portfolioId: number;
+}
+
+interface ApiSelfIntro {
+  id: number;
+  title: string;
+  answerText: string;
+}
+
+interface ApiResumeResponse {
+  id: number;
+  userId: number;
+  title: string;
+  isMain: boolean;
+  profile?: ApiProfile | null;
+  careers?: ApiCareer[];
+  educations?: ApiEducation[];
+  portfolio?: ApiPortfolio | null;
+  selfIntroductions?: ApiSelfIntro[];
+}
+
+interface ResumeUpdatePayload {
+  title: string;
+  isMain: boolean;
+  profile: {
+    name: string;
+    contact: string;
+    email: string;
+    address: string;
+    profileImageId: number | null;
+  };
+  portfolio: { portfolioId: number } | undefined;
+  careers: Array<{
+    id?: number;
+    company: string;
+    role: string;
+    periodStart: string;
+    periodEnd: string;
+    employmentStatus: string;
+    description: string;
+    orderIndex: number;
+  }>;
+  educations: Array<{
+    id?: number;
+    school: string;
+    major: string;
+    degree: string;
+    periodStart: string;
+    periodEnd: string;
+    status: string;
+    orderIndex: number;
+  }>;
+  selfIntroductions: Array<{
+    id?: number;
+    title: string;
+    answerText: string;
+    orderIndex: number;
+  }>;
 }
 
 const MAX_LENGTHS = {
@@ -156,6 +245,7 @@ function ResumeDetailPage() {
   const [user, setUser] = useState<UserData | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [isResumesLoading, setIsResumesLoading] = useState(true);
+  const [isDetailLoading, setIsDetailLoading] = useState(() => !!(resumeId && resumeId !== 'me'));
 
   const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>({});
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -170,38 +260,55 @@ function ResumeDetailPage() {
     return dateStr.substring(0, 7).replace(/-/g, '.');
   };
 
-  const mapApiToResume = useCallback((apiData: any, currentUser: UserData | null): ResumeData => {
-    const profile = apiData.profile || {};
-    return {
-      id: String(apiData.id),
-      userId: apiData.userId || currentUser?.userId || 0,
-      title: apiData.title || '제목 없음',
-      isMain: apiData.isMain || false,
-      name: profile.name || currentUser?.name || '',
-      contact: profile.contact || '',
-      email: profile.email || currentUser?.email || '',
-      address: profile.address || '',
-      profileImage: profile.profileImageUrl || null,
-      profileImageId: profile.profileImageId || null,
-      experience: (apiData.careers || []).map((c: any) => ({
-        id: c.id,
-        company: c.company,
-        role: c.role,
-        employmentStatus: c.employmentStatus || 'FULL_TIME',
-        period: `${formatDateToDot(c.periodStart)} - ${formatDateToDot(c.periodEnd)}`,
-      })),
-      education: (apiData.educations || []).map((e: any) => ({
-        id: e.id,
-        school: e.school,
-        major: e.major,
-        degree: e.degree || 'BACHELOR',
-        status: e.status || 'GRADUATED',
-        period: `${formatDateToDot(e.periodStart)} - ${formatDateToDot(e.periodEnd)}`,
-      })),
-      selectedPortfolioId: apiData.portfolio?.portfolioId || null,
-      selectedSelfIntroId: apiData.selfIntroductions?.[0]?.id ? String(apiData.selfIntroductions[0].id) : null,
-    };
-  }, []);
+  const mapApiToResume = useCallback(
+    (
+      apiData: ApiResumeResponse,
+      currentUser: UserData | null,
+      isDetail: boolean = false,
+    ): ResumeData => {
+      const profile = apiData.profile || {
+        name: '',
+        contact: '',
+        email: '',
+        address: '',
+        profileImageUrl: null,
+        profileImageId: null,
+      };
+      return {
+        id: String(apiData.id),
+        userId: apiData.userId || currentUser?.userId || 0,
+        title: apiData.title || '제목 없음',
+        isMain: apiData.isMain || false,
+        name: profile.name || currentUser?.name || '',
+        contact: profile.contact || '',
+        email: profile.email || currentUser?.email || '',
+        address: profile.address || '',
+        profileImage: profile.profileImageUrl || null,
+        profileImageId: profile.profileImageId || null,
+        experience: (apiData.careers || []).map((c) => ({
+          id: c.id,
+          company: c.company,
+          role: c.role,
+          employmentStatus: (c.employmentStatus as keyof typeof EMPLOYMENT_STATUS) || 'FULL_TIME',
+          period: `${formatDateToDot(c.periodStart)} - ${formatDateToDot(c.periodEnd)}`,
+        })),
+        education: (apiData.educations || []).map((e) => ({
+          id: e.id,
+          school: e.school,
+          major: e.major,
+          degree: (e.degree as keyof typeof DEGREE_STATUS) || 'BACHELOR',
+          status: (e.status as keyof typeof GRADUATION_STATUS) || 'GRADUATED',
+          period: `${formatDateToDot(e.periodStart)} - ${formatDateToDot(e.periodEnd)}`,
+        })),
+        selectedPortfolioId: apiData.portfolio?.portfolioId || null,
+        selectedSelfIntroId: apiData.selfIntroductions?.[0]?.id
+          ? String(apiData.selfIntroductions[0].id)
+          : null,
+        isDetail,
+      };
+    },
+    [],
+  );
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -257,10 +364,26 @@ function ResumeDetailPage() {
             experience: [],
             selectedPortfolioId: null,
             selectedSelfIntroId: null,
+            isDetail: false,
           };
         }
       });
-      setAllResumes(prev => ({ ...prev, ...resumeMap }));
+
+      setAllResumes((prev) => {
+        const next = { ...prev };
+        Object.entries(resumeMap).forEach(([id, newResume]) => {
+          if (next[id]?.isDetail) {
+            next[id] = {
+              ...next[id],
+              title: newResume.title,
+              isMain: newResume.isMain,
+            };
+          } else {
+            next[id] = newResume;
+          }
+        });
+        return next;
+      });
     } catch (error) {
       console.error('Failed to fetch resumes:', error);
     } finally {
@@ -268,26 +391,29 @@ function ResumeDetailPage() {
     }
   }, []);
 
-  const fetchResumeDetail = useCallback(async (id: string, currentUser: UserData | null) => {
-    try {
-      const data = await resumeApi.getResumeDetail(id);
-      const mappedResume = mapApiToResume(data, currentUser);
+  const fetchResumeDetail = useCallback(
+    async (id: string, currentUser: UserData | null) => {
+      try {
+        const data = (await resumeApi.getResumeDetail(id)) as unknown as ApiResumeResponse;
+        const mappedResume = mapApiToResume(data, currentUser, true);
 
-      if (data.selfIntroductions && Array.isArray(data.selfIntroductions)) {
-        const mappedIntros = data.selfIntroductions.map((intro: any) => ({
-          id: String(intro.id),
-          realId: intro.id,
-          title: intro.title,
-          content: intro.answerText
-        }));
-        setSelfIntros(mappedIntros);
+        if (data.selfIntroductions && Array.isArray(data.selfIntroductions)) {
+          const mappedIntros = data.selfIntroductions.map((intro) => ({
+            id: String(intro.id),
+            realId: intro.id,
+            title: intro.title,
+            content: intro.answerText,
+          }));
+          setSelfIntros(mappedIntros);
+        }
+
+        setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
+      } catch (error) {
+        console.error('Failed to fetch resume detail:', error);
       }
-
-      setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
-    } catch (error) {
-      console.error('Failed to fetch resume detail:', error);
-    }
-  }, [mapApiToResume]);
+    },
+    [mapApiToResume],
+  );
 
   useEffect(() => {
     if (!isUserLoading) {
@@ -298,7 +424,12 @@ function ResumeDetailPage() {
 
   useEffect(() => {
     if (resumeId && resumeId !== 'me' && !isUserLoading) {
-      fetchResumeDetail(resumeId, user);
+      setIsDetailLoading(true);
+      fetchResumeDetail(resumeId, user).finally(() => {
+        setIsDetailLoading(false);
+      });
+    } else {
+      setIsDetailLoading(false);
     }
   }, [resumeId, user, isUserLoading, fetchResumeDetail]);
 
@@ -313,7 +444,11 @@ function ResumeDetailPage() {
 
     let isOwner = resumeUserId === currentUserId;
 
-    if (!isOwner && (resume.userId === 0 || !resume.userId) && Object.keys(allResumes).includes(String(resume.id))) {
+    if (
+      !isOwner &&
+      (resume.userId === 0 || !resume.userId) &&
+      Object.keys(allResumes).includes(String(resume.id))
+    ) {
       isOwner = true;
     }
 
@@ -340,14 +475,20 @@ function ResumeDetailPage() {
 
   const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
 
-  const isLoading = isUserLoading || isResumesLoading;
+  const isRedirecting =
+    !isUserLoading &&
+    !isResumesLoading &&
+    authContext.isOwner &&
+    !resumeId &&
+    Object.keys(allResumes).length > 0;
+  const isLoading = isUserLoading || isResumesLoading || isDetailLoading || isRedirecting;
   const isEmpty = !isLoading && Object.keys(allResumes).length === 0;
 
   useEffect(() => {
-    if (!isLoading && authContext.isOwner && !resumeId && Object.keys(allResumes).length > 0) {
+    if (isRedirecting) {
       navigate(`/resumes/${Object.keys(allResumes)[0]}`, { replace: true });
     }
-  }, [isLoading, authContext.isOwner, resumeId, allResumes, navigate]);
+  }, [isRedirecting, allResumes, navigate]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [showResumeList, setShowResumeList] = useState(false);
@@ -430,10 +571,10 @@ function ResumeDetailPage() {
     try {
       const data = await resumeApi.createResume({
         title: finalTitle,
-        isMain: Object.keys(allResumes).length === 0
+        isMain: Object.keys(allResumes).length === 0,
       });
 
-      const newResume = mapApiToResume(data, user);
+      const newResume = mapApiToResume(data, user, true);
 
       setResumeSnapshot({ ...allResumes });
       setAllResumes((prev) => ({ ...prev, [String(newResume.id)]: newResume }));
@@ -444,7 +585,6 @@ function ResumeDetailPage() {
         setIsEditing(true);
         showToast(`${finalTitle} 작성을 시작합니다.`);
       }, 0);
-
     } catch (error) {
       console.error('Failed to create resume:', error);
       showToast('서버 통신 중 오류가 발생했습니다.', 'error');
@@ -476,7 +616,6 @@ function ResumeDetailPage() {
     setInnerEditingIntro(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
 
   const convertToDateStr = (dotDate?: string) => {
     if (!dotDate) return '2026-01-01';
@@ -525,19 +664,19 @@ function ResumeDetailPage() {
       return;
     }
 
-    const payload = {
+    const payload: ResumeUpdatePayload = {
       title: displayResume.title,
       isMain: displayResume.isMain,
       profile: {
         name: displayResume.name,
-        contact: displayResume.contact ? displayResume.contact : "",
+        contact: displayResume.contact ? displayResume.contact : '',
         email: displayResume.email,
-        address: displayResume.address || "",
-        profileImageId: displayResume.profileImageId ? Number(displayResume.profileImageId) : null
+        address: displayResume.address || '',
+        profileImageId: displayResume.profileImageId ? Number(displayResume.profileImageId) : null,
       },
       portfolio: displayResume.selectedPortfolioId
         ? { portfolioId: Number(displayResume.selectedPortfolioId) }
-        : null,
+        : undefined,
 
       careers: displayResume.experience.map((exp, index) => {
         const periodParts = exp.period ? exp.period.split(' - ') : ['2026.01', '2026.01'];
@@ -547,9 +686,9 @@ function ResumeDetailPage() {
           role: exp.role,
           periodStart: convertToDateStr(periodParts[0]),
           periodEnd: convertToDateStr(periodParts[1]),
-          employmentStatus: exp.employmentStatus || "FULL_TIME",
-          description: "",
-          orderIndex: index
+          employmentStatus: exp.employmentStatus || 'FULL_TIME',
+          description: '',
+          orderIndex: index,
         };
       }),
 
@@ -559,11 +698,11 @@ function ResumeDetailPage() {
           id: edu.id || undefined,
           school: edu.school,
           major: edu.major,
-          degree: edu.degree || "BACHELOR",
+          degree: edu.degree || 'BACHELOR',
           periodStart: convertToDateStr(periodParts[0]),
           periodEnd: convertToDateStr(periodParts[1]),
-          status: edu.status || "GRADUATED",
-          orderIndex: index
+          status: edu.status || 'GRADUATED',
+          orderIndex: index,
         };
       }),
 
@@ -571,12 +710,12 @@ function ResumeDetailPage() {
         id: intro.realId || undefined,
         title: intro.title,
         answerText: intro.content,
-        orderIndex: index
-      }))
+        orderIndex: index,
+      })),
     };
 
     try {
-      await resumeApi.updateResume(displayResume.id, payload as any);
+      await resumeApi.updateResume(displayResume.id, payload);
 
       setResumeSnapshot(null);
       setIsEditing(false);
@@ -592,13 +731,15 @@ function ResumeDetailPage() {
   const handleInterviewRequest = async () => {
     if (!displayResume) return;
     if (
-      window.confirm(`${displayResume.name}님께 면접을 요청하시겠습니까?\n확인 시 채팅방으로 연결됩니다.`)
+      window.confirm(
+        `${displayResume.name}님께 면접을 요청하시겠습니까?\n확인 시 채팅방으로 연결됩니다.`,
+      )
     ) {
       try {
         await startNewChat(
           String(displayResume.userId),
           displayResume.name,
-          displayResume.profileImage || undefined
+          displayResume.profileImage || undefined,
         );
         showToast('면접 요청을 보냈습니다.', 'success');
       } catch (error) {
@@ -606,10 +747,6 @@ function ResumeDetailPage() {
         showToast('채팅방 연결에 실패했습니다.', 'error');
       }
     }
-  };
-
-  const handleScrap = () => {
-    showToast('관심 이력서로 스크랩되었습니다.', 'spark');
   };
 
   const handlePeriodChange = (
@@ -656,7 +793,7 @@ function ResumeDetailPage() {
       return;
     }
 
-    if (portfolios.some(p => p.name === file.name)) {
+    if (portfolios.some((p) => p.name === file.name)) {
       showToast('이미 동일한 이름의 파일이 존재합니다.', 'warn');
       return;
     }
@@ -723,7 +860,7 @@ function ResumeDetailPage() {
 
       updateCurrentResume({
         profileImage: response.imageUrl,
-        profileImageId: response.id
+        profileImageId: response.id,
       });
 
       showToast('프로필 이미지가 등록되었습니다.', 'success');
@@ -789,7 +926,8 @@ function ResumeDetailPage() {
           }
           showToast('포트폴리오가 삭제되었습니다.', 'success');
         } catch (err: unknown) {
-          const errorMessage = err instanceof Error ? err.message : '삭제 처리 중 오류가 발생했습니다.';
+          const errorMessage =
+            err instanceof Error ? err.message : '삭제 처리 중 오류가 발생했습니다.';
           console.error('Portfolio delete failed:', err);
           showToast(errorMessage, 'error');
         }
@@ -806,13 +944,18 @@ function ResumeDetailPage() {
     setDeleteConfirm(null);
   };
 
-  const currentPortfolio = portfolios.find((p) => String(p.id) === String(displayResume?.selectedPortfolioId));
-  const currentSelfIntro = selfIntros.find((s) => String(s.id) === String(displayResume?.selectedSelfIntroId));
+  const currentPortfolio = portfolios.find(
+    (p) => String(p.id) === String(displayResume?.selectedPortfolioId),
+  );
+  const currentSelfIntro = selfIntros.find(
+    (s) => String(s.id) === String(displayResume?.selectedSelfIntroId),
+  );
 
   const inputClass = (fieldId?: string) =>
-    `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${errorFields.includes(fieldId || '')
-      ? 'border-red-500 bg-red-50/30 ring-4 ring-red-500/5'
-      : 'focus:bg-pure-white border-slate-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5'
+    `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${
+      errorFields.includes(fieldId || '')
+        ? 'border-red-500 bg-red-50/30 ring-4 ring-red-500/5'
+        : 'focus:bg-pure-white border-slate-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5'
     }`;
   const labelClass =
     'mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase';
@@ -821,7 +964,7 @@ function ResumeDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-pure-white pt-32 pb-32">
+      <div className="bg-pure-white flex min-h-screen items-center justify-center pt-32 pb-32">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
       </div>
     );
@@ -829,7 +972,7 @@ function ResumeDetailPage() {
 
   if (!isLoading && !displayResume && !authContext.isOwner && !isEmpty) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-pure-white pt-32 pb-32 text-center">
+      <div className="bg-pure-white flex min-h-screen flex-col items-center justify-center gap-6 pt-32 pb-32 text-center">
         <div className="flex h-32 w-32 items-center justify-center rounded-full bg-slate-50 text-slate-300">
           <Lock size={64} />
         </div>
@@ -839,7 +982,12 @@ function ResumeDetailPage() {
             해당 사용자의 대표 이력서가 설정되지 않았습니다.
           </p>
         </div>
-        <Button variant="outline" size="lg" onClick={() => navigate(-1)} className="mt-4 rounded-xl">
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => navigate(-1)}
+          className="mt-4 rounded-xl"
+        >
           뒤로 가기
         </Button>
       </div>
@@ -855,12 +1003,13 @@ function ResumeDetailPage() {
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className={`${toast.type === 'success' || toast.type === 'spark'
-              ? 'bg-blue-600'
-              : toast.type === 'warn'
-                ? 'bg-amber-500'
-                : 'bg-red-500'
-              } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
+            className={`${
+              toast.type === 'success' || toast.type === 'spark'
+                ? 'bg-blue-600'
+                : toast.type === 'warn'
+                  ? 'bg-amber-500'
+                  : 'bg-red-500'
+            } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
           >
             {toast.type === 'success' && <CheckCircle2 size={24} />}
             {toast.type === 'spark' && <Sparkles size={24} />}
@@ -905,7 +1054,7 @@ function ResumeDetailPage() {
                 <div className="relative inline-block w-full">
                   <button
                     onClick={() => authContext.isOwner && setShowResumeList(!showResumeList)}
-                    className={`flex w-full items-center gap-3 text-left transition-opacity ${authContext.isOwner ? 'hover:opacity-70 cursor-pointer' : 'cursor-default'}`}
+                    className={`flex w-full items-center gap-3 text-left transition-opacity ${authContext.isOwner ? 'cursor-pointer hover:opacity-70' : 'cursor-default'}`}
                   >
                     <h1 className="truncate text-4xl font-black tracking-tighter text-slate-900 uppercase">
                       {displayResume?.title || 'My Resume'}
@@ -936,7 +1085,7 @@ function ResumeDetailPage() {
                         >
                           <div className="flex flex-col">
                             {Object.values(allResumes)
-                              .filter(r => String(r.userId) === String(user?.userId))
+                              .filter((r) => String(r.userId) === String(user?.userId))
                               .map((r) => (
                                 <div
                                   key={r.id}
@@ -996,10 +1145,11 @@ function ResumeDetailPage() {
             <main className="space-y-8">
               <section
                 ref={infoRef}
-                className={`bg-pure-white rounded-4xl border p-10 shadow-xl transition-all ${isEditing
-                  ? 'border-blue-600/30 ring-4 ring-blue-600/5'
-                  : 'border-slate-100 shadow-slate-200/50'
-                  }`}
+                className={`bg-pure-white rounded-4xl border p-10 shadow-xl transition-all ${
+                  isEditing
+                    ? 'border-blue-600/30 ring-4 ring-blue-600/5'
+                    : 'border-slate-100 shadow-slate-200/50'
+                }`}
               >
                 <div className="mb-8 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1012,10 +1162,11 @@ function ResumeDetailPage() {
                   {isEditing && (
                     <button
                       onClick={() => updateCurrentResume({ isMain: !displayResume?.isMain })}
-                      className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all border ${displayResume?.isMain
-                        ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
-                        : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
-                        }`}
+                      className={`flex items-center gap-2 rounded-xl border px-4 py-2 transition-all ${
+                        displayResume?.isMain
+                          ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
+                          : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
+                      }`}
                     >
                       <Star
                         size={18}
@@ -1242,13 +1393,24 @@ function ResumeDetailPage() {
                           if (type === 'experience') {
                             const newData: Experience[] = [
                               ...(displayResume.experience || []),
-                              { company: '', role: '', employmentStatus: 'FULL_TIME', period: '2024.01 - 2024.01' },
+                              {
+                                company: '',
+                                role: '',
+                                employmentStatus: 'FULL_TIME',
+                                period: '2024.01 - 2024.01',
+                              },
                             ];
                             updateCurrentResume({ experience: newData });
                           } else {
                             const newData: Education[] = [
                               ...(displayResume.education || []),
-                              { school: '', major: '', degree: 'BACHELOR', status: 'GRADUATED', period: '2024.01 - 2024.01' },
+                              {
+                                school: '',
+                                major: '',
+                                degree: 'BACHELOR',
+                                status: 'GRADUATED',
+                                period: '2024.01 - 2024.01',
+                              },
                             ];
                             updateCurrentResume({ education: newData });
                           }
@@ -1297,7 +1459,7 @@ function ResumeDetailPage() {
                                       ? `${(item as Experience).role}`
                                       : `${(item as Education).major}`}
                                   </span>
-                                  <span className="text-xs text-slate-400 font-bold">
+                                  <span className="text-xs font-bold text-slate-400">
                                     {type === 'experience'
                                       ? EMPLOYMENT_STATUS[(item as Experience).employmentStatus]
                                       : `${DEGREE_STATUS[(item as Education).degree]} / ${GRADUATION_STATUS[(item as Education).status]}`}
@@ -1321,7 +1483,9 @@ function ResumeDetailPage() {
                                   className={inputClass(
                                     type === 'experience' ? `exp_company_${i}` : `edu_school_${i}`,
                                   )}
-                                  placeholder={type === 'experience' ? '예) 삼성전자' : '예) 한국대학교'}
+                                  placeholder={
+                                    type === 'experience' ? '예) 삼성전자' : '예) 한국대학교'
+                                  }
                                   value={
                                     type === 'experience'
                                       ? (item as Experience).company
@@ -1350,7 +1514,9 @@ function ResumeDetailPage() {
                                   className={inputClass(
                                     type === 'experience' ? `exp_role_${i}` : `edu_major_${i}`,
                                   )}
-                                  placeholder={type === 'experience' ? '예) 프론트엔드 개발' : '예) 컴퓨터공학'}
+                                  placeholder={
+                                    type === 'experience' ? '예) 프론트엔드 개발' : '예) 컴퓨터공학'
+                                  }
                                   value={
                                     type === 'experience'
                                       ? (item as Experience).role
@@ -1383,7 +1549,8 @@ function ResumeDetailPage() {
                                       const newData = [...displayResume.experience];
                                       newData[i] = {
                                         ...newData[i],
-                                        employmentStatus: e.target.value as keyof typeof EMPLOYMENT_STATUS,
+                                        employmentStatus: e.target
+                                          .value as keyof typeof EMPLOYMENT_STATUS,
                                       };
                                       updateCurrentResume({ experience: newData });
                                     }}
@@ -1397,7 +1564,7 @@ function ResumeDetailPage() {
                                 ) : (
                                   <div className="flex gap-2">
                                     <select
-                                      className={`${selectClass} flex-1 min-w-0`}
+                                      className={`${selectClass} min-w-0 flex-1`}
                                       value={(item as Education).degree}
                                       onChange={(e) => {
                                         if (!displayResume) return;
@@ -1416,7 +1583,7 @@ function ResumeDetailPage() {
                                       ))}
                                     </select>
                                     <select
-                                      className={`${selectClass} flex-1 min-w-0`}
+                                      className={`${selectClass} min-w-0 flex-1`}
                                       value={(item as Education).status}
                                       onChange={(e) => {
                                         if (!displayResume) return;
@@ -1441,7 +1608,7 @@ function ResumeDetailPage() {
                                 <label className={labelClass}>기간</label>
                                 <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                                   <select
-                                    className={`${selectClass} flex-1 w-full`}
+                                    className={`${selectClass} w-full flex-1`}
                                     value={item.period?.split(' - ')[0]?.split('.')[0]}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'startYear', e.target.value)
@@ -1454,7 +1621,7 @@ function ResumeDetailPage() {
                                     ))}
                                   </select>
                                   <select
-                                    className={`${selectClass} flex-1 w-full`}
+                                    className={`${selectClass} w-full flex-1`}
                                     value={item.period?.split(' - ')[0]?.split('.')[1]}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'startMonth', e.target.value)
@@ -1468,7 +1635,7 @@ function ResumeDetailPage() {
                                   </select>
                                   <span className="shrink-0 font-black text-slate-300">-</span>
                                   <select
-                                    className={`${selectClass} flex-1 w-full`}
+                                    className={`${selectClass} w-full flex-1`}
                                     value={item.period?.split(' - ')[1]?.split('.')[0]}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'endYear', e.target.value)
@@ -1481,7 +1648,7 @@ function ResumeDetailPage() {
                                     ))}
                                   </select>
                                   <select
-                                    className={`${selectClass} flex-1 w-full`}
+                                    className={`${selectClass} w-full flex-1`}
                                     value={item.period?.split(' - ')[1]?.split('.')[1]}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'endMonth', e.target.value)
@@ -1517,10 +1684,7 @@ function ResumeDetailPage() {
                   >
                     <div className="relative w-full min-w-0 flex-1">
                       <div
-                        onClick={() =>
-                          isEditing &&
-                          setShowPortfolioList(!showPortfolioList)
-                        }
+                        onClick={() => isEditing && setShowPortfolioList(!showPortfolioList)}
                         className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
                       >
                         <div className="flex items-center gap-2 truncate">
@@ -1644,7 +1808,10 @@ function ResumeDetailPage() {
                             className="min-w-22.5 rounded-xl font-black"
                             onClick={() => {
                               if (!currentSelfIntro) {
-                                showToast('수정할 자기소개를 선택하거나 새로 추가해주세요.', 'warn');
+                                showToast(
+                                  '수정할 자기소개를 선택하거나 새로 추가해주세요.',
+                                  'warn',
+                                );
                                 return;
                               }
                               setInnerEditingIntro(true);
@@ -1681,7 +1848,9 @@ function ResumeDetailPage() {
                                 return;
                               }
                               const isDuplicate = selfIntros.some(
-                                (s) => String(s.id) !== String(current.id) && s.title.trim() === current.title.trim(),
+                                (s) =>
+                                  String(s.id) !== String(current.id) &&
+                                  s.title.trim() === current.title.trim(),
                               );
                               if (isDuplicate) {
                                 showToast('이미 존재하는 자기소개 제목입니다.', 'warn');
@@ -1704,9 +1873,7 @@ function ResumeDetailPage() {
                   <div className="relative">
                     <div
                       onClick={() =>
-                        isEditing &&
-                        !innerEditingIntro &&
-                        setShowSelfIntroList(!showSelfIntroList)
+                        isEditing && !innerEditingIntro && setShowSelfIntroList(!showSelfIntroList)
                       }
                       className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing && !innerEditingIntro ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
                     >
@@ -1837,15 +2004,6 @@ function ResumeDetailPage() {
                     )}
                     {authContext.isCompany && (
                       <div className="flex items-center gap-4">
-                        <Button
-                          variant="outline"
-                          size="xl"
-                          className="flex min-w-40 items-center justify-center gap-2 rounded-[20px] px-10 py-5 font-black"
-                          onClick={handleScrap}
-                        >
-                          <Bookmark size={20} />
-                          스크랩하기
-                        </Button>
                         <Button
                           variant="blue"
                           size="xl"
