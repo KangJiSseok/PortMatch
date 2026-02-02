@@ -11,5 +11,5 @@ public interface JobPostingRepository extends JpaRepository<JobPostingEntity, Lo
     List<JobPostingEntity> findByCompanyCid(String cid);
     // 2. 제목 키워드 검색 (기존과 동일)
     List<JobPostingEntity> findByTitleContaining(String keyword);
-
+    List<JobPostingEntity> findAllByIdIn(List<Long> ids);
 }

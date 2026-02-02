@@ -30,6 +30,8 @@ public interface JobPostingService {
     // 7. [Read] 기업 별 공고 조회 (기업 ID를 기준으로 해당 기업의 모든 공고 조회)
     List<JobPostingDto> getJobsByCompany(String companyId);
 
+    public List<JobPostingDto> getHotJobPostings(int limit);
+
     // 8. [Read] 제목 별 공고 조회 (공고 제목에 특정 키워드가 포함된 모든 공고 조회)
     List<JobPostingDto> getJobsByTitleKeyword(String keyword);
 }
