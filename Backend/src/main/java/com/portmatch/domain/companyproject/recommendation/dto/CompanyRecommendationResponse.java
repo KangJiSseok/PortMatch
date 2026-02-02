@@ -9,11 +9,11 @@ public record CompanyRecommendationResponse(
         Long companyProjectId,
         String portfolioContent,
         String companyContent,
-        double projectDistance,
-        double domainDistance,
-        double problemDistance,
-        double solutionDistance,
-        double techDistance
+        double projectSimilarity,
+        double domainSimilarity,
+        double problemSimilarity,
+        double solutionSimilarity,
+        double techSimilarity
 ) {
     public static CompanyRecommendationResponse of(
             Long companyId,
@@ -23,11 +23,11 @@ public record CompanyRecommendationResponse(
             Long companyProjectId,
             String portfolioContent,
             String companyContent,
-            double projectDistance,
-            double domainDistance,
-            double problemDistance,
-            double solutionDistance,
-            double techDistance
+            double projectSimilarity,
+            double domainSimilarity,
+            double problemSimilarity,
+            double solutionSimilarity,
+            double techSimilarity
     ) {
         return new CompanyRecommendationResponse(
                 companyId,
@@ -38,11 +38,11 @@ public record CompanyRecommendationResponse(
                 companyProjectId,
                 portfolioContent,
                 companyContent,
-                projectDistance,
-                domainDistance,
-                problemDistance,
-                solutionDistance,
-                techDistance
+                projectSimilarity,
+                domainSimilarity,
+                problemSimilarity,
+                solutionSimilarity,
+                techSimilarity
         );
     }
 }

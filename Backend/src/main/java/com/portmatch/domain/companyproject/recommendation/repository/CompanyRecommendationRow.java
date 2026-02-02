@@ -8,9 +8,9 @@ public interface CompanyRecommendationRow {
     Long getCompanyProjectId();
     String getPortfolioContent();
     String getCompanyContent();
-    Double getProjectDistance();
-    Double getDomainDistance();
-    Double getProblemDistance();
-    Double getSolutionDistance();
-    Double getTechDistance();
+    Double getProjectSimilarity();
+    Double getDomainSimilarity();
+    Double getProblemSimilarity();
+    Double getSolutionSimilarity();
+    Double getTechSimilarity();
 }
