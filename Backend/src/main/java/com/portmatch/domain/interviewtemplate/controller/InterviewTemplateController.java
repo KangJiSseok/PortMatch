@@ -169,4 +169,29 @@ public class InterviewTemplateController {
         interviewTemplateService.reorderQuestions(userId, templateId, topicId, request);
         return BaseApiResponse.ok(null);
     }
+
+    @Operation(summary = "질문 메모 조회", description = "특정 질문에 작성된 나의 메모를 조회합니다.")
+    @GetMapping("/{templateId}/topics/{topicId}/questions/{questionId}/memo")
+    public BaseApiResponse<QuestionResponse> getQuestionMemo(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long templateId,
+            @PathVariable Long topicId,
+            @PathVariable Long questionId
+    ) {
+        Long userId = principal.getUser().getId();
+        return BaseApiResponse.ok(interviewTemplateService.getQuestion(userId, templateId, topicId, questionId));
+    }
+
+    @Operation(summary = "질문 메모 수정", description = "질문에 대한 나의 답변(메모)을 작성하거나 수정합니다.")
+    @PatchMapping("/{templateId}/topics/{topicId}/questions/{questionId}/memo")
+    public BaseApiResponse<QuestionResponse> updateQuestionMemo(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long templateId,
+            @PathVariable Long topicId,
+            @PathVariable Long questionId,
+            @Valid @RequestBody QuestionMemoUpdateRequest request
+    ) {
+        Long userId = principal.getUser().getId();
+        return BaseApiResponse.ok(interviewTemplateService.updateQuestionMemo(userId, templateId, topicId, questionId, request));
+    }
 }

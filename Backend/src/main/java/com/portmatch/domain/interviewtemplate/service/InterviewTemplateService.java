@@ -30,4 +30,7 @@ public interface InterviewTemplateService {
     void deleteQuestion(Long userId, Long templateId, Long topicId, Long questionId);
 
     void reorderQuestions(Long userId, Long templateId, Long topicId, QuestionReorderRequest request);
+
+    QuestionResponse updateQuestionMemo(Long userId, Long templateId, Long topicId, Long questionId, QuestionMemoUpdateRequest request);
+    QuestionResponse getQuestion(Long userId, Long templateId, Long topicId, Long questionId);
 }

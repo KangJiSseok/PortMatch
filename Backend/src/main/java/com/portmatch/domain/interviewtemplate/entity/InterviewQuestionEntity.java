@@ -35,11 +35,15 @@ public class InterviewQuestionEntity extends BaseTimeEntity {
     @Column(name = "order_index", nullable = false)
     private Integer orderIndex;
 
+    @Column(name = "memo_content", columnDefinition = "TEXT") // 메모 필드 추가
+    private String memoContent;
+
     public static InterviewQuestionEntity create(InterviewTopicEntity topic, String content, Integer orderIndex) {
         InterviewQuestionEntity entity = new InterviewQuestionEntity();
         entity.topic = topic;
         entity.content = content;
         entity.orderIndex = orderIndex;
+        entity.memoContent = "";
         return entity;
     }
 
@@ -48,5 +52,9 @@ public class InterviewQuestionEntity extends BaseTimeEntity {
         if (orderIndex != null) {
             this.orderIndex = orderIndex;
         }
+    }
+
+    public void updateMemo(String memoContent) {
+        this.memoContent = memoContent;
     }
 }
