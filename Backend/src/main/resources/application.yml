@@ -58,6 +58,10 @@ portfolio-embedding:
 springdoc:
   override-with-generic-response: false
 
+logging:
+  level:
+    com.portmatch: DEBUG
+
 embedding-v3:
   base-url: http://localhost:8002
 

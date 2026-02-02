@@ -4,7 +4,6 @@ import com.portmatch.domain.companyproject.embedding.dto.CompanyEmbeddingRequest
 import com.portmatch.domain.companyproject.embedding.dto.CompanyEmbeddingResponse;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
@@ -16,7 +15,6 @@ import org.springframework.web.client.RestTemplate;
 import java.time.Duration;
 
 @Component
-@Slf4j
 public class CompanyEmbeddingClient {
 
     private final RestTemplate restTemplate;
@@ -55,7 +53,6 @@ public class CompanyEmbeddingClient {
 
             throw new BusinessException(ResponseCode.COMPANY_EMBEDDING_EMPTY);
         } catch (RestClientException e) {
-            log.error("Embedding request failed. endpoint={}", endpoint, e);
             throw new BusinessException(ResponseCode.COMPANY_EMBEDDING_SERVICE_UNAVAILABLE);
         }
     }

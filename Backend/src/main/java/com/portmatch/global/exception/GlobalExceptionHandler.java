@@ -5,9 +5,6 @@ import com.portmatch.global.response.ResponseCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -26,24 +23,10 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger HTTP_STATUS_LOG = LoggerFactory.getLogger("HTTP_STATUS");
-
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<BaseApiResponse<?>> handleBusiness(BusinessException ex) {
         ResponseCode code = ex.getResponseCode();
         HttpStatus status = mapToHttpStatus(code.getCode());
-
-        if (status.is5xxServerError()) {
-            withHttpGroup("5xx", () -> HTTP_STATUS_LOG.error(
-                    "[HTTP-5XX] {} status={} code={} message={}",
-                    resolveRequestInfo(), status.value(), code.getCode(), ex.getMessage(), ex
-            ));
-        } else if (status.is4xxClientError()) {
-            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
-                    "[HTTP-4XX] {} status={} code={} message={}",
-                    resolveRequestInfo(), status.value(), code.getCode(), ex.getMessage()
-            ));
-        }
 
         if (ex.getField() != null) {
             List<ErrorField> errors = List.of(new ErrorField(ex.getField(), ex.getMessage()));
@@ -66,13 +49,6 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.VALIDATION_ERROR;
         HttpStatus status = mapToHttpStatus(code.getCode());
 
-        if (status.is4xxClientError()) {
-            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
-                    "[HTTP-4XX] {} status={} code={} message={}",
-                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
-            ));
-        }
-
         return ResponseEntity
                 .status(status)
                 .body(new BaseApiResponse<>(code.getStatus(), code.getCode(), code.getMessage(), errors));
@@ -89,13 +65,6 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.VALIDATION_ERROR;
         HttpStatus status = mapToHttpStatus(code.getCode());
 
-        if (status.is4xxClientError()) {
-            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
-                    "[HTTP-4XX] {} status={} code={} message={}",
-                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
-            ));
-        }
-
         return ResponseEntity
                 .status(status)
                 .body(new BaseApiResponse<>(code.getStatus(), code.getCode(), code.getMessage(), errors));
@@ -105,13 +74,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
         ResponseCode code = ResponseCode.INVALID_PARAMETER;
         HttpStatus status = mapToHttpStatus(code.getCode());
-
-        if (status.is4xxClientError()) {
-            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
-                    "[HTTP-4XX] {} status={} code={} message={}",
-                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
-            ));
-        }
 
         return ResponseEntity
                 .status(status)
@@ -123,13 +85,6 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.INVALID_PARAMETER;
         HttpStatus status = mapToHttpStatus(code.getCode());
 
-        if (status.is4xxClientError()) {
-            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
-                    "[HTTP-4XX] {} status={} code={} message={}",
-                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
-            ));
-        }
-
         return ResponseEntity
                 .status(status)
                 .body(BaseApiResponse.error(code));
@@ -140,13 +95,6 @@ public class GlobalExceptionHandler {
         ResponseCode code = ResponseCode.NOT_FOUND;
         HttpStatus status = mapToHttpStatus(code.getCode());
 
-        if (status.is4xxClientError()) {
-            withHttpGroup("4xx", () -> HTTP_STATUS_LOG.warn(
-                    "[HTTP-4XX] {} status={} code={} message={}",
-                    resolveRequestInfo(), status.value(), code.getCode(), code.getMessage()
-            ));
-        }
-
         return ResponseEntity
                 .status(status)
                 .body(BaseApiResponse.error(code));
@@ -156,11 +104,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseApiResponse<?>> handleException(Exception e) {
         ResponseCode code = ResponseCode.INTERNAL_SERVER_ERROR;
         HttpStatus status = mapToHttpStatus(code.getCode());
-
-        withHttpGroup("5xx", () -> HTTP_STATUS_LOG.error(
-                "[HTTP-5XX] {} status={} code={} message={}",
-                resolveRequestInfo(), status.value(), code.getCode(), e.getMessage(), e
-        ));
 
         return ResponseEntity
                 .status(status)
@@ -191,20 +134,4 @@ public class GlobalExceptionHandler {
         return HttpStatus.INTERNAL_SERVER_ERROR;
     }
 
-    private void withHttpGroup(String group, Runnable action) {
-        MDC.put("http_status_group", group);
-        try {
-            action.run();
-        } finally {
-            MDC.remove("http_status_group");
-        }
-    }
-
-    private String resolveRequestInfo() {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes == null || attributes.getRequest() == null) {
-            return "-";
-        }
-        return attributes.getRequest().getMethod() + " " + attributes.getRequest().getRequestURI();
-    }
 }

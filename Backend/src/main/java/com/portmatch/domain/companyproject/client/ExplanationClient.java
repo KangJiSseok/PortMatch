@@ -6,7 +6,6 @@ import com.portmatch.domain.companyproject.dto.ExplanationMatchPayload;
 import com.portmatch.domain.companyproject.dto.ExplanationServiceRequest;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -23,7 +22,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 @Component
-@Slf4j
 public class ExplanationClient {
 
     private final RestTemplate restTemplate;
@@ -54,7 +52,6 @@ public class ExplanationClient {
         try {
             payloadJson = objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {
-            log.error("Failed to prepare explanation request payload", exception);
             throw new BusinessException(ResponseCode.EXPLANATION_PAYLOAD_FAILED);
         }
 
@@ -71,7 +68,6 @@ public class ExplanationClient {
             }
             return body;
         } catch (RestClientException exception) {
-            log.error("Explanation request failed. endpoint={}", endpoint, exception);
             throw new BusinessException(ResponseCode.EXPLANATION_SERVICE_UNAVAILABLE);
         }
     }
