@@ -97,6 +97,17 @@ public class JobPostingServiceImpl implements JobPostingService {
     }
 
     @Override
+    public List<JobPostingDto> getJobsByCompanyAndActive(String companyId, int active) {
+        // 1. Repository를 통해 CID와 active 상태에 맞는 엔티티 리스트 조회
+        List<JobPostingEntity> entities = jobPostingRepository.findByCompanyCidAndActive(companyId, active);
+
+        // 2. Entity 리스트를 DTO 리스트로 변환하여 반환
+        return entities.stream()
+                .map(this::convertToDto) // DTO에 정적 팩토리 메서드가 있다고 가정
+                .toList();
+    }
+
+    @Override
     public List<JobPostingDto> getJobsByTitleKeyword(String keyword) {
         return jobPostingRepository.findByTitleContaining(keyword).stream()
                 .map(this::convertToDto)

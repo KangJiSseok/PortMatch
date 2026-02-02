@@ -108,4 +108,11 @@ public class JobPostingController {
         List<JobPostingDto> latestJobs = jobPostingService.getLatestPostings(page, size);
         return BaseApiResponse.ok(latestJobs);
     }
+
+    @Operation(summary = "기업별 채용 중인 공고 조회", description = "특정 기업(cid)의 공고 중 현재 채용 중인(active=1) 공고만 조회합니다.")
+    @GetMapping("/company/{cid}/active")
+    public BaseApiResponse<List<JobPostingDto>> getActiveJobsByCompany(@PathVariable("cid") String cid) {
+        List<JobPostingDto> jobs = jobPostingService.getJobsByCompanyAndActive(cid, 1);
+        return BaseApiResponse.ok(jobs);
+    }
 }
