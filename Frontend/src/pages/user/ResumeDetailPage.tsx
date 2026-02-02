@@ -597,20 +597,26 @@ function ResumeDetailPage() {
     setIsEditing(true);
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = async () => {
     if (resumeSnapshot) {
-      setAllResumes(resumeSnapshot);
-      const snapshotKeys = Object.keys(resumeSnapshot);
-      if (snapshotKeys.length > 0) {
-        if (!resumeSnapshot[targetId]) {
-          navigate(`/resumes/${snapshotKeys[0]}`, { replace: true });
-        }
+      const isNewResume = !resumeSnapshot[targetId];
+
+      if (isNewResume) {
+        await fetchResumeDetail(targetId, user);
       } else {
-        navigate('/resumes', { replace: true });
+        setAllResumes(resumeSnapshot);
+
+        if (!resumeSnapshot[targetId]) {
+          const firstId = Object.keys(resumeSnapshot)[0];
+          if (firstId) navigate(`/resumes/${firstId}`, { replace: true });
+          else navigate('/resumes', { replace: true });
+        }
       }
     }
+
     const savedS = localStorage.getItem('selfIntros');
     if (savedS) setSelfIntros(JSON.parse(savedS));
+
     setResumeSnapshot(null);
     setIsEditing(false);
     setInnerEditingIntro(false);
