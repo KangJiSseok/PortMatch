@@ -10,6 +10,7 @@ import com.portmatch.domain.jobposting.entity.TechStackEntity;
 import com.portmatch.domain.jobposting.repository.JobPostingRepository;
 import com.portmatch.domain.jobposting.repository.PostingStackRepository;
 import com.portmatch.domain.jobposting.repository.TechStackRepository;
+import com.portmatch.domain.scrap.repository.ScrapRepository;
 import com.portmatch.global.exception.BusinessException; // 공통 예외 추가
 import com.portmatch.global.response.ResponseCode; // 공통 응답 코드 추가
 import jakarta.transaction.Transactional;
@@ -27,6 +28,7 @@ public class JobPostingServiceImpl implements JobPostingService {
     private final TechStackRepository techStackRepository;
     private final PostingStackRepository postingStackRepository;
     private final CompaniesService companiesService;
+    private final ScrapRepository scrapRepository;
 
     @Override
     @Transactional
@@ -143,6 +145,30 @@ public class JobPostingServiceImpl implements JobPostingService {
                 .vcnt(entity.getVcnt() + 1)
                 .build();
         jobPostingRepository.save(updated);
+    }
+
+    @Override
+    public List<JobPostingDto> getHotJobPostings(int limit) {
+        // 1. ScrapRepository에게 "인기 있는 공고 번호들"을 물어봐 (예: [5, 2, 10])
+        // PageRequest.of(0, limit)은 "0페이지부터 limit개만큼 가져와"라는 뜻이야.
+        List<Long> topPids = scrapRepository.findTopPidsByScrapCount(org.springframework.data.domain.PageRequest.of(0, limit));
+
+        if (topPids.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        // 2. 알아낸 번호들로 실제 공고 데이터(Entity)를 DB에서 긁어와
+        List<JobPostingEntity> entities = jobPostingRepository.findAllByIdIn(topPids);
+
+        // 3. 인기 순위(topPids)를 유지하면서 포장지(Dto)에 담아줘
+        return topPids.stream()
+                .map(id -> entities.stream()
+                        .filter(entity -> entity.getId().equals(id))
+                        .findFirst()
+                        .orElse(null))
+                .filter(java.util.Objects::nonNull) // 혹시 삭제된 공고가 있을지 모르니 체크!
+                .map(this::convertToDto) // 네가 만든 기가 막힌 메서드 활용!
+                .toList();
     }
 
     private JobPostingDto convertToDto(JobPostingEntity entity) {
