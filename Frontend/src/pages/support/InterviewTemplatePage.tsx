@@ -26,6 +26,7 @@ import {
   Settings2,
   Edit3,
   Loader2,
+  FilePlus2,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import Button from '../../components/Button/Button';
@@ -340,7 +341,11 @@ const InterviewTemplatePage = () => {
     updated[topicIdx].questions = [newQuestion, ...updated[topicIdx].questions];
     setCurrentTopics(updated);
     setQuestionInputs((prev) => ({ ...prev, [topicIdx]: '' }));
-    setErrors((prev) => ({ ...prev, [`questionEmpty-${topicIdx}`]: false }));
+    setErrors((prev) => ({
+      ...prev,
+      [`questionEmpty-${topicIdx}`]: false,
+      questionsError: false,
+    }));
   };
 
   const executeDeleteQuestion = (topicIdx: number, qIdx: number) => {
@@ -352,19 +357,29 @@ const InterviewTemplatePage = () => {
 
   const handleSaveTemplate = async () => {
     const newErrors: Record<string, boolean> = {};
+
     if (!title.trim()) newErrors.title = true;
     if (!targetRole) newErrors.targetRole = true;
     if (targetRole === 'other' && !customRole.trim()) newErrors.customRole = true;
-    if (currentTopics.some((t) => t.questions.length === 0)) newErrors.questionsError = true;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      showToast(
-        newErrors.questionsError
-          ? '⚠️ 모든 주제에 질문을 등록해야 합니다.'
-          : '⚠️ 필수 항목을 확인해주세요.',
-      );
-      scrollToSection(newErrors.questionsError ? categoryInputRef : formRef);
+      showToast('⚠️ 필수 항목을 확인해주세요.');
+      scrollToSection(formRef);
+      return;
+    }
+
+    const emptyTopicIdx = currentTopics.findIndex((t) => t.questions.length === 0);
+    if (emptyTopicIdx !== -1) {
+      newErrors.questionsError = true;
+      currentTopics.forEach((t, idx) => {
+        if (t.questions.length === 0) {
+          newErrors[`questionEmpty-${idx}`] = true;
+        }
+      });
+      setErrors(newErrors);
+      showToast('⚠️ 모든 주제에 질문을 등록해야 합니다.');
+      scrollToSection(categoryInputRef);
       return;
     }
 
@@ -486,109 +501,146 @@ const InterviewTemplatePage = () => {
                   </Button>
                 }
               >
-                <div className="mb-6 shrink-0">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="템플릿 제목 또는 직무로 검색하세요..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="bg-cloud-dancer/20 border-soft-pebble/30 focus:border-point-blue w-full rounded-2xl border py-3.5 pr-5 pl-12 text-base font-bold transition-all outline-none"
-                    />
-                    <Search
-                      className="text-silver-mist absolute top-1/2 left-5 -translate-y-1/2"
-                      size={18}
-                    />
+                {templates.length > 0 && (
+                  <div className="mb-6 shrink-0">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="템플릿 제목 또는 직무로 검색하세요..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-cloud-dancer/20 border-soft-pebble/30 focus:border-point-blue w-full rounded-2xl border py-3.5 pr-5 pl-12 text-base font-bold transition-all outline-none"
+                      />
+                      <Search
+                        className="text-silver-mist absolute top-1/2 left-5 -translate-y-1/2"
+                        size={18}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {loading ? (
                   <div className="flex min-h-80 items-center justify-center">
                     <Loader2 size={40} className="text-point-blue animate-spin" />
                   </div>
-                ) : filteredTemplates.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-5">
-                    {filteredTemplates.map((t) => (
-                      <motion.div
-                        key={t.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="group bg-pure-white relative flex h-full min-h-60 shrink-0 cursor-pointer flex-col overflow-hidden rounded-3xl border border-slate-100 p-5 shadow-sm transition-all hover:border-transparent hover:shadow-xl"
-                        onClick={() => fetchTemplateDetail(t.id)}
-                      >
-                        <div className="bg-point-blue absolute top-0 bottom-0 left-0 w-1 transition-all group-hover:w-1.5" />
-                        <div className="mb-4 flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1 pr-6 pl-2">
-                            <div className="mb-0 flex flex-col items-start gap-1.5">
-                              <span className="bg-point-blue text-pure-white max-w-full truncate rounded-md px-2.5 py-0.5 text-[11px] font-black tracking-wider whitespace-nowrap uppercase shadow-sm">
-                                {t.targetRole}
-                              </span>
-                              <h4 className="text-midnight-ink w-full truncate text-xl leading-tight font-black break-keep">
-                                {t.title}
-                              </h4>
+                ) : templates.length > 0 ? (
+                  filteredTemplates.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-5">
+                      {filteredTemplates.map((t) => (
+                        <motion.div
+                          key={t.id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="group bg-pure-white relative flex h-full min-h-60 shrink-0 cursor-pointer flex-col overflow-hidden rounded-3xl border border-slate-100 p-5 shadow-sm transition-all hover:border-transparent hover:shadow-xl"
+                          onClick={() => fetchTemplateDetail(t.id)}
+                        >
+                          <div className="bg-point-blue absolute top-0 bottom-0 left-0 w-1 transition-all group-hover:w-1.5" />
+                          <div className="mb-4 flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1 pr-6 pl-2">
+                              <div className="mb-0 flex flex-col items-start gap-1.5">
+                                <span className="bg-point-blue text-pure-white max-w-full truncate rounded-md px-2.5 py-0.5 text-[11px] font-black tracking-wider whitespace-nowrap uppercase shadow-sm">
+                                  {t.targetRole}
+                                </span>
+                                <h4 className="text-midnight-ink w-full truncate text-xl leading-tight font-black break-keep">
+                                  {t.title}
+                                </h4>
+                              </div>
                             </div>
-                            <span className="text-silver-mist ml-1 text-[11px] font-bold whitespace-nowrap">
+                            <button
+                              onClick={(e: MouseEvent) => {
+                                e.stopPropagation();
+                                setConfirmModal({ type: 'DELETE_TEMPLATE', data: t.id });
+                              }}
+                              className="text-silver-mist hover:text-error shrink-0 transition-colors"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+
+                          <div className="relative mb-5 flex flex-wrap items-start gap-1 pl-2">
+                            {Array.isArray(t.topics) && t.topics.length > 0 ? (
+                              <>
+                                {t.topics.slice(0, 4).map((topic, i) => (
+                                  <span
+                                    key={i}
+                                    className="bg-point-blue/10 text-point-blue rounded-md px-2 py-0.5 text-[10px] font-black whitespace-nowrap"
+                                  >
+                                    {topic.name} ({topic.questions?.length || 0})
+                                  </span>
+                                ))}
+                                {t.topics.length > 4 && (
+                                  <span className="bg-point-blue/5 text-point-blue rounded-md px-2 py-0.5 text-[10px] font-black whitespace-nowrap italic">
+                                    외 {t.topics.length - 4}건
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-silver-mist text-[10px] font-bold italic opacity-60">
+                                등록된 주제가 없습니다.
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-auto flex shrink-0 items-center justify-between border-t border-slate-50 pt-3 pl-2">
+                            <span className="text-silver-mist text-[11px] font-bold whitespace-nowrap">
                               {t.updatedAt || t.createdAt
                                 ? new Date(t.updatedAt || t.createdAt).toLocaleDateString()
                                 : '날짜 정보 없음'}
                             </span>
+                            <div className="group/link relative flex items-center gap-1">
+                              <span className="text-point-blue text-[11px] font-black whitespace-nowrap transition-transform group-hover/link:translate-x-1">
+                                상세 보기
+                              </span>
+                              <ArrowRight
+                                size={12}
+                                className="text-point-blue transition-transform group-hover/link:translate-x-1"
+                              />
+                            </div>
                           </div>
-                          <button
-                            onClick={(e: MouseEvent) => {
-                              e.stopPropagation();
-                              setConfirmModal({ type: 'DELETE_TEMPLATE', data: t.id });
-                            }}
-                            className="text-silver-mist hover:text-error shrink-0 transition-colors"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-
-                        <div className="relative mb-5 flex flex-wrap items-start gap-1 pl-2">
-                          {Array.isArray(t.topics) && t.topics.length > 0 ? (
-                            <>
-                              {t.topics.slice(0, 4).map((topic, i) => (
-                                <span
-                                  key={i}
-                                  className="bg-point-blue/10 text-point-blue rounded-md px-2 py-0.5 text-[10px] font-black whitespace-nowrap"
-                                >
-                                  {topic.name} ({topic.questions?.length || 0})
-                                </span>
-                              ))}
-                              {t.topics.length > 4 && (
-                                <span className="bg-point-blue/5 text-point-blue rounded-md px-2 py-0.5 text-[10px] font-black whitespace-nowrap italic">
-                                  외 {t.topics.length - 4}건
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-silver-mist text-[10px] font-bold italic opacity-60">
-                              등록된 주제가 없습니다.
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mt-auto flex shrink-0 items-center justify-end border-t border-slate-50 pt-3 pl-2">
-                          <div className="group/link relative flex items-center gap-1">
-                            <span className="text-point-blue text-[11px] font-black whitespace-nowrap transition-transform group-hover/link:translate-x-1">
-                              상세 보기
-                            </span>
-                            <ArrowRight
-                              size={12}
-                              className="text-point-blue transition-transform group-hover/link:translate-x-1"
-                            />
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center"
+                    >
+                      <SearchX size={48} className="text-silver-mist mb-4 opacity-30" />
+                      <h3 className="text-midnight-ink mb-2 text-xl font-black whitespace-nowrap">
+                        검색 결과가 없습니다
+                      </h3>
+                      <p className="text-slate-gray font-bold opacity-60">
+                        다른 검색어로 다시 시도해보세요.
+                      </p>
+                    </motion.div>
+                  )
                 ) : (
-                  <motion.div className="flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-8">
-                    <SearchX size={48} className="text-silver-mist mb-4 opacity-30" />
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="border-point-blue/30 bg-point-blue/5 flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed p-10 text-center"
+                  >
+                    <div className="bg-point-blue/10 mb-6 flex h-16 w-16 items-center justify-center rounded-full">
+                      <FilePlus2 size={32} className="text-point-blue" />
+                    </div>
                     <h3 className="text-midnight-ink mb-2 text-xl font-black whitespace-nowrap">
-                      검색 결과가 없습니다
+                      작성된 템플릿이 없습니다
                     </h3>
+                    <p className="text-slate-gray mb-6 text-center font-bold opacity-60">
+                      새로운 템플릿을 생성하여
+                      <br />
+                      질문 보관함을 채워보세요!
+                    </p>
+                    <Button
+                      variant="blue"
+                      size="md"
+                      className="flex items-center gap-2 rounded-xl px-10 font-black shadow-lg"
+                      onClick={() => handleOpenForm()}
+                    >
+                      <Plus size={18} /> 템플릿 만들기
+                    </Button>
                   </motion.div>
                 )}
               </SectionCard>
@@ -752,16 +804,17 @@ const InterviewTemplatePage = () => {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="bg-pure-white relative mt-10 flex max-h-[calc(100vh-80px)] w-full max-w-4xl flex-col overflow-hidden rounded-4xl px-7 pt-6 pb-7 shadow-2xl"
             >
-              <div className="mb-5 flex shrink-0 items-start justify-between">
-                <div>
+              <div className="mb-5 flex shrink-0 items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
                   <span className="bg-point-blue text-pure-white rounded-lg px-3 py-1 text-sm font-black whitespace-nowrap uppercase">
                     {selectedViewTemplate.targetRole}
                   </span>
-                  <h3 className="text-midnight-ink mt-2 truncate text-2xl leading-tight font-black break-keep">
+                  <h3 className="text-midnight-ink mt-2 block w-full truncate text-2xl leading-tight font-black">
                     {selectedViewTemplate.title}
                   </h3>
                 </div>
-                <div className="flex items-center gap-3">
+
+                <div className="flex shrink-0 items-center gap-3">
                   <Button
                     variant="outline"
                     size="sm"
@@ -933,7 +986,7 @@ const CategoryItem = ({
       dragControls={dragControls}
       layout
       transition={{ type: 'spring', stiffness: 500, damping: 50, mass: 1 }}
-      className="border-soft-pebble/30 bg-cloud-dancer/10 flex shrink-0 flex-col overflow-hidden rounded-3xl border p-6"
+      className={`border-soft-pebble/30 flex shrink-0 flex-col overflow-hidden rounded-3xl border p-6 transition-colors ${inputError ? 'bg-error/5 border-error' : 'bg-cloud-dancer/10'}`}
     >
       <motion.div layout="position" className="mb-5 flex shrink-0 items-center justify-between">
         <div className="flex min-w-0 items-center gap-2">

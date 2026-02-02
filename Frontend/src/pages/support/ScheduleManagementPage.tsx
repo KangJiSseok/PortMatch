@@ -11,10 +11,11 @@ import {
   Clock,
   Check,
   Star,
-  UserX,
   UserCheck,
   Filter,
   Share2,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
@@ -51,7 +52,15 @@ const ScheduleManagementPage = () => {
   const [timeError, setTimeError] = useState(false);
 
   const nameSectionRef = useRef<HTMLDivElement>(null);
+  const timeSectionRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (modal && modal.type !== 'RESET_CONFIRM') {
+      const timer = setTimeout(() => setModal(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [modal]);
 
   const createInitialSlots = (): TimeSlot[] => {
     const slots: TimeSlot[] = [];
@@ -132,7 +141,7 @@ const ScheduleManagementPage = () => {
   const copySharedLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      setModal({ type: 'SUCCESS', message: '공유 링크가 클립보드에 복사되었습니다.' });
+      setModal({ type: 'SUCCESS', message: '공유 링크가 복사되었습니다.' });
     } catch {
       setModal({ type: 'ERROR', message: '링크 복사에 실패했습니다.' });
     }
@@ -142,7 +151,9 @@ const ScheduleManagementPage = () => {
     const trimmedName = userName.trim();
     if (!trimmedName) {
       setNameError(true);
-      setModal({ type: 'ERROR', message: '참여자 이름을 입력해주세요.' });
+      setModal({ type: 'ERROR', message: '이름을 먼저 입력해주세요.' });
+      nameSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      nameInputRef.current?.focus();
       return;
     }
 
@@ -150,12 +161,14 @@ const ScheduleManagementPage = () => {
     if (isDuplicate) {
       setNameError(true);
       setModal({ type: 'DUPLICATE_NAME', message: `'${trimmedName}'님은 이미 등록되어 있습니다.` });
+      nameSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
     if (availableSlots.length === 0) {
       setTimeError(true);
-      setModal({ type: 'ERROR', message: '가능한 시간대를 그리드에서 선택해주세요.' });
+      setModal({ type: 'ERROR', message: '시간대를 선택해주세요.' });
+      timeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -172,9 +185,9 @@ const ScheduleManagementPage = () => {
         setAvailableSlots([]);
         setNameError(false);
         setTimeError(false);
-        setModal({ type: 'SUCCESS', message: `${trimmedName}님의 일정이 반영되었습니다.` });
+        setModal({ type: 'SUCCESS', message: '일정이 성공적으로 반영되었습니다!' });
       } catch {
-        setModal({ type: 'ERROR', message: '데이터 저장에 실패했습니다.' });
+        setModal({ type: 'ERROR', message: '저장에 실패했습니다.' });
       }
     }
   };
@@ -206,15 +219,14 @@ const ScheduleManagementPage = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
-        <div className="text-point-blue flex flex-col items-center gap-4">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-          >
-            <RotateCcw size={40} />
-          </motion.div>
-          <p className="font-bold">일정 데이터를 불러오는 중...</p>
+      <div className="bg-pure-white flex min-h-screen min-w-350 items-center justify-center pt-32">
+        <div className="text-center">
+          <div className="mb-6 flex justify-center">
+            <Loader2 size={64} className="text-point-blue animate-spin" />
+          </div>
+          <p className="text-silver-mist text-lg font-black whitespace-nowrap">
+            데이터를 불러오고 있습니다
+          </p>
         </div>
       </div>
     );
@@ -226,6 +238,80 @@ const ScheduleManagementPage = () => {
       onMouseUp={() => setIsDragging(false)}
       onMouseLeave={() => setIsDragging(false)}
     >
+      <div className="pointer-events-none fixed bottom-12 left-1/2 z-9999 -translate-x-1/2">
+        <AnimatePresence mode="wait">
+          {modal && modal.type !== 'RESET_CONFIRM' && (
+            <motion.div
+              key={modal.type}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className={`pointer-events-auto flex min-w-[320px] items-center gap-4 rounded-2xl border p-4 shadow-2xl backdrop-blur-md ${
+                modal.type === 'SUCCESS'
+                  ? 'bg-point-blue/90 border-blue-400 text-white'
+                  : 'bg-error/90 border-red-400 text-white'
+              }`}
+            >
+              <div className="flex shrink-0 items-center justify-center">
+                {modal.type === 'SUCCESS' ? (
+                  <CheckCircle2 size={24} />
+                ) : (
+                  <AlertTriangle size={24} />
+                )}
+              </div>
+              <p className="flex-1 text-sm leading-tight font-black">{modal.message}</p>
+              <button onClick={() => setModal(null)} className="opacity-60 hover:opacity-100">
+                <X size={18} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <AnimatePresence>
+        {modal?.type === 'RESET_CONFIRM' && (
+          <div className="fixed inset-0 z-9000 flex items-center justify-center p-5">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setModal(null)}
+              className="bg-midnight-ink/60 fixed inset-0 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              className="bg-pure-white relative w-full max-w-sm overflow-hidden rounded-3xl p-9 text-center shadow-2xl"
+            >
+              <div className="mb-4 flex justify-center">
+                <AlertTriangle size={48} className="text-error" />
+              </div>
+              <h3 className="text-midnight-ink mb-2 text-xl font-black">정말 초기화할까요?</h3>
+              <p className="text-silver-mist text-base font-bold break-keep">
+                모든 참여 데이터가 삭제되며 복구할 수 없습니다.
+              </p>
+              <div className="mt-8 flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-xl py-3 font-black"
+                  onClick={() => setModal(null)}
+                >
+                  취소
+                </Button>
+                <Button
+                  variant="red"
+                  className="flex-1 rounded-xl py-3 font-black"
+                  onClick={executeReset}
+                >
+                  초기화하기
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="mx-auto w-5xl px-6">
         <header className="border-point-blue mb-12 flex items-end justify-between border-l-4 pl-6">
           <div className="min-w-0 flex-1">
@@ -266,7 +352,7 @@ const ScheduleManagementPage = () => {
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-pure-white flex w-md shrink-0 flex-col rounded-3xl border border-gray-100 p-7 shadow-lg"
+            className="bg-pure-white flex flex-1 flex-col rounded-3xl border border-gray-100 p-7 shadow-lg"
           >
             <div className="flex flex-1 flex-col gap-5">
               <div className="space-y-3" ref={nameSectionRef}>
@@ -303,7 +389,7 @@ const ScheduleManagementPage = () => {
                 </div>
               </div>
 
-              <div className="flex shrink-0 flex-col">
+              <div className="flex shrink-0 flex-col" ref={timeSectionRef}>
                 <div className="mb-1 grid grid-cols-[45px_1fr] pr-2">
                   <div />
                   <div className="grid grid-cols-7 text-center">
@@ -362,7 +448,7 @@ const ScheduleManagementPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-pure-white flex w-md shrink-0 flex-col rounded-3xl border border-gray-100 p-7 shadow-lg"
+            className="bg-pure-white flex flex-1 flex-col rounded-3xl border border-gray-100 p-7 shadow-lg"
           >
             <div className="flex flex-1 flex-col gap-5">
               <div className="flex items-center justify-between">
@@ -521,84 +607,6 @@ const ScheduleManagementPage = () => {
           </motion.section>
         </div>
       </div>
-
-      <AnimatePresence>
-        {modal && (
-          <div className="fixed inset-0 z-9000 flex items-center justify-center p-5">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setModal(null)}
-              className="bg-midnight-ink/60 fixed inset-0 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              className="bg-pure-white relative w-full max-w-sm overflow-hidden rounded-3xl p-9 text-center shadow-2xl"
-            >
-              <div className="mb-4 flex justify-center">
-                {modal.type === 'SUCCESS' ? (
-                  <CheckCircle2 size={48} className="text-point-blue" />
-                ) : modal.type === 'DUPLICATE_NAME' ? (
-                  <UserX size={48} className="text-error" />
-                ) : (
-                  <AlertTriangle
-                    size={48}
-                    className={modal.type === 'ERROR' ? 'text-error' : 'text-amber-500'}
-                  />
-                )}
-              </div>
-              <h3 className="text-midnight-ink mb-2 text-xl font-black">
-                {modal.type === 'ERROR'
-                  ? '확인 필요'
-                  : modal.type === 'SUCCESS'
-                    ? '반영 완료'
-                    : modal.type === 'DUPLICATE_NAME'
-                      ? '이름 중복'
-                      : '정말 초기화할까요?'}
-              </h3>
-              <p className="text-silver-mist text-base font-bold break-keep">
-                {modal.message ||
-                  (modal.type === 'RESET_CONFIRM' &&
-                    '모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.')}
-              </p>
-              <div className="mt-8 flex gap-3">
-                {modal.type === 'RESET_CONFIRM' ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="md"
-                      className="flex-1 rounded-xl py-3 font-black"
-                      onClick={() => setModal(null)}
-                    >
-                      취소
-                    </Button>
-                    <Button
-                      variant="red"
-                      size="md"
-                      className="flex-1 rounded-xl py-3 font-black"
-                      onClick={executeReset}
-                    >
-                      초기화하기
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="blue"
-                    size="md"
-                    className="flex-1 rounded-xl py-3 font-black"
-                    onClick={() => setModal(null)}
-                  >
-                    확인
-                  </Button>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
