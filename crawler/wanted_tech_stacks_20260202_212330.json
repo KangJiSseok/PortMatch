@@ -1,0 +1,154 @@
+[
+  {
+    "id": 872,
+    "stackName": "서버 개발자"
+  },
+  {
+    "id": 669,
+    "stackName": "프론트엔드 개발자"
+  },
+  {
+    "id": 10110,
+    "stackName": "소프트웨어 엔지니어"
+  },
+  {
+    "id": 873,
+    "stackName": "웹 개발자"
+  },
+  {
+    "id": 660,
+    "stackName": "자바 개발자"
+  },
+  {
+    "id": 1634,
+    "stackName": "머신러닝 엔지니어"
+  },
+  {
+    "id": 899,
+    "stackName": "파이썬 개발자"
+  },
+  {
+    "id": 674,
+    "stackName": "DevOps / 시스템 관리자"
+  },
+  {
+    "id": 655,
+    "stackName": "데이터 엔지니어"
+  },
+  {
+    "id": 900,
+    "stackName": "C,C++ 개발자"
+  },
+  {
+    "id": 895,
+    "stackName": "Node.js 개발자"
+  },
+  {
+    "id": 665,
+    "stackName": "시스템,네트워크 관리자"
+  },
+  {
+    "id": 1024,
+    "stackName": "데이터 사이언티스트"
+  },
+  {
+    "id": 877,
+    "stackName": "개발 매니저"
+  },
+  {
+    "id": 677,
+    "stackName": "안드로이드 개발자"
+  },
+  {
+    "id": 658,
+    "stackName": "임베디드 개발자"
+  },
+  {
+    "id": 676,
+    "stackName": "QA,테스트 엔지니어"
+  },
+  {
+    "id": 1025,
+    "stackName": "빅데이터 엔지니어"
+  },
+  {
+    "id": 678,
+    "stackName": "iOS 개발자"
+  },
+  {
+    "id": 876,
+    "stackName": "프로덕트 매니저"
+  },
+  {
+    "id": 939,
+    "stackName": "웹 퍼블리셔"
+  },
+  {
+    "id": 1026,
+    "stackName": "기술지원"
+  },
+  {
+    "id": 661,
+    "stackName": ".NET 개발자"
+  },
+  {
+    "id": 672,
+    "stackName": "하드웨어 엔지니어"
+  },
+  {
+    "id": 893,
+    "stackName": "PHP 개발자"
+  },
+  {
+    "id": 10111,
+    "stackName": "크로스플랫폼 앱 개발자"
+  },
+  {
+    "id": 795,
+    "stackName": "CTO,Chief Technology Officer"
+  },
+  {
+    "id": 896,
+    "stackName": "영상,음성 엔지니어"
+  },
+  {
+    "id": 1027,
+    "stackName": "블록체인 플랫폼 엔지니어"
+  },
+  {
+    "id": 10231,
+    "stackName": "DBA"
+  },
+  {
+    "id": 898,
+    "stackName": "그래픽스 엔지니어"
+  },
+  {
+    "id": 10230,
+    "stackName": "ERP전문가"
+  },
+  {
+    "id": 1022,
+    "stackName": "BI 엔지니어"
+  },
+  {
+    "id": 10536,
+    "stackName": "테크니컬 라이터"
+  },
+  {
+    "id": 894,
+    "stackName": "루비온레일즈 개발자"
+  },
+  {
+    "id": 10112,
+    "stackName": "VR 엔지니어"
+  },
+  {
+    "id": 10531,
+    "stackName": "RPA 엔지니어"
+  },
+  {
+    "id": 793,
+    "stackName": "CIO,Chief Information Officer"
+  }
+]

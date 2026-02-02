@@ -1,0 +1,14 @@
+{
+  "crawledAt": "2026-02-02T21:23:15.200105",
+  "totalCount": 10,
+  "successCount": 10,
+  "failCount": 0,
+  "techStackCount": 38,
+  "companyIdMappingCount": 8,
+  "files": [
+    "wanted_crawl_full_20260202_212330.json",
+    "wanted_jobs_20260202_212330.json",
+    "wanted_tech_stacks_20260202_212330.json",
+    "wanted_company_id_mapping_20260202_212330.json"
+  ]
+}
