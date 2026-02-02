@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.UUID;
 
 @Service
@@ -27,6 +28,9 @@ public class AuthSignUpService {
     private final ApplicantRepository applicantRepository;
     private final CompanyRepository companyRepository;
     private final PasswordEncoder passwordEncoder;
+    private static final String CID_CHAR_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final int CID_LENGTH = 10;
+    private static final SecureRandom CID_RANDOM = new SecureRandom();
 
     /* ===================== 개인 회원가입 ===================== */
 
@@ -88,10 +92,14 @@ public class AuthSignUpService {
                             req.getSize(),
                             req.getHomepageUrl()
                     );
+                    newCompany.assignCid(generateUniqueCompanyCid());
                     return companyRepository.save(newCompany);
                 });
 
         // 4. 회사에 user 연결
+        if (company.getCid() == null || company.getCid().isBlank()) {
+            company.assignCid(generateUniqueCompanyCid());
+        }
         company.assignUser(user);
     }
 
@@ -114,4 +122,25 @@ public class AuthSignUpService {
         return phone;
     }
 
+    private String generateUniqueCompanyCid() {
+        int guard = 0;
+        while (true) {
+            String candidate = generateCompanyCid();
+            if (!companyRepository.existsByCid(candidate)) {
+                return candidate;
+            }
+            if (++guard > 20) {
+                throw new BusinessException(ResponseCode.INTERNAL_SERVER_ERROR, "cid", "CID 생성에 실패했습니다.");
+            }
+        }
+    }
+
+    private String generateCompanyCid() {
+        StringBuilder sb = new StringBuilder(CID_LENGTH);
+        for (int i = 0; i < CID_LENGTH; i++) {
+            int idx = CID_RANDOM.nextInt(CID_CHAR_POOL.length());
+            sb.append(CID_CHAR_POOL.charAt(idx));
+        }
+        return sb.toString();
+    }
 }

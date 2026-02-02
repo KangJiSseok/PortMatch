@@ -111,4 +111,10 @@ public class Company {
         }
         this.user = user;
     }
+
+    public void assignCid(String cid) {
+        if (this.cid == null || this.cid.isBlank()) {
+            this.cid = cid;
+        }
+    }
 }
