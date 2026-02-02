@@ -66,6 +66,28 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return () => unsubscribe();
   }, [currentRoomId]);
 
+  useEffect(() => {
+    const markAsRead = async () => {
+      if (!currentRoomId || !isOpen || !user) return;
+      const currentRoom = rooms.find((r) => r.id === currentRoomId);
+
+      if (currentRoom) {
+        if (currentRoom.lastSenderId !== String(user.userId) && currentRoom.unreadCount > 0) {
+          try {
+            const roomRef = doc(db, 'rooms', currentRoomId);
+            await updateDoc(roomRef, {
+              unreadCount: 0,
+            });
+          } catch (error) {
+            console.error('읽음 처리 중 오류 발생:', error);
+          }
+        }
+      }
+    };
+
+    markAsRead();
+  }, [currentRoomId, messages, isOpen, rooms, user]);
+
   const toggleMessenger = useCallback(() => setIsOpen((prev) => !prev), []);
 
   const startNewChat = useCallback(
@@ -73,23 +95,28 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!user || user.role !== 'COMPANY') return;
 
       try {
+        const currentUserId = String(user.userId);
         const existingRoom = rooms.find((r) => r.participants.includes(applicantId));
 
         if (existingRoom) {
           setCurrentRoomId(existingRoom.id);
         } else {
-          const newRoom = await addDoc(collection(db, 'rooms'), {
-            name: applicantName,
+          const newRoomData = {
+            participants: [currentUserId, applicantId],
+            applicantId: applicantId,
+            applicantName: applicantName,
+            companyId: currentUserId,
             companyName: user.name,
-            participants: [String(user.userId), applicantId],
             lastMessage: '새로운 대화가 시작되었습니다.',
             lastUpdatedAt: Timestamp.now(),
+            lastSenderId: currentUserId,
             unreadCount: 1,
             senderType: 'company',
-            companyId: String(user.userId),
             logoUrl: logoUrl || '',
-          });
-          setCurrentRoomId(newRoom.id);
+          };
+
+          const docRef = await addDoc(collection(db, 'rooms'), newRoomData);
+          setCurrentRoomId(docRef.id);
         }
         setIsOpen(true);
       } catch (error) {
@@ -104,9 +131,11 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!currentRoomId || !user || !text.trim()) return;
 
       try {
+        const currentUserId = String(user.userId);
+
         await addDoc(collection(db, `rooms/${currentRoomId}/messages`), {
           text,
-          senderId: String(user.userId),
+          senderId: currentUserId,
           senderName: user.name,
           createdAt: Timestamp.now(),
           type,
@@ -116,6 +145,7 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         await updateDoc(doc(db, 'rooms', currentRoomId), {
           lastMessage: text,
           lastUpdatedAt: Timestamp.now(),
+          lastSenderId: String(user.userId),
           unreadCount: increment(1),
         });
       } catch (error) {
@@ -175,8 +205,14 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 
   const totalUnreadCount = useMemo(
-    () => rooms.reduce((acc, r) => acc + (r.unreadCount || 0), 0),
-    [rooms],
+    () =>
+      rooms.reduce((acc, r) => {
+        if (r.lastSenderId !== String(user?.userId)) {
+          return acc + (r.unreadCount || 0);
+        }
+        return acc;
+      }, 0),
+    [rooms, user?.userId],
   );
 
   return (

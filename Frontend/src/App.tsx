@@ -75,7 +75,14 @@ const RootLayout = () => {
   }, []);
 
   const hideLayoutPages = ['/intro', '/login', '/signup'];
-  const shouldHideLayout = hideLayoutPages.includes(location.pathname) || location.pathname === '/';
+  const isInterviewPage = /^\/interviews\/[^/]+\/(lobby|room)$/.test(location.pathname);
+  const isTestInterviewPage = /^\/interviews\/test\/([^/]+\/lobby|room)$/.test(location.pathname);
+
+  const shouldHideLayout =
+    hideLayoutPages.includes(location.pathname) ||
+    location.pathname === '/' ||
+    isInterviewPage ||
+    isTestInterviewPage;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -227,15 +234,11 @@ const router = createBrowserRouter([
       },
       {
         path: 'interviews/test/:id/lobby',
-        element: (
-          <TestInterviewLobbyPage />
-        )
+        element: <TestInterviewLobbyPage />,
       },
       {
-        path: "/interviews/test/room",
-        element: (
-          <TestInterviewPage />
-        )
+        path: '/interviews/test/room',
+        element: <TestInterviewPage />,
       },
       {
         path: 'company/jobs',
