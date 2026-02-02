@@ -11,13 +11,9 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
+import com.portmatch.global.exception.BusinessException;
 
 @Slf4j
 @Aspect
@@ -25,8 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class LoggingAspect {
 
     private static final int MAX_ARG_LENGTH = 500;
-    private static final Logger HTTP_STATUS_LOG = LoggerFactory.getLogger("HTTP_STATUS");
-
     @Pointcut("within(com.portmatch.domain..controller..*)")
     public void controllerLayer() {
     }
@@ -41,27 +35,9 @@ public class LoggingAspect {
 
     @Around("controllerLayer()")
     public Object logController(ProceedingJoinPoint joinPoint) throws Throwable {
-        long start = System.currentTimeMillis();
-        String requestInfo = resolveRequestInfo();
-        String signature = joinPoint.getSignature().toShortString();
-        String args = formatArgs(joinPoint.getArgs());
-
-        log.info("[HTTP] {} {} args={}", requestInfo, signature, args);
         try {
-            Object result = joinPoint.proceed();
-            long tookMs = System.currentTimeMillis() - start;
-            String resultType = result == null ? "void" : result.getClass().getSimpleName();
-            int status = resolveResponseStatus();
-            String group = groupForStatus(status);
-            withHttpGroup(group, () -> HTTP_STATUS_LOG.info(
-                    "[HTTP] {} {} status={} resultType={} tookMs={}",
-                    requestInfo, signature, status, resultType, tookMs
-            ));
-            return result;
+            return joinPoint.proceed();
         } catch (Exception ex) {
-            long tookMs = System.currentTimeMillis() - start;
-            HTTP_STATUS_LOG.warn("[HTTP] {} {} failed tookMs={} message={}", requestInfo, signature, tookMs,
-                    ex.getMessage());
             throw ex;
         }
     }
@@ -81,47 +57,12 @@ public class LoggingAspect {
             return result;
         } catch (Exception ex) {
             long tookMs = System.currentTimeMillis() - start;
-            log.warn("[APP] {} failed tookMs={} message={}", signature, tookMs, ex.getMessage());
+            if (isServerError(ex)) {
+                log.error("[APP] {} failed tookMs={} message={}", signature, tookMs, ex.getMessage(), ex);
+            } else {
+                log.warn("[APP] {} failed tookMs={} message={}", signature, tookMs, ex.getMessage());
+            }
             throw ex;
-        }
-    }
-
-    private String resolveRequestInfo() {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes == null) {
-            return "-";
-        }
-        return attributes.getRequest().getMethod() + " " + attributes.getRequest().getRequestURI();
-    }
-
-    private int resolveResponseStatus() {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes == null || attributes.getResponse() == null) {
-            return 200;
-        }
-        int status = attributes.getResponse().getStatus();
-        return status == 0 ? 200 : status;
-    }
-
-    private String groupForStatus(int status) {
-        if (status >= 200 && status < 300) {
-            return "2xx";
-        }
-        if (status >= 400 && status < 500) {
-            return "4xx";
-        }
-        if (status >= 500 && status < 600) {
-            return "5xx";
-        }
-        return "other";
-    }
-
-    private void withHttpGroup(String group, Runnable action) {
-        MDC.put("http_status_group", group);
-        try {
-            action.run();
-        } finally {
-            MDC.remove("http_status_group");
         }
     }
 
@@ -159,5 +100,13 @@ public class LoggingAspect {
             return value.substring(0, MAX_ARG_LENGTH) + "...";
         }
         return value;
+    }
+
+    private boolean isServerError(Exception ex) {
+        if (ex instanceof BusinessException be) {
+            Integer code = be.getResponseCode().getCode();
+            return code != null && code >= 5000;
+        }
+        return true;
     }
 }

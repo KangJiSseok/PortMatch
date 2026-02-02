@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -22,7 +21,6 @@ import java.time.Duration;
 import java.util.Map;
 
 @Component
-@Slf4j
 public class CompanyProjectAnalysisClient {
 
     private final RestTemplate restTemplate;
@@ -53,7 +51,6 @@ public class CompanyProjectAnalysisClient {
         try {
             payloadJson = objectMapper.writeValueAsString(Map.of("company_name", companyName));
         } catch (JsonProcessingException exception) {
-            log.error("Failed to prepare company project analysis request payload", exception);
             throw new BusinessException(ResponseCode.COMPANY_PROJECT_ANALYSIS_PAYLOAD_FAILED);
         }
 
@@ -64,7 +61,6 @@ public class CompanyProjectAnalysisClient {
             ResponseEntity<Object> response = restTemplate.exchange(endpoint, HttpMethod.POST, request, Object.class);
             return response.getBody();
         } catch (RestClientException exception) {
-            log.error("Company project analysis request failed. endpoint={}", endpoint, exception);
             throw new BusinessException(ResponseCode.COMPANY_PROJECT_ANALYSIS_SERVICE_UNAVAILABLE);
         }
     }

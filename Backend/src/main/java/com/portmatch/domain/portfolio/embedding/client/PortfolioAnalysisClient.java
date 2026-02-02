@@ -6,7 +6,6 @@ import com.portmatch.domain.portfolio.embedding.dto.PortfolioQueryEmbeddingReque
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioQueryEmbeddingResponse;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
@@ -17,7 +16,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 
-@Slf4j
 @Component
 public class PortfolioAnalysisClient {
 
@@ -55,7 +53,6 @@ public class PortfolioAnalysisClient {
             }
             return res.getBody();
         } catch (RestClientException e) {
-            log.error("Embedding request failed. endpoint={}", endpoint, e);
             //throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service unavailable", e);
             throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SERVICE_UNAVAILABLE);
         }
@@ -79,7 +76,6 @@ public class PortfolioAnalysisClient {
             }
             return res.getBody();
         } catch (RestClientException e) {
-            log.error("Embedding request failed. endpoint={}", endpoint, e);
             throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SERVICE_UNAVAILABLE);
         }
     }
@@ -102,7 +98,6 @@ public class PortfolioAnalysisClient {
             }
             return res.getBody();
         } catch (RestClientException e) {
-            log.error("Embedding request failed. endpoint={}", endpoint, e);
             throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SERVICE_UNAVAILABLE);
         }
     }
