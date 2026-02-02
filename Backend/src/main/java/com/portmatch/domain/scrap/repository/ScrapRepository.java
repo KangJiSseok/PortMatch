@@ -1,7 +1,10 @@
 package com.portmatch.domain.scrap.repository;
 
 import com.portmatch.domain.scrap.entity.ScrapEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
 import java.util.Optional;
 import java.util.List;
 
@@ -14,4 +17,7 @@ public interface ScrapRepository extends JpaRepository<ScrapEntity, Long> {
 
     // 존재 여부 확인 (isScraped용)
     boolean existsByUidAndPid(Long uid, Long pid);
+
+    @Query("SELECT s.pid FROM ScrapEntity s GROUP BY s.pid ORDER BY COUNT(s.pid) DESC")
+    List<Long> findTopPidsByScrapCount(Pageable pageable);
 }

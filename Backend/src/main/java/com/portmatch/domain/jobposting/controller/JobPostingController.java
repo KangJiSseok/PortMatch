@@ -88,4 +88,12 @@ public class JobPostingController {
         List<JobPostingDto> jobs = jobPostingService.getJobsByTitleKeyword(keyword);
         return BaseApiResponse.ok(jobs);
     }
+
+    @Operation(summary = "인기 공고 조회", description = "스크랩 수가 많은 순서대로 공고를 가져옵니다.")
+    @GetMapping("/hot")
+    public BaseApiResponse<List<JobPostingDto>> getHotJobPostings(
+            @RequestParam(value = "limit", defaultValue = "10") int limit) {
+        List<JobPostingDto> hotJobs = jobPostingService.getHotJobPostings(limit);
+        return BaseApiResponse.ok(hotJobs);
+    }
 }
