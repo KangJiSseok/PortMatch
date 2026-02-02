@@ -17,11 +17,11 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
                 cpe.project_id AS company_project_id,
                 ppe.content AS portfolio_content,
                 cpe.content AS company_content,
-                0.30 * (ppe.project_embedding <=> cpe.project_embedding) AS project_distance,
-                0.10 * (ppe.domain_embedding <=> cpe.domain_embedding) AS domain_distance,
-                0.25 * (ppe.problem_embedding <=> cpe.problem_embedding) AS problem_distance,
-                0.25 * (ppe.solution_embedding <=> cpe.solution_embedding) AS solution_distance,
-                0.03 * (ppe.tech_embedding <=> cpe.tech_embedding) AS tech_distance,
+                (ppe.project_embedding <=> cpe.project_embedding) AS project_distance,
+                (ppe.domain_embedding <=> cpe.domain_embedding) AS domain_distance,
+                (ppe.problem_embedding <=> cpe.problem_embedding) AS problem_distance,
+                (ppe.solution_embedding <=> cpe.solution_embedding) AS solution_distance,
+                (ppe.tech_embedding <=> cpe.tech_embedding) AS tech_distance,
                 (
                     CASE
                         WHEN ppe.problem_missing OR cpe.problem_missing THEN 1
@@ -44,11 +44,11 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
             SELECT
                 spb.*,
                 (
-                    spb.project_distance
-                    + spb.domain_distance
-                    + spb.problem_distance
-                    + spb.solution_distance
-                    + spb.tech_distance
+                    0.30 * spb.project_distance
+                    + 0.10 * spb.domain_distance
+                    + 0.25 * spb.problem_distance
+                    + 0.25 * spb.solution_distance
+                    + 0.03 * spb.tech_distance
                     + 0.02 * spb.missing_field_count
                 ) AS distance
             FROM scored_pairs_base spb
@@ -67,11 +67,11 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
             company_project_id AS companyProjectId,
             portfolio_content AS portfolioContent,
             company_content AS companyContent,
-            project_distance AS projectDistance,
-            domain_distance AS domainDistance,
-            problem_distance AS problemDistance,
-            solution_distance AS solutionDistance,
-            tech_distance AS techDistance
+            (1 - project_distance) AS projectSimilarity,
+            (1 - domain_distance) AS domainSimilarity,
+            (1 - problem_distance) AS problemSimilarity,
+            (1 - solution_distance) AS solutionSimilarity,
+            (1 - tech_distance) AS techSimilarity
         FROM ranked JOIN companies ON ranked.company_id=companies.id
         WHERE rn = 1
         ORDER BY distance ASC

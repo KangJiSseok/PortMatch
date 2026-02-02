@@ -25,11 +25,11 @@ public class CompanyRecommendationService {
                         r.getCompanyProjectId(),
                         r.getPortfolioContent(),
                         r.getCompanyContent(),
-                        nvl(r.getProjectDistance(), 1.0),
-                        nvl(r.getDomainDistance(), 1.0),
-                        nvl(r.getProblemDistance(), 1.0),
-                        nvl(r.getSolutionDistance(), 1.0),
-                        nvl(r.getTechDistance(), 1.0)
+                        nvl(r.getProjectSimilarity(), 1.0),
+                        nvl(r.getDomainSimilarity(), 1.0),
+                        nvl(r.getProblemSimilarity(), 1.0),
+                        nvl(r.getSolutionSimilarity(), 1.0),
+                        nvl(r.getTechSimilarity(), 1.0)
                 ))
                 .toList();
     }
