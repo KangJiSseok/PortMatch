@@ -81,9 +81,10 @@ function SignupPage() {
           : '';
 
       setErrors((prev) => {
-        const { submit, ...rest } = prev;
+        const newErrors = { ...prev };
+        delete newErrors.submit;
         return {
-          ...rest,
+          ...newErrors,
           password: error,
           passwordConfirm: passwordConfirmError,
         };
@@ -101,8 +102,9 @@ function SignupPage() {
     }
 
     setErrors((prev) => {
-      const { submit, ...rest } = prev;
-      return { ...rest, [field]: error };
+      const newErrors = { ...prev };
+      delete newErrors.submit;
+      return { ...newErrors, [field]: error };
     });
   };
 
@@ -150,16 +152,16 @@ function SignupPage() {
       userType === 'APPLICANT'
         ? ['email', 'password', 'passwordConfirm', 'name', 'phone', 'birthYear', 'gender']
         : [
-          'email',
-          'password',
-          'passwordConfirm',
-          'name',
-          'phone',
-          'companyName',
-          'businessNumber',
-          'address',
-          'companySize',
-        ];
+            'email',
+            'password',
+            'passwordConfirm',
+            'name',
+            'phone',
+            'companyName',
+            'businessNumber',
+            'address',
+            'companySize',
+          ];
 
     const newErrors: Record<string, string> = { ...errors };
     delete newErrors.submit;
@@ -186,7 +188,11 @@ function SignupPage() {
 
     try {
       setIsSubmitting(true);
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password,
+      );
       const uid = userCredential.user.uid;
 
       const commonData = {
