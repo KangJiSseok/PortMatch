@@ -96,4 +96,16 @@ public class JobPostingController {
         List<JobPostingDto> hotJobs = jobPostingService.getHotJobPostings(limit);
         return BaseApiResponse.ok(hotJobs);
     }
+
+    @Operation(summary = "최신 공고 목록 조회 (페이징)", description = "최근 등록된 공고부터 순서대로 조회합니다.")
+    @GetMapping("/latest")
+    public BaseApiResponse<List<JobPostingDto>> getLatestJobs(
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @Parameter(description = "한 페이지당 개수", example = "10")
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+
+        List<JobPostingDto> latestJobs = jobPostingService.getLatestPostings(page, size);
+        return BaseApiResponse.ok(latestJobs);
+    }
 }
