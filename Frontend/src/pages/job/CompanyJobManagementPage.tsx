@@ -1,67 +1,71 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, Loader2 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 
-interface JobPosting {
-  id: string;
-  title: string;
-  createdAt: string;
-  applicantCount: number;
-  status: '모집중' | '마감';
-}
+import { getCompanyJobs, type JobPostingResponse } from '../../api/jobApi';
 
 interface ModalConfig {
   isOpen: boolean;
-  jobId: string | null;
+  jobId: number | null;
 }
 
 const CompanyJobManagementPage = () => {
   const navigate = useNavigate();
+  const { cid } = useParams<{ cid: string }>();
 
-  const [jobs, setJobs] = useState<JobPosting[]>([
-    {
-      id: '1',
-      title: '시니어 프론트엔드 개발자 채용 (React)',
-      createdAt: '2024.03.20',
-      applicantCount: 12,
-      status: '모집중',
-    },
-    {
-      id: '2',
-      title: '서비스 UI/UX 디자이너 신입/경력',
-      createdAt: '2024.03.18',
-      applicantCount: 8,
-      status: '모집중',
-    },
-    {
-      id: '3',
-      title: '플랫폼 운영 매니저 채용',
-      createdAt: '2024.03.10',
-      applicantCount: 24,
-      status: '마감',
-    },
-  ]);
-
+  const [jobs, setJobs] = useState<JobPostingResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [modal, setModal] = useState<ModalConfig>({
     isOpen: false,
     jobId: null,
   });
 
-  const openDeleteModal = (job: JobPosting) => {
+  useEffect(() => {
+    if (!cid) {
+      setIsLoading(false);
+      return;
+    }
+
+    const loadJobs = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getCompanyJobs(cid);
+        setJobs(data || []);
+      } catch (error) {
+        console.error('Failed to fetch jobs:', error);
+        setJobs([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadJobs();
+  }, [cid]);
+
+  const openDeleteModal = (jobId: number) => {
     setModal({
       isOpen: true,
-      jobId: job.id,
+      jobId: jobId,
     });
   };
 
   const closeModal = () => setModal((prev) => ({ ...prev, isOpen: false }));
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (modal.jobId) {
-      setJobs((prev) => prev.filter((job) => job.id !== modal.jobId));
-      closeModal();
+      try {
+        const response = await fetch(`/api/job-postings/${modal.jobId}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          setJobs((prev) => prev.filter((job) => job.id !== modal.jobId));
+          closeModal();
+        }
+      } catch (error) {
+        console.error('Delete failed:', error);
+      }
     }
   };
 
@@ -150,7 +154,11 @@ const CompanyJobManagementPage = () => {
           </div>
 
           <div className="grid gap-6">
-            {jobs.length > 0 ? (
+            {isLoading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="text-point-blue animate-spin" size={48} />
+              </div>
+            ) : jobs.length > 0 ? (
               jobs.map((job) => (
                 <div
                   key={job.id}
@@ -161,12 +169,12 @@ const CompanyJobManagementPage = () => {
                     <div className="flex items-center gap-3">
                       <span
                         className={`shrink-0 rounded-full px-4 py-1 text-sm font-black tracking-tight ${
-                          job.status === '모집중'
+                          job.active === 1
                             ? 'bg-emerald-50 text-emerald-600'
                             : 'bg-cloud-dancer text-slate-gray'
                         }`}
                       >
-                        {job.status}
+                        {job.active === 1 ? '모집중' : '마감'}
                       </span>
                     </div>
                     <div className="min-w-0">
@@ -177,7 +185,7 @@ const CompanyJobManagementPage = () => {
                         {job.title}
                       </h3>
                       <p className="text-slate-gray mt-1.5 text-sm font-bold whitespace-nowrap opacity-40">
-                        {job.createdAt} 등록됨
+                        {job.startDate} ~ {job.endDate}
                       </p>
                     </div>
                   </div>
@@ -196,7 +204,7 @@ const CompanyJobManagementPage = () => {
                           지원자
                         </span>
                         <span className="text-2xl font-black tabular-nums">
-                          {job.applicantCount.toString().padStart(2, '0')}
+                          {job.vcnt.toString().padStart(2, '0')}
                         </span>
                       </div>
                     </Button>
@@ -221,7 +229,7 @@ const CompanyJobManagementPage = () => {
                         className="rounded-xl px-6"
                         onClick={(e) => {
                           e.stopPropagation();
-                          openDeleteModal(job);
+                          openDeleteModal(job.id);
                         }}
                       >
                         삭제
