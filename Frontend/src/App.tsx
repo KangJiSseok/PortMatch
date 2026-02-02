@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   createBrowserRouter,
   RouterProvider,
@@ -100,6 +100,12 @@ const RootLayout = () => {
 const IndexRoute = () => {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   return <Navigate to={isLoggedIn ? '/main' : '/intro'} replace />;
+};
+
+const ScheduleRedirect = () => {
+  const [randomId] = useState(() => Math.random().toString(36).substring(2, 11));
+
+  return <Navigate to={`/support/schedule/${randomId}`} replace />;
 };
 
 const router = createBrowserRouter([
@@ -321,6 +327,10 @@ const router = createBrowserRouter([
           },
           {
             path: 'schedule',
+            element: <ScheduleRedirect />,
+          },
+          {
+            path: 'schedule/:roomId',
             element: <ScheduleManagementPage />,
           },
           {
