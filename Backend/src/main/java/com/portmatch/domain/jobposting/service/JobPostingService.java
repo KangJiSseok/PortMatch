@@ -34,4 +34,6 @@ public interface JobPostingService {
 
     // 8. [Read] 제목 별 공고 조회 (공고 제목에 특정 키워드가 포함된 모든 공고 조회)
     List<JobPostingDto> getJobsByTitleKeyword(String keyword);
+
+    public List<JobPostingDto> getLatestPostings(int page, int size);
 }

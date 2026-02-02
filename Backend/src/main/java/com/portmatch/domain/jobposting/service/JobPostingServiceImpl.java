@@ -15,6 +15,8 @@ import com.portmatch.global.exception.BusinessException; // 공통 예외 추가
 import com.portmatch.global.response.ResponseCode; // 공통 응답 코드 추가
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -168,6 +170,17 @@ public class JobPostingServiceImpl implements JobPostingService {
                         .orElse(null))
                 .filter(java.util.Objects::nonNull) // 혹시 삭제된 공고가 있을지 모르니 체크!
                 .map(this::convertToDto) // 네가 만든 기가 막힌 메서드 활용!
+                .toList();
+    }
+
+    @Override
+    public List<JobPostingDto> getLatestPostings(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        List<JobPostingEntity> entities = jobPostingRepository.findAllByOrderByIdDesc(pageable);
+
+        return entities.stream()
+                .map(this::convertToDto)
                 .toList();
     }
 
