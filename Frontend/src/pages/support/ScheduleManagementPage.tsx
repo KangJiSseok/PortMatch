@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   RotateCcw,
@@ -13,7 +14,10 @@ import {
   UserX,
   UserCheck,
   Filter,
+  Share2,
 } from 'lucide-react';
+import { db } from '../../lib/firebase';
+import { doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 
@@ -31,17 +35,11 @@ const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')
 const MAX_NAME_LENGTH = 10;
 
 const ScheduleManagementPage = () => {
-  const createInitialSlots = () => {
-    const slots: TimeSlot[] = [];
-    DAYS.forEach((day) => {
-      HOURS.forEach((time) => {
-        slots.push({ id: `${day}-${time}`, day, time, votes: [] });
-      });
-    });
-    return slots;
-  };
+  const { roomId } = useParams<{ roomId: string }>();
+  const navigate = useNavigate();
 
-  const [allVotes, setAllVotes] = useState<TimeSlot[]>(createInitialSlots());
+  const [allVotes, setAllVotes] = useState<TimeSlot[]>([]);
+  const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -55,15 +53,49 @@ const ScheduleManagementPage = () => {
   const nameSectionRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  const scrollToSection = (ref: React.RefObject<HTMLElement | null>) => {
-    if (ref.current) {
-      const yOffset = -200;
-      const y = ref.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
+  const createInitialSlots = (): TimeSlot[] => {
+    const slots: TimeSlot[] = [];
+    DAYS.forEach((day) => {
+      HOURS.forEach((time) => {
+        slots.push({ id: `${day}-${time}`, day, time, votes: [] });
+      });
+    });
+    return slots;
   };
 
+  useEffect(() => {
+    if (!roomId) {
+      const newRoomId = Math.random().toString(36).substring(2, 11);
+      navigate(`/support/schedule/${newRoomId}`, { replace: true });
+      return;
+    }
+
+    const docRef = doc(db, 'schedules', roomId);
+
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setAllVotes(docSnap.data().votes as TimeSlot[]);
+        } else {
+          const initial = createInitialSlots();
+          setDoc(docRef, { votes: initial, createdAt: new Date() });
+          setAllVotes(initial);
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Firebase Error:', error);
+        setLoading(false);
+        setModal({ type: 'ERROR', message: '데이터 동기화에 실패했습니다.' });
+      },
+    );
+
+    return () => unsubscribe();
+  }, [roomId, navigate]);
+
   const analysis = useMemo(() => {
+    if (allVotes.length === 0) return { max: 0, topIds: [], sortedSlots: [], participants: [] };
     let max = 0;
     allVotes.forEach((slot) => {
       if (slot.votes.length > max) max = slot.votes.length;
@@ -73,9 +105,7 @@ const ScheduleManagementPage = () => {
       .filter((s) => s.votes.length > 0)
       .sort((a, b) => b.votes.length - a.votes.length)
       .slice(0, 3);
-
     const participants = [...new Set(allVotes.flatMap((slot) => slot.votes))];
-
     return { max, topIds, sortedSlots, participants };
   }, [allVotes]);
 
@@ -99,13 +129,20 @@ const ScheduleManagementPage = () => {
     });
   };
 
-  const submitVotes = () => {
+  const copySharedLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setModal({ type: 'SUCCESS', message: '공유 링크가 클립보드에 복사되었습니다.' });
+    } catch {
+      setModal({ type: 'ERROR', message: '링크 복사에 실패했습니다.' });
+    }
+  };
+
+  const submitVotes = async () => {
     const trimmedName = userName.trim();
     if (!trimmedName) {
       setNameError(true);
       setModal({ type: 'ERROR', message: '참여자 이름을 입력해주세요.' });
-      scrollToSection(nameSectionRef);
-      nameInputRef.current?.focus();
       return;
     }
 
@@ -127,38 +164,61 @@ const ScheduleManagementPage = () => {
         ? { ...slot, votes: [...new Set([...slot.votes, trimmedName])] }
         : slot,
     );
-    setAllVotes(updatedVotes);
 
-    setUserName('');
-    setAvailableSlots([]);
-    setNameError(false);
-    setTimeError(false);
-    setModal({
-      type: 'SUCCESS',
-      message: `${trimmedName}님의 일정이 성공적으로 반영되었습니다.`,
-    });
+    if (roomId) {
+      try {
+        await updateDoc(doc(db, 'schedules', roomId), { votes: updatedVotes });
+        setUserName('');
+        setAvailableSlots([]);
+        setNameError(false);
+        setTimeError(false);
+        setModal({ type: 'SUCCESS', message: `${trimmedName}님의 일정이 반영되었습니다.` });
+      } catch {
+        setModal({ type: 'ERROR', message: '데이터 저장에 실패했습니다.' });
+      }
+    }
   };
 
-  const executeReset = () => {
-    setAllVotes(createInitialSlots());
-    setModal(null);
-    setSelectedParticipant(null);
+  const executeReset = async () => {
+    if (roomId) {
+      try {
+        await updateDoc(doc(db, 'schedules', roomId), { votes: createInitialSlots() });
+        setModal(null);
+        setSelectedParticipant(null);
+      } catch {
+        setModal({ type: 'ERROR', message: '초기화에 실패했습니다.' });
+      }
+    }
   };
 
   const getIntensityStyle = (slot: TimeSlot, isTop: boolean) => {
     const count = slot.votes.length;
     if (count === 0) return { backgroundColor: 'transparent' };
-
     if (selectedParticipant) {
       return slot.votes.includes(selectedParticipant)
         ? { backgroundColor: '#5151e7' }
         : { backgroundColor: 'rgba(81, 81, 231, 0.05)' };
     }
-
     if (isTop) return { backgroundColor: '#5151e7' };
     const opacity = Math.min(count * 0.15, 0.7);
     return { backgroundColor: `rgba(81, 81, 231, ${opacity})` };
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="text-point-blue flex flex-col items-center gap-4">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+          >
+            <RotateCcw size={40} />
+          </motion.div>
+          <p className="font-bold">일정 데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -178,18 +238,28 @@ const ScheduleManagementPage = () => {
             </motion.h1>
             <div className="flex flex-col items-start">
               <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
-                함께하는 시간을 맞추기 위한 최적의 일정을 찾아보세요.
+                링크를 공유하여 팀원들과 최적의 시간을 찾아보세요.
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setModal({ type: 'RESET_CONFIRM' })}
-            className="border-midnight-ink text-midnight-ink flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-gray-50"
-          >
-            <RotateCcw size={16} />
-            초기화
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={copySharedLink}
+              className="border-point-blue text-point-blue flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-blue-50"
+            >
+              <Share2 size={16} />
+              공유하기
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setModal({ type: 'RESET_CONFIRM' })}
+              className="border-midnight-ink text-midnight-ink flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-gray-50"
+            >
+              <RotateCcw size={16} />
+              초기화
+            </Button>
+          </div>
         </header>
 
         <div className="flex items-stretch justify-center gap-7">
