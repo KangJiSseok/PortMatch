@@ -1,6 +1,6 @@
 package com.portmatch.domain.portfolio.embedding.repository;
 
-import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectEmbedding;
+import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectJobPostingEmbedding;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -8,22 +8,22 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
 
-public interface PortfolioProjectEmbeddingRepository extends JpaRepository<PortfolioProjectEmbedding, Long> {
+public interface PortfolioProjectJobPostingEmbeddingRepository extends JpaRepository<PortfolioProjectJobPostingEmbedding, Long> {
 
-    Optional<PortfolioProjectEmbedding> findByProjectId(Long projectId);
-    
-    List<PortfolioProjectEmbedding> findAllByPortfolioId(Long portfolioId);
+    Optional<PortfolioProjectJobPostingEmbedding> findByProjectId(Long projectId);
+
+    List<PortfolioProjectJobPostingEmbedding> findAllByPortfolioId(Long portfolioId);
 
     @Modifying
     @Query(value = """
-        DELETE FROM portfolio_project_embeddings
+        DELETE FROM portfolio_project_job_posting_embeddings
         WHERE portfolio_id = :portfolioId
         """, nativeQuery = true)
     void deleteByPortfolioId(Long portfolioId);
 
     @Modifying
     @Query(value = """
-        INSERT INTO portfolio_project_embeddings
+        INSERT INTO portfolio_project_job_posting_embeddings
             (
                 portfolio_id,
                 analysis_id,
@@ -35,6 +35,8 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
                 problem_embedding,
                 solution_embedding,
                 tech_embedding,
+                architecture_embedding,
+                keywords_embedding,
                 problem_missing,
                 solution_missing,
                 tech_missing,
@@ -55,6 +57,8 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
                 CAST(:problemEmbedding AS vector),
                 CAST(:solutionEmbedding AS vector),
                 CAST(:techEmbedding AS vector),
+                CAST(:architectureEmbedding AS vector),
+                CAST(:keywordsEmbedding AS vector),
                 :problemMissing,
                 :solutionMissing,
                 :techMissing,
@@ -74,6 +78,8 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
             problem_embedding = EXCLUDED.problem_embedding,
             solution_embedding = EXCLUDED.solution_embedding,
             tech_embedding = EXCLUDED.tech_embedding,
+            architecture_embedding = EXCLUDED.architecture_embedding,
+            keywords_embedding = EXCLUDED.keywords_embedding,
             problem_missing = EXCLUDED.problem_missing,
             solution_missing = EXCLUDED.solution_missing,
             tech_missing = EXCLUDED.tech_missing,
@@ -92,6 +98,8 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
             String problemEmbedding,
             String solutionEmbedding,
             String techEmbedding,
+            String architectureEmbedding,
+            String keywordsEmbedding,
             boolean problemMissing,
             boolean solutionMissing,
             boolean techMissing,

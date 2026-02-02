@@ -10,13 +10,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
 @Entity
 @Table(
-        name = "portfolio_project_embeddings",
+        name = "portfolio_project_job_posting_embeddings",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_portfolio_project_embeddings_project_id",
+                name = "uk_portfolio_project_job_posting_embeddings_project_id",
                 columnNames = "project_id"
         )
 )
-public class PortfolioProjectEmbedding {
+public class PortfolioProjectJobPostingEmbedding {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,6 +52,12 @@ public class PortfolioProjectEmbedding {
     @Column(name = "tech_embedding", columnDefinition = "vector(1536)")
     private String techEmbedding;
 
+    @Column(name = "architecture_embedding", columnDefinition = "vector(1536)")
+    private String architectureEmbedding;
+
+    @Column(name = "keywords_embedding", columnDefinition = "vector(1536)")
+    private String keywordsEmbedding;
+
     @Column(name = "problem_missing", nullable = false)
     private boolean problemMissing;
 
@@ -73,7 +79,7 @@ public class PortfolioProjectEmbedding {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public PortfolioProjectEmbedding(
+    public PortfolioProjectJobPostingEmbedding(
             Long portfolioId,
             Long analysisId,
             Long projectId,
@@ -84,6 +90,8 @@ public class PortfolioProjectEmbedding {
             String problemEmbedding,
             String solutionEmbedding,
             String techEmbedding,
+            String architectureEmbedding,
+            String keywordsEmbedding,
             boolean problemMissing,
             boolean solutionMissing,
             boolean techMissing,
@@ -100,6 +108,8 @@ public class PortfolioProjectEmbedding {
         this.problemEmbedding = problemEmbedding;
         this.solutionEmbedding = solutionEmbedding;
         this.techEmbedding = techEmbedding;
+        this.architectureEmbedding = architectureEmbedding;
+        this.keywordsEmbedding = keywordsEmbedding;
         this.problemMissing = problemMissing;
         this.solutionMissing = solutionMissing;
         this.techMissing = techMissing;
