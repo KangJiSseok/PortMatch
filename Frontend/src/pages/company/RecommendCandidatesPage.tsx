@@ -11,10 +11,10 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { useRecommendCandidates } from '@/hooks/useRecommendCandidates';
+import CompactRadarChart from '@/components/charts/CompactRadarChart';
 import type {
   CandidateCardModel,
   CandidateFactor,
-  CandidateWeights,
 } from '@/types/recommendCandidate';
 
 /** ---------------- Palette ---------------- */
@@ -33,8 +33,6 @@ const POINT_BLUE = '#5563C1';
 /** ---------------- Factor ---------------- */
 
 const FACTOR_ORDER: CandidateFactor[] = ['기술', '키워드', '아키텍처', '종합'];
-const DONUT_ORDER: CandidateFactor[] = ['기술', '키워드', '아키텍처', '종합'];
-
 const FACTOR_LABEL: Record<CandidateFactor, string> = {
   기술: '기술',
   키워드: '키워드',
@@ -97,78 +95,14 @@ function parseStructured(content: string): Record<string, string> {
   return result;
 }
 
-function firstSentence(text: string): string {
-  if (!text) return '';
-  const parts = text
-    .split(/[\n.!?]/)
-    .map((t) => t.trim())
-    .filter(Boolean);
-  return parts[0] ?? text.slice(0, 120);
-}
-
-/** ---------------- DonutChart (CI-safe) ---------------- */
-
-function DonutChart({ weights, score }: { weights: CandidateWeights; score: number }) {
-  const size = 120;
-  const stroke = 11;
-  const r = (size - stroke) / 2;
-  const cx = size / 2;
-  const cy = size / 2;
-  const START_ANGLE_OFFSET = 180;
-
-  type Segment = { key: CandidateFactor; angle: number; start: number; end: number };
-
-  const segments: Segment[] = DONUT_ORDER.reduce(
-    (state, k) => {
-      const value = weights[k] ?? 0;
-      const angle = (value / 100) * 360;
-
-      const start = state.acc;
-      const end = start + angle;
-
-      if (angle < 1) return { acc: end, segs: state.segs };
-
-      return {
-        acc: end,
-        segs: [...state.segs, { key: k, angle, start, end }],
-      };
-    },
-    { acc: 0, segs: [] as Segment[] },
-  ).segs;
-
-  return (
-    <div className="relative flex items-center justify-center">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f1f1" strokeWidth={stroke} />
-
-        {segments.map(({ key, angle, start, end }) => {
-          const startRad = ((start - 90 + START_ANGLE_OFFSET) * Math.PI) / 180;
-          const endRad = ((end - 90 + START_ANGLE_OFFSET) * Math.PI) / 180;
-
-          return (
-            <path
-              key={key}
-              d={`M ${cx + r * Math.cos(startRad)} ${cy + r * Math.sin(startRad)} A ${r} ${r} 0 ${
-                angle > 180 ? 1 : 0
-              } 1 ${cx + r * Math.cos(endRad)} ${cy + r * Math.sin(endRad)}`}
-              fill="none"
-              stroke={FACTOR_COLOR[key]}
-              strokeWidth={stroke}
-              strokeLinecap="round"
-            />
-          );
-        })}
-      </svg>
-
-      <div className="absolute flex flex-col items-center">
-        <span className="text-[30px] leading-none font-black text-gray-900">{score}</span>
-        <span className="mt-1 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-          match
-        </span>
-      </div>
-    </div>
-  );
-}
+// function firstSentence(text: string): string {
+//   if (!text) return '';
+//   const parts = text
+//     .split(/[\n.!?]/)
+//     .map((t) => t.trim())
+//     .filter(Boolean);
+//   return parts[0] ?? text.slice(0, 120);
+// }
 
 /** ---------------- Criteria (모달 밖 1번) ---------------- */
 
@@ -399,8 +333,8 @@ function CandidateDetailModal({
                     {FACTOR_ORDER.map((f) => (
                       <div key={f} className="text-[12px]">
                         <div className="mb-1.5 flex justify-between">
-                          <span className="font-semibold text-gray-500">{FACTOR_LABEL[f]}</span>
-                          <span className="font-bold text-[#4a4a4a]">{candidate.weights[f]}%</span>
+                          <span className="font-bold text-gray-600">{FACTOR_LABEL[f]}</span>
+                          <span className="font-bold text-[#4a4a4a]">{candidate.weights[f]}점</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-black/5">
                           <motion.div
@@ -508,11 +442,11 @@ function CandidateCard({
 }) {
   const [isFlipped, setIsFlipped] = useState(false);
 
-  const excerpt = useMemo(() => {
-    const parsed = parseStructured(candidate.unifiedText);
-    const project = parsed['프로젝트'] || '';
-    return firstSentence(project || candidate.unifiedText);
-  }, [candidate.unifiedText]);
+  // const excerpt = useMemo(() => {
+  //   const parsed = parseStructured(candidate.unifiedText);
+  //   const project = parsed['프로젝트'] || '';
+  //   return firstSentence(project || candidate.unifiedText);
+  // }, [candidate.unifiedText]);
 
   return (
     <motion.div
@@ -552,7 +486,7 @@ function CandidateCard({
             </div>
 
             <div className="flex flex-1 flex-col items-center justify-end pt-[13px]">
-              <DonutChart weights={candidate.weights} score={candidate.matchScore} />
+              <CompactRadarChart weights={candidate.weights} score={candidate.matchScore} />
 
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {candidate.topFactors.map((f) => (
@@ -599,8 +533,8 @@ function CandidateCard({
                 {FACTOR_ORDER.map((f) => (
                   <div key={f} className="text-[12px]">
                     <div className="mb-1.5 flex justify-between">
-                      <span className="font-semibold text-gray-500">{FACTOR_LABEL[f]}</span>
-                      <span className="font-bold text-[#4a4a4a]">{candidate.weights[f]}%</span>
+                      <span className="font-bold text-gray-600">{FACTOR_LABEL[f]}</span>
+                      <span className="font-bold text-[#4a4a4a]">{candidate.weights[f]}점</span>
                     </div>
 
                     <div className="h-2 w-full overflow-hidden rounded-full bg-black/5">
@@ -630,15 +564,6 @@ function CandidateCard({
       {/* 하단 */}
       <div className="-mt-4 flex min-h-0 flex-1 flex-col gap-2 px-4 pt-0 pb-2">
         <div className="mt-10 space-y-2 pt-1">
-          <div className="rounded-xl border border-gray-100 bg-[#fcfcfc] px-4 py-3">
-            <div className="text-[11px] font-black tracking-widest text-gray-400 uppercase">
-              summary
-            </div>
-            <p className="mt-1 text-[13px] leading-relaxed font-semibold text-gray-700 line-clamp-3">
-              {excerpt || '요약 문장이 없습니다.'}
-            </p>
-          </div>
-
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -649,6 +574,25 @@ function CandidateCard({
           >
             상세 리포트 보기
           </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              className={`${BTN_BASE} ${BTN_INSET} py-2.5 text-[12px] text-white shadow-sm`}
+              style={{ backgroundColor: '#334155' }}
+            >
+              이력서 조회
+            </button>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              className={`${BTN_BASE} ${BTN_INSET} py-2.5 text-[12px] text-white shadow-sm`}
+              style={{ backgroundColor: '#0EA5E9' }}
+            >
+              PDF 조회
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>

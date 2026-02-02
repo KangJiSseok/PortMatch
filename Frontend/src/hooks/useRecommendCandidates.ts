@@ -26,52 +26,12 @@ function toScore(similarity: number): number {
  * - 값이 클수록 비중 크게
  * - 반올림 오차는 가장 큰 항목에 몰아줌
  */
-function similaritiesToWeights(input: Record<CandidateFactor, number>): CandidateWeights {
-  const safe: Record<CandidateFactor, number> = {
-    기술: Math.max(0, input.기술 ?? 0),
-    키워드: Math.max(0, input.키워드 ?? 0),
-    아키텍처: Math.max(0, input.아키텍처 ?? 0),
-    종합: Math.max(0, input.종합 ?? 0),
-  };
-
-  const sum = FACTOR_ORDER.reduce((acc, k) => acc + safe[k], 0);
-
-  // 방어: 전부 0이면 균등
-  if (sum <= 0) {
-    const even = Math.floor(100 / FACTOR_ORDER.length);
-    const base: CandidateWeights = {
-      기술: even,
-      키워드: even,
-      아키텍처: even,
-      종합: even,
-    };
-    const remain = 100 - even * FACTOR_ORDER.length;
-    if (remain > 0) base[FACTOR_ORDER[0]] += remain;
-    return base;
-  }
-
-  const raw = FACTOR_ORDER.map((k) => ({ k, v: (safe[k] / sum) * 100 }));
-
-  const rounded: CandidateWeights = {
-    기술: 0,
-    키워드: 0,
-    아키텍처: 0,
-    종합: 0,
-  };
-
-  raw.forEach(({ k, v }) => {
-    rounded[k] = Math.round(v);
+function similaritiesToScores(input: Record<CandidateFactor, number>): CandidateWeights {
+  const out = {} as CandidateWeights;
+  FACTOR_ORDER.forEach((k) => {
+    out[k] = toScore(input[k] ?? 0);
   });
-
-  const total = FACTOR_ORDER.reduce((acc, k) => acc + rounded[k], 0);
-  const diff = 100 - total;
-
-  if (diff !== 0) {
-    const maxKey = raw.sort((a, b) => b.v - a.v)[0]?.k ?? FACTOR_ORDER[0];
-    rounded[maxKey] = Math.max(0, rounded[maxKey] + diff);
-  }
-
-  return rounded;
+  return out;
 }
 
 function pickTopFactors(weights: CandidateWeights, n = 2): CandidateFactor[] {
@@ -80,7 +40,7 @@ function pickTopFactors(weights: CandidateWeights, n = 2): CandidateFactor[] {
 
 /** 백엔드 단건 -> UI 카드 모델 */
 function mapToCardModel(item: RecommendCandidate, index: number): CandidateCardModel {
-  const weights = similaritiesToWeights({
+  const weights = similaritiesToScores({
     기술: item.techSimilarity,
     키워드: item.keywordSimilarity,
     아키텍처: item.architectureSimilarity,
