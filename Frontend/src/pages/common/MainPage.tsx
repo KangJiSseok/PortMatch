@@ -123,7 +123,7 @@ function MainPage() {
         highlight: '적합한 인재',
         line2Suffix: '를 제안합니다.',
         button: '인재 탐색하기',
-        link: '/recommend/companies',
+        link: '/company/recommend/candidates',
       };
     return {
       line1: '나만의 경쟁력,',

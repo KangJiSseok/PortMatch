@@ -4,7 +4,7 @@ import {
   toggleCandidateLike,
   toggleCandidateFollow,
   toggleCandidateScrap,
-} from '@/api/recommendCandidates';
+} from '@/api/company/recommendCandidates';
 import type { Candidate } from '@/types/recommendCandidate';
 
 type ParamsKey = {
