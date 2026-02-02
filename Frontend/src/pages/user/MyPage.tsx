@@ -66,7 +66,7 @@ type ScrapModalItem = {
   onClick: () => void;
 };
 
-/** React Query 비슷??미니 ??*/
+/** React Query 비슷한 미니 훅 */
 function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -84,7 +84,7 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
     } catch (err) {
       setData(null);
       setIsError(true);
-      setErrorMessage(err instanceof Error ? err.message : '?????�는 ?�류가 발생?�어??');
+      setErrorMessage(err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요');
     } finally {
       setIsLoading(false);
     }
@@ -195,7 +195,7 @@ export default function MyPage() {
   }, []);
   const notiQuery = useQueryLike<NotificationItem[]>(() => fetchMyNotifications(), []);
 
-  // ?�림: ?�버 ?�본????건드리고 로컬?�서 ?�음/??�� ?�치�??�기
+  // 알림: 서버 원본은 안 건드리고 로컬에서 읽음/삭제 패치하기
   type NotiPatch = { read?: boolean; deleted?: boolean };
   const [notiPatchById, setNotiPatchById] = useState<Record<number, NotiPatch>>({});
 
@@ -241,7 +241,7 @@ export default function MyPage() {
 
   const handleNotiDeleteAll = () => {
     if (!hasNoti) return;
-    const ok = window.confirm('?�림???��? ??��?�까??');
+    const ok = window.confirm('알림을 모두 삭제할까요?');
     if (!ok) return;
 
     setNotiPatchById((prev) => {
@@ -251,7 +251,7 @@ export default function MyPage() {
     });
   };
 
-  // Date.now()�?render ?�에??직접 ??부르게 state�??�고 ?�음 (purity/린트 방어)
+  // Date.now()를 render 안에서 직접 안 부르게 state로 갖고 있음 (purity/린트 방어)
   const [nowMs, setNowMs] = useState<number>(0);
   useEffect(() => {
     const tick = () => setNowMs(Date.now());
@@ -260,7 +260,7 @@ export default function MyPage() {
     return () => window.clearInterval(id);
   }, []);
 
-  // 캘린???�태
+  // 캘린더 상태
   const todayYmd = toYmd(new Date());
 
   const [viewMonth, setViewMonth] = useState<Date>(() => {
@@ -270,7 +270,7 @@ export default function MyPage() {
 
   const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
 
-  // ?�벤??�?(YYYY-MM-DD -> Interview[])
+  // 이벤트 맵 (YYYY-MM-DD -> Interview[])
   const interviewViews = interviewQuery.data ?? [];
   const interviewEventMap = useMemo(() => {
     const m = new Map<string, InterviewSessionView[]>();
@@ -292,8 +292,8 @@ export default function MyPage() {
     [interviewEventMap, selectedDate],
   );
 
-  // ?�단 카드 ?�리�?
-  const resumeLastEdited = '??;
+  // 상단 카드 미리보기
+  const resumeLastEdited = '';
 
   const interviewPreviewSlots = useMemo(() => {
     const rows: PreviewRow[] = (upcomingQuery.data ?? []).slice(0, 3).map((i) => ({
@@ -315,7 +315,7 @@ export default function MyPage() {
     return padToFixedSlots(rows, 3);
   }, [scrapQuery.data]);
 
-  // ?�크??모달 ?�이??
+  // 스크랩 모달 아이템
   const scrapAllItems = useMemo<ScrapModalItem[]>(() => {
     const list = scrapQuery.data ?? [];
     return list.map((s) => {
@@ -332,7 +332,7 @@ export default function MyPage() {
         createdAtMs,
         onClick: () => {
           if (!jobPostId) {
-            alert('공고 ID가 ?�어???�세 ?�이지�??�동?????�어??');
+            alert('공고 ID가 없어 상세 페이지로 이동할 수 없어요');
             return;
           }
           setIsScrapOpen(false);
@@ -342,7 +342,7 @@ export default function MyPage() {
     });
   }, [scrapQuery.data, navigate]);
 
-  // ?�크??모달: ?�렬 + 검??
+  // 스크랩 모달: 정렬 + 검색
   const [scrapSort, setScrapSort] = useState<'recent' | 'company' | 'title'>('company');
   const [scrapSearch, setScrapSearch] = useState('');
 
@@ -381,12 +381,12 @@ export default function MyPage() {
   }, [filteredSortedScraps]);
 
   const userName = useAuthStore((state) => state.user?.name);
-  const myPageTitle = userName ? `${userName}??My Page` : 'My Page';
+  const myPageTitle = userName ? `${userName}의 My Page` : 'My Page';
 
   return (
     <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
       <div className="mx-auto w-[1280px] space-y-10 px-6">
-        {/* ?�더 */}
+        {/* 헤더 */}
         <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
           <div className="relative p-10">
             <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
@@ -397,7 +397,7 @@ export default function MyPage() {
                 </p>
                 <h1 className="mt-2 text-4xl font-black tracking-normal">{myPageTitle}</h1>
                 <p className="mt-2 text-sm font-semibold text-zinc-500">
-                  ?�력??· 면접 · ?�크?�을 ??곳에??관리해??
+                  이력서 · 면접 · 스크랩을 한곳에서 관리해요
                 </p>
               </div>
 
@@ -411,7 +411,7 @@ export default function MyPage() {
                     setIsNotiOpen(true);
                   }}
                 >
-                  ?�림{unreadCount > 0 ? ` (${unreadCount})` : ''}
+                  알림{unreadCount > 0 ? ` (${unreadCount})` : ''}
                 </Button>
 
                 <Button
@@ -420,40 +420,40 @@ export default function MyPage() {
                   className="rounded-2xl"
                   onClick={() => navigate(ROUTES.profileEdit)}
                 >
-                  ?�원 ?�보 ?�정
+                  회원 정보 수정
                 </Button>
               </div>
             </div>
           </div>
         </header>
 
-        {/* 바로가�?*/}
+        {/* 바로가기 */}
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
             <div>
-              <h2 className="text-2xl font-black tracking-tighter">바로가�?/h2>
+              <h2 className="text-2xl font-black tracking-tighter">바로가기</h2>
               <p className="mt-1 text-sm font-semibold text-zinc-500">
-                ?�주 ?�는 기능??빠르�??�동?�요.
+                자주 쓰는 기능으로 빠르게 이동해요.
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-5">
-            {/* ?�력??*/}
-            <HubCard title="?�력?? onClick={() => navigate(ROUTES.resume)}>
+            {/* 이력서 */}
+            <HubCard title="이력서" onClick={() => navigate(ROUTES.resume)}>
               <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-6 py-10">
                 <div className="bg-cloud-dancer text-midnight-ink grid h-14 w-14 place-items-center rounded-2xl transition group-hover:scale-[1.04]">
                   <IconUser />
                 </div>
 
                 <div className="mt-5 text-center">
-                  <p className="text-midnight-ink text-lg font-black">최근 ?�정</p>
+                  <p className="text-midnight-ink text-lg font-black">최근 수정</p>
                   <p className="mt-2 text-sm font-semibold text-zinc-500">{resumeLastEdited}</p>
                 </div>
 
                 <div className="mt-6">
                   <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
-                    ?�세 보기 <IconChevronRight />
+                    상세 보기 <IconChevronRight />
                   </span>
                 </div>
               </div>
@@ -470,7 +470,7 @@ export default function MyPage() {
                   ) : upcomingQuery.isError ? (
                     <div className="flex h-full items-center justify-center">
                       <InlineError
-                        message={upcomingQuery.errorMessage ?? '면접 ?�보�?불러?��? 못했?�요.'}
+                        message={upcomingQuery.errorMessage ?? '면접 정보를 불러오지 못했어요.'}
                         onRetry={upcomingQuery.refetch}
                       />
                     </div>
@@ -494,15 +494,15 @@ export default function MyPage() {
 
                 <div className="mt-4 flex justify-end">
                   <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
-                    ?�체 보기 <IconChevronRight />
+                    전체 보기 <IconChevronRight />
                   </span>
                 </div>
               </div>
             </HubCard>
 
-            {/* ?�크??*/}
+            {/* 스크랩 */}
             <HubCard
-              title="?�크?�한 공고"
+              title="스크랩한 공고"
               onClick={() => {
                 if (scrapQuery.isError) scrapQuery.refetch();
                 setIsScrapOpen(true);
@@ -517,7 +517,7 @@ export default function MyPage() {
                   ) : scrapQuery.isError ? (
                     <div className="flex h-full items-center justify-center">
                       <InlineError
-                        message={scrapQuery.errorMessage ?? '?�크?�을 불러?��? 못했?�요.'}
+                        message={scrapQuery.errorMessage ?? '스크랩을 불러오지 못했어요.'}
                         onRetry={scrapQuery.refetch}
                       />
                     </div>
@@ -541,7 +541,7 @@ export default function MyPage() {
 
                 <div className="mt-4 flex justify-end">
                   <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
-                    ?�체 보기 <IconChevronRight />
+                    전체 보기 <IconChevronRight />
                   </span>
                 </div>
               </div>
@@ -549,12 +549,12 @@ export default function MyPage() {
           </div>
         </section>
 
-        {/* 캘린??*/}
+        {/* 캘린더 */}
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
             <div>
-              <h2 className="text-2xl font-black tracking-tighter">캘린??/h2>
-              <p className="mt-1 text-sm font-semibold text-zinc-500">면접 ?�정??모아봤어??</p>
+              <h2 className="text-2xl font-black tracking-tighter">캘린더</h2>
+              <p className="mt-1 text-sm font-semibold text-zinc-500">면접 일정을 모아봤어요</p>
             </div>
           </div>
 
@@ -563,7 +563,7 @@ export default function MyPage() {
               <CalendarSkeleton />
             ) : interviewQuery.isError ? (
               <ErrorBox
-                message={interviewQuery.errorMessage ?? '면접 ?�정??불러?��? 못했?�요.'}
+                message={interviewQuery.errorMessage ?? '면접 일정을 불러오지 못했어요.'}
                 onRetry={interviewQuery.refetch}
               />
             ) : (
@@ -578,10 +578,10 @@ export default function MyPage() {
                 />
 
                 <CalendarScheduleList<InterviewSessionView>
-                  title="?�택???�짜 ?�정"
+                  title="선택한 날짜 일정"
                   subtitle={formatYmdToKorean(selectedDate)}
                   items={selectedInterviews}
-                  emptyText="?�당 ?�짜?�는 면접 ?�정???�어??"
+                  emptyText="해당 날짜에는 면접 일정이 없어요"
                   renderItem={(e) => {
                     const startMs = new Date(e.scheduledAt).getTime();
                     const currentMs = nowMs;
@@ -600,7 +600,7 @@ export default function MyPage() {
                     const isPast =
                       currentMs > 0 && currentMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
 
-                    let btnText = '?�장';
+                    let btnText = '입장';
                     let helperText: string | null = null;
                     let disabled = false;
 
@@ -608,14 +608,14 @@ export default function MyPage() {
                       btnText = '종료';
                       disabled = true;
                     } else if (joinable) {
-                      btnText = '?�장';
-                      helperText = '지�??�장 가?�해??';
+                      btnText = '입장';
+                      helperText = '지금 입장 가능해요';
                     } else {
-                      btnText = isToday ? '?��? : '?�정';
+                      btnText = isToday ? '대기' : '예정';
                       disabled = true;
 
                       const hint = formatScheduleHint(e.scheduledAt);
-                      helperText = isToday ? `${hint} · ?�작 30�??��????�장 가?? : hint;
+                      helperText = isToday ? `${hint} · 시작 30분 전부터 입장 가능` : hint;
                     }
 
                     return (
@@ -659,8 +659,8 @@ export default function MyPage() {
         </section>
       </div>
 
-      {/* ?�림 모달 */}
-      <NotificationModal open={isNotiOpen} onClose={() => setIsNotiOpen(false)} title="?�림">
+      {/* 알림 모달 */}
+      <NotificationModal open={isNotiOpen} onClose={() => setIsNotiOpen(false)} title="알림">
         {notiQuery.isLoading ? (
           <div className="space-y-3 py-5">
             <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
@@ -669,28 +669,28 @@ export default function MyPage() {
           </div>
         ) : notiQuery.isError ? (
           <div className="rounded-xl border border-zinc-100 bg-white p-4 py-5">
-            <p className="text-midnight-ink text-sm font-black">?�림??불러?��? 못했?�요</p>
+            <p className="text-midnight-ink text-sm font-black">알림을 불러오지 못했어요</p>
             <p className="mt-1 text-sm font-semibold text-zinc-500">
-              {notiQuery.errorMessage ?? '?�시 ???�시 ?�도??주세??'}
+              {notiQuery.errorMessage ?? '잠시 후 다시 시도해주세요'}
             </p>
             <div className="mt-4 flex justify-end">
               <Button variant="dark" size="sm" onClick={notiQuery.refetch}>
-                ?�시 ?�도
+                다시 시도
               </Button>
             </div>
           </div>
         ) : (notiItems ?? []).length === 0 ? (
           <div className="bg-cloud-dancer/25 rounded-xl p-6 py-5 text-center">
-            <p className="text-midnight-ink text-sm font-black">?�림???�어??</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">조용?�서 좋다??(진심)</p>
+            <p className="text-midnight-ink text-sm font-black">알림이 없어요</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">조용해서 좋네요 (진심)</p>
           </div>
         ) : (
           <div className="space-y-4 py-5">
-            {/* ?�단 ?�션 */}
+            {/* 상단 옵션 */}
             <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
               <div className="flex items-end justify-between gap-3">
                 <p className="text-xs font-semibold text-zinc-500">
-                  �?{notiItems.length}�?· 미읽??{unreadCount}�?
+                  총 {notiItems.length}개 · 미읽음 {unreadCount}개
                 </p>
 
                 <div className="flex items-center gap-2">
@@ -702,7 +702,7 @@ export default function MyPage() {
                     disabled={!hasUnread}
                     onClick={handleNotiReadAll}
                   >
-                    ?�체 ?�음
+                    전체 읽음
                   </Button>
                   <Button
                     type="button"
@@ -712,13 +712,13 @@ export default function MyPage() {
                     disabled={!hasNoti}
                     onClick={handleNotiDeleteAll}
                   >
-                    ?�체 ??��
+                    전체 삭제
                   </Button>
                 </div>
               </div>
             </div>
 
-            {/* 리스??*/}
+            {/* 리스트 */}
             <div className="space-y-3">
               {notiItems.map((n) => {
                 const route = resolveNotificationRoute(n);
@@ -741,7 +741,7 @@ export default function MyPage() {
                         </p>
                         {route ? (
                           <p className="mt-1 text-[11px] font-semibold text-zinc-400">
-                            ?�릭?�면 관???�이지�??�동?�요
+                            클릭하면 관련 페이지로 이동해요
                           </p>
                         ) : null}
                       </div>
@@ -770,11 +770,11 @@ export default function MyPage() {
         )}
       </NotificationModal>
 
-      {/* ?�크??모달 */}
+      {/* 스크랩 모달 */}
       <NotificationModal
         open={isScrapOpen}
         onClose={() => setIsScrapOpen(false)}
-        title="?�크?�한 공고"
+        title="스크랩한 공고"
       >
         {scrapQuery.isLoading ? (
           <div className="space-y-3">
@@ -784,30 +784,30 @@ export default function MyPage() {
           </div>
         ) : scrapQuery.isError ? (
           <div className="rounded-xl border border-zinc-100 bg-white p-4">
-            <p className="text-midnight-ink text-sm font-black">?�크?�을 불러?��? 못했?�요</p>
+            <p className="text-midnight-ink text-sm font-black">스크랩을 불러오지 못했어요</p>
             <p className="mt-1 text-sm font-semibold text-zinc-500">
-              {scrapQuery.errorMessage ?? '?�시 ???�시 ?�도??주세??'}
+              {scrapQuery.errorMessage ?? '잠시 후 다시 시도해주세요'}
             </p>
             <div className="mt-4 flex justify-end">
               <Button variant="dark" size="sm" onClick={scrapQuery.refetch}>
-                ?�시 ?�도
+                다시 시도
               </Button>
             </div>
           </div>
         ) : (scrapQuery.data ?? []).length === 0 ? (
           <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
-            <p className="text-midnight-ink text-sm font-black">?�크?�한 공고가 ?�어??</p>
+            <p className="text-midnight-ink text-sm font-black">스크랩한 공고가 없어요</p>
             <p className="mt-1 text-sm font-semibold text-zinc-500">
-              마음???�는 공고�?찜해보세??
+              마음에 드는 공고를 찜해보세요
             </p>
           </div>
         ) : (
           <div className="space-y-4 pb-6">
-            {/* ?�단 �?(?�렬/검?? */}
+            {/* 상단 툴 (정렬/검색) */}
             <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
               <div className="flex items-end justify-between gap-3">
                 <p className="text-xs font-semibold text-zinc-500">
-                  �?{filteredSortedScraps.length}�?· {companyCount}�??�사
+                  총 {filteredSortedScraps.length}개 · {companyCount}개 회사
                 </p>
 
                 <div className="flex items-center gap-2">
@@ -827,7 +827,7 @@ export default function MyPage() {
                     className="rounded-xl"
                     onClick={() => setScrapSort('company')}
                   >
-                    ?�사�?
+                    회사순
                   </Button>
                   <Button
                     type="button"
@@ -836,7 +836,7 @@ export default function MyPage() {
                     className="rounded-xl"
                     onClick={() => setScrapSort('title')}
                   >
-                    공고�?
+                    공고순
                   </Button>
                 </div>
               </div>
@@ -845,18 +845,18 @@ export default function MyPage() {
                 <input
                   value={scrapSearch}
                   onChange={(e) => setScrapSearch(e.target.value)}
-                  placeholder="?�사/공고�?검??
+                  placeholder="회사/공고명 검색"
                   className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-semibold text-zinc-700 transition outline-none placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-white"
                 />
               </div>
             </div>
 
-            {/* 리스??*/}
+            {/* 리스트 */}
             {filteredSortedScraps.length === 0 ? (
               <div className="bg-cloud-dancer/25 rounded-2xl p-6 text-center">
-                <p className="text-midnight-ink text-sm font-black">검??결과가 ?�어??</p>
+                <p className="text-midnight-ink text-sm font-black">검색 결과가 없어요</p>
                 <p className="mt-1 text-sm font-semibold text-zinc-500">
-                  ?�른 ?�워?�로 ?�시 찾아보세??
+                  다른 키워드로 다시 찾아보세요
                 </p>
               </div>
             ) : (
@@ -880,7 +880,7 @@ export default function MyPage() {
 }
 
 /* =========================
- *  Manage Card Parts
+ * Manage Card Parts
  * ========================= */
 
 function HubCard({
@@ -967,11 +967,11 @@ function ListSkeleton() {
 function InlineError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="rounded-2xl border border-zinc-100 bg-white p-4">
-      <p className="text-midnight-ink text-sm font-black">불러?�기 ?�패</p>
+      <p className="text-midnight-ink text-sm font-black">불러오기 실패</p>
       <p className="mt-1 text-sm font-semibold text-zinc-500">{message}</p>
       <div className="mt-3 flex justify-end">
         <Button variant="dark" size="sm" onClick={onRetry}>
-          ?�시 ?�도
+          다시 시도
         </Button>
       </div>
     </div>
@@ -979,17 +979,17 @@ function InlineError({ message, onRetry }: { message: string; onRetry: () => voi
 }
 
 /* =========================
- *          Modal
+ * Modal
  * ========================= */
 
 function ErrorBox({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm">
-      <p className="text-midnight-ink text-sm font-black">?�이?��? 불러?��? 못했?�요</p>
+      <p className="text-midnight-ink text-sm font-black">데이터를 불러오지 못했어요</p>
       <p className="mt-2 text-sm font-semibold text-zinc-500">{message}</p>
       <div className="mt-4 flex justify-end">
         <Button type="button" variant="dark" size="sm" onClick={onRetry}>
-          ?�시 ?�도
+          다시 시도
         </Button>
       </div>
     </div>
@@ -1061,7 +1061,7 @@ function NotificationModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex justify-center overflow-auto px-4 py-10">
-      {/* ?�버?�이 */}
+      {/* 오버레이 */}
       <div
         className="fixed inset-0 bg-black/65 backdrop-blur-[2px]"
         onClick={onClose}
@@ -1076,7 +1076,7 @@ function NotificationModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-2xl">
-          {/* ?�더 고정 */}
+          {/* 헤더 고정 */}
           <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
             <p className="text-midnight-ink text-lg font-black">{title}</p>
 
@@ -1087,11 +1087,11 @@ function NotificationModal({
               onClick={onClose}
               className="text-midnight-ink rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-black transition hover:bg-zinc-50"
             >
-              ?�기
+              닫기
             </Button>
           </div>
 
-          {/* 바디 ?�크�?*/}
+          {/* 바디 스크롤 */}
           <div
             className={[
               'min-h-0 flex-1 overflow-auto px-6',
@@ -1120,7 +1120,7 @@ function NotificationModal({
 }
 
 /* =========================
- *  Scrap Modal Row
+ * Scrap Modal Row
  * ========================= */
 
 function ScrapListRow({
@@ -1153,7 +1153,7 @@ function ScrapListRow({
 
           {disabled ? (
             <p className="mt-2 text-[11px] font-semibold text-zinc-400">
-              ?�세 ?�동 불�? (공고 ID ?�음)
+              상세 이동 불가 (공고 ID 없음)
             </p>
           ) : null}
         </div>
@@ -1167,7 +1167,7 @@ function ScrapListRow({
 }
 
 /* =========================
- *  Icons
+ * Icons
  * ========================= */
 
 function IconUser() {
@@ -1206,5 +1206,3 @@ function IconChevronRight() {
     </svg>
   );
 }
-
-
