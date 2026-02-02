@@ -318,7 +318,7 @@ def main():
         print("📊 채용공고 크롤링 시작")
         print("=" * 60)
         
-        list_url = f"https://www.wanted.co.kr/api/v4/jobs?tag_type_ids=518&country=kr&limit={CRAWL_LIMIT}"
+        list_url = f"https://www.wanted.co.kr/api/v4/jobs?tag_type_ids=518&country=kr&limit={CRAWL_LIMIT}&job_sort=job.latest_order"
         response = requests.get(list_url, headers=HEADERS, timeout=10)
         job_list_data = response.json().get('data', [])
         
