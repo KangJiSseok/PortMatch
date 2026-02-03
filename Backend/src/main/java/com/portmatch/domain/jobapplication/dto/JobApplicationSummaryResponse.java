@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @Builder
 public class JobApplicationSummaryResponse {
     private Long applicationId;
-    private Long applicantId;
-    private String applicantName;
+    private Long userId;
+    private String userName;
     private Long resumeId;
     private String resumeTitle;
     private ApplicationStatus status;

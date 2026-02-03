@@ -12,10 +12,10 @@ import java.time.LocalDateTime;
 public class JobApplicationDetailResponse {
     private Long applicationId;
     private Long jobPostingId;
-    private Long applicantId;
-    private String applicantName;
-    private String applicantEmail;
-    private String applicantPhone;
+    private Long userId;
+    private String userName;
+    private String userEmail;
+    private String userPhone;
     private Long resumeId;
     private ApplicationStatus status;
     private LocalDateTime appliedAt;

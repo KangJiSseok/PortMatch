@@ -1,7 +1,7 @@
 package com.portmatch.domain.jobapplication.service;
 
-import com.portmatch.domain.applicants.entity.Applicant;
-import com.portmatch.domain.applicants.repository.ApplicantRepository;
+import com.portmatch.domain.auth.entity.User;
+import com.portmatch.domain.auth.repository.UserRepository;
 import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.domain.jobapplication.dto.JobApplicationCreateRequest;
@@ -31,7 +31,7 @@ import java.util.List;
 public class JobApplicationServiceImpl implements JobApplicationService {
 
     private final JobApplicationRepository jobApplicationRepository;
-    private final ApplicantRepository applicantRepository;
+    private final UserRepository userRepository;
     private final JobPostingRepository jobPostingRepository;
     private final ResumeRepository resumeRepository;
     private final CompanyRepository companyRepository;
@@ -40,7 +40,7 @@ public class JobApplicationServiceImpl implements JobApplicationService {
     @Override
     @Transactional
     public JobApplicationResponse apply(Long userId, Long jobPostingId, JobApplicationCreateRequest request) {
-        Applicant applicant = applicantRepository.findByUser_Id(userId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
         Resume resume = resumeRepository.findByIdAndUser_Id(request.getResumeId(), userId)
@@ -49,11 +49,11 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         JobPostingEntity jobPosting = jobPostingRepository.findById(jobPostingId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
-        if (jobApplicationRepository.existsByApplicant_IdAndJobPosting_Id(applicant.getId(), jobPosting.getId())) {
+        if (jobApplicationRepository.existsByUser_IdAndJobPosting_Id(user.getId(), jobPosting.getId())) {
             throw new BusinessException(ResponseCode.INVALID_PARAMETER);
         }
 
-        JobApplication application = JobApplication.create(applicant, jobPosting, resume);
+        JobApplication application = JobApplication.create(user, jobPosting, resume);
         JobApplication saved = jobApplicationRepository.save(application);
         return toResponse(saved);
     }
@@ -61,11 +61,11 @@ public class JobApplicationServiceImpl implements JobApplicationService {
     @Override
     @Transactional
     public void cancel(Long userId, Long jobPostingId) {
-        Applicant applicant = applicantRepository.findByUser_Id(userId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
         JobApplication application = jobApplicationRepository
-                .findByApplicant_IdAndJobPosting_Id(applicant.getId(), jobPostingId)
+                .findByUser_IdAndJobPosting_Id(user.getId(), jobPostingId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
         jobApplicationRepository.delete(application);
@@ -119,7 +119,7 @@ public class JobApplicationServiceImpl implements JobApplicationService {
     private JobApplicationResponse toResponse(JobApplication application) {
         return JobApplicationResponse.builder()
                 .id(application.getId())
-                .applicantId(application.getApplicant().getId())
+                .userId(application.getUser().getId())
                 .jobPostingId(application.getJobPosting().getId())
                 .resumeId(application.getResume().getId())
                 .status(application.getStatus())
@@ -131,8 +131,8 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         Resume resume = application.getResume();
         return JobApplicationSummaryResponse.builder()
                 .applicationId(application.getId())
-                .applicantId(application.getApplicant().getId())
-                .applicantName(application.getApplicant().getUser().getName())
+                .userId(application.getUser().getId())
+                .userName(application.getUser().getName())
                 .resumeId(resume.getId())
                 .resumeTitle(resume.getTitle())
                 .status(application.getStatus())
@@ -145,10 +145,10 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         return JobApplicationDetailResponse.builder()
                 .applicationId(application.getId())
                 .jobPostingId(application.getJobPosting().getId())
-                .applicantId(application.getApplicant().getId())
-                .applicantName(application.getApplicant().getUser().getName())
-                .applicantEmail(application.getApplicant().getUser().getEmail())
-                .applicantPhone(application.getApplicant().getUser().getPhone())
+                .userId(application.getUser().getId())
+                .userName(application.getUser().getName())
+                .userEmail(application.getUser().getEmail())
+                .userPhone(application.getUser().getPhone())
                 .resumeId(resume.getId())
                 .status(application.getStatus())
                 .appliedAt(application.getCreatedAt())
