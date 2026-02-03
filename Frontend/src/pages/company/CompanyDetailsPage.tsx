@@ -297,7 +297,7 @@ function CompanyDetailsPage() {
         exit={{ opacity: 0 }}
         className="bg-pure-white text-midnight-ink min-h-screen min-w-7xl pb-20"
       >
-        <section className="relative flex min-h-120 w-full flex-col justify-end overflow-hidden pb-16">
+        <section className="relative flex min-h-110 w-full flex-col justify-end overflow-hidden pb-16">
           <div className="absolute inset-0 bg-slate-900">
             <div className="absolute inset-0 bg-[radial-gradient(#ffffff33_1px,transparent_1px)] bg-size-[20px_20px] opacity-30" />
             <div className="absolute inset-0 bg-linear-to-b from-transparent to-slate-950/80" />
@@ -590,7 +590,7 @@ function CompanyDetailsPage() {
                       </button>
                     ))}
                   </nav>
-                  <div className="space-y-2 border-t border-zinc-50 pt-6">
+                  <div className="space-y-2 border-t border-zinc-100 pt-6">
                     <Button
                       variant="outline"
                       fullWidth

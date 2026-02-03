@@ -3,7 +3,52 @@ import { useNavigate, useParams, useBlocker } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, AlertTriangle, X } from 'lucide-react';
+import axios from 'axios';
 import Button from '../../components/Button/Button';
+import { useAuthStore } from '../../store/authStore';
+
+interface StackItem {
+  stackId: number;
+  stackName: string;
+}
+
+interface RawStackItem {
+  stackId?: number;
+  id?: number;
+  stackName?: string;
+  name?: string;
+  stack_name?: string;
+  stack?: {
+    stackId?: number;
+    id?: number;
+    stackName?: string;
+    name?: string;
+  };
+}
+
+interface JobPostingRequest {
+  id: number;
+  cid: string;
+  title: string;
+  detail: string;
+  startDate: string;
+  endDate: string;
+  active: number;
+  stackIds: number[];
+  jobType: number;
+  vcnt: number;
+  company: {
+    cid: string;
+    corpName: string;
+    totPsncnt: string;
+    busiSize: string;
+    yrSalesAmt: string;
+    corpAddr: string;
+    homePg: string;
+    busiCont: string;
+    logo: string;
+  };
+}
 
 interface JobPostForm {
   title: string;
@@ -16,7 +61,18 @@ interface JobPostForm {
   work_hours: string;
   deadline: string;
   requirement_text: string;
-  required_stacks: string[];
+  required_stacks: StackItem[];
+}
+
+interface ParsedDetail {
+  career?: string;
+  education?: string;
+  employment_type?: string;
+  salary?: string;
+  work_location?: string;
+  work_days?: string;
+  work_hours?: string;
+  requirement_text?: string;
 }
 
 type FormErrors = Partial<Record<keyof JobPostForm, string>>;
@@ -54,7 +110,21 @@ const JobPostFormPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
   const isEdit = !!id;
+  const isSubmitSuccess = useRef(false);
+
+  const { data: myInfo, isLoading: isAuthLoading } = useQuery({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const response = await axios.get('/api/auth/me');
+      return response.data.data;
+    },
+    enabled: !user?.cid,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const cid = user?.cid || myInfo?.cid;
 
   const [form, setForm] = useState<JobPostForm>({
     title: '',
@@ -75,19 +145,32 @@ const JobPostFormPage = () => {
   const [stackInput, setStackInput] = useState('');
   const [duplicateError, setDuplicateError] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-
   const [isAlwaysOpen, setIsAlwaysOpen] = useState(false);
-  const [dateParts, setDateParts] = useState({
-    year: '',
-    month: '',
-    day: '',
-  });
+  const [dateParts, setDateParts] = useState({ year: '', month: '', day: '' });
 
   const inputRefs = useRef<Record<string, HTMLElement | null>>({});
 
+  const { data: stackSearchResults } = useQuery({
+    queryKey: ['stacks', stackInput],
+    queryFn: async () => {
+      if (!stackInput.trim()) return [];
+      const response = await axios.get(`/api/stacks/name/${stackInput}`);
+      const rawData = response.data.data || [];
+
+      return rawData
+        .map((item: RawStackItem) => ({
+          stackId: item.stackId || item.id || 0,
+          stackName: item.stackName || item.name || item.stack_name || '',
+        }))
+        .filter((item: StackItem) => item.stackId !== 0);
+    },
+    enabled: stackInput.length > 0,
+    staleTime: 1000 * 60,
+  });
+
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname,
+      isDirty && !isSubmitSuccess.current && currentLocation.pathname !== nextLocation.pathname,
   );
 
   const maxDays = useMemo(() => {
@@ -97,7 +180,7 @@ const JobPostFormPage = () => {
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
+      if (isDirty && !isSubmitSuccess.current) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -106,17 +189,68 @@ const JobPostFormPage = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
-  const { isLoading } = useQuery({
+  const { isLoading: isJobLoading } = useQuery({
     queryKey: ['jobPost', id],
     queryFn: async () => {
-      const response = await fetch(`/api/job-posts/${id}`);
-      const data = await response.json();
-      const jobData = data.jobPost as JobPostForm;
+      const response = await axios.get(`/api/job-postings/${id}`);
+      const data = response.data.data;
+
+      let parsedDetail: ParsedDetail = {};
+      try {
+        parsedDetail = JSON.parse(data.detail) as ParsedDetail;
+      } catch (error) {
+        console.warn('Detail parsing error:', error);
+        parsedDetail = { requirement_text: data.detail };
+      }
+
+      let loadedStacks: StackItem[] = [];
+
+      if (data.stackIds && Array.isArray(data.stackIds) && data.stackIds.length > 0) {
+        try {
+          const stackResponses = await Promise.all(
+            data.stackIds.map((stackId: number) =>
+              axios.get(`/api/stacks/${stackId}`).then((res) => res.data.data),
+            ),
+          );
+
+          loadedStacks = stackResponses
+            .map((stackData: RawStackItem) => ({
+              stackId: stackData.stackId || stackData.id || 0,
+              stackName: stackData.stackName || stackData.name || '',
+            }))
+            .filter((s) => s.stackId !== 0);
+        } catch (error) {
+          console.error('스택 정보 로드 실패:', error);
+        }
+      } else if (data.jobPostingStacks) {
+        loadedStacks = (data.jobPostingStacks as RawStackItem[])
+          .map((item) => ({
+            stackId: item.stackId || item.id || item.stack?.stackId || item.stack?.id || 0,
+            stackName:
+              item.stackName || item.name || item.stack?.stackName || item.stack?.name || '',
+          }))
+          .filter((s: StackItem) => s.stackId !== 0);
+      }
+
+      const jobData: JobPostForm = {
+        title: data.title,
+        deadline: data.endDate,
+        required_stacks: loadedStacks,
+        career: parsedDetail.career || '',
+        education: parsedDetail.education || '',
+        employment_type: parsedDetail.employment_type || '',
+        salary: parsedDetail.salary || '',
+        work_location: parsedDetail.work_location || '',
+        work_days: parsedDetail.work_days || '',
+        work_hours: parsedDetail.work_hours || '',
+        requirement_text: parsedDetail.requirement_text || data.detail,
+      };
+
       setForm(jobData);
 
       if (jobData.deadline === '상시채용') {
         setIsAlwaysOpen(true);
-      } else if (jobData.deadline.includes('-')) {
+      } else if (jobData.deadline && jobData.deadline.includes('-')) {
         const [y, m, d] = jobData.deadline.split('-');
         setDateParts({ year: y, month: parseInt(m).toString(), day: parseInt(d).toString() });
       }
@@ -127,19 +261,68 @@ const JobPostFormPage = () => {
 
   const mutation = useMutation({
     mutationFn: async (formData: JobPostForm) => {
-      const method = isEdit ? 'PATCH' : 'POST';
-      const url = isEdit ? `/api/job-posts/${id}` : '/api/job-posts';
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      return response.json();
+      if (!cid) {
+        throw new Error('기업 정보를 확인할 수 없습니다. 다시 로그인해주세요.');
+      }
+
+      const detailObject = {
+        career: formData.career,
+        education: formData.education,
+        employment_type: formData.employment_type,
+        salary: formData.salary,
+        work_location: formData.work_location,
+        work_days: formData.work_days,
+        work_hours: formData.work_hours,
+        requirement_text: formData.requirement_text,
+      };
+
+      const stackIdsToSend = formData.required_stacks
+        .map((stack) => Number(stack.stackId))
+        .filter((id) => !isNaN(id));
+
+      const companyObject = {
+        cid: cid,
+        corpName: myInfo?.corpName || 'string',
+        totPsncnt: 'string',
+        busiSize: 'string',
+        yrSalesAmt: 'string',
+        corpAddr: 'string',
+        homePg: 'string',
+        busiCont: 'string',
+        logo: 'string',
+      };
+
+      const requestBody: JobPostingRequest = {
+        id: isEdit ? Number(id) : 0,
+        cid: cid,
+        title: formData.title,
+        detail: JSON.stringify(detailObject),
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: formData.deadline || '9999-12-31',
+        active: 0,
+        vcnt: 0,
+        jobType: 0,
+        stackIds: stackIdsToSend,
+        company: companyObject,
+      };
+
+      if (isEdit) {
+        const response = await axios.put(`/api/job-postings/${id}`, requestBody);
+        return response.data;
+      } else {
+        const response = await axios.post('/api/job-postings', requestBody);
+        return response.data;
+      }
     },
     onSuccess: () => {
+      isSubmitSuccess.current = true;
       setIsDirty(false);
       queryClient.invalidateQueries({ queryKey: ['companyJobs'] });
-      navigate('/company/jobs');
+      navigate(-1);
+    },
+    onError: (error) => {
+      console.error('Save failed:', error);
+      alert('공고 저장에 실패했습니다. 입력 정보를 확인해주세요.');
     },
   });
 
@@ -166,8 +349,8 @@ const JobPostFormPage = () => {
 
     if (!form.title.trim()) newErrors.title = '공고 제목을 입력해주세요.';
     if (!form.career) newErrors.career = '경력 조건을 선택해주세요.';
-    if (!form.education.trim()) newErrors.education = '학력 조건을 입력해주세요.';
-    if (!form.employment_type.trim()) newErrors.employment_type = '고용 형태를 입력해주세요.';
+    if (!form.education.trim()) newErrors.education = '학력 조건을 선택해주세요.';
+    if (!form.employment_type.trim()) newErrors.employment_type = '고용 형태를 선택해주세요.';
     if (!form.salary.trim()) newErrors.salary = '급여 조건을 입력해주세요.';
     if (!form.work_location.trim()) newErrors.work_location = '근무 지역을 입력해주세요.';
 
@@ -257,30 +440,26 @@ const JobPostFormPage = () => {
     }
   };
 
-  const handleAddStack = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && stackInput.trim()) {
-      e.preventDefault();
-      const trimmedStack = stackInput.trim();
-
-      if (form.required_stacks.includes(trimmedStack)) {
-        setDuplicateError(true);
-        setTimeout(() => setDuplicateError(false), 1000);
-        return;
-      }
-
-      setForm((prev) => ({
-        ...prev,
-        required_stacks: [...prev.required_stacks, trimmedStack],
-      }));
-      setIsDirty(true);
+  const handleSelectStack = (stack: StackItem) => {
+    if (form.required_stacks.some((s) => s.stackId === stack.stackId)) {
+      setDuplicateError(true);
+      setTimeout(() => setDuplicateError(false), 1000);
       setStackInput('');
+      return;
     }
-  };
 
-  const removeStack = (stack: string) => {
     setForm((prev) => ({
       ...prev,
-      required_stacks: prev.required_stacks.filter((s) => s !== stack),
+      required_stacks: [...prev.required_stacks, stack],
+    }));
+    setIsDirty(true);
+    setStackInput('');
+  };
+
+  const removeStack = (stackId: number) => {
+    setForm((prev) => ({
+      ...prev,
+      required_stacks: prev.required_stacks.filter((s) => s.stackId !== stackId),
     }));
     setIsDirty(true);
   };
@@ -290,7 +469,9 @@ const JobPostFormPage = () => {
   const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const days = Array.from({ length: maxDays }, (_, i) => (i + 1).toString());
 
-  if (isEdit && isLoading) {
+  const isLoading = (isEdit && isJobLoading) || (!cid && isAuthLoading);
+
+  if (isLoading) {
     return (
       <div className="bg-pure-white flex min-h-screen min-w-80 items-center justify-center pt-32">
         <div className="text-center">
@@ -333,7 +514,6 @@ const JobPostFormPage = () => {
                 기본 정보
               </h2>
             </div>
-
             <div className="space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
@@ -356,7 +536,6 @@ const JobPostFormPage = () => {
                 />
                 <ErrorDisplay name="title" errors={errors} isShaking={isShaking} />
               </div>
-
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="mb-2 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
@@ -369,38 +548,35 @@ const JobPostFormPage = () => {
                     name="career"
                     value={form.career}
                     onChange={handleChange}
-                    className={`w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${
-                      errors.career
-                        ? 'border-red-500 bg-red-50/30'
-                        : 'border-slate-100 focus:border-blue-600 focus:bg-white'
-                    }`}
+                    className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 font-bold transition-all outline-none focus:border-blue-600 focus:bg-white"
                   >
                     <option value="">선택</option>
                     <option value="신입">신입</option>
                     <option value="경력">경력</option>
-                    <option value="경력무관">경력무관</option>
+                    <option value="무관">무관</option>
                   </select>
                   <ErrorDisplay name="career" errors={errors} isShaking={isShaking} />
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
-                    학력 사항
+                    학력 조건
                   </label>
-                  <input
+                  <select
                     ref={(el) => {
                       inputRefs.current.education = el;
                     }}
-                    type="text"
                     name="education"
                     value={form.education}
                     onChange={handleChange}
-                    placeholder="예) 대졸 이상"
-                    className={`w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${
-                      errors.education
-                        ? 'border-red-500 bg-red-50/30'
-                        : 'border-slate-100 focus:border-blue-600 focus:bg-white'
-                    }`}
-                  />
+                    className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 font-bold transition-all outline-none focus:border-blue-600 focus:bg-white"
+                  >
+                    <option value="">선택</option>
+                    <option value="무관">무관</option>
+                    <option value="고졸">고졸</option>
+                    <option value="대졸(2,3년)">대졸(2,3년)</option>
+                    <option value="대졸(4년)">대졸(4년)</option>
+                    <option value="석박사">석박사</option>
+                  </select>
                   <ErrorDisplay name="education" errors={errors} isShaking={isShaking} />
                 </div>
               </div>
@@ -419,21 +595,21 @@ const JobPostFormPage = () => {
                 <label className="mb-2 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase">
                   고용 형태
                 </label>
-                <input
+                <select
                   ref={(el) => {
                     inputRefs.current.employment_type = el;
                   }}
-                  type="text"
                   name="employment_type"
                   value={form.employment_type}
                   onChange={handleChange}
-                  placeholder="예) 정규직"
-                  className={`w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${
-                    errors.employment_type
-                      ? 'border-red-500 bg-red-50/30'
-                      : 'border-slate-100 focus:border-blue-600 focus:bg-white'
-                  }`}
-                />
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 font-bold transition-all outline-none focus:border-blue-600 focus:bg-white"
+                >
+                  <option value="">선택</option>
+                  <option value="정규직">정규직</option>
+                  <option value="계약직">계약직</option>
+                  <option value="인턴">인턴</option>
+                  <option value="프리랜서">프리랜서</option>
+                </select>
                 <ErrorDisplay name="employment_type" errors={errors} isShaking={isShaking} />
               </div>
               <div>
@@ -449,11 +625,7 @@ const JobPostFormPage = () => {
                   value={form.salary}
                   onChange={handleChange}
                   placeholder="예) 면접 후 결정"
-                  className={`w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${
-                    errors.salary
-                      ? 'border-red-500 bg-red-50/30'
-                      : 'border-slate-100 focus:border-blue-600 focus:bg-white'
-                  }`}
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 font-bold transition-all outline-none focus:border-blue-600"
                 />
                 <ErrorDisplay name="salary" errors={errors} isShaking={isShaking} />
               </div>
@@ -470,11 +642,7 @@ const JobPostFormPage = () => {
                   value={form.work_location}
                   onChange={handleChange}
                   placeholder="예) 서울 강남구"
-                  className={`w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${
-                    errors.work_location
-                      ? 'border-red-500 bg-red-50/30'
-                      : 'border-slate-100 focus:border-blue-600 focus:bg-white'
-                  }`}
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 font-bold transition-all outline-none focus:border-blue-600"
                 />
                 <ErrorDisplay name="work_location" errors={errors} isShaking={isShaking} />
               </div>
@@ -495,18 +663,11 @@ const JobPostFormPage = () => {
                 </div>
                 <div className="flex gap-2">
                   <select
-                    ref={(el) => {
-                      inputRefs.current.deadline = el;
-                    }}
                     name="year"
                     value={dateParts.year}
                     onChange={handleDateChange}
                     disabled={isAlwaysOpen}
-                    className={`flex-1 rounded-2xl border px-4 py-4 font-bold transition-all outline-none disabled:opacity-50 ${
-                      errors.deadline
-                        ? 'border-red-500 bg-red-50/30'
-                        : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
-                    }`}
+                    className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 font-bold outline-none focus:border-blue-600 disabled:opacity-50"
                   >
                     <option value="">년</option>
                     {years.map((y) => (
@@ -520,11 +681,7 @@ const JobPostFormPage = () => {
                     value={dateParts.month}
                     onChange={handleDateChange}
                     disabled={isAlwaysOpen}
-                    className={`flex-1 rounded-2xl border px-4 py-4 font-bold transition-all outline-none disabled:opacity-50 ${
-                      errors.deadline
-                        ? 'border-red-500 bg-red-50/30'
-                        : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
-                    }`}
+                    className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 font-bold outline-none focus:border-blue-600 disabled:opacity-50"
                   >
                     <option value="">월</option>
                     {months.map((m) => (
@@ -538,11 +695,7 @@ const JobPostFormPage = () => {
                     value={dateParts.day}
                     onChange={handleDateChange}
                     disabled={isAlwaysOpen}
-                    className={`flex-1 rounded-2xl border px-4 py-4 font-bold transition-all outline-none disabled:opacity-50 ${
-                      errors.deadline
-                        ? 'border-red-500 bg-red-50/30'
-                        : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
-                    }`}
+                    className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 font-bold outline-none focus:border-blue-600 disabled:opacity-50"
                   >
                     <option value="">일</option>
                     {days.map((d) => (
@@ -571,14 +724,28 @@ const JobPostFormPage = () => {
                   type="text"
                   value={stackInput}
                   onChange={(e) => setStackInput(e.target.value)}
-                  onKeyDown={handleAddStack}
-                  placeholder="스택 입력 후 Enter (예: React)"
+                  placeholder="스택 검색 (예: React)"
                   className={`w-full rounded-2xl border px-5 py-4 font-bold transition-all outline-none ${
                     duplicateError
                       ? 'border-red-500 bg-red-50/30'
                       : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
                   }`}
                 />
+
+                {stackInput && stackSearchResults && stackSearchResults.length > 0 && (
+                  <div className="absolute top-full z-10 mt-2 w-full overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+                    {stackSearchResults.map((stack: StackItem) => (
+                      <button
+                        key={stack.stackId}
+                        onClick={() => handleSelectStack(stack)}
+                        className="w-full px-5 py-3 text-left font-bold text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        {stack.stackName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <AnimatePresence>
                   {duplicateError && (
                     <motion.p
@@ -596,15 +763,15 @@ const JobPostFormPage = () => {
                 <AnimatePresence>
                   {form.required_stacks.map((stack) => (
                     <motion.span
-                      key={stack}
+                      key={stack.stackId}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
                       className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-black whitespace-nowrap text-blue-600"
                     >
-                      {stack}
+                      {stack.stackName}
                       <button
-                        onClick={() => removeStack(stack)}
+                        onClick={() => removeStack(stack.stackId)}
                         className="text-blue-300 transition-colors hover:text-blue-600"
                       >
                         <X size={14} />
@@ -654,9 +821,10 @@ const JobPostFormPage = () => {
               variant="blue"
               size="xl"
               onClick={handleSubmit}
-              className="w-64 shrink-0 rounded-3xl py-5 text-xl font-black shadow-lg shadow-blue-600/20"
+              disabled={mutation.isPending}
+              className="w-64 shrink-0 rounded-3xl py-5 text-xl font-black shadow-lg shadow-blue-600/20 disabled:opacity-50"
             >
-              {isEdit ? '수정 완료' : '공고 등록하기'}
+              {mutation.isPending ? '저장 중...' : isEdit ? '수정 완료' : '공고 등록하기'}
             </Button>
           </div>
         </motion.div>
@@ -681,7 +849,6 @@ const JobPostFormPage = () => {
               <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-500">
                 <AlertTriangle size={32} />
               </div>
-
               <h3 className="mb-2 text-2xl font-black tracking-tight whitespace-nowrap text-slate-900">
                 작성을 중단할까요?
               </h3>

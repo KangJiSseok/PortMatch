@@ -1,8 +1,7 @@
-// src/pages/CorporateMyPage.tsx
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { useAuthStore } from '../../store/authStore';
+import axios from 'axios';
 import Button from '../../components/Button/Button';
 
 import CalendarPanel from '../../components/Calendar/CalendarPanel';
@@ -14,19 +13,14 @@ import {
   toYmdFromIso,
 } from '../../components/Calendar/calendarUtils';
 
-/** ------------------ routes (프로젝트 라우트에 맞게 수정) ------------------ */
 const ROUTES = {
   jobPostManage: '/company/jobs',
   interviewManage: '/interviews',
-  // ✅ 이력서 보기 라우트(프로젝트에 맞게 변경)
   resumeView: (applicantId: number) => `/resume/${applicantId}`,
-  // ✅ 공고 상세 라우트(프로젝트에 맞게 변경)
   jobPostDetail: (jobPostId: number) => `/job-posts/${jobPostId}`,
-  // ⚠️ 원본 코드 유지 (필요하면 함수로 바꿔서 회사ID 넣어주세요)
   companyEdit: '/company/profile',
 } as const;
 
-/** ------------------ types ------------------ */
 type QueryState<T> = {
   data: T | null;
   isLoading: boolean;
@@ -35,31 +29,58 @@ type QueryState<T> = {
   refetch: () => void;
 };
 
-type CompanyProfileView = {
-  companyName: string;
-  managerName: string;
+type UserProfileData = {
+  userId: number;
   email: string;
-  website?: string;
+  name: string;
+  role: string;
+  cid?: string;
+  companyName?: string;
+  managerName?: string;
 };
 
 type JobPostView = {
   id: number;
   postingTitle: string;
   position: string;
-  createdAt: string; // ISO
-  deadlineAt?: string; // ISO (optional)
+  createdAt: string;
+  deadlineAt?: string;
+  companyName?: string;
 };
 
 type InterviewEvent = {
   id: number;
-  title: string; // ex) 1차 면접
-  scheduledAt: string; // ISO
+  title: string;
+  scheduledAt: string;
   applicantId: number;
   candidateName: string;
   position?: string;
 };
 
-/** ------------------ utils ------------------ */
+interface JobPostApiItem {
+  id: number;
+  title: string;
+  active: number;
+  startDate: string;
+  endDate: string;
+  vcnt: number;
+  cid: string;
+  detail: string;
+  jobType: number;
+  stackIds: number[];
+  company: {
+    cid: string;
+    corpName: string;
+    totPsncnt: string;
+    busiSize: string;
+    yrSalesAmt: string;
+    corpAddr: string;
+    homePg: string;
+    busiCont: string;
+    logo: string;
+  };
+}
+
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
@@ -79,7 +100,6 @@ function ddayLabel(deadlineAt?: string) {
   return { text: `D-${left}`, tone: left <= 3 ? ('urgent' as const) : ('normal' as const), left };
 }
 
-/** ✅ 당일: “5시간 24분 전” / 이후: “D-3” (지나면 표시 안 함 = null) */
 function formatScheduleHint(startIso: string) {
   const now = new Date();
   const start = new Date(startIso);
@@ -87,21 +107,18 @@ function formatScheduleHint(startIso: string) {
   const nowMs = now.getTime();
   const startMs = start.getTime();
 
-  // ✅ 시작 시간이 이미 지났으면 힌트 표시 안 함
   if (startMs <= nowMs) return null;
 
   const todayYmd = toYmd(now);
   const startYmd = toYmd(start);
 
-  // 날짜 차이(캘린더 기준)
   const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const start0 = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
   const dayDiff = Math.round((start0 - today0) / (24 * 60 * 60 * 1000));
 
-  // ✅ 당일이면: 몇시간 몇분 "전" (즉, 시작까지 남은 시간)
   if (startYmd === todayYmd) {
     const diffMin = Math.ceil((startMs - nowMs) / (60 * 1000));
-    if (diffMin <= 0) return null; // 안전망
+    if (diffMin <= 0) return null;
 
     const h = Math.floor(diffMin / 60);
     const m = diffMin % 60;
@@ -111,7 +128,6 @@ function formatScheduleHint(startIso: string) {
     return `${h}시간 ${m}분 전`;
   }
 
-  // ✅ 이후 날짜면: "D-3" 같은 스타일
   if (dayDiff > 0) return `D-${dayDiff}`;
 
   return null;
@@ -143,63 +159,49 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
 
   useEffect(() => {
     void run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return { data, isLoading, isError, errorMessage, refetch: run };
 }
 
-/** ------------------ mock fetchers (MVP용) ------------------ */
-async function fetchCompanyProfile(): Promise<CompanyProfileView> {
-  await new Promise((r) => setTimeout(r, 260));
+async function fetchMyProfile(): Promise<UserProfileData> {
+  const response = await axios.get('/api/auth/me');
+  const result = response.data;
+
+  if (!result.status) {
+    throw new Error(result.message || '사용자 정보를 불러오지 못했습니다.');
+  }
+
+  const { data } = result;
   return {
-    companyName: '샘플 기업',
-    managerName: '담당자',
-    email: 'hr@example.com',
-    website: 'https://example.com',
+    userId: data.userId,
+    email: data.email,
+    name: data.name,
+    role: data.role,
+    cid: data.cid,
+    managerName: data.name,
+    companyName: '',
   };
 }
 
-async function fetchCompanyJobPosts(): Promise<JobPostView[]> {
-  await new Promise((r) => setTimeout(r, 320));
+async function fetchCompanyJobPosts(cid?: string): Promise<JobPostView[]> {
+  if (!cid) return [];
 
-  const now = new Date();
-  const mk = (
-    daysAgo: number,
-    id: number,
-    postingTitle: string,
-    position: string,
-    deadlineDays?: number,
-  ) => {
-    const created = new Date(now);
-    created.setDate(now.getDate() - daysAgo);
-    created.setHours(10, 0, 0, 0);
+  const response = await axios.get(`/api/job-postings/company/${cid}`);
+  const result = response.data;
 
-    const deadline =
-      typeof deadlineDays === 'number'
-        ? (() => {
-            const d = new Date(now);
-            d.setDate(now.getDate() + deadlineDays);
-            d.setHours(23, 59, 0, 0);
-            return d.toISOString();
-          })()
-        : undefined;
+  if (!result.status) {
+    throw new Error(result.message || '공고 목록을 불러오지 못했습니다.');
+  }
 
-    return {
-      id,
-      postingTitle,
-      position,
-      createdAt: created.toISOString(),
-      deadlineAt: deadline,
-    };
-  };
-
-  return [
-    mk(1, 501, '프론트엔드 개발자 채용', 'Frontend', 2),
-    mk(3, 502, '백엔드 개발자 채용', 'Backend', 10),
-    mk(8, 503, '데이터 엔지니어 채용', 'Data', 3),
-    mk(12, 504, 'DevOps 엔지니어 채용', 'DevOps', 14),
-  ];
+  return result.data.map((item: JobPostApiItem) => ({
+    id: item.id,
+    postingTitle: item.title,
+    position: item.detail.length > 20 ? item.detail.substring(0, 20) + '...' : item.detail,
+    createdAt: item.startDate,
+    deadlineAt: item.endDate,
+    companyName: item.company?.corpName,
+  }));
 }
 
 async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
@@ -207,27 +209,19 @@ async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
 
   const now = new Date();
   const year = now.getFullYear();
-  const month0 = now.getMonth(); // 0-based
-
-  // ✅ 오늘 00:00
+  const month0 = now.getMonth();
   const start = new Date(year, month0, now.getDate(), 0, 0, 0, 0);
-  // ✅ 이번 달 마지막날 23:59:59
   const end = new Date(year, month0 + 1, 0, 23, 59, 59, 999);
 
   const slots = [
     { h: 9, m: 0, title: '1차 면접' },
     { h: 10, m: 30, title: '실무 면접' },
     { h: 13, m: 0, title: '2차 면접' },
-    { h: 15, m: 30, title: '컬처핏 인터뷰' },
-    { h: 17, m: 0, title: '최종 면접' },
   ] as const;
-
-  const candidateBase = ['지원자 A', '지원자 B', '지원자 C', '지원자 D', '지원자 E'] as const;
-  const positions = ['Frontend', 'Backend', 'Data', 'DevOps', 'AI'] as const;
-
+  const candidateBase = ['지원자 A', '지원자 B', '지원자 C', '지원자 D', '지원자 E'];
+  const positions = ['Frontend', 'Backend', 'Data', 'DevOps', 'AI'];
   let id = 201;
   let applicantId = 101;
-
   const out: InterviewEvent[] = [];
 
   for (
@@ -235,35 +229,32 @@ async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
     d.getTime() <= end.getTime();
     d.setDate(d.getDate() + 1)
   ) {
-    for (let i = 0; i < slots.length; i++) {
-      const s = slots[i];
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+    const dailyCount = (d.getDate() % 2) + 1;
+    for (let i = 0; i < dailyCount; i++) {
+      const s = slots[i % slots.length];
       const when = new Date(d.getFullYear(), d.getMonth(), d.getDate(), s.h, s.m, 0, 0);
-
       out.push({
         id: id++,
         title: s.title,
         scheduledAt: when.toISOString(),
         applicantId: applicantId++,
-        candidateName: `${candidateBase[i]} (${String(d.getDate()).padStart(2, '0')}-${i + 1})`,
-        position: positions[(d.getDate() + i) % positions.length],
+        candidateName: `${candidateBase[i]}`,
+        position: positions[d.getDate() % positions.length],
       });
     }
   }
-
   return out;
 }
 
-/** ------------------ page ------------------ */
 export default function CompanyMyPage() {
   const navigate = useNavigate();
+  const profileQuery = useQueryLike(fetchMyProfile, []);
+  const myCid = profileQuery.data?.cid;
+  const jobPostQuery = useQueryLike(() => fetchCompanyJobPosts(myCid), [myCid]);
 
-  const profileQuery = useQueryLike(fetchCompanyProfile, []);
-  const jobPostQuery = useQueryLike(fetchCompanyJobPosts, []);
   const interviewQuery = useQueryLike(fetchCompanyInterviews, []);
 
-  const authCompanyName = useAuthStore((state) => state.user?.name);
-
-  // ✅ 부드러운 진입(깜빡임/급전개 완화)
   const [entered, setEntered] = useState(false);
   useEffect(() => {
     const raf = window.requestAnimationFrame(() => {
@@ -272,25 +263,19 @@ export default function CompanyMyPage() {
     return () => window.cancelAnimationFrame(raf);
   }, []);
 
-  const companyName = authCompanyName ?? profileQuery.data?.companyName ?? '기업';
-  const managerName = profileQuery.data?.managerName ?? '-';
-  const companyEmail = profileQuery.data?.email ?? '-';
+  const displayCompanyName =
+    jobPostQuery.data?.[0]?.companyName ?? profileQuery.data?.companyName ?? '기업명 로딩중...';
 
-  // ==========================
-  // ✅ Quick Filter
-  // ==========================
+  const managerName = profileQuery.data?.managerName ?? '-';
+  const email = profileQuery.data?.email ?? '-';
   const [jobPostSort, setJobPostSort] = useState<'latest' | 'deadline'>('latest');
   const [interviewFilter, setInterviewFilter] = useState<'upcoming' | 'today'>('upcoming');
 
-  // ==========================
-  // ✅ 관리 바로가기 - 공고 리스트
-  // ==========================
   const jobPostItems = useMemo(() => {
     const list = jobPostQuery.data ?? [];
 
     const sorted = [...list].sort((a, b) => {
       if (jobPostSort === 'latest') return a.createdAt > b.createdAt ? -1 : 1;
-
       const aHas = !!a.deadlineAt;
       const bHas = !!b.deadlineAt;
       if (aHas && bHas) return a.deadlineAt! < b.deadlineAt! ? -1 : 1;
@@ -327,9 +312,6 @@ export default function CompanyMyPage() {
     });
   }, [jobPostQuery.data, jobPostSort, navigate]);
 
-  // ==========================
-  // ✅ 면접 프리뷰 리스트
-  // ==========================
   const interviewPreviewItems = useMemo(() => {
     const now = new Date();
     const nowMs = now.getTime();
@@ -349,22 +331,17 @@ export default function CompanyMyPage() {
       applicantId: e.applicantId,
       candidateName: e.candidateName,
       stageTitle: e.title,
-      subtitle: e.position ? e.position : companyName,
+      subtitle: e.position ? e.position : displayCompanyName,
       meta: formatDateTime(e.scheduledAt),
       onClick: () => navigate(ROUTES.interviewManage),
     }));
-  }, [interviewQuery.data, interviewFilter, navigate, companyName]);
+  }, [interviewQuery.data, interviewFilter, navigate, displayCompanyName]);
 
-  // ==========================
-  // ✅ 캘린더
-  // ==========================
   const todayYmd = toYmd(new Date());
-
   const [viewMonth, setViewMonth] = useState<Date>(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-
   const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
 
   const interviewEvents = interviewQuery.data ?? [];
@@ -389,14 +366,13 @@ export default function CompanyMyPage() {
   );
 
   return (
-    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
+    <div className="text-midnight-ink min-h-screen min-w-7xl bg-white pt-28 pb-20">
       <div
         className={[
-          'mx-auto w-[1280px] space-y-10 px-6 transition-all duration-200',
+          'mx-auto w-7xl space-y-10 px-6 transition-all duration-200',
           entered ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0',
         ].join(' ')}
       >
-        {/* ✅ 헤더 */}
         <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
           <div className="relative p-10">
             <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
@@ -406,10 +382,10 @@ export default function CompanyMyPage() {
                   CORPORATE DASHBOARD
                 </p>
                 <h1 className="mt-2 text-4xl font-black tracking-wide">
-                  {profileQuery.isLoading ? '불러오는 중…' : companyName}
+                  {profileQuery.isLoading ? '불러오는 중…' : displayCompanyName}
                 </h1>
                 <p className="mt-3 text-sm font-semibold text-zinc-500">
-                  {managerName} · {companyEmail}
+                  {managerName} · {email}
                 </p>
               </div>
 
@@ -427,7 +403,6 @@ export default function CompanyMyPage() {
           </div>
         </header>
 
-        {/* ✅ 관리 바로가기 (공고/면접) */}
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
             <div>
@@ -436,9 +411,8 @@ export default function CompanyMyPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-5">
-            {/* ✅ 공고 */}
             <HubCard title="공고" onClick={() => navigate(ROUTES.jobPostManage)}>
-              <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
+              <div className="flex min-h-70 flex-1 flex-col px-6 py-6">
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Button
@@ -460,7 +434,6 @@ export default function CompanyMyPage() {
                       마감임박
                     </Button>
                   </div>
-
                   <Button
                     type="button"
                     size="sm"
@@ -506,9 +479,8 @@ export default function CompanyMyPage() {
               </div>
             </HubCard>
 
-            {/* ✅ 면접 */}
             <HubCard title="면접" onClick={() => navigate(ROUTES.interviewManage)}>
-              <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
+              <div className="flex min-h-70 flex-1 flex-col px-6 py-6">
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Button
@@ -569,7 +541,6 @@ export default function CompanyMyPage() {
           </div>
         </section>
 
-        {/* ✅ 캘린더 */}
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
             <div>
@@ -612,16 +583,13 @@ export default function CompanyMyPage() {
                           </span>
                           <span className="ml-2">{e.candidateName}</span>
                         </p>
-
                         <p className="mt-2 text-xs font-semibold text-zinc-500">
                           {formatDateTime(e.scheduledAt)} <span className="text-zinc-300">·</span>{' '}
                           {hint}
                         </p>
-
                         {e.position ? (
                           <p className="mt-1 text-xs font-semibold text-zinc-500">{e.position}</p>
                         ) : null}
-
                         <div className="mt-3 flex justify-end gap-2">
                           <Button
                             type="button"
@@ -644,10 +612,6 @@ export default function CompanyMyPage() {
     </div>
   );
 }
-
-/* =========================
- *  Shared UI
- * ========================= */
 
 function HubCard({
   title,
