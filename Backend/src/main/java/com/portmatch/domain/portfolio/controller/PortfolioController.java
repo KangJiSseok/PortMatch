@@ -119,6 +119,28 @@ public class PortfolioController {
     }
 
     @Operation(
+            summary = "내 포트폴리오 첨삭(V2) 요청",
+            description = "로그인한 사용자의 포트폴리오에 대해 첨삭(Feedback)이 포함된 심층 분석(V2)을 요청하고 결과를 반환합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "첨삭 요청 성공",
+            content = @Content(schema = @Schema(implementation = Object.class))
+    )
+    @PostMapping("/me/{portfolioId}/analysis-v2")
+    public BaseApiResponse<Object> analyzePortfolioV2(
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal(expression = "user") User user,
+            @Parameter(description = "포트폴리오 ID", required = true)
+            @PathVariable Long portfolioId
+    ) {
+        Object result = portfolioAnalysisService.analyzeV2(user.getId(), portfolioId);
+        // V2는 현재 단순 반환만 수행하므로 임베딩 로직은 제외
+        // 추후 필요하다면 여기에 portfolioEmbeddingService.buildForMyPortfolio(...) 추가 가능
+        return BaseApiResponse.ok(result);
+    }
+
+    @Operation(
             summary = "내 포트폴리오 분석 결과 조회",
             description = "로그인한 사용자의 포트폴리오 분석 결과를 반환합니다."
     )
