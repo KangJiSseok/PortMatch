@@ -46,6 +46,8 @@ export type RecommendCandidatesResponse = {
  */
 export type RecommendCandidate = {
   userId: number;
+  userName?: string;
+  resumeId?: number;
   portfolioId: number;
 
   /** 세부 유사도 (0~1) */
@@ -81,6 +83,8 @@ export type RecommendCandidate = {
 export type CandidateCardModel = {
   id: number; // UI용
   userId: number;
+  resumeId: number;
+  userName?: string;
   portfolioId: number;
 
   /** 0~100 점수 */
