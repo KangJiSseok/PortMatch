@@ -32,15 +32,19 @@ def get_db_connection():
 
 
 def get_existing_job_postings():
-    """DB에서 기존 (title, cid) 조합 조회"""
+    """DB에서 이미 임베딩이 완료된 (title, cid) 조합 조회"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT title, cid FROM job_postings")
+        cur.execute("""
+            SELECT jp.title, jp.cid 
+            FROM job_postings jp
+            JOIN job_posting_embeddings jpe ON jp.id = jpe.job_posting_id
+        """)
         existing = set((row[0], row[1]) for row in cur.fetchall())
         cur.close()
         conn.close()
-        print(f"📊 DB에서 기존 채용공고 {len(existing)}개 조회됨\n")
+        print(f"📊 DB에서 임베딩 완료된 채용공고 {len(existing)}개 조회됨\n")
         return existing
     except Exception as e:
         print(f"⚠️ DB 연결 실패, 중복 체크 없이 진행: {e}\n")
@@ -208,7 +212,7 @@ def main():
         
         # DB에 이미 존재하는 (title, cid) 조합이면 스킵
         if (title, cid) in existing_jobs:
-            print(f"  ⏭️ 스킵 (DB에 이미 존재)")
+            print(f"  ⏭️ 스킵 (임베딩 이미 완료)")
             skip_count += 1
             print()
             continue
@@ -268,7 +272,7 @@ def main():
     print("=" * 60)
     print(f"📊 전체: {len(job_postings)}개")
     print(f"✅ 성공: {success_count}개")
-    print(f"⏭️ 스킵: {skip_count}개 (DB에 이미 존재)")
+    print(f"⏭️ 스킵: {skip_count}개 (임베딩 이미 완료)")
     print(f"❌ 실패: {fail_count}개")
     print(f"\n📁 생성된 파일: {output_file}")
     print("=" * 60)
