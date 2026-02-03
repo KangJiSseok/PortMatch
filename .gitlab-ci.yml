@@ -21,7 +21,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-feat/aop-logging"'
+    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -50,7 +50,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-feat/aop-logging"'
+    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
 
   script:
     - set -e
@@ -116,6 +116,12 @@ deploy:
       VITE_API_BASE_URL=${VITE_API_BASE_URL}
       VITE_SERVICE_NAME=${VITE_SERVICE_NAME}
       VITE_OPENVIDU_PUBLIC_URL=${VITE_OPENVIDU_PUBLIC_URL}
+
+      # ---------- Crawler ----------
+      CRAWL_LIMIT=${CRAWL_LIMIT}
+      DB_HOST=${DB_HOST}
+      DB_PORT=${DB_PORT}
+
       ENV
 
     # ---------- Docker 배포 ----------

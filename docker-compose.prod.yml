@@ -116,9 +116,6 @@ services:
     profiles: ['crawler']
     env_file:
       - .env.prod
-    environment:
-      - DB_HOST=db  
-      - CRAWL_LIMIT=50
     depends_on:
       - db
     restart: "no"
