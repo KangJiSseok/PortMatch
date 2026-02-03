@@ -1,6 +1,7 @@
 package com.portmatch.domain.auth.dto;
 
 import com.portmatch.domain.auth.dto.response.LoginResponse;
+import com.portmatch.domain.auth.dto.response.MeResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public class AuthApiResponses {
@@ -18,7 +19,7 @@ public class AuthApiResponses {
         public boolean status;
         public int code;
         public String message;
-        public LoginResponse data;
+        public MeResponse data;
     }
 
     @Schema(name = "AuthVoidApiResponse")
