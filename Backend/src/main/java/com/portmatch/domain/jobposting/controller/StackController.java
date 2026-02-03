@@ -56,4 +56,16 @@ public class StackController {
         TechStackDto stack = stackService.getTechStackById(id);
         return BaseApiResponse.ok(stack);
     }
+
+    @Operation(summary = "스택 상세 조회", description = "스택 고유 이름(String)을 통해 특정 스택 정보를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "2001", description = "존재하지 않는 스택 ID")
+    })
+    @GetMapping("name/{name}")
+    public BaseApiResponse<List<TechStackDto>> getStackByName(
+            @Parameter(description = "스택 고유 이름", example = "React") @PathVariable String name) {
+        List<TechStackDto> stack = stackService.getTechStackByName(name);
+        return BaseApiResponse.ok(stack);
+    }
 }

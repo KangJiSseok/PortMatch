@@ -70,6 +70,14 @@ public class StackServiceImpl implements StackService {
         // 만약 ResponseCode에 INVALID_PARAMETER가 더 어울린다면 그걸 써도 돼!
     }
 
+    @Override
+    public List<TechStackDto> getTechStackByName(String name) {
+        List<TechStackEntity> entities = techStackRepository.findByStackNameContainingIgnoreCase(name);
+        return entities.stream() // <-- 리스트니까 스트림을 열고!
+                .map(TechStackDto::fromEntity) // <-- 여기서 하나씩 변환
+                .collect(Collectors.toList());
+    }
+
     private TechStackDto convertToDto(TechStackEntity techStackEntity) {
         return TechStackDto.builder()
                 .stackId(techStackEntity.getId())
