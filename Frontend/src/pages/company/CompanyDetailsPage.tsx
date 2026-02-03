@@ -43,10 +43,8 @@ interface CompanyDetails {
   location: string;
   industry: string;
   employeeCount: string;
-  revenue: string;
   website: string;
   isScrapped: boolean;
-  enterpriseType: string;
   projects: Project[];
 }
 
@@ -77,18 +75,6 @@ const calculateDDay = (endDate: string): string => {
   if (diffDays === 0) return '오늘 마감';
   if (diffDays < 0) return '마감됨';
   return `D-${diffDays}`;
-};
-
-const formatRevenue = (value: string | number) => {
-  if (!value || value === '0') return '-';
-  const num = typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, ''), 10) : value;
-  if (isNaN(num)) return value.toString();
-  if (num >= 100000000) {
-    const billion = Math.floor(num / 100000000);
-    const million = Math.floor((num % 100000000) / 10000000);
-    return million > 0 ? `${billion}억 ${million}천만원` : `${billion}억원`;
-  }
-  return `${Math.floor(num / 10000000)}천만원`;
 };
 
 function CompanyDetailsPage() {
@@ -198,13 +184,11 @@ function CompanyDetailsPage() {
             id: b.cid,
             name: b.corpName,
             logo: b.logo && b.logo !== 'string' ? b.logo : DEFAULT_LOGO,
-            description: b.busiCont,
-            location: b.corpAddr || '-',
-            industry: 'IT / 소프트웨어 개발',
-            employeeCount: b.totPsncnt ? `${Number(b.totPsncnt).toLocaleString()}명` : '-',
-            revenue: formatRevenue(b.yrSalesAmt),
+            description: b.busiCont || '기업 소개가 없습니다.',
+            location: b.corpAddr || '비공개',
+            industry: b.busiSize || '정보 없음',
+            employeeCount: b.totPsncnt || '비공개',
             website: b.homePg,
-            enterpriseType: b.busiSize,
             isScrapped: initialIsScrapped,
             projects: b.projects || [],
           });
@@ -350,7 +334,7 @@ function CompanyDetailsPage() {
                   </span>
                   <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/20">
                     <Building2 size={14} className="opacity-70" />
-                    {company.enterpriseType}
+                    {company.industry}
                   </span>
                   <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white ring-1 ring-white/20">
                     <MapPin size={14} className="opacity-70" />
@@ -386,10 +370,25 @@ function CompanyDetailsPage() {
                 <Button
                   variant="light"
                   size="lg"
-                  className="group h-14 rounded-2xl bg-white/10 px-6 text-white ring-1 ring-white/10 transition-all hover:bg-white/20 hover:text-white"
-                  onClick={() => window.open(company.website, '_blank')}
+                  disabled={!company.website}
+                  className={`group h-14 rounded-2xl px-6 transition-all ${
+                    company.website
+                      ? 'cursor-pointer bg-white/10 text-white ring-1 ring-white/10 hover:bg-white/20 hover:text-white'
+                      : 'cursor-not-allowed bg-white/5 text-white/30 ring-1 ring-white/5 hover:bg-white/5 hover:text-white/30'
+                  }`}
+                  onClick={() => {
+                    if (company.website) {
+                      const targetUrl = company.website.match(/^https?:\/\//)
+                        ? company.website
+                        : `https://${company.website}`;
+                      window.open(targetUrl, '_blank');
+                    }
+                  }}
                 >
-                  <Globe size={18} className="mr-2 opacity-70 group-hover:opacity-100" />
+                  <Globe
+                    size={18}
+                    className={`mr-2 ${company.website ? 'opacity-70 group-hover:opacity-100' : 'opacity-30'}`}
+                  />
                   홈페이지
                 </Button>
                 <motion.button
@@ -431,24 +430,43 @@ function CompanyDetailsPage() {
                   {[
                     { label: '산업', value: company.industry },
                     { label: '사원수', value: company.employeeCount },
-                    { label: '기업구분', value: company.enterpriseType },
-                    { label: '매출액', value: company.revenue },
-                    { label: '위치', value: company.location },
+                    { label: '위치', value: company.location, fullWidth: true },
                   ].map((item) => (
                     <div
                       key={item.label}
-                      className="border-silver-mist/40 flex items-center justify-between gap-6 border-b pb-4"
+                      className={`border-silver-mist/40 flex items-center justify-between gap-6 border-b pb-4 ${
+                        item.fullWidth ? 'col-span-2' : ''
+                      }`}
                     >
                       <span className="text-slate-gray shrink-0 text-base font-bold">
                         {item.label}
                       </span>
-                      <span className="text-midnight-ink truncate text-right text-lg font-black">
+                      <span
+                        className={`text-midnight-ink text-lg font-black ${
+                          item.fullWidth
+                            ? 'line-clamp-2 text-right break-keep'
+                            : 'truncate text-right'
+                        }`}
+                      >
                         {item.value}
                       </span>
                     </div>
                   ))}
                 </div>
               </section>
+
+              <section
+                id="section-intro"
+                className="border-silver-mist bg-pure-white rounded-[40px] border p-12 shadow-sm"
+              >
+                <h2 className="border-point-blue text-midnight-ink mb-10 border-l-8 pl-6 text-3xl font-black tracking-tighter">
+                  기업 소개
+                </h2>
+                <div className="text-midnight-ink text-lg leading-relaxed font-medium whitespace-pre-wrap">
+                  {company.description}
+                </div>
+              </section>
+
               <section
                 id="section-projects"
                 className="border-silver-mist bg-pure-white rounded-[40px] border p-12 shadow-sm"
@@ -491,34 +509,43 @@ function CompanyDetailsPage() {
                 <div className="grid grid-cols-1 gap-4">
                   {jobPostings.length > 0 ? (
                     <>
-                      {jobPostings.map((job) => (
-                        <motion.div
-                          key={job.id}
-                          whileHover={{
-                            y: -8,
-                            transition: { type: 'spring', stiffness: 300, damping: 20 },
-                          }}
-                          className="border-silver-mist group flex cursor-pointer flex-col rounded-3xl border bg-zinc-50/30 p-8 transition-shadow duration-300 hover:bg-white hover:shadow-2xl"
-                          onClick={() => navigate(`/job-posts/${job.id}`)}
-                        >
-                          <div className="mb-4 space-y-2">
-                            <h4 className="text-midnight-ink group-hover:text-point-blue line-clamp-1 text-2xl font-black transition-colors duration-300">
-                              {job.title}
-                            </h4>
-                            <p className="text-slate-gray line-clamp-2 text-sm font-medium opacity-70">
-                              {job.detail}
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-between border-t border-zinc-100 pt-6">
-                            <span className="text-slate-gray max-w-60 truncate text-sm font-bold">
-                              {company.location}
-                            </span>
-                            <span className="text-point-blue text-sm font-black">
-                              {calculateDDay(job.endDate)}
-                            </span>
-                          </div>
-                        </motion.div>
-                      ))}
+                      {jobPostings.map((job) => {
+                        const dDayText = calculateDDay(job.endDate);
+                        const isClosed = dDayText === '마감됨';
+
+                        return (
+                          <motion.div
+                            key={job.id}
+                            whileHover={{
+                              y: -8,
+                              transition: { type: 'spring', stiffness: 300, damping: 20 },
+                            }}
+                            className="border-silver-mist group flex cursor-pointer flex-col rounded-3xl border bg-zinc-50/30 p-8 transition-shadow duration-300 hover:bg-white hover:shadow-2xl"
+                            onClick={() => navigate(`/job-posts/${job.id}`)}
+                          >
+                            <div className="mb-4 space-y-2">
+                              <h4 className="text-midnight-ink group-hover:text-point-blue line-clamp-1 text-2xl font-black transition-colors duration-300">
+                                {job.title}
+                              </h4>
+                              <p className="text-slate-gray line-clamp-2 text-sm font-medium opacity-70">
+                                {job.detail}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between border-t border-zinc-100 pt-6">
+                              <span className="text-slate-gray max-w-60 truncate text-sm font-bold">
+                                {company.location}
+                              </span>
+                              <span
+                                className={`${
+                                  isClosed ? 'text-error' : 'text-point-blue'
+                                } text-sm font-black`}
+                              >
+                                {dDayText}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                       <Button
                         variant="outline"
                         fullWidth
@@ -547,6 +574,7 @@ function CompanyDetailsPage() {
                   <nav className="mb-8 space-y-4">
                     {[
                       { id: 'section-info', label: '기업 정보' },
+                      { id: 'section-intro', label: '기업 소개' },
                       { id: 'section-projects', label: '프로젝트 내역' },
                       { id: 'section-jobs', label: '채용 공고' },
                     ].map((item) => (
