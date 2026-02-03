@@ -24,6 +24,12 @@ import com.portmatch.domain.resume.repository.ResumeEducationEntryRepository;
 import com.portmatch.domain.resume.repository.ResumeProfileRepository;
 import com.portmatch.domain.resume.repository.ResumeRepository;
 import com.portmatch.domain.resume.repository.SelfIntroductionRepository;
+import com.portmatch.domain.jobapplication.entity.JobApplication;
+import com.portmatch.domain.jobapplication.repository.JobApplicationRepository;
+import com.portmatch.domain.jobposting.entity.JobPostingEntity;
+import com.portmatch.domain.jobposting.repository.JobPostingRepository;
+import com.portmatch.domain.companies.entity.Company;
+import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.global.config.AwsS3Properties;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
@@ -50,6 +56,9 @@ public class ResumeServiceImpl implements ResumeService {
     private final PortfolioRepository portfolioRepository;
     private final ProfileImageRepository profileImageRepository;
     private final SelfIntroductionRepository selfIntroductionRepository;
+    private final JobApplicationRepository jobApplicationRepository;
+    private final JobPostingRepository jobPostingRepository;
+    private final CompanyRepository companyRepository;
     private final S3Presigner s3Presigner;
     private final AwsS3Properties awsS3Properties;
 
@@ -100,6 +109,26 @@ public class ResumeServiceImpl implements ResumeService {
     public ResumeResponse getResume(Long userId, Long resumeId) {
         Resume resume = getResumeOwned(userId, resumeId);
         return toResumeResponse(resume);
+    }
+
+    @Override
+    public ResumeResponse getResumeForCompany(Long userId, Long jobPostingId, Long applicationId) {
+        Company company = companyRepository.findByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.UNAUTHORIZED));
+
+        JobPostingEntity jobPosting = jobPostingRepository.findById(jobPostingId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+
+        String postingCid = jobPosting.getCompany() != null ? jobPosting.getCompany().getCid() : null;
+        if (postingCid == null || !postingCid.equals(company.getCid())) {
+            throw new BusinessException(ResponseCode.UNAUTHORIZED);
+        }
+
+        JobApplication application = jobApplicationRepository
+                .findByIdAndJobPosting_Id(applicationId, jobPosting.getId())
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+
+        return toResumeResponse(application.getResume());
     }
 
     @Override
