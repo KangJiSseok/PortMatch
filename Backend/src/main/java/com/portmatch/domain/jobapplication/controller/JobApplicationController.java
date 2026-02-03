@@ -20,7 +20,7 @@ import java.util.List;
 
 @Tag(name = "공고 지원", description = "공고 지원 생성/취소 API")
 @RestController
-@RequestMapping("/api/job-posts")
+@RequestMapping("/api/job-postings")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class JobApplicationController {
@@ -60,11 +60,11 @@ public class JobApplicationController {
     }
 
     @Operation(summary = "지원 상세 조회(기업)", description = "기업이 지원 상세(이력서 포함)를 조회합니다.")
-    @GetMapping("/{id}/applications/{userId}")
+    @GetMapping("/{id}/applications/{applicationId}")
     public BaseApiResponse<JobApplicationDetailResponse> getApplicationDetailForCompany(
             @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long jobPostingId,
-            @Parameter(description = "지원 ID", example = "10") @PathVariable("userId") Long applicationId
+            @Parameter(description = "지원 ID", example = "10") @PathVariable("applicationId") Long applicationId
     ) {
         Long userId = principal.getUser().getId();
         return BaseApiResponse.ok(
@@ -73,11 +73,11 @@ public class JobApplicationController {
     }
 
     @Operation(summary = "지원 합/불 처리(기업)", description = "기업이 지원 합/불 여부를 변경합니다.")
-    @PatchMapping("/{id}/applications/{userId}")
+    @PatchMapping("/{id}/applications/{applicationId}")
     public BaseApiResponse<JobApplicationDetailResponse> updateApplicationStatusForCompany(
             @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long jobPostingId,
-            @Parameter(description = "지원 ID", example = "10") @PathVariable("userId") Long applicationId,
+            @Parameter(description = "지원 ID", example = "10") @PathVariable("applicationId") Long applicationId,
             @Valid @RequestBody JobApplicationStatusUpdateRequest request
     ) {
         Long userId = principal.getUser().getId();
