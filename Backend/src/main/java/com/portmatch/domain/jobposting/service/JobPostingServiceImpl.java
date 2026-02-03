@@ -34,42 +34,63 @@ public class JobPostingServiceImpl implements JobPostingService {
 
     @Override
     @Transactional
-    public JobPostingEntity saveJobPosting(JobPostingDto dto) { // void -> Entity로 변경
+    public JobPostingEntity saveJobPosting(JobPostingDto dto) {
         Company company = jobCompaniesRepository.findByCid(dto.getCid())
                 .orElseThrow(() -> new BusinessException(ResponseCode.USER_NOT_FOUND));
 
-        JobPostingEntity.JobPostingEntityBuilder builder = JobPostingEntity.builder()
-                .title(dto.getTitle())
-                .active(dto.getActive())
-                .startDate(dto.getStartDate())
-                .endDate(dto.getEndDate())
-                .company(company)
-                .detail(dto.getDetail())
-                .jobType(dto.getJobType())
-                .vcnt(dto.getVcnt());
+        JobPostingEntity entity;
 
         if (dto.getId() != null && dto.getId() > 0) {
-            builder.id(dto.getId());
+            // 1. DB에서 기존 데이터를 가져온다 (영속화)
+            entity = jobPostingRepository.findById(dto.getId())
+                    .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+
+            // 2. [중요] 여기서 .setTitle() 이런 거 쓰지 말고,
+            // 네가 엔티티에 만든 update() 메서드 딱 하나만 실행해!
+            entity.update(dto, company);
+
+        } else {
+            // 3. 신규 등록일 때만 빌더 사용
+            entity = JobPostingEntity.builder()
+                    .title(dto.getTitle())
+                    .active(dto.getActive())
+                    .startDate(dto.getStartDate())
+                    .endDate(dto.getEndDate())
+                    .company(company)
+                    .detail(dto.getDetail())
+                    .jobType(dto.getJobType())
+                    .vcnt(0)
+                    .build();
         }
 
-        JobPostingEntity entity = builder.build();
-        return jobPostingRepository.save(entity); // 저장된 객체를 반환!
+        // 4. 마지막에 저장! (수정일 때는 JPA가 알아서 UPDATE 쿼리를 날려줘)
+        return jobPostingRepository.save(entity);
     }
 
     @Override
     @Transactional
     public void saveJobPostingWithStacks(JobPostingDto dto) {
-        // 1. 저장된 엔티티를 직접 받아온다! (DB가 생성한 ID가 들어있음)
+        // 1. 공고 기본 정보 업데이트 (아까 고친 saveJobPosting 호출)
         JobPostingEntity jobPosting = saveJobPosting(dto);
 
-        // 2. 이제 다시 조회할 필요 없이 바로 사용하면 돼!
-        if (dto.getStackIds() != null) {
+        // 2. 수정 모드인 경우: 기존에 등록된 기술 스택들을 먼저 삭제해줘야 해!
+        if (dto.getId() != null && dto.getId() > 0) {
+            // 기존의 PostingStackEntity들을 삭제 (공고 ID 기반)
+            postingStackRepository.deleteByJobPosting(jobPosting);
+
+            // 팁: cascade = CascadeType.ALL이 설정되어 있어도
+            // 리스트를 clear() 하거나 명시적으로 지워주는 게 안전해!
+            jobPosting.getTechStacks().clear();
+        }
+
+        // 3. 새로운 기술 스택 ID 리스트를 다시 등록
+        if (dto.getStackIds() != null && !dto.getStackIds().isEmpty()) {
             for (Long sId : dto.getStackIds()) {
                 TechStackEntity techStack = techStackRepository.findById(sId)
                         .orElseThrow(() -> new BusinessException(ResponseCode.INVALID_PARAMETER));
 
                 PostingStackEntity psEntity = PostingStackEntity.builder()
-                        .jobPosting(jobPosting) // 여기서 사용!
+                        .jobPosting(jobPosting)
                         .techStack(techStack)
                         .build();
 

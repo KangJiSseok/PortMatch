@@ -1,6 +1,7 @@
 package com.portmatch.domain.jobposting.entity;
 
 import com.portmatch.domain.companies.entity.Company;
+import com.portmatch.domain.jobposting.dto.JobPostingDto;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -48,4 +49,14 @@ public class JobPostingEntity {
     @OneToMany(mappedBy = "jobPosting", cascade = CascadeType.ALL)
     @Builder.Default
     private List<PostingStackEntity> techStacks = new ArrayList<>();
+
+    public void update(JobPostingDto dto, Company company) {
+        this.title = dto.getTitle();
+        this.active = dto.getActive();
+        this.startDate = dto.getStartDate();
+        this.endDate = dto.getEndDate();
+        this.detail = dto.getDetail();
+        this.jobType = dto.getJobType();
+        this.company = company;
+    }
 }
