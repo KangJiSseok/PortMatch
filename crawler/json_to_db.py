@@ -16,6 +16,12 @@ def get_db_connection():
         port=os.getenv('DB_PORT', '5432')
     )
 
+def truncate(value, max_len):
+    """DB 컬럼 길이 제한에 맞게 truncate"""
+    if value is None:
+        return None
+    return value[:max_len] if len(value) > max_len else value
+
 def insert_to_db():
     # 1. 수정 포인트: 전처리된 최종 파일을 읽어야 함!
     json_files = glob.glob("db_ready_data_*.json")
@@ -54,13 +60,13 @@ def insert_to_db():
                     ON CONFLICT (cid) DO NOTHING;
                 """, (
                     target_cid,
-                    c_name,
-                    company.get('address'),
-                    company.get('size'),
-                    company.get('homepageUrl'),
-                    company.get('logo'),
-                    company.get('busiCont'),
-                    company.get('totPsncnt')
+                    truncate(c_name, 255),
+                    truncate(company.get('address'), 500),
+                    truncate(company.get('size'), 100),
+                    truncate(company.get('homepageUrl'), 500),
+                    truncate(company.get('logo'), 500),
+                    truncate(company.get('busiCont'), 5000),
+                    truncate(company.get('totPsncnt'), 50)
                 ))
 
             company_id_map[c_name] = target_cid
@@ -85,7 +91,16 @@ def insert_to_db():
                 INSERT INTO job_postings (title, active, start_date, end_date, vcnt, cid, detail, job_type)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id;
-            """, (job['title'], job['active'], kst_today_str, job['endDate'], 0, target_cid, job['detail'], 1))
+            """, (
+                job['title'],
+                job['active'],
+                kst_today_str,
+                job['endDate'],
+                0,
+                target_cid,
+                job['detail'],
+                1
+            ))
 
             new_job_id = cur.fetchone()[0]
 

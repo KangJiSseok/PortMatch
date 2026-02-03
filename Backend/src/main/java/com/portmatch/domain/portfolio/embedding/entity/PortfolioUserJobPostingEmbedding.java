@@ -10,26 +10,27 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
 @Entity
 @Table(
-        name = "portfolio_project_embeddings",
+        name = "portfolio_user_job_posting_embeddings",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_portfolio_project_embeddings_project_id",
-                columnNames = "project_id"
-        )
+                name = "uk_portfolio_user_job_posting_embeddings_portfolio",
+                columnNames = "portfolio_id"
+        ),
+        indexes = {
+                @Index(name = "idx_portfolio_user_job_posting_embeddings_user_id", columnList = "user_id"),
+                @Index(name = "idx_portfolio_user_job_posting_embeddings_portfolio_id", columnList = "portfolio_id")
+        }
 )
-public class PortfolioProjectEmbedding {
+public class PortfolioUserJobPostingEmbedding {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
     @Column(name = "portfolio_id", nullable = false)
     private Long portfolioId;
-
-    @Column(name = "analysis_id", nullable = false)
-    private Long analysisId;
-
-    @Column(name = "project_id", nullable = false)
-    private Long projectId;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
@@ -37,17 +38,14 @@ public class PortfolioProjectEmbedding {
     @Column(name = "content_hash", nullable = false, length = 64)
     private String contentHash;
 
-    @Column(name = "project_embedding", columnDefinition = "vector(1536)")
-    private String projectEmbedding;
+    @Column(name = "name_embedding", columnDefinition = "vector(1536)")
+    private String nameEmbedding;
 
     @Column(name = "domain_embedding", columnDefinition = "vector(1536)")
     private String domainEmbedding;
 
     @Column(name = "problem_embedding", columnDefinition = "vector(1536)")
     private String problemEmbedding;
-
-    @Column(name = "solution_embedding", columnDefinition = "vector(1536)")
-    private String solutionEmbedding;
 
     @Column(name = "tech_embedding", columnDefinition = "vector(1536)")
     private String techEmbedding;
@@ -58,17 +56,11 @@ public class PortfolioProjectEmbedding {
     @Column(name = "problem_missing", nullable = false)
     private boolean problemMissing;
 
-    @Column(name = "solution_missing", nullable = false)
-    private boolean solutionMissing;
-
     @Column(name = "tech_missing", nullable = false)
     private boolean techMissing;
 
     @Column(name = "architecture_missing", nullable = false)
     private boolean architectureMissing;
-
-    @Column(name = "keywords_missing", nullable = false)
-    private boolean keywordsMissing;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -76,40 +68,32 @@ public class PortfolioProjectEmbedding {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public PortfolioProjectEmbedding(
+    public PortfolioUserJobPostingEmbedding(
+            Long userId,
             Long portfolioId,
-            Long analysisId,
-            Long projectId,
             String content,
             String contentHash,
-            String projectEmbedding,
+            String nameEmbedding,
             String domainEmbedding,
             String problemEmbedding,
-            String solutionEmbedding,
             String techEmbedding,
             String architectureEmbedding,
             boolean problemMissing,
-            boolean solutionMissing,
             boolean techMissing,
-            boolean architectureMissing,
-            boolean keywordsMissing
+            boolean architectureMissing
     ) {
+        this.userId = userId;
         this.portfolioId = portfolioId;
-        this.analysisId = analysisId;
-        this.projectId = projectId;
         this.content = content;
         this.contentHash = contentHash;
-        this.projectEmbedding = projectEmbedding;
+        this.nameEmbedding = nameEmbedding;
         this.domainEmbedding = domainEmbedding;
         this.problemEmbedding = problemEmbedding;
-        this.solutionEmbedding = solutionEmbedding;
         this.techEmbedding = techEmbedding;
         this.architectureEmbedding = architectureEmbedding;
         this.problemMissing = problemMissing;
-        this.solutionMissing = solutionMissing;
         this.techMissing = techMissing;
         this.architectureMissing = architectureMissing;
-        this.keywordsMissing = keywordsMissing;
     }
 
     @PrePersist

@@ -22,13 +22,13 @@ public class Company {
     @JoinColumn(name = "user_id", unique = true, nullable = true)
     private User user;
 
-    @Column(name = "companies_name", nullable = false, unique = true)
+    @Column(name = "companies_name", nullable = false, unique = true, length = 500)
     private String companiesName;
 
     @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Column
+    @Column(length = 500)
     private String size;
 
     @Column(name = "homepage_url", columnDefinition = "TEXT")
@@ -37,10 +37,10 @@ public class Company {
     @Column(unique = true, name = "cid")
     private String cid;
 
-    @Column
+    @Column(length = 100)
     private String totPsncnt;
 
-    @Column
+    @Column(length = 100)
     private String yrSalesAmt;
 
     @Column(name = "busi_cont", columnDefinition = "TEXT")
