@@ -2,9 +2,28 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, FileText, Loader2 } from 'lucide-react';
+import axios from 'axios';
 import Button from '../../components/Button/Button';
 
-import { getCompanyJobs, type JobPostingResponse } from '../../api/jobApi';
+export interface JobPosting {
+  id: number;
+  title: string;
+  active: number;
+  startDate: string;
+  endDate: string;
+  vcnt: number;
+  cid: string;
+  detail: string;
+  jobType: number;
+  stackIds: number[];
+}
+
+interface ApiStandardResponse<T> {
+  status: boolean;
+  code: number;
+  message: string;
+  data: T;
+}
 
 interface ModalConfig {
   isOpen: boolean;
@@ -13,9 +32,9 @@ interface ModalConfig {
 
 const CompanyJobManagementPage = () => {
   const navigate = useNavigate();
-  const { cid } = useParams<{ cid: string }>();
+  const { cid: paramCid } = useParams<{ cid: string }>();
 
-  const [jobs, setJobs] = useState<JobPostingResponse[]>([]);
+  const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modal, setModal] = useState<ModalConfig>({
     isOpen: false,
@@ -23,26 +42,41 @@ const CompanyJobManagementPage = () => {
   });
 
   useEffect(() => {
-    if (!cid) {
-      setIsLoading(false);
-      return;
-    }
-
-    const loadJobs = async () => {
+    const fetchJobsLogic = async () => {
       try {
         setIsLoading(true);
-        const data = await getCompanyJobs(cid);
-        setJobs(data || []);
+        let targetCid = paramCid;
+        if (!targetCid) {
+          const meResponse = await axios.get('/api/auth/me');
+          if (meResponse.data.status && meResponse.data.data.cid) {
+            targetCid = meResponse.data.data.cid;
+          } else {
+            console.error('사용자 정보를 불러올 수 없거나 기업 회원이 아닙니다.');
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        if (targetCid) {
+          const jobResponse = await axios.get<ApiStandardResponse<JobPosting[]>>(
+            `/api/job-postings/company/${targetCid}`,
+          );
+
+          if (jobResponse.data.status) {
+            setJobs(jobResponse.data.data || []);
+          } else {
+            console.error('공고 목록 조회 실패:', jobResponse.data.message);
+          }
+        }
       } catch (error) {
-        console.error('Failed to fetch jobs:', error);
-        setJobs([]);
+        console.error('데이터 로딩 중 오류 발생:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadJobs();
-  }, [cid]);
+    fetchJobsLogic();
+  }, [paramCid]);
 
   const openDeleteModal = (jobId: number) => {
     setModal({
@@ -56,15 +90,17 @@ const CompanyJobManagementPage = () => {
   const confirmDelete = async () => {
     if (modal.jobId) {
       try {
-        const response = await fetch(`/api/job-postings/${modal.jobId}`, {
-          method: 'DELETE',
-        });
-        if (response.ok) {
+        const response = await axios.delete(`/api/job-postings/${modal.jobId}`);
+
+        if (response.status === 200 && response.data.status) {
           setJobs((prev) => prev.filter((job) => job.id !== modal.jobId));
           closeModal();
+        } else {
+          alert(response.data.message || '삭제에 실패했습니다.');
         }
       } catch (error) {
         console.error('Delete failed:', error);
+        alert('삭제 처리 중 오류가 발생했습니다.');
       }
     }
   };
@@ -144,7 +180,7 @@ const CompanyJobManagementPage = () => {
               </h2>
             </div>
             <Button
-              variant="dark"
+              variant="blue"
               size="lg"
               className="flex shrink-0 items-center rounded-2xl px-8 shadow-xl"
               onClick={() => navigate('/company/jobs/new')}
@@ -159,85 +195,98 @@ const CompanyJobManagementPage = () => {
                 <Loader2 className="text-point-blue animate-spin" size={48} />
               </div>
             ) : jobs.length > 0 ? (
-              jobs.map((job) => (
-                <div
-                  key={job.id}
-                  onClick={() => navigate(`/job-posts/${job.id}`)}
-                  className="group border-silver-mist bg-pure-white flex min-w-full cursor-pointer items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
-                >
-                  <div className="flex min-w-0 flex-col gap-4">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`shrink-0 rounded-full px-4 py-1 text-sm font-black tracking-tight ${
-                          job.active === 1
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-cloud-dancer text-slate-gray'
-                        }`}
-                      >
-                        {job.active === 1 ? '모집중' : '마감'}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <h3
-                        className="text-midnight-ink group-hover:text-point-blue group-has-[.no-title-hover:hover]:text-midnight-ink truncate text-2xl font-black tracking-tight transition-colors"
-                        title={job.title}
-                      >
-                        {job.title}
-                      </h3>
-                      <p className="text-slate-gray mt-1.5 text-sm font-bold whitespace-nowrap opacity-40">
-                        {job.startDate} ~ {job.endDate}
-                      </p>
-                    </div>
-                  </div>
+              jobs.map((job) => {
+                const isAlwaysOpen =
+                  !job.endDate ||
+                  String(job.endDate).startsWith('9999') ||
+                  job.endDate === '상시채용';
 
-                  <div className="flex shrink-0 items-center gap-10">
-                    <Button
-                      variant="outline"
-                      className="group/btn no-title-hover text-midnight-ink hover:text-point-blue min-w-24 rounded-2xl border-2 py-3 transition-all hover:bg-slate-50"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/company/jobs/${job.id}/applicants`);
-                      }}
-                    >
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-midnight-ink group-hover/btn:text-point-blue text-sm font-black tracking-widest uppercase transition-colors">
-                          지원자
-                        </span>
-                        <span className="text-2xl font-black tabular-nums">
-                          {job.vcnt.toString().padStart(2, '0')}
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const jobEndDate = new Date(job.endDate);
+
+                const isRecruiting = isAlwaysOpen || job.active === 1 || jobEndDate >= today;
+
+                return (
+                  <div
+                    key={job.id}
+                    onClick={() => navigate(`/job-posts/${job.id}`)}
+                    className="group border-silver-mist bg-pure-white flex min-w-full cursor-pointer items-center justify-between rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/50"
+                  >
+                    <div className="flex min-w-0 flex-col gap-4">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`shrink-0 rounded-full px-4 py-1 text-sm font-black tracking-tight ${
+                            isRecruiting
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'bg-cloud-dancer text-slate-gray'
+                          }`}
+                        >
+                          {isRecruiting ? '모집중' : '마감'}
                         </span>
                       </div>
-                    </Button>
+                      <div className="min-w-0">
+                        <h3
+                          className="text-midnight-ink group-hover:text-point-blue group-has-[.no-title-hover:hover]:text-midnight-ink truncate text-2xl font-black tracking-tight transition-colors"
+                          title={job.title}
+                        >
+                          {job.title}
+                        </h3>
+                        <p className="text-slate-gray mt-1.5 text-sm font-bold whitespace-nowrap opacity-40">
+                          {isAlwaysOpen ? '상시채용' : `${job.startDate} ~ ${job.endDate}`}
+                        </p>
+                      </div>
+                    </div>
 
-                    <div className="bg-cloud-dancer h-12 w-px"></div>
-
-                    <div className="no-title-hover flex gap-3">
+                    <div className="flex shrink-0 items-center gap-10">
                       <Button
-                        variant="light"
-                        size="md"
-                        className="rounded-xl px-6"
+                        variant="outline"
+                        className="group/btn no-title-hover text-midnight-ink hover:text-point-blue min-w-24 rounded-2xl border-2 py-3 transition-all hover:bg-slate-50"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/company/jobs/edit/${job.id}`);
+                          navigate(`/company/jobs/${job.id}/applicants`);
                         }}
                       >
-                        수정
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-midnight-ink group-hover/btn:text-point-blue text-sm font-black tracking-widest uppercase transition-colors">
+                            지원자
+                          </span>
+                          <span className="text-2xl font-black tabular-nums">
+                            {job.vcnt.toString().padStart(2, '0')}
+                          </span>
+                        </div>
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="md"
-                        className="rounded-xl px-6"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDeleteModal(job.id);
-                        }}
-                      >
-                        삭제
-                      </Button>
+
+                      <div className="bg-cloud-dancer h-12 w-px"></div>
+
+                      <div className="no-title-hover flex gap-3">
+                        <Button
+                          variant="outline"
+                          size="md"
+                          className="rounded-xl px-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/company/jobs/edit/${job.id}`);
+                          }}
+                        >
+                          수정
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="md"
+                          className="rounded-xl px-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteModal(job.id);
+                          }}
+                        >
+                          삭제
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="border-silver-mist bg-pure-white rounded-[40px] border-2 border-dashed py-32 text-center">
                 <FileText size={64} className="text-midnight-ink mx-auto mb-4 opacity-20" />

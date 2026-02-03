@@ -11,6 +11,7 @@ export interface UserData {
   email: string;
   name: string;
   role: UserRole;
+  cid: string;
 }
 
 export interface ApiResponse<T> {
