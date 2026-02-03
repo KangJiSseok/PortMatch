@@ -8,6 +8,7 @@ import com.portmatch.domain.jobapplication.dto.JobApplicationCreateRequest;
 import com.portmatch.domain.jobapplication.dto.JobApplicationDetailResponse;
 import com.portmatch.domain.jobapplication.dto.JobApplicationResponse;
 import com.portmatch.domain.jobapplication.dto.JobApplicationSummaryResponse;
+import com.portmatch.domain.jobapplication.dto.JobApplicationStatusUpdateRequest;
 import com.portmatch.domain.jobapplication.entity.JobApplication;
 import com.portmatch.domain.jobapplication.repository.JobApplicationRepository;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
@@ -18,12 +19,14 @@ import com.portmatch.domain.resume.service.ResumeService;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class JobApplicationServiceImpl implements JobApplicationService {
 
@@ -85,6 +88,32 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         JobApplication application = jobApplicationRepository
                 .findByIdAndJobPosting_Id(applicationId, jobPosting.getId())
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+        return toDetailResponse(userId, application);
+    }
+
+    @Override
+    @Transactional
+    public JobApplicationDetailResponse updateApplicationStatusForCompany(
+            Long userId,
+            Long jobPostingId,
+            Long applicationId,
+            JobApplicationStatusUpdateRequest request
+    ) {
+        JobPostingEntity jobPosting = getOwnedJobPosting(userId, jobPostingId);
+        JobApplication application = jobApplicationRepository
+                .findByIdAndJobPosting_Id(applicationId, jobPosting.getId())
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+
+        if (request.getStatus() == null) {
+            throw new BusinessException(ResponseCode.INVALID_PARAMETER);
+        }
+
+        log.info("[APP] updateApplicationStatusForCompany userId={} jobPostingId={} applicationId={} oldStatus={} newStatus={}",
+                userId, jobPostingId, applicationId, application.getStatus(), request.getStatus());
+        application.updateStatus(request.getStatus());
+        jobApplicationRepository.save(application);
+        log.info("[APP] updateApplicationStatusForCompany saved applicationId={} status={}",
+                application.getId(), application.getStatus());
         return toDetailResponse(userId, application);
     }
 

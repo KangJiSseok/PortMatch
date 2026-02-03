@@ -4,6 +4,7 @@ import com.portmatch.domain.auth.security.UserPrincipal;
 import com.portmatch.domain.jobapplication.dto.JobApplicationCreateRequest;
 import com.portmatch.domain.jobapplication.dto.JobApplicationDetailResponse;
 import com.portmatch.domain.jobapplication.dto.JobApplicationResponse;
+import com.portmatch.domain.jobapplication.dto.JobApplicationStatusUpdateRequest;
 import com.portmatch.domain.jobapplication.dto.JobApplicationSummaryResponse;
 import com.portmatch.domain.jobapplication.service.JobApplicationService;
 import com.portmatch.global.api.BaseApiResponse;
@@ -68,6 +69,20 @@ public class JobApplicationController {
         Long userId = principal.getUser().getId();
         return BaseApiResponse.ok(
                 jobApplicationService.getApplicationDetailForCompany(userId, jobPostingId, applicationId)
+        );
+    }
+
+    @Operation(summary = "지원 합/불 처리(기업)", description = "기업이 지원 합/불 여부를 변경합니다.")
+    @PatchMapping("/{id}/applications/{applicationId}")
+    public BaseApiResponse<JobApplicationDetailResponse> updateApplicationStatusForCompany(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long jobPostingId,
+            @Parameter(description = "지원 ID", example = "10") @PathVariable("applicationId") Long applicationId,
+            @Valid @RequestBody JobApplicationStatusUpdateRequest request
+    ) {
+        Long userId = principal.getUser().getId();
+        return BaseApiResponse.ok(
+                jobApplicationService.updateApplicationStatusForCompany(userId, jobPostingId, applicationId, request)
         );
     }
 }

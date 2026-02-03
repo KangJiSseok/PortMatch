@@ -67,4 +67,8 @@ public class JobApplication extends BaseTimeEntity {
         application.status = ApplicationStatus.APPLIED;
         return application;
     }
+
+    public void updateStatus(ApplicationStatus status) {
+        this.status = status;
+    }
 }
