@@ -51,7 +51,7 @@ function mapToCardModel(item: RecommendCandidate, index: number): CandidateCardM
     id: index + 1,
     userId: item.userId,
     userName: item.userName,
-    resumeId: item.resumeId,
+    resumeId: item.resumeId ?? 0,
     portfolioId: item.portfolioId,
     matchScore: toScore(item.similarity ?? item.unifiedSimilarity ?? 0),
     weights,
