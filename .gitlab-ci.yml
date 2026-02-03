@@ -11,6 +11,7 @@ variables:
   FRONTEND_IMAGE: "$DOCKERHUB_USERNAME/portmatch-frontend"
   EMBEDDING_IMAGE: "$DOCKERHUB_USERNAME/portmatch-embedding"
   EXPLANATION_IMAGE: "$DOCKERHUB_USERNAME/portmatch-explanation-llm"
+  CRAWLER_IMAGE: "$DOCKERHUB_USERNAME/portmatch-wanted-crawler"
 
 build:
   stage: build
@@ -43,6 +44,9 @@ build:
     - docker build -f Explanation-LLM/Dockerfile -t "$EXPLANATION_IMAGE:$IMAGE_TAG" -t "$EXPLANATION_IMAGE:latest" Explanation-LLM
     - docker push "$EXPLANATION_IMAGE:$IMAGE_TAG"
     - docker push "$EXPLANATION_IMAGE:latest"
+    - docker build -f crawler/DockerFile -t "$CRAWLER_IMAGE:$IMAGE_TAG" -t "$CRAWLER_IMAGE:latest" crawler
+    - docker push "$CRAWLER_IMAGE:$IMAGE_TAG"
+    - docker push "$CRAWLER_IMAGE:latest"
 
 deploy:
   stage: deploy

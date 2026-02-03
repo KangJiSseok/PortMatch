@@ -109,9 +109,7 @@ services:
       sh -c "trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew --webroot -w /var/www/certbot --quiet; done"
 
   wanted-crawler:
-    build:
-      context: ./crawler 
-      dockerfile: Dockerfile
+    image: ${CRAWLER_IMAGE:-kangjiseok/portmatch-wanted-crawler:latest}
     container_name: portmatch-wanted-crawler
     profiles: ['crawler']
     env_file:
