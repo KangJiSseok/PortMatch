@@ -1,6 +1,8 @@
 package com.portmatch.domain.interviewschedule.entity;
 
+import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.interviewschedule.enums.InterviewStatus;
+import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,18 +17,24 @@ import java.time.LocalDateTime;
 public class InterviewScheduleEntity {
 
     @Id
-    @GeneratedValue(strategy =  GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private Long uid;
+    @JoinColumn(name = "users_id")
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_posting")
-    private Long pid;
+    @JoinColumn(name = "job_posting_id")
+    private JobPostingEntity jobPosting;
 
     private LocalDateTime time;
+
+    @Enumerated(EnumType.STRING)
     private InterviewStatus status;
 
+    public void updateSchedule(LocalDateTime time, InterviewStatus status) {
+        if (time != null) this.time = time;
+        if (status != null) this.status = status;
+    }
 }
