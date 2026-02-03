@@ -11,6 +11,7 @@ variables:
   FRONTEND_IMAGE: "$DOCKERHUB_USERNAME/portmatch-frontend"
   EMBEDDING_IMAGE: "$DOCKERHUB_USERNAME/portmatch-embedding"
   EXPLANATION_IMAGE: "$DOCKERHUB_USERNAME/portmatch-explanation-llm"
+  CRAWLER_IMAGE: "$DOCKERHUB_USERNAME/portmatch-wanted-crawler"
 
 build:
   stage: build
@@ -21,7 +22,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-feat/aop-logging"'
+    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -43,6 +44,9 @@ build:
     - docker build -f Explanation-LLM/Dockerfile -t "$EXPLANATION_IMAGE:$IMAGE_TAG" -t "$EXPLANATION_IMAGE:latest" Explanation-LLM
     - docker push "$EXPLANATION_IMAGE:$IMAGE_TAG"
     - docker push "$EXPLANATION_IMAGE:latest"
+    - docker build -f crawler/DockerFile -t "$CRAWLER_IMAGE:$IMAGE_TAG" -t "$CRAWLER_IMAGE:latest" crawler
+    - docker push "$CRAWLER_IMAGE:$IMAGE_TAG"
+    - docker push "$CRAWLER_IMAGE:latest"
 
 deploy:
   stage: deploy
@@ -50,7 +54,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-feat/aop-logging"'
+    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
 
   script:
     - set -e
@@ -116,6 +120,13 @@ deploy:
       VITE_API_BASE_URL=${VITE_API_BASE_URL}
       VITE_SERVICE_NAME=${VITE_SERVICE_NAME}
       VITE_OPENVIDU_PUBLIC_URL=${VITE_OPENVIDU_PUBLIC_URL}
+
+      # ---------- Crawler ----------
+      CRAWL_LIMIT=${CRAWL_LIMIT}
+      DB_HOST=${DB_HOST}
+      DB_PORT=${DB_PORT}
+
+
       ENV
 
     # ---------- Docker 배포 ----------

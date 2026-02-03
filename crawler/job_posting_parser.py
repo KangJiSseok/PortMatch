@@ -10,13 +10,45 @@ import json
 import glob
 from datetime import datetime
 from dotenv import load_dotenv
+import psycopg2
 
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 # 환경변수 로드
-load_dotenv()
+load_dotenv(".env.prod")
+
+
+def get_db_connection():
+    """PostgreSQL DB 연결"""
+    return psycopg2.connect(
+        host=os.getenv('DB_HOST', 'localhost'),
+        database=os.getenv('POSTGRES_DB', 'portmatch'),
+        user=os.getenv('POSTGRES_USER', 'port'),
+        password=os.getenv('POSTGRES_PASSWORD', 'match'),
+        port=os.getenv('DB_PORT', '5432')
+    )
+
+
+def get_existing_job_postings():
+    """DB에서 이미 임베딩이 완료된 (title, cid) 조합 조회"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT jp.title, jp.cid 
+            FROM job_postings jp
+            JOIN job_posting_embeddings jpe ON jp.id = jpe.job_posting_id
+        """)
+        existing = set((row[0], row[1]) for row in cur.fetchall())
+        cur.close()
+        conn.close()
+        print(f"📊 DB에서 임베딩 완료된 채용공고 {len(existing)}개 조회됨\n")
+        return existing
+    except Exception as e:
+        print(f"⚠️ DB 연결 실패, 중복 체크 없이 진행: {e}\n")
+        return set()
 
 # LLM 설정
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -156,9 +188,13 @@ def main():
     # LangChain 체인 생성
     chain = build_job_posting_parser_chain()
     
+    # DB에서 기존 채용공고 조회 (중복 스킵용)
+    existing_jobs = get_existing_job_postings()
+    
     # 결과 저장용
     results = []
     success_count = 0
+    skip_count = 0
     fail_count = 0
     
     print("=" * 60)
@@ -168,10 +204,18 @@ def main():
     for idx, job in enumerate(job_postings, 1):
         job_id = job.get('id', idx)
         title = job.get('title', 'Unknown')
+        cid = job.get('cid')
         company_name = job.get('company', {}).get('companiesName', 'Unknown')
         
         print(f"[{idx}/{len(job_postings)}] 🔍 {title}")
         print(f"  🏢 {company_name}")
+        
+        # DB에 이미 존재하는 (title, cid) 조합이면 스킵
+        if (title, cid) in existing_jobs:
+            print(f"  ⏭️ 스킵 (임베딩 이미 완료)")
+            skip_count += 1
+            print()
+            continue
         
         parsed = parse_job_posting(chain, job)
         
@@ -211,6 +255,7 @@ def main():
             "temperature": OPENAI_TEMPERATURE,
             "totalCount": len(job_postings),
             "successCount": success_count,
+            "skipCount": skip_count,
             "failCount": fail_count
         },
         "results": results
@@ -227,6 +272,7 @@ def main():
     print("=" * 60)
     print(f"📊 전체: {len(job_postings)}개")
     print(f"✅ 성공: {success_count}개")
+    print(f"⏭️ 스킵: {skip_count}개 (임베딩 이미 완료)")
     print(f"❌ 실패: {fail_count}개")
     print(f"\n📁 생성된 파일: {output_file}")
     print("=" * 60)
