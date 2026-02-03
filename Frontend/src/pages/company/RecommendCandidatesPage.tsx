@@ -713,10 +713,11 @@ export default function RecommendCandidatesPage() {
       await resumeApi.getResumeDetail(resumeId);
       navigate(`/resumes/${resumeId}`);
     } catch (err) {
+      console.error('이력서 조회 실패: ', err);
       alert('이력서 조회에 실패했습니다.');
     }
   };
-
+  
   const handlePdfView = async (candidate: CandidateCardModel) => {
     try {
       const { url } = await portfolioApi.getPresignedUrl(candidate.portfolioId);
@@ -725,6 +726,7 @@ export default function RecommendCandidatesPage() {
       }
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err) {
+      console.error('PDF 조회 실패: ', err);
       alert('PDF 조회에 실패했습니다.');
     }
   };
