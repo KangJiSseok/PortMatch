@@ -13,3 +13,10 @@ export type ScrapRowApi = {
   pid: number | string;
   createdAt: string;
 };
+
+export type CompanyScrapRowApi = {
+  id: number;
+  uid: number;
+  cid: string;
+  createdAt: string;
+};

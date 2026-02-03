@@ -2,7 +2,7 @@
 import { isAxiosError } from 'axios';
 import axiosInstance from '@/api/axiosInstance';
 import { getMyInfo } from '@/api/auth';
-import type { ApiEnvelope, ScrapRowApi } from './types';
+import type { ApiEnvelope, CompanyScrapRowApi, ScrapRowApi } from './types';
 
 function extractApiMessage(payload: unknown): string | null {
   if (typeof payload !== 'object' || payload === null) return null;
@@ -33,6 +33,17 @@ export async function fetchMyScrapRows(uid: number): Promise<ScrapRowApi[]> {
   }
 }
 
+export async function fetchMyCompanyScrapRows(uid: number): Promise<CompanyScrapRowApi[]> {
+  try {
+    const res = await axiosInstance.get<ApiEnvelope<CompanyScrapRowApi[]>>(
+      `/company-scraps/${uid}`,
+    );
+    return res.data.data ?? [];
+  } catch (err) {
+    throw normalizeError(err, 'Failed to fetch company scrap list.');
+  }
+}
+
 export async function fetchMyScrapRowsForMe(): Promise<ScrapRowApi[]> {
   const me = await getMyInfo();
   const userId = me?.data?.userId;
@@ -42,4 +53,15 @@ export async function fetchMyScrapRowsForMe(): Promise<ScrapRowApi[]> {
   }
 
   return fetchMyScrapRows(userId);
+}
+
+export async function fetchMyCompanyScrapRowsForMe(): Promise<CompanyScrapRowApi[]> {
+  const me = await getMyInfo();
+  const userId = me?.data?.userId;
+
+  if (typeof userId !== 'number' || !Number.isFinite(userId)) {
+    throw new Error('Failed to resolve current user id.');
+  }
+
+  return fetchMyCompanyScrapRows(userId);
 }

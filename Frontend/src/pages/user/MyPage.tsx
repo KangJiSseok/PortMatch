@@ -1,6 +1,7 @@
 // src/pages/MyPage.tsx
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Bookmark, Building2, ChevronRight, User, CalendarDays, Bell } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
 
@@ -24,8 +25,9 @@ import {
 } from '../../api/myPage';
 import { useAuthStore } from '../../store/authStore';
 
-import { fetchMyScrapRowsForMe } from '../../api/myPage/scraps';
-import type { ScrapRowApi } from '../../api/myPage/types';
+import { fetchCompanyDetail } from '../../api/company/detail';
+import { fetchMyCompanyScrapRowsForMe, fetchMyScrapRowsForMe } from '../../api/myPage/scraps';
+import type { CompanyScrapRowApi, ScrapRowApi } from '../../api/myPage/types';
 import { fetchJobPostDetail } from '../../api/jobPost/detail';
 
 const ROUTES = {
@@ -42,13 +44,6 @@ type QueryState<T> = {
   refetch: () => void;
 };
 
-type PreviewRow = {
-  key: string | number;
-  title: string;
-  subtitle: string;
-  meta?: string;
-};
-
 type ScrapView = {
   scrap_id: number;
   job_post_id: number | null;
@@ -57,11 +52,26 @@ type ScrapView = {
   createdAt: string;
 };
 
+type CompanyScrapView = {
+  scrap_id: number;
+  company_id: string;
+  companyName: string;
+  createdAt: string;
+};
+
 type ScrapModalItem = {
   key: string | number;
   title: string;
-  subtitle: string; // companyName
+  subtitle: string;
   jobPostId: number | null;
+  createdAtMs: number;
+  onClick: () => void;
+};
+
+type CompanyScrapModalItem = {
+  key: string | number;
+  title: string;
+  companyId: string;
   createdAtMs: number;
   onClick: () => void;
 };
@@ -96,12 +106,6 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
   }, deps);
 
   return { data, isLoading, isError, errorMessage, refetch: run };
-}
-
-function padToFixedSlots<T>(rows: T[], size: number): (T | null)[] {
-  const out: (T | null)[] = rows.slice(0, size);
-  while (out.length < size) out.push(null);
-  return out;
 }
 
 function resolveNotificationRoute(n: NotificationItem): string | null {
@@ -178,24 +182,60 @@ async function toScrapViews(rows: ScrapRowApi[]): Promise<ScrapView[]> {
     });
 }
 
+async function toCompanyScrapViews(rows: CompanyScrapRowApi[]): Promise<CompanyScrapView[]> {
+  const normalized = rows.map((row) => {
+    const companyId = row.cid?.toString().trim();
+    return { row, companyId };
+  });
+
+  const results = await Promise.all(
+    normalized.map(async ({ row, companyId }) => {
+      if (!companyId) return null;
+      const detail = await fetchCompanyDetail(companyId).catch(() => null);
+      return { row, companyId, detail };
+    }),
+  );
+
+  return results
+    .filter((it): it is NonNullable<typeof it> => Boolean(it))
+    .map(({ row, companyId, detail }) => {
+      const name = detail?.corpName || companyId;
+
+      return {
+        scrap_id: row.id,
+        company_id: companyId,
+        companyName: name,
+        createdAt: row.createdAt,
+      };
+    });
+}
+
 export default function MyPage() {
   const navigate = useNavigate();
 
   const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [isScrapOpen, setIsScrapOpen] = useState(false);
+  const [isCompanyScrapOpen, setIsCompanyScrapOpen] = useState(false);
 
   const interviewQuery = useQueryLike<InterviewSessionView[]>(() => fetchMyInterviewViews(), []);
+
+  // 바로가기용: 1개만 가져와도 됨
   const upcomingQuery = useQueryLike<InterviewSessionView[]>(
     () => fetchMyUpcomingInterviewViews(2),
     [],
   );
+
   const scrapQuery = useQueryLike<ScrapView[]>(async () => {
     const rows = await fetchMyScrapRowsForMe();
     return toScrapViews(rows);
   }, []);
+  const companyScrapQuery = useQueryLike<CompanyScrapView[]>(async () => {
+    const rows = await fetchMyCompanyScrapRowsForMe();
+    return toCompanyScrapViews(rows);
+  }, []);
   const notiQuery = useQueryLike<NotificationItem[]>(() => fetchMyNotifications(), []);
 
-  // 알림: 서버 원본은 안 건드리고 로컬에서 읽음/삭제 패치하기
+  // 알림 처리
   type NotiPatch = { read?: boolean; deleted?: boolean };
   const [notiPatchById, setNotiPatchById] = useState<Record<number, NotiPatch>>({});
 
@@ -251,7 +291,7 @@ export default function MyPage() {
     });
   };
 
-  // Date.now()를 render 안에서 직접 안 부르게 state로 갖고 있음 (purity/린트 방어)
+  // Date.now()
   const [nowMs, setNowMs] = useState<number>(0);
   useEffect(() => {
     const tick = () => setNowMs(Date.now());
@@ -270,7 +310,7 @@ export default function MyPage() {
 
   const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
 
-  // 이벤트 맵 (YYYY-MM-DD -> Interview[])
+  // 이벤트 맵
   const interviewViews = interviewQuery.data ?? [];
   const interviewEventMap = useMemo(() => {
     const m = new Map<string, InterviewSessionView[]>();
@@ -292,28 +332,8 @@ export default function MyPage() {
     [interviewEventMap, selectedDate],
   );
 
-  // 상단 카드 미리보기
-  const resumeLastEdited = '';
-
-  const interviewPreviewSlots = useMemo(() => {
-    const rows: PreviewRow[] = (upcomingQuery.data ?? []).slice(0, 3).map((i) => ({
-      key: i.interview_id,
-      title: i.postingTitle,
-      subtitle: i.companyName,
-      meta: formatDateTime(i.scheduledAt),
-    }));
-    return padToFixedSlots(rows, 3);
-  }, [upcomingQuery.data]);
-
-  const scrapPreviewSlots = useMemo(() => {
-    const rows: PreviewRow[] = (scrapQuery.data ?? []).slice(0, 3).map((s) => ({
-      key: s.scrap_id,
-      title: s.postingTitle,
-      subtitle: s.companyName,
-      meta: '',
-    }));
-    return padToFixedSlots(rows, 3);
-  }, [scrapQuery.data]);
+  // 상단 카드 미리보기: 면접은 '가장 빠른 1개'만 보여주기
+  const nextInterview = (upcomingQuery.data ?? [])[0];
 
   // 스크랩 모달 아이템
   const scrapAllItems = useMemo<ScrapModalItem[]>(() => {
@@ -342,7 +362,27 @@ export default function MyPage() {
     });
   }, [scrapQuery.data, navigate]);
 
-  // 스크랩 모달: 정렬 + 검색
+  const companyScrapAllItems = useMemo<CompanyScrapModalItem[]>(() => {
+    const list = companyScrapQuery.data ?? [];
+    return list.map((s) => {
+      const createdAtMs = Number.isFinite(new Date(s.createdAt).getTime())
+        ? new Date(s.createdAt).getTime()
+        : 0;
+
+      return {
+        key: s.scrap_id,
+        title: s.companyName,
+        companyId: s.company_id,
+        createdAtMs,
+        onClick: () => {
+          setIsCompanyScrapOpen(false);
+          navigate(`/companies/${s.company_id}`);
+        },
+      };
+    });
+  }, [companyScrapQuery.data, navigate]);
+
+  // 스크랩 정렬
   const [scrapSort, setScrapSort] = useState<'recent' | 'company' | 'title'>('company');
   const [scrapSearch, setScrapSearch] = useState('');
 
@@ -380,185 +420,163 @@ export default function MyPage() {
     return set.size;
   }, [filteredSortedScraps]);
 
+  // 기업 스크랩 정렬
+  const [companyScrapSort, setCompanyScrapSort] = useState<'recent' | 'name'>('name');
+  const [companyScrapSearch, setCompanyScrapSearch] = useState('');
+
+  const filteredSortedCompanyScraps = useMemo(() => {
+    const q = normalizeText(companyScrapSearch);
+
+    const filtered = q
+      ? companyScrapAllItems.filter((it) => normalizeText(it.title).includes(q))
+      : companyScrapAllItems;
+
+    const sorted = [...filtered].sort((a, b) => {
+      if (companyScrapSort === 'recent') return b.createdAtMs - a.createdAtMs;
+      return a.title.localeCompare(b.title, 'ko');
+    });
+
+    return sorted;
+  }, [companyScrapAllItems, companyScrapSearch, companyScrapSort]);
+
   const userName = useAuthStore((state) => state.user?.name);
-  const myPageTitle = userName ? `${userName}의 My Page` : 'My Page';
+
+  const scrapCountText = scrapQuery.isLoading ? '-' : String((scrapQuery.data ?? []).length);
+  const companyScrapCountText = companyScrapQuery.isLoading
+    ? '-'
+    : String((companyScrapQuery.data ?? []).length);
+
+  // 면접 카드 텍스트 로직
+  const interviewCardContent = useMemo(() => {
+    if (upcomingQuery.isLoading) return { title: '로딩 중...', subtitle: '' };
+    if (upcomingQuery.isError) return { title: '불러오기 실패', subtitle: '' };
+    if (!nextInterview) return { title: '예정된 면접 없음', subtitle: '' };
+
+    return {
+      title: nextInterview.postingTitle,
+      subtitle: `${nextInterview.companyName} · ${formatDateTime(nextInterview.scheduledAt)}`,
+    };
+  }, [upcomingQuery, nextInterview]);
 
   return (
-    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-28 pb-20">
-      <div className="mx-auto w-[1280px] space-y-10 px-6">
-        {/* 헤더 */}
-        <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
-          <div className="relative p-10">
-            <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
-            <div className="relative flex flex-nowrap items-start justify-between gap-5">
-              <div>
-                <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
-                  PERSONAL DASHBOARD
-                </p>
-                <h1 className="mt-2 text-4xl font-black tracking-normal">{myPageTitle}</h1>
-                <p className="mt-2 text-sm font-semibold text-zinc-500">
-                  이력서 · 면접 · 스크랩을 한곳에서 관리해요
-                </p>
-              </div>
+    // ✅ [Outer] min-w-[1280px] 로 고정: 창이 줄어도 1280px 이하로 찌그러지지 않고 스크롤 발생
+    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-24 pb-32">
+      {/* ✅ [Inner] w-[1024px] 로 고정: 내부 콘텐츠는 항상 1024px 너비 유지 (가운데 정렬) */}
+      <div className="mx-auto w-[1280px] space-y-16 px-6">
+        {/* 헤더: 원티드 스타일 (point-blue 적용) */}
+        <header className="mb-12 flex items-end justify-between px-2 pt-5">
+          <div>
+            <p className="text-point-blue mb-1 text-xs font-bold tracking-widest uppercase">
+              Career Growth
+            </p>
+            <h1 className="text-midnight-ink text-4xl font-black tracking-tight">
+              {/* ✅ 더 화려한 그라데이션: 시작(밝은 블루) -> 중간(포인트 블루) -> 끝(보라) */}
+              <span className="bg-gradient-to-r from-blue-400 via-point-blue to-purple-500 bg-clip-text text-transparent">
+                {userName ?? 'Guest'}
+              </span>
+              님,
+              <br />
+              오늘도 합격으로 가볼까요? 🚀
+            </h1>
+          </div>
 
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="md"
-                  className="bg-pure-white rounded-2xl"
-                  onClick={() => {
-                    if (notiQuery.isError) notiQuery.refetch();
-                    setIsNotiOpen(true);
-                  }}
-                >
-                  알림{unreadCount > 0 ? ` (${unreadCount})` : ''}
-                </Button>
-
-                <Button
-                  variant="blue"
-                  size="md"
-                  className="rounded-2xl"
-                  onClick={() => navigate(ROUTES.profileEdit)}
-                >
-                  회원 정보 수정
-                </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="md"
+              className="hover:border-point-blue/50 hover:bg-point-blue/5 hover:text-point-blue flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 p-0 text-zinc-400 transition"
+              onClick={() => {
+                if (notiQuery.isError) notiQuery.refetch();
+                setIsNotiOpen(true);
+              }}
+            >
+              <div className="relative">
+                <Bell className="h-6 w-6" />
+                {unreadCount > 0 && (
+                  <span className="bg-point-blue absolute top-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white" />
+                )}
               </div>
-            </div>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="md"
+              className="hover:border-point-blue/50 hover:bg-point-blue/5 hover:text-point-blue flex h-12 items-center gap-2 rounded-full border border-zinc-200 px-6 text-base font-bold text-zinc-600 transition"
+              onClick={() => navigate(ROUTES.profileEdit)}
+            >
+              <User className="h-5 w-5" />
+              <span>프로필</span>
+            </Button>
           </div>
         </header>
 
-        {/* 바로가기 */}
-        <section className="space-y-5">
-          <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
+        {/* 바로가기 섹션 */}
+        <section className="space-y-6">
+          <div className="flex items-end justify-between px-1 pb-2">
             <div>
-              <h2 className="text-2xl font-black tracking-tighter">바로가기</h2>
-              <p className="mt-1 text-sm font-semibold text-zinc-500">
-                자주 쓰는 기능으로 빠르게 이동해요.
-              </p>
+              <h2 className="text-2xl font-black tracking-tight text-zinc-800">바로가기</h2>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-5">
-            {/* 이력서 */}
-            <HubCard title="이력서" onClick={() => navigate(ROUTES.resume)}>
-              <div className="flex min-h-[280px] flex-1 flex-col items-center justify-center px-6 py-10">
-                <div className="bg-cloud-dancer text-midnight-ink grid h-14 w-14 place-items-center rounded-2xl transition group-hover:scale-[1.04]">
-                  <IconUser />
-                </div>
+          {/* 카드 그리드 */}
+          <div className="grid grid-cols-4 gap-5">
+            {/* 1. 이력서 */}
+            <UnifiedHubCard
+              icon={<User className="h-5 w-5" />}
+              title="내 이력서"
+              subtitle="지금 바로 관리하기"
+              onClick={() => navigate(ROUTES.resume)}
+            />
 
-                <div className="mt-5 text-center">
-                  <p className="text-midnight-ink text-lg font-black">최근 수정</p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-500">{resumeLastEdited}</p>
-                </div>
+            {/* 2. 면접 */}
+            <UnifiedHubCard
+              icon={<CalendarDays className="h-5 w-5 text-blue-500" />}
+              title={interviewCardContent.title}
+              subtitle={interviewCardContent.subtitle || undefined}
+              onClick={() => navigate(ROUTES.interviewList)}
+            />
 
-                <div className="mt-6">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
-                    상세 보기 <IconChevronRight />
-                  </span>
-                </div>
-              </div>
-            </HubCard>
+            {/* 3. 관심 회사 */}
+            <UnifiedHubCard
+              icon={<Building2 className="h-5 w-5 text-rose-500" />}
+              title="관심 회사"
+              rightElement={
+                <p className="text-midnight-ink text-2xl leading-none font-black">
+                  {companyScrapCountText}
+                </p>
+              }
+              onClick={() => {
+                if (companyScrapQuery.isError) companyScrapQuery.refetch();
+                setIsCompanyScrapOpen(true);
+              }}
+            />
 
-            {/* 면접 */}
-            <HubCard title="면접" onClick={() => navigate(ROUTES.interviewList)}>
-              <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
-                <div className="flex-1">
-                  {upcomingQuery.isLoading ? (
-                    <div className="flex h-full items-center justify-center">
-                      <ListSkeleton />
-                    </div>
-                  ) : upcomingQuery.isError ? (
-                    <div className="flex h-full items-center justify-center">
-                      <InlineError
-                        message={upcomingQuery.errorMessage ?? '면접 정보를 불러오지 못했어요.'}
-                        onRetry={upcomingQuery.refetch}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {interviewPreviewSlots.map((it, idx) =>
-                        it ? (
-                          <ListRowStatic
-                            key={String(it.key)}
-                            title={it.title}
-                            subtitle={it.subtitle}
-                            meta={it.meta}
-                          />
-                        ) : (
-                          <EmptySlotRow key={`iv-empty-${idx}`} />
-                        ),
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 flex justify-end">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
-                    전체 보기 <IconChevronRight />
-                  </span>
-                </div>
-              </div>
-            </HubCard>
-
-            {/* 스크랩 */}
-            <HubCard
-              title="스크랩한 공고"
+            {/* 4. 관심 공고 */}
+            <UnifiedHubCard
+              icon={<Bookmark className="h-5 w-5 text-violet-500" />}
+              title="관심 공고"
+              rightElement={
+                <p className="text-midnight-ink text-2xl leading-none font-black">
+                  {scrapCountText}
+                </p>
+              }
               onClick={() => {
                 if (scrapQuery.isError) scrapQuery.refetch();
                 setIsScrapOpen(true);
               }}
-            >
-              <div className="flex min-h-[280px] flex-1 flex-col px-6 py-6">
-                <div className="flex-1">
-                  {scrapQuery.isLoading ? (
-                    <div className="flex h-full items-center justify-center">
-                      <ListSkeleton />
-                    </div>
-                  ) : scrapQuery.isError ? (
-                    <div className="flex h-full items-center justify-center">
-                      <InlineError
-                        message={scrapQuery.errorMessage ?? '스크랩을 불러오지 못했어요.'}
-                        onRetry={scrapQuery.refetch}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {scrapPreviewSlots.map((it, idx) =>
-                        it ? (
-                          <ListRowStatic
-                            key={String(it.key)}
-                            title={it.title}
-                            subtitle={it.subtitle}
-                            meta={it.meta}
-                          />
-                        ) : (
-                          <EmptySlotRow key={`scrap-empty-${idx}`} />
-                        ),
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 flex justify-end">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 opacity-0 transition group-hover:opacity-100">
-                    전체 보기 <IconChevronRight />
-                  </span>
-                </div>
-              </div>
-            </HubCard>
+            />
           </div>
         </section>
 
-        {/* 캘린더 */}
-        <section className="space-y-5">
-          <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
+        {/* 캘린더 섹션 */}
+        <section className="space-y-6">
+          <div className="flex items-end justify-between px-1 pb-2">
             <div>
-              <h2 className="text-2xl font-black tracking-tighter">캘린더</h2>
-              <p className="mt-1 text-sm font-semibold text-zinc-500">면접 일정을 모아봤어요</p>
+              <h2 className="text-2xl font-black tracking-tight text-zinc-800">캘린더</h2>
             </div>
           </div>
 
-          <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-8 shadow-sm">
+          <div className="rounded-[2rem] border border-zinc-100 bg-zinc-50 p-8 shadow-sm">
             {interviewQuery.isLoading ? (
               <CalendarSkeleton />
             ) : interviewQuery.isError ? (
@@ -567,7 +585,7 @@ export default function MyPage() {
                 onRetry={interviewQuery.refetch}
               />
             ) : (
-              <div className="grid grid-cols-[1fr_380px] gap-8">
+              <div className="grid grid-cols-[1fr_360px] gap-10">
                 <CalendarPanel
                   viewMonth={viewMonth}
                   selectedDate={selectedDate}
@@ -621,14 +639,25 @@ export default function MyPage() {
                     return (
                       <div
                         key={e.interview_id}
-                        className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
+                        className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm"
                       >
-                        <p className="text-midnight-ink text-sm font-black">
-                          {e.companyName} - {e.postingTitle}
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-zinc-500">
-                          {formatDateTime(e.scheduledAt)}
-                        </p>
+                        {/* 텍스트 영역: flex-col과 gap-1로 모든 줄 간격을 동일하게(4px) 설정 */}
+                        <div className="flex flex-col gap-1">
+                          {/* 회사명 */}
+                          <p className="text-sm font-bold text-zinc-600">
+                            {e.companyName}
+                          </p>
+
+                          {/* 공고 제목 (2줄 말줄임) */}
+                          <p className="text-m font-black leading-tight text-midnight-ink line-clamp-2">
+                            {e.postingTitle}
+                          </p>
+
+                          {/* 날짜 */}
+                          <p className="text-xs font-semibold text-zinc-400">
+                            {formatDateTime(e.scheduledAt)}
+                          </p>
+                        </div>
 
                         {helperText && (
                           <p className="mt-2 text-xs font-semibold text-zinc-500">{helperText}</p>
@@ -682,7 +711,6 @@ export default function MyPage() {
         ) : (notiItems ?? []).length === 0 ? (
           <div className="bg-cloud-dancer/25 rounded-xl p-6 py-5 text-center">
             <p className="text-midnight-ink text-sm font-black">알림이 없어요</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">조용해서 좋네요 (진심)</p>
           </div>
         ) : (
           <div className="space-y-4 py-5">
@@ -774,7 +802,7 @@ export default function MyPage() {
       <NotificationModal
         open={isScrapOpen}
         onClose={() => setIsScrapOpen(false)}
-        title="스크랩한 공고"
+        title="관심 공고"
       >
         {scrapQuery.isLoading ? (
           <div className="space-y-3">
@@ -803,7 +831,7 @@ export default function MyPage() {
           </div>
         ) : (
           <div className="space-y-4 pb-6">
-            {/* 상단 툴 (정렬/검색) */}
+            {/* 툴바 */}
             <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
               <div className="flex items-end justify-between gap-3">
                 <p className="text-xs font-semibold text-zinc-500">
@@ -875,6 +903,102 @@ export default function MyPage() {
           </div>
         )}
       </NotificationModal>
+
+      {/* 기업 스크랩 모달 */}
+      <NotificationModal
+        open={isCompanyScrapOpen}
+        onClose={() => setIsCompanyScrapOpen(false)}
+        title="관심 기업"
+      >
+        {companyScrapQuery.isLoading ? (
+          <div className="space-y-3">
+            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+          </div>
+        ) : companyScrapQuery.isError ? (
+          <div className="rounded-xl border border-zinc-100 bg-white p-4">
+            <p className="text-midnight-ink text-sm font-black">
+              기업 스크랩을 불러오지 못했습니다.
+            </p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">
+              {companyScrapQuery.errorMessage ?? '잠시 후 다시 시도해주세요'}
+            </p>
+            <div className="mt-4 flex justify-end">
+              <Button variant="dark" size="sm" onClick={companyScrapQuery.refetch}>
+                다시 시도
+              </Button>
+            </div>
+          </div>
+        ) : (companyScrapQuery.data ?? []).length === 0 ? (
+          <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
+            <p className="text-midnight-ink text-sm font-black">스크랩한 기업이 없어요</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">관심 있는 기업을 찜해보세요</p>
+          </div>
+        ) : (
+          <div className="space-y-4 pb-6">
+            {/* 툴바 */}
+            <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
+              <div className="flex items-end justify-between gap-3">
+                <p className="text-xs font-semibold text-zinc-500">
+                  총 {filteredSortedCompanyScraps.length}개
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={companyScrapSort === 'recent' ? 'dark' : 'outline'}
+                    className="rounded-xl"
+                    onClick={() => setCompanyScrapSort('recent')}
+                  >
+                    최근
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={companyScrapSort === 'name' ? 'dark' : 'outline'}
+                    className="rounded-xl"
+                    onClick={() => setCompanyScrapSort('name')}
+                  >
+                    이름순
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <input
+                  value={companyScrapSearch}
+                  onChange={(e) => setCompanyScrapSearch(e.target.value)}
+                  placeholder="기업명 검색"
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-semibold text-zinc-700 transition outline-none placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            {/* 리스트 */}
+            {filteredSortedCompanyScraps.length === 0 ? (
+              <div className="bg-cloud-dancer/25 rounded-2xl p-6 text-center">
+                <p className="text-midnight-ink text-sm font-black">검색 결과가 없어요</p>
+                <p className="mt-1 text-sm font-semibold text-zinc-500">
+                  다른 키워드로 다시 찾아보세요
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredSortedCompanyScraps.map((it) => (
+                  <CompanyScrapListRow
+                    key={String(it.key)}
+                    title={it.title}
+                    meta={formatYmdToKorean(toYmd(new Date(it.createdAtMs)))}
+                    onClick={it.onClick}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </NotificationModal>
     </div>
   );
 }
@@ -883,14 +1007,20 @@ export default function MyPage() {
  * Manage Card Parts
  * ========================= */
 
-function HubCard({
+function UnifiedHubCard({
+  icon,
   title,
+  subtitle,
+  rightElement,
   onClick,
-  children,
+  className,
 }: {
+  icon: ReactNode;
   title: string;
+  subtitle?: string;
+  rightElement?: ReactNode;
   onClick: () => void;
-  children: ReactNode;
+  className?: string;
 }) {
   return (
     <div
@@ -901,78 +1031,27 @@ function HubCard({
         if (e.key === 'Enter' || e.key === ' ') onClick();
       }}
       className={[
-        'group flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition',
+        'group relative flex cursor-pointer items-center justify-between overflow-hidden rounded-3xl border border-zinc-100 bg-white px-5 py-5 shadow-sm transition',
         'hover:ring-midnight-ink/20 hover:-translate-y-0.5 hover:shadow-md hover:ring-2',
         'focus:ring-midnight-ink/30 focus:ring-2 focus:outline-none',
+        className ?? '',
       ].join(' ')}
     >
-      <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
-        <div className="min-w-0">
-          <p className="text-midnight-ink truncate text-base font-black">{title}</p>
+      <div className="flex min-w-0 flex-1 items-center gap-3 pr-2">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-zinc-50 text-zinc-500 transition group-hover:scale-110 group-hover:bg-zinc-100">
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-midnight-ink truncate text-sm font-black tracking-tight">{title}</p>
+          {subtitle && (
+            <p className="mt-0.5 truncate text-xs font-semibold text-zinc-400">{subtitle}</p>
+          )}
         </div>
       </div>
 
-      {children}
-    </div>
-  );
-}
-
-function ListRowStatic({
-  title,
-  subtitle,
-  meta,
-}: {
-  title: string;
-  subtitle: string;
-  meta?: string;
-}) {
-  return (
-    <div className="flex w-full items-center rounded-2xl bg-transparent p-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-midnight-ink line-clamp-2 text-sm font-black">{title}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <p className="truncate text-xs font-semibold text-zinc-500">{subtitle}</p>
-          {meta ? (
-            <>
-              <span className="text-zinc-300">·</span>
-              <p className="truncate text-xs font-semibold text-zinc-500">{meta}</p>
-            </>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EmptySlotRow() {
-  return <div aria-hidden className="h-[56px] w-full rounded-2xl" />;
-}
-
-function ListSkeleton() {
-  return (
-    <div className="w-full space-y-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between rounded-2xl p-3">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-4 w-3/4 animate-pulse rounded bg-zinc-200/60" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200/40" />
-          </div>
-          <div className="ml-4 h-4 w-4 animate-pulse rounded bg-zinc-200/40" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function InlineError({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="rounded-2xl border border-zinc-100 bg-white p-4">
-      <p className="text-midnight-ink text-sm font-black">불러오기 실패</p>
-      <p className="mt-1 text-sm font-semibold text-zinc-500">{message}</p>
-      <div className="mt-3 flex justify-end">
-        <Button variant="dark" size="sm" onClick={onRetry}>
-          다시 시도
-        </Button>
+      <div className="flex shrink-0 items-center gap-2 text-zinc-300">
+        {rightElement}
+        <ChevronRight className="h-4 w-4 transition group-hover:text-zinc-500" />
       </div>
     </div>
   );
@@ -1061,14 +1140,12 @@ function NotificationModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex justify-center overflow-auto px-4 py-10">
-      {/* 오버레이 */}
       <div
         className="fixed inset-0 bg-black/65 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
       />
 
-      {/* 모달 카드 */}
       <div
         role="dialog"
         aria-modal="true"
@@ -1076,10 +1153,8 @@ function NotificationModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-2xl">
-          {/* 헤더 고정 */}
-          <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
+          <div className="flex items-center justify-between px-6 py-4">
             <p className="text-midnight-ink text-lg font-black">{title}</p>
-
             <Button
               type="button"
               variant="outline"
@@ -1091,7 +1166,6 @@ function NotificationModal({
             </Button>
           </div>
 
-          {/* 바디 스크롤 */}
           <div
             className={[
               'min-h-0 flex-1 overflow-auto px-6',
@@ -1118,10 +1192,6 @@ function NotificationModal({
     </div>
   );
 }
-
-/* =========================
- * Scrap Modal Row
- * ========================= */
 
 function ScrapListRow({
   title,
@@ -1150,59 +1220,47 @@ function ScrapListRow({
         <div className="min-w-0 flex-1">
           <p className="text-midnight-ink line-clamp-2 text-sm font-black">{title}</p>
           <p className="mt-2 text-xs font-semibold text-zinc-500">{company}</p>
-
           {disabled ? (
             <p className="mt-2 text-[11px] font-semibold text-zinc-400">
               상세 이동 불가 (공고 ID 없음)
             </p>
           ) : null}
         </div>
-
         <div className="shrink-0 pt-1 text-zinc-300">
-          <IconChevronRight />
+          <ChevronRight className="h-4 w-4" />
         </div>
       </div>
     </button>
   );
 }
 
-/* =========================
- * Icons
- * ========================= */
-
-function IconUser() {
+function CompanyScrapListRow({
+  title,
+  meta,
+  onClick,
+}: {
+  title: string;
+  meta?: string;
+  onClick: () => void;
+}) {
   return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'w-full rounded-2xl border border-zinc-100 bg-white p-4 text-left shadow-sm transition',
+        'hover:-translate-y-[1px] hover:shadow-md',
+      ].join(' ')}
     >
-      <path d="M20 21a8 8 0 0 0-16 0" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-
-function IconChevronRight() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M9 18l6-6-6-6" />
-    </svg>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-midnight-ink line-clamp-2 text-sm font-black">{title}</p>
+          {meta ? <p className="mt-2 text-xs font-semibold text-zinc-500">{meta}</p> : null}
+        </div>
+        <div className="shrink-0 pt-1 text-zinc-300">
+          <ChevronRight className="h-4 w-4" />
+        </div>
+      </div>
+    </button>
   );
 }
