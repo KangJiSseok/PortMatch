@@ -1,7 +1,7 @@
 import json
 
 from fastapi import APIRouter, HTTPException, Request, Response
-
+from ..chains.project_summary import build_project_summary_chain
 from ..chains.text_extraction import TEXT_EXTRACTION_CHAIN
 from ..chains.project_feedback import build_project_feedback_chain
 from ..services.mineru_client import fetch_mineru_content
