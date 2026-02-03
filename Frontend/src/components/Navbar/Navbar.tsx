@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { useLogout } from '@/hooks/useAuth';
 import { useMessenger } from '@/hooks/useMessenger';
 import { resumeApi } from '@/api/resumeApi';
 
@@ -104,15 +103,11 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoggedIn } = useAuthStore();
-  const { mutate: performLogout } = useLogout();
   const { startNewChat } = useMessenger();
   const [logoKey, setLogoKey] = useState(0);
 
-  const handleLogout = async () => {
-    navigate('/login', { replace: true });
-    setTimeout(() => {
-      performLogout();
-    }, 0);
+  const handleLogout = () => {
+    navigate('/logout');
   };
 
   const handleResumeManagement = async () => {
