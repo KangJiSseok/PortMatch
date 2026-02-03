@@ -22,6 +22,7 @@ import InterviewLobbyPage from './pages/interview/InterviewLobbyPage';
 
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
+import LogoutPage from './pages/auth/LogoutPage';
 
 import PortfoliosPage from './pages/user/PortfoliosPage';
 import ResumeDetailPage from './pages/user/ResumeDetailPage';
@@ -128,6 +129,10 @@ const router = createBrowserRouter([
             <LoginPage />
           </AuthGuard>
         ),
+      },
+      {
+        path: 'logout',
+        element: <LogoutPage />,
       },
       {
         path: 'signup',
