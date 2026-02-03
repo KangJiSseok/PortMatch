@@ -111,7 +111,6 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         log.info("[APP] updateApplicationStatusForCompany userId={} jobPostingId={} applicationId={} oldStatus={} newStatus={}",
                 userId, jobPostingId, applicationId, application.getStatus(), request.getStatus());
         application.updateStatus(request.getStatus());
-        jobApplicationRepository.save(application);
         log.info("[APP] updateApplicationStatusForCompany saved applicationId={} status={}",
                 application.getId(), application.getStatus());
         return toDetailResponse(userId, application);
