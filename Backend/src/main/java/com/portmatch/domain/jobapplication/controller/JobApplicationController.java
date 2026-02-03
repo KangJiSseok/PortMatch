@@ -2,7 +2,10 @@ package com.portmatch.domain.jobapplication.controller;
 
 import com.portmatch.domain.auth.security.UserPrincipal;
 import com.portmatch.domain.jobapplication.dto.JobApplicationCreateRequest;
+import com.portmatch.domain.jobapplication.dto.JobApplicationDetailResponse;
 import com.portmatch.domain.jobapplication.dto.JobApplicationResponse;
+import com.portmatch.domain.jobapplication.dto.JobApplicationStatusUpdateRequest;
+import com.portmatch.domain.jobapplication.dto.JobApplicationSummaryResponse;
 import com.portmatch.domain.jobapplication.service.JobApplicationService;
 import com.portmatch.global.api.BaseApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,9 +16,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Tag(name = "공고 지원", description = "공고 지원 생성/취소 API")
 @RestController
-@RequestMapping("/api/job-posts")
+@RequestMapping("/api/job-postings")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class JobApplicationController {
@@ -42,5 +47,42 @@ public class JobApplicationController {
         Long userId = principal.getUser().getId();
         jobApplicationService.cancel(userId, jobPostingId);
         return BaseApiResponse.ok(null);
+    }
+
+    @Operation(summary = "공고별 지원 목록(기업)", description = "기업이 공고별 지원 목록을 조회합니다.")
+    @GetMapping("/{id}/applications")
+    public BaseApiResponse<List<JobApplicationSummaryResponse>> getApplicationsForCompany(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long jobPostingId
+    ) {
+        Long userId = principal.getUser().getId();
+        return BaseApiResponse.ok(jobApplicationService.getApplicationsForCompany(userId, jobPostingId));
+    }
+
+    @Operation(summary = "지원 상세 조회(기업)", description = "기업이 지원 상세(이력서 포함)를 조회합니다.")
+    @GetMapping("/{id}/applications/{applicationId}")
+    public BaseApiResponse<JobApplicationDetailResponse> getApplicationDetailForCompany(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long jobPostingId,
+            @Parameter(description = "지원 ID", example = "10") @PathVariable("applicationId") Long applicationId
+    ) {
+        Long userId = principal.getUser().getId();
+        return BaseApiResponse.ok(
+                jobApplicationService.getApplicationDetailForCompany(userId, jobPostingId, applicationId)
+        );
+    }
+
+    @Operation(summary = "지원 합/불 처리(기업)", description = "기업이 지원 합/불 여부를 변경합니다.")
+    @PatchMapping("/{id}/applications/{applicationId}")
+    public BaseApiResponse<JobApplicationDetailResponse> updateApplicationStatusForCompany(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long jobPostingId,
+            @Parameter(description = "지원 ID", example = "10") @PathVariable("applicationId") Long applicationId,
+            @Valid @RequestBody JobApplicationStatusUpdateRequest request
+    ) {
+        Long userId = principal.getUser().getId();
+        return BaseApiResponse.ok(
+                jobApplicationService.updateApplicationStatusForCompany(userId, jobPostingId, applicationId, request)
+        );
     }
 }

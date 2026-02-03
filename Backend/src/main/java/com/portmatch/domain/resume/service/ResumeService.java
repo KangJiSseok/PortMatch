@@ -14,6 +14,8 @@ public interface ResumeService {
 
     ResumeResponse getResume(Long userId, Long resumeId);
 
+    ResumeResponse getResumeForCompany(Long userId, Long jobPostingId, Long applicationId);
+
     ResumeResponse replaceResume(Long userId, Long resumeId, ResumeCreateRequest request);
 
     ResumeResponse setMainResume(Long userId, Long resumeId);

@@ -1,6 +1,6 @@
 package com.portmatch.domain.jobapplication.entity;
 
-import com.portmatch.domain.applicants.entity.Applicant;
+import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.jobapplication.enums.ApplicationStatus;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.domain.resume.entity.Resume;
@@ -16,11 +16,11 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "job_applications",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_job_applications_applicant_job_posting",
-                columnNames = {"applicant_id", "job_posting_id"}
+                name = "uk_job_applications_user_job_posting",
+                columnNames = {"user_id", "job_posting_id"}
         ),
         indexes = {
-                @Index(name = "idx_job_applications_applicant_id", columnList = "applicant_id"),
+                @Index(name = "idx_job_applications_user_id", columnList = "user_id"),
                 @Index(name = "idx_job_applications_job_posting_id", columnList = "job_posting_id"),
                 @Index(name = "idx_job_applications_resume_id", columnList = "resume_id")
         }
@@ -33,11 +33,11 @@ public class JobApplication extends BaseTimeEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
-            name = "applicant_id",
+            name = "user_id",
             nullable = false,
-            foreignKey = @ForeignKey(name = "fk_job_applications_applicant")
+            foreignKey = @ForeignKey(name = "fk_job_applications_user")
     )
-    private Applicant applicant;
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
@@ -59,12 +59,16 @@ public class JobApplication extends BaseTimeEntity {
     @Column(length = 20, nullable = false)
     private ApplicationStatus status;
 
-    public static JobApplication create(Applicant applicant, JobPostingEntity jobPosting, Resume resume) {
+    public static JobApplication create(User user, JobPostingEntity jobPosting, Resume resume) {
         JobApplication application = new JobApplication();
-        application.applicant = applicant;
+        application.user = user;
         application.jobPosting = jobPosting;
         application.resume = resume;
         application.status = ApplicationStatus.APPLIED;
         return application;
+    }
+
+    public void updateStatus(ApplicationStatus status) {
+        this.status = status;
     }
 }

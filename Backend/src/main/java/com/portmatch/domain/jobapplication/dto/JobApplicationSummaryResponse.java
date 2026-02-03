@@ -8,11 +8,12 @@ import java.time.LocalDateTime;
 
 @Getter
 @Builder
-public class JobApplicationResponse {
-    private Long id;
+public class JobApplicationSummaryResponse {
+    private Long applicationId;
     private Long userId;
-    private Long jobPostingId;
+    private String userName;
     private Long resumeId;
+    private String resumeTitle;
     private ApplicationStatus status;
-    private LocalDateTime createdAt;
+    private LocalDateTime appliedAt;
 }
