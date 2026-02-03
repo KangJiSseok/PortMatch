@@ -64,7 +64,7 @@ public class JobPostingController {
     public BaseApiResponse<String> updateJob(
             @PathVariable Long id, @RequestBody JobPostingDto dto) {
         dto.setId(id);
-        jobPostingService.saveJobPosting(dto);
+        jobPostingService.saveJobPostingWithStacks(dto);
         return BaseApiResponse.ok("공고 정보가 수정되었습니다.");
     }
 
