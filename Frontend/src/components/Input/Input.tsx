@@ -9,6 +9,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, variant = 'light', className = '', id, ...props }, ref) => {
     const [isFocused, setIsFocused] = useState(false);
+    const { disabled } = props;
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
@@ -25,21 +26,28 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputBaseStyles =
       'w-full px-4 py-3 rounded-xl border transition-all duration-300 outline-none font-medium';
 
-    const variants = {
-      light: `bg-pure-white text-midnight-ink ${
-        error
-          ? 'border-error'
-          : isFocused
-            ? 'border-midnight-ink shadow-[0_0_0_1px_#1a1a1a]'
-            : 'border-soft-pebble'
-      }`,
-      dark: `bg-midnight-ink text-pure-white ${
+    const getVariantStyles = () => {
+      if (disabled) {
+        return 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed shadow-none';
+      }
+
+      if (variant === 'light') {
+        return `bg-pure-white text-midnight-ink ${
+          error
+            ? 'border-error'
+            : isFocused
+              ? 'border-midnight-ink shadow-[0_0_0_1px_#1a1a1a]'
+              : 'border-soft-pebble'
+        }`;
+      }
+
+      return `bg-midnight-ink text-pure-white ${
         error
           ? 'border-error'
           : isFocused
             ? 'border-pure-white shadow-[0_0_0_1px_#fcfcfc]'
             : 'border-[#333]'
-      }`,
+      }`;
     };
 
     return (
@@ -53,7 +61,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             id={id}
-            className={`${inputBaseStyles} ${variants[variant]} ${className}`}
+            className={`${inputBaseStyles} ${getVariantStyles()} ${className}`}
             onFocus={handleFocus}
             onBlur={handleBlur}
             {...props}
