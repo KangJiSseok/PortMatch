@@ -9,17 +9,13 @@ public record JobPostingMatchResponse(
             Long jobPostingId,
             String title,
             String companyName,
-            String domain,
-            List<String> tech,
             String problem,
             String solution,
             double similarity,
             double domainSimilarity,
             double techSimilarity,
             double problemSimilarity,
-            double solutionSimilarity,
             double architectureSimilarity,
-            double keywordsSimilarity,
             String portfolioContent,
             String jobPostingContent
     ) {}

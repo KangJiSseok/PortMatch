@@ -52,6 +52,9 @@ public class PortfolioProjectEmbedding {
     @Column(name = "tech_embedding", columnDefinition = "vector(1536)")
     private String techEmbedding;
 
+    @Column(name = "architecture_embedding", columnDefinition = "vector(1536)")
+    private String architectureEmbedding;
+
     @Column(name = "problem_missing", nullable = false)
     private boolean problemMissing;
 
@@ -84,6 +87,7 @@ public class PortfolioProjectEmbedding {
             String problemEmbedding,
             String solutionEmbedding,
             String techEmbedding,
+            String architectureEmbedding,
             boolean problemMissing,
             boolean solutionMissing,
             boolean techMissing,
@@ -100,6 +104,7 @@ public class PortfolioProjectEmbedding {
         this.problemEmbedding = problemEmbedding;
         this.solutionEmbedding = solutionEmbedding;
         this.techEmbedding = techEmbedding;
+        this.architectureEmbedding = architectureEmbedding;
         this.problemMissing = problemMissing;
         this.solutionMissing = solutionMissing;
         this.techMissing = techMissing;

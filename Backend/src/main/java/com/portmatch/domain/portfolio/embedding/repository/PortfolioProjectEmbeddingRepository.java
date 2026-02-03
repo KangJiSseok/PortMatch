@@ -13,6 +13,7 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
     Optional<PortfolioProjectEmbedding> findByProjectId(Long projectId);
     
     List<PortfolioProjectEmbedding> findAllByPortfolioId(Long portfolioId);
+    boolean existsByPortfolioId(Long portfolioId);
 
     @Modifying
     @Query(value = """
@@ -35,6 +36,7 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
                 problem_embedding,
                 solution_embedding,
                 tech_embedding,
+                architecture_embedding,
                 problem_missing,
                 solution_missing,
                 tech_missing,
@@ -55,6 +57,7 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
                 CAST(:problemEmbedding AS vector),
                 CAST(:solutionEmbedding AS vector),
                 CAST(:techEmbedding AS vector),
+                CAST(:architectureEmbedding AS vector),
                 :problemMissing,
                 :solutionMissing,
                 :techMissing,
@@ -74,6 +77,7 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
             problem_embedding = EXCLUDED.problem_embedding,
             solution_embedding = EXCLUDED.solution_embedding,
             tech_embedding = EXCLUDED.tech_embedding,
+            architecture_embedding = EXCLUDED.architecture_embedding,
             problem_missing = EXCLUDED.problem_missing,
             solution_missing = EXCLUDED.solution_missing,
             tech_missing = EXCLUDED.tech_missing,
@@ -92,6 +96,7 @@ public interface PortfolioProjectEmbeddingRepository extends JpaRepository<Portf
             String problemEmbedding,
             String solutionEmbedding,
             String techEmbedding,
+            String architectureEmbedding,
             boolean problemMissing,
             boolean solutionMissing,
             boolean techMissing,

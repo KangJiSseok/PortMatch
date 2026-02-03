@@ -4,10 +4,9 @@ import com.portmatch.domain.portfolio.embedding.client.PortfolioAnalysisClient;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingRequest;
 import com.portmatch.domain.portfolio.embedding.dto.PortfolioEmbeddingResponse;
 import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectEmbedding;
-import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectJobPostingEmbedding;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectEmbeddingRepository;
-import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectJobPostingEmbeddingRepository;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserArchitectureEmbeddingRepository;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserJobPostingEmbeddingRepository;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserKeywordEmbeddingRepository;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserTechEmbeddingRepository;
 import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserUnifiedEmbeddingRepository;
@@ -39,7 +38,7 @@ public class PortfolioEmbeddingService {
     private final PortfolioRepository portfolioRepository;
     private final PortfolioAnalysisRepository analysisRepository;
     private final PortfolioProjectEmbeddingRepository embeddingRepository;
-    private final PortfolioProjectJobPostingEmbeddingRepository jobPostingEmbeddingRepository;
+    private final PortfolioUserJobPostingEmbeddingRepository userJobPostingEmbeddingRepository;
     private final PortfolioUserTechEmbeddingRepository userTechEmbeddingRepository;
     private final PortfolioUserKeywordEmbeddingRepository userKeywordEmbeddingRepository;
     private final PortfolioUserArchitectureEmbeddingRepository userArchitectureEmbeddingRepository;
@@ -50,7 +49,7 @@ public class PortfolioEmbeddingService {
             PortfolioRepository portfolioRepository,
             PortfolioAnalysisRepository analysisRepository,
             PortfolioProjectEmbeddingRepository embeddingRepository,
-            PortfolioProjectJobPostingEmbeddingRepository jobPostingEmbeddingRepository,
+            PortfolioUserJobPostingEmbeddingRepository userJobPostingEmbeddingRepository,
             PortfolioUserTechEmbeddingRepository userTechEmbeddingRepository,
             PortfolioUserKeywordEmbeddingRepository userKeywordEmbeddingRepository,
             PortfolioUserArchitectureEmbeddingRepository userArchitectureEmbeddingRepository,
@@ -60,7 +59,7 @@ public class PortfolioEmbeddingService {
         this.portfolioRepository = portfolioRepository;
         this.analysisRepository = analysisRepository;
         this.embeddingRepository = embeddingRepository;
-        this.jobPostingEmbeddingRepository = jobPostingEmbeddingRepository;
+        this.userJobPostingEmbeddingRepository = userJobPostingEmbeddingRepository;
         this.userTechEmbeddingRepository = userTechEmbeddingRepository;
         this.userKeywordEmbeddingRepository = userKeywordEmbeddingRepository;
         this.userArchitectureEmbeddingRepository = userArchitectureEmbeddingRepository;
@@ -98,23 +97,33 @@ public class PortfolioEmbeddingService {
         userArchitectureEmbeddingRepository.deleteByPortfolioId(portfolioId);
         userUnifiedEmbeddingRepository.deleteByPortfolioId(portfolioId);
         embeddingRepository.deleteByPortfolioId(portfolioId);
-        jobPostingEmbeddingRepository.deleteByPortfolioId(portfolioId);
+        userJobPostingEmbeddingRepository.deleteByPortfolioId(portfolioId);
 
         // 3) 프로젝트별 content 생성 + content_hash
         List<Long> projectIds = new ArrayList<>();
         List<String> contents = new ArrayList<>();
         List<String> hashes = new ArrayList<>();
-        List<String> jobPostingContents = new ArrayList<>();
-        List<String> jobPostingHashes = new ArrayList<>();
         List<String> textsToEmbed = new ArrayList<>();
         List<FieldEmbeddingIndices> embeddingIndices = new ArrayList<>();
         List<FieldMissingFlags> missingFlags = new ArrayList<>();
         List<String> techItems = new ArrayList<>();
         List<String> keywordItems = new ArrayList<>();
         List<String> architectureItems = new ArrayList<>();
+        List<String> projectNames = new ArrayList<>();
+        List<String> domains = new ArrayList<>();
+        List<String> problems = new ArrayList<>();
 
         for (PortfolioAnalysisProject p : projects) {
             projectIds.add(p.getId());
+            if (!isMissing(p.getName())) {
+                projectNames.add(p.getName().trim());
+            }
+            if (!isMissing(p.getDomain())) {
+                domains.add(p.getDomain().trim());
+            }
+            if (!isMissing(p.getProblem())) {
+                problems.add(p.getProblem().trim());
+            }
 
             List<String> techs = (p.getTechs() == null) ? List.of()
                     : p.getTechs().stream()
@@ -146,24 +155,12 @@ public class PortfolioEmbeddingService {
                     p.getName(),
                     p.getDomain(),
                     p.getProblem(),
-                    p.getSolution(),
-                    techs
+                    techs,
+                    architectureExperiences
             );
 
             contents.add(content);
             hashes.add(sha256Hex(content));
-
-            String jobPostingContent = buildJobPostingEmbeddingText(
-                    p.getName(),
-                    p.getDomain(),
-                    p.getProblem(),
-                    p.getSolution(),
-                    techs,
-                    architectureExperiences,
-                    keywords
-            );
-            jobPostingContents.add(jobPostingContent);
-            jobPostingHashes.add(sha256Hex(jobPostingContent));
 
             int projectIdx = textsToEmbed.size();
             textsToEmbed.add(buildFieldEmbeddingText("project", p.getName()));
@@ -224,6 +221,35 @@ public class PortfolioEmbeddingService {
             throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
         }
 
+        projectNames = projectNames.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+        domains = domains.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+        problems = problems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+        techItems = techItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+        keywordItems = keywordItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+        architectureItems = architectureItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
+
+        String aggregatedName = projectNames.isEmpty() ? "정보 없음" : String.join(", ", projectNames);
+        String aggregatedDomain = domains.isEmpty() ? "정보 없음" : String.join(", ", domains);
+        String aggregatedProblem = problems.isEmpty() ? "정보 없음" : String.join("; ", problems);
+        String aggregatedTech = techItems.isEmpty() ? "정보 없음" : String.join(", ", techItems);
+        String aggregatedArchitecture = architectureItems.isEmpty() ? "정보 없음" : String.join("; ", architectureItems);
+
+        List<String> userTexts = List.of(
+                buildFieldEmbeddingText("name", aggregatedName),
+                buildFieldEmbeddingText("domain", aggregatedDomain),
+                buildFieldEmbeddingText("problem", aggregatedProblem),
+                buildFieldEmbeddingText("tech", aggregatedTech),
+                buildFieldEmbeddingText("architecture", aggregatedArchitecture)
+        );
+
+        PortfolioEmbeddingResponse userResp = embeddingClient.embed(
+                new PortfolioEmbeddingRequest(userTexts)
+        );
+
+        if (userResp.vectors() == null || userResp.vectors().size() != 5) {
+            throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_SIZE_MISMATCH);
+        }
+
         // 5) upsert + 상세 결과 만들기
         for (int i = 0; i < projectIds.size(); i++) {
             Long projectId = projectIds.get(i);
@@ -238,17 +264,10 @@ public class PortfolioEmbeddingService {
             String solutionVector = toVectorString(resp.vectors().get(indices.solutionIdx()));
             String techVector = toVectorString(resp.vectors().get(indices.techIdx()));
             String architectureVector = toVectorString(resp.vectors().get(indices.architectureIdx()));
-            String keywordsVector = toVectorString(resp.vectors().get(indices.keywordsIdx()));
 
             Optional<PortfolioProjectEmbedding> existingOpt = embeddingRepository.findByProjectId(projectId);
-            Optional<PortfolioProjectJobPostingEmbedding> existingJobPostingOpt =
-                    jobPostingEmbeddingRepository.findByProjectId(projectId);
-
             if (existingOpt.isPresent() && contentHash.equals(existingOpt.get().getContentHash())) {
-                if (existingJobPostingOpt.isPresent()
-                        && jobPostingHashes.get(i).equals(existingJobPostingOpt.get().getContentHash())) {
-                    continue;
-                }
+                continue;
             }
 
             embeddingRepository.upsertByProjectId(
@@ -262,26 +281,7 @@ public class PortfolioEmbeddingService {
                     problemVector,
                     solutionVector,
                     techVector,
-                    flags.problemMissing(),
-                    flags.solutionMissing(),
-                    flags.techMissing(),
-                    flags.architectureMissing(),
-                    flags.keywordsMissing()
-            );
-
-            jobPostingEmbeddingRepository.upsertByProjectId(
-                    portfolioId,
-                    analysis.getId(),
-                    projectId,
-                    jobPostingContents.get(i),
-                    jobPostingHashes.get(i),
-                    projectVector,
-                    domainVector,
-                    problemVector,
-                    solutionVector,
-                    techVector,
                     architectureVector,
-                    keywordsVector,
                     flags.problemMissing(),
                     flags.solutionMissing(),
                     flags.techMissing(),
@@ -289,10 +289,6 @@ public class PortfolioEmbeddingService {
                     flags.keywordsMissing()
             );
         }
-
-        techItems = techItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
-        keywordItems = keywordItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
-        architectureItems = architectureItems.stream().map(String::trim).filter(s -> !s.isBlank()).distinct().toList();
 
         if (!techItems.isEmpty()) {
             PortfolioEmbeddingResponse techResp = embeddingClient.embedTags(
@@ -363,6 +359,29 @@ public class PortfolioEmbeddingService {
                 unifiedText,
                 unifiedVector
         );
+
+        String userJobPostingContent = buildUserJobPostingEmbeddingText(
+                projectNames,
+                domains,
+                problems,
+                techItems,
+                architectureItems
+        );
+
+        userJobPostingEmbeddingRepository.upsertByPortfolioId(
+                userId,
+                portfolioId,
+                userJobPostingContent,
+                sha256Hex(userJobPostingContent),
+                toVectorString(userResp.vectors().get(0)),
+                toVectorString(userResp.vectors().get(1)),
+                toVectorString(userResp.vectors().get(2)),
+                toVectorString(userResp.vectors().get(3)),
+                toVectorString(userResp.vectors().get(4)),
+                problems.isEmpty(),
+                techItems.isEmpty(),
+                architectureItems.isEmpty()
+        );
     }
 
     private String buildUnifiedExperienceText(
@@ -431,33 +450,8 @@ public class PortfolioEmbeddingService {
             String projectName,
             String domain,
             String problem,
-            String solution,
-            List<String> techs
-    ) {
-        String techStr = (techs == null || techs.isEmpty())
-                ? "정보 없음"
-                : techs.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
-
-        return ""
-                + "[프로젝트명] " + safe(projectName) + "\n"
-                + "[도메인] " + safe(domain) + "\n"
-                + "[문제] " + safe(problem) + "\n"
-                + "[해결] " + safe(solution) + "\n"
-                + "[기술] " + techStr;
-    }
-
-    private String buildFieldEmbeddingText(String label, String value) {
-        return "[" + label + "] " + safe(value);
-    }
-
-    private String buildJobPostingEmbeddingText(
-            String projectName,
-            String domain,
-            String problem,
-            String solution,
             List<String> techs,
-            List<String> architectureExperiences,
-            List<String> keywords
+            List<String> architectureExperiences
     ) {
         String techStr = (techs == null || techs.isEmpty())
                 ? "정보 없음"
@@ -467,18 +461,37 @@ public class PortfolioEmbeddingService {
                 ? "정보 없음"
                 : architectureExperiences.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining("; "));
 
-        String keywordStr = (keywords == null || keywords.isEmpty())
-                ? "정보 없음"
-                : keywords.stream().map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.joining(", "));
-
         return ""
                 + "[프로젝트명] " + safe(projectName) + "\n"
                 + "[도메인] " + safe(domain) + "\n"
                 + "[문제] " + safe(problem) + "\n"
-                + "[해결] " + safe(solution) + "\n"
                 + "[기술] " + techStr + "\n"
-                + "[아키텍처] " + architectureStr + "\n"
-                + "[키워드] " + keywordStr;
+                + "[아키텍처] " + architectureStr;
+    }
+
+    private String buildFieldEmbeddingText(String label, String value) {
+        return "[" + label + "] " + safe(value);
+    }
+
+    private String buildUserJobPostingEmbeddingText(
+            List<String> projectNames,
+            List<String> domains,
+            List<String> problems,
+            List<String> techItems,
+            List<String> architectureItems
+    ) {
+        String nameStr = projectNames.isEmpty() ? "정보 없음" : String.join(", ", projectNames);
+        String domainStr = domains.isEmpty() ? "정보 없음" : String.join(", ", domains);
+        String problemStr = problems.isEmpty() ? "정보 없음" : String.join("; ", problems);
+        String techStr = techItems.isEmpty() ? "정보 없음" : String.join(", ", techItems);
+        String architectureStr = architectureItems.isEmpty() ? "정보 없음" : String.join("; ", architectureItems);
+
+        return ""
+                + "[프로젝트명] " + nameStr + "\n"
+                + "[도메인] " + domainStr + "\n"
+                + "[문제] " + problemStr + "\n"
+                + "[기술] " + techStr + "\n"
+                + "[아키텍처] " + architectureStr;
     }
 
     private String safe(String s) {

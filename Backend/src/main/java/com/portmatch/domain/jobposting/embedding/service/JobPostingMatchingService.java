@@ -5,10 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portmatch.domain.jobposting.embedding.dto.JobPostingMatchResponse;
 import com.portmatch.domain.jobposting.embedding.entity.JobPostingEmbedding;
 import com.portmatch.domain.jobposting.embedding.repository.JobPostingEmbeddingRepository;
+import com.portmatch.domain.jobposting.embedding.repository.JobPostingMatchRow;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.domain.jobposting.repository.JobPostingRepository;
-import com.portmatch.domain.portfolio.embedding.entity.PortfolioProjectJobPostingEmbedding;
-import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectJobPostingEmbeddingRepository;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioProjectEmbeddingRepository;
+import com.portmatch.domain.portfolio.embedding.repository.PortfolioUserJobPostingEmbeddingRepository;
 import com.portmatch.domain.portfolio.entity.Portfolio;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.global.exception.BusinessException;
@@ -19,34 +20,38 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
 public class JobPostingMatchingService {
 
     private final PortfolioRepository portfolioRepository;
-    private final PortfolioProjectJobPostingEmbeddingRepository projectEmbeddingRepository;
+    private final PortfolioUserJobPostingEmbeddingRepository userJobPostingEmbeddingRepository;
+    private final PortfolioProjectEmbeddingRepository projectEmbeddingRepository;
     private final JobPostingEmbeddingRepository jobPostingEmbeddingRepository;
     private final JobPostingRepository jobPostingRepository;
     private final ObjectMapper objectMapper;
 
     // 가중치 설정
+    private static final double NAME_WEIGHT = 0.10;
     private static final double DOMAIN_WEIGHT = 0.15;
-    private static final double TECH_WEIGHT = 0.25;
-    private static final double PROBLEM_WEIGHT = 0.15;
-    private static final double SOLUTION_WEIGHT = 0.15;
-    private static final double ARCHITECTURE_WEIGHT = 0.15;
-    private static final double KEYWORDS_WEIGHT = 0.15;
+    private static final double TECH_WEIGHT = 0.15;
+    private static final double PROBLEM_WEIGHT = 0.25;
+    private static final double ARCHITECTURE_WEIGHT = 0.35;
 
     public JobPostingMatchingService(
             PortfolioRepository portfolioRepository,
-            PortfolioProjectJobPostingEmbeddingRepository projectEmbeddingRepository,
+            PortfolioUserJobPostingEmbeddingRepository userJobPostingEmbeddingRepository,
+            PortfolioProjectEmbeddingRepository projectEmbeddingRepository,
             JobPostingEmbeddingRepository jobPostingEmbeddingRepository,
             JobPostingRepository jobPostingRepository,
             ObjectMapper objectMapper
     ) {
         this.portfolioRepository = portfolioRepository;
+        this.userJobPostingEmbeddingRepository = userJobPostingEmbeddingRepository;
         this.projectEmbeddingRepository = projectEmbeddingRepository;
         this.jobPostingEmbeddingRepository = jobPostingEmbeddingRepository;
         this.jobPostingRepository = jobPostingRepository;
@@ -58,70 +63,71 @@ public class JobPostingMatchingService {
         Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.PORTFOLIO_NOT_FOUND));
 
-        // 2. 포트폴리오의 프로젝트 임베딩 조회
-        List<PortfolioProjectJobPostingEmbedding> projectEmbeddings = 
-                projectEmbeddingRepository.findAllByPortfolioId(portfolioId);
-
-        if (projectEmbeddings.isEmpty()) {
+        // 2. 포트폴리오 사용자 임베딩 존재 여부 확인
+        if (!userJobPostingEmbeddingRepository.existsByPortfolioId(portfolioId)) {
             return new JobPostingMatchResponse(List.of());
         }
 
-        // 3. 모든 공고 임베딩 조회 (임베딩이 있는 것만)
-        List<JobPostingEmbedding> jobPostingEmbeddings = 
-                jobPostingEmbeddingRepository.findAllWithEmbeddings();
+        int candidateLimit = Math.max(limit * 5, limit);
+        List<Long> candidateIds = jobPostingEmbeddingRepository.findTopCandidateJobPostingIdsByPortfolioId(
+                portfolioId,
+                NAME_WEIGHT,
+                DOMAIN_WEIGHT,
+                TECH_WEIGHT,
+                PROBLEM_WEIGHT,
+                ARCHITECTURE_WEIGHT,
+                candidateLimit
+        );
 
-        if (jobPostingEmbeddings.isEmpty()) {
+        if (candidateIds.isEmpty()) {
             return new JobPostingMatchResponse(List.of());
         }
 
-        // 4. 유사도 계산
+        List<JobPostingMatchRow> matchRows;
+        if (!projectEmbeddingRepository.existsByPortfolioId(portfolioId)) {
+            return new JobPostingMatchResponse(List.of());
+        }
+
+        matchRows = jobPostingEmbeddingRepository.findRefinedMatchesByPortfolioIdAndJobPostingIds(
+                portfolioId,
+                candidateIds,
+                NAME_WEIGHT,
+                DOMAIN_WEIGHT,
+                TECH_WEIGHT,
+                PROBLEM_WEIGHT,
+                ARCHITECTURE_WEIGHT,
+                limit
+        );
+
+        if (matchRows.isEmpty()) {
+            return new JobPostingMatchResponse(List.of());
+        }
+
+        List<JobPostingEmbedding> jobPostingEmbeddings =
+                jobPostingEmbeddingRepository.findAllByJobPostingIdIn(
+                        matchRows.stream().map(JobPostingMatchRow::getJobPostingId).toList()
+                );
+
+        Map<Long, JobPostingEmbedding> embeddingMap = jobPostingEmbeddings.stream()
+                .collect(Collectors.toMap(JobPostingEmbedding::getJobPostingId, e -> e));
+
+        // 4. 유사도 결과 매핑
         List<ScoredJobPosting> scoredList = new ArrayList<>();
 
-        for (JobPostingEmbedding jobEmb : jobPostingEmbeddings) {
-            double bestSimilarity = 0;
-            double bestDomain = 0, bestTech = 0, bestProblem = 0, bestSolution = 0;
-            double bestArchitecture = 0, bestKeywords = 0;
-            String bestPortfolioContent = "";
-
-            // 각 프로젝트와 비교하여 가장 높은 유사도 선택
-            for (PortfolioProjectJobPostingEmbedding projEmb : projectEmbeddings) {
-                double domainSim = cosineSimilarity(projEmb.getDomainEmbedding(), jobEmb.getDomainEmbedding());
-                double techSim = cosineSimilarity(projEmb.getTechEmbedding(), jobEmb.getTechEmbedding());
-                double problemSim = cosineSimilarity(projEmb.getProblemEmbedding(), jobEmb.getProblemEmbedding());
-                double solutionSim = cosineSimilarity(projEmb.getSolutionEmbedding(), jobEmb.getSolutionEmbedding());
-                double archSim = cosineSimilarity(projEmb.getArchitectureEmbedding(), jobEmb.getArchitectureEmbedding());
-                double keywordsSim = cosineSimilarity(projEmb.getKeywordsEmbedding(), jobEmb.getKeywordsEmbedding());
-
-                double totalSim = 
-                        DOMAIN_WEIGHT * domainSim +
-                        TECH_WEIGHT * techSim +
-                        PROBLEM_WEIGHT * problemSim +
-                        SOLUTION_WEIGHT * solutionSim +
-                        ARCHITECTURE_WEIGHT * archSim +
-                        KEYWORDS_WEIGHT * keywordsSim;
-
-                if (totalSim > bestSimilarity) {
-                    bestSimilarity = totalSim;
-                    bestDomain = domainSim;
-                    bestTech = techSim;
-                    bestProblem = problemSim;
-                    bestSolution = solutionSim;
-                    bestArchitecture = archSim;
-                    bestKeywords = keywordsSim;
-                    bestPortfolioContent = projEmb.getContent();
-                }
+        for (JobPostingMatchRow row : matchRows) {
+            JobPostingEmbedding jobEmb = embeddingMap.get(row.getJobPostingId());
+            if (jobEmb == null) {
+                continue;
             }
 
             scoredList.add(new ScoredJobPosting(
                     jobEmb,
-                    bestSimilarity,
-                    bestDomain,
-                    bestTech,
-                    bestProblem,
-                    bestSolution,
-                    bestArchitecture,
-                    bestKeywords,
-                    bestPortfolioContent
+                    row.getSimilarity() != null ? row.getSimilarity() : 0.0,
+                    row.getDomainSimilarity() != null ? row.getDomainSimilarity() : 0.0,
+                    row.getTechSimilarity() != null ? row.getTechSimilarity() : 0.0,
+                    row.getProblemSimilarity() != null ? row.getProblemSimilarity() : 0.0,
+                    row.getArchitectureSimilarity() != null ? row.getArchitectureSimilarity() : 0.0,
+                    row.getPortfolioContent()
             ));
         }
 
@@ -148,24 +154,17 @@ public class JobPostingMatchingService {
         String portfolioContent = scored.portfolioContent() != null ? scored.portfolioContent() : "";
         String jobPostingContent = formatJobPostingContent(emb);
 
-        // tech JSON 파싱
-        List<String> techList = parseJsonArray(emb.getTech());
-
         return new JobPostingMatchResponse.MatchedJobPosting(
                 emb.getJobPostingId(),
                 title,
                 companyName,
-                emb.getDomain(),
-                techList,
                 emb.getProblem(),
                 emb.getSolution(),
                 scored.similarity(),
                 scored.domainSim(),
                 scored.techSim(),
                 scored.problemSim(),
-                scored.solutionSim(),
                 scored.architectureSim(),
-                scored.keywordsSim(),
                 portfolioContent,
                 jobPostingContent
         );
@@ -177,7 +176,6 @@ public class JobPostingMatchingService {
         sb.append("[프로젝트명] ").append(safe(emb.getName())).append("\n");
         sb.append("[도메인] ").append(safe(emb.getDomain())).append("\n");
         sb.append("[문제] ").append(safe(emb.getProblem())).append("\n");
-        sb.append("[해결] ").append(safe(emb.getSolution())).append("\n");
         
         // tech 파싱
         List<String> techList = parseJsonArray(emb.getTech());
@@ -187,12 +185,7 @@ public class JobPostingMatchingService {
         // architecture 파싱
         List<String> archList = parseJsonArray(emb.getArchitectureExperience());
         String archStr = archList.isEmpty() ? "정보 없음" : String.join("; ", archList);
-        sb.append("[아키텍처] ").append(archStr).append("\n");
-        
-        // keywords 파싱
-        List<String> keywordsList = parseJsonArray(emb.getKeywords());
-        String keywordsStr = keywordsList.isEmpty() ? "정보 없음" : String.join(", ", keywordsList);
-        sb.append("[키워드] ").append(keywordsStr);
+        sb.append("[아키텍처] ").append(archStr);
         
         return sb.toString();
     }
@@ -215,65 +208,13 @@ public class JobPostingMatchingService {
         }
     }
 
-    private double cosineSimilarity(String vec1, String vec2) {
-        if (vec1 == null || vec2 == null || vec1.isBlank() || vec2.isBlank()) {
-            return 0.0;
-        }
-        try {
-            List<Double> v1 = parseVector(vec1);
-            List<Double> v2 = parseVector(vec2);
-            
-            if (v1.size() != v2.size() || v1.isEmpty()) {
-                return 0.0;
-            }
-
-            double dotProduct = 0.0;
-            double norm1 = 0.0;
-            double norm2 = 0.0;
-
-            for (int i = 0; i < v1.size(); i++) {
-                dotProduct += v1.get(i) * v2.get(i);
-                norm1 += v1.get(i) * v1.get(i);
-                norm2 += v2.get(i) * v2.get(i);
-            }
-
-            double denom = Math.sqrt(norm1) * Math.sqrt(norm2);
-            return denom == 0 ? 0.0 : dotProduct / denom;
-        } catch (Exception e) {
-            return 0.0;
-        }
-    }
-
-    private List<Double> parseVector(String vectorString) {
-        // "[0.1,0.2,0.3]" 형태 파싱
-        String cleaned = vectorString.trim();
-        if (cleaned.startsWith("[")) {
-            cleaned = cleaned.substring(1);
-        }
-        if (cleaned.endsWith("]")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 1);
-        }
-        
-        List<Double> result = new ArrayList<>();
-        for (String s : cleaned.split(",")) {
-            try {
-                result.add(Double.parseDouble(s.trim()));
-            } catch (NumberFormatException e) {
-                result.add(0.0);
-            }
-        }
-        return result;
-    }
-
     private record ScoredJobPosting(
             JobPostingEmbedding embedding,
             double similarity,
             double domainSim,
             double techSim,
             double problemSim,
-            double solutionSim,
             double architectureSim,
-            double keywordsSim,
             String portfolioContent
     ) {}
 }
