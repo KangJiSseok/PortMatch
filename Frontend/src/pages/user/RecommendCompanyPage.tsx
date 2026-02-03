@@ -69,8 +69,8 @@ const PALETTE = {
 
 // ✅ 도메인 색: \
 const FACTOR_COLOR: Record<Factor, string> = {
-  프로젝트: '#60A5FA',
-  도메인: '#F43F5E',
+  프로젝트: '#F43F5E',
+  도메인: '#60A5FA',
   문제: '#FB923C',
   해결: '#4ADE80',
   기술스택: '#C084FC',
@@ -1330,7 +1330,7 @@ export default function RecommendCompanyPage() {
         });
 
         setApiCompanies(mapped);
-      } catch {
+      } catch (err) {
         if (!ignore) {
           setApiCompanies([]);
           setLoadError('추천 기업 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
@@ -1372,7 +1372,7 @@ export default function RecommendCompanyPage() {
             const res = await fetchJobPostingsByCompany(String(id));
             const count = Array.isArray(res.data) ? res.data.length : 0;
             return [id, count] as const;
-          } catch {
+          } catch (err) {
             return [id, 0] as const;
           }
         }),
