@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -10,7 +10,19 @@ import Select from '../../components/Select/Select';
 import WarningBubble from '../../components/WarningBubble/WarningBubble';
 import { useSignup } from '../../hooks/useAuth';
 import { auth } from '../../lib/firebase';
-import type { UserRole } from '../../types/auth';
+import type { UserRole, CompanySignupRequest } from '../../types/auth';
+
+interface CompanyApiData {
+  cid: string;
+  corpName: string;
+  totPsncnt: string;
+  busiSize: string;
+  yrSalesAmt: string;
+  corpAddr: string;
+  homePg: string;
+  busiCont: string;
+  logo: string;
+}
 
 const YEARS = Array.from({ length: 100 }, (_, i) => ({
   value: `${2026 - i}`,
@@ -19,25 +31,16 @@ const YEARS = Array.from({ length: 100 }, (_, i) => ({
 const MONTHS = Array.from({ length: 12 }, (_, i) => ({ value: `${i + 1}`, label: `${i + 1}월` }));
 const DAYS = Array.from({ length: 31 }, (_, i) => ({ value: `${i + 1}`, label: `${i + 1}일` }));
 
-const COMPANY_SIZE_OPTIONS = [
-  { value: '', label: '선택' },
-  { value: 'large', label: '대기업' },
-  { value: 'affiliate', label: '대기업 계열사·자회사' },
-  { value: 'small', label: '중소기업(300명이하)' },
-  { value: 'medium', label: '중견기업(300명이상)' },
-  { value: 'venture', label: '벤처기업' },
-  { value: 'foreign_invested', label: '외국계(외국 투자기업)' },
-  { value: 'foreign_corporate', label: '외국계(외국 법인기업)' },
-  { value: 'public', label: '국내 공공기관·공기업' },
-  { value: 'non_profit', label: '비영리단체·협회·교육재단' },
-  { value: 'foreign_org', label: '외국 기관·비영리기구·단체' },
-];
-
 function SignupPage() {
   const [userType, setUserType] = useState<UserRole>('APPLICANT');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeField, setShakeField] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [allCompanies, setAllCompanies] = useState<CompanyApiData[]>([]);
+  const [filteredCompanies, setFilteredCompanies] = useState<CompanyApiData[]>([]);
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<CompanyApiData | null>(null);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -54,13 +57,83 @@ function SignupPage() {
     businessNumber: '',
     homepageUrl: '',
     address: '',
-    companySize: '',
+    industry: '',
+    employeeCount: '',
+    introduction: '',
   });
 
   const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { mutate: signupMutate, isPending: isMutationLoading } = useSignup();
 
   const isLoading = isSubmitting || isMutationLoading;
+  const isCompanySelected = selectedCompany !== null;
+
+  useEffect(() => {
+    if (userType === 'COMPANY') {
+      const fetchCompanies = async () => {
+        try {
+          const response = await axios.get('/api/companies');
+          if (response.data && Array.isArray(response.data.data)) {
+            setAllCompanies(response.data.data);
+          }
+        } catch (error) {
+          console.error('Failed to fetch companies:', error);
+        }
+      };
+      fetchCompanies();
+    }
+  }, [userType]);
+
+  const handleCompanyNameChange = (value: string) => {
+    setFormData((prev) => {
+      if (isCompanySelected && value !== selectedCompany.corpName) {
+        return {
+          ...prev,
+          companyName: value,
+          address: '',
+          industry: '',
+          employeeCount: '',
+          homepageUrl: '',
+          introduction: '',
+        };
+      }
+      return { ...prev, companyName: value };
+    });
+
+    if (isCompanySelected && value !== selectedCompany.corpName) {
+      setSelectedCompany(null);
+    }
+
+    if (value.trim()) {
+      const filtered = allCompanies.filter((company) =>
+        company.corpName.toLowerCase().includes(value.toLowerCase()),
+      );
+      setFilteredCompanies(filtered);
+      setShowCompanyDropdown(true);
+    } else {
+      setShowCompanyDropdown(false);
+    }
+  };
+
+  const handleSelectCompany = (company: CompanyApiData) => {
+    setFormData((prev) => ({
+      ...prev,
+      companyName: company.corpName,
+      address: company.corpAddr || '',
+      industry: company.busiSize || '',
+      employeeCount: company.totPsncnt || '',
+      homepageUrl: company.homePg || '',
+      introduction: company.busiCont || '',
+    }));
+    setSelectedCompany(company);
+    setShowCompanyDropdown(false);
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.companyName;
+      delete newErrors.address;
+      return newErrors;
+    });
+  };
 
   const validateField = (field: string, value: string, currentFormData = formData) => {
     let error = '';
@@ -80,15 +153,11 @@ function SignupPage() {
           ? '비밀번호가 일치하지 않습니다.'
           : '';
 
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors.submit;
-        return {
-          ...newErrors,
-          password: error,
-          passwordConfirm: passwordConfirmError,
-        };
-      });
+      setErrors((prev) => ({
+        ...prev,
+        password: error,
+        passwordConfirm: passwordConfirmError,
+      }));
       return;
     }
 
@@ -97,7 +166,7 @@ function SignupPage() {
       else if (value !== currentFormData.password) error = '비밀번호가 일치하지 않습니다.';
     }
 
-    if (['name', 'phone', 'companyName', 'businessNumber', 'address'].includes(field) && !value) {
+    if (['name', 'phone', 'companyName', 'businessNumber'].includes(field) && !value) {
       error = '필수 입력 항목입니다.';
     }
 
@@ -159,8 +228,6 @@ function SignupPage() {
             'phone',
             'companyName',
             'businessNumber',
-            'address',
-            'companySize',
           ];
 
     const newErrors: Record<string, string> = { ...errors };
@@ -180,7 +247,9 @@ function SignupPage() {
       if (errorKey) {
         setShakeField(errorKey);
         fieldRefs.current[errorKey]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        (fieldRefs.current[errorKey]?.querySelector('input, select') as HTMLElement)?.focus();
+        (
+          fieldRefs.current[errorKey]?.querySelector('input, select, textarea') as HTMLElement
+        )?.focus();
         setTimeout(() => setShakeField(null), 500);
       }
       return;
@@ -194,13 +263,7 @@ function SignupPage() {
         formData.password,
       );
       const uid = userCredential.user.uid;
-
-      const commonData = {
-        email: formData.email,
-        password: formData.password,
-        uid,
-      };
-
+      const commonData = { email: formData.email, password: formData.password, uid };
       if (userType === 'APPLICANT') {
         signupMutate(
           {
@@ -217,36 +280,65 @@ function SignupPage() {
             },
           },
           {
-            onSuccess: () => {
-              setIsSubmitting(false);
-            },
-            onError: async (error) => {
-              await handleRollback(error);
+            onSuccess: () => setIsSubmitting(false),
+            onError: async (err) => {
+              await handleRollback(err);
               setIsSubmitting(false);
             },
           },
         );
       } else {
+        let targetCid = selectedCompany ? selectedCompany.cid : null;
+
+        if (!selectedCompany) {
+          try {
+            const newCompanyResponse = await axios.post('/api/companies', {
+              cid: formData.businessNumber.replace(/-/g, ''),
+              corpName: formData.companyName,
+              totPsncnt: formData.employeeCount,
+              corpAddr: formData.address,
+              busiSize: formData.industry,
+              homePg: formData.homepageUrl,
+              busiCont: formData.introduction,
+            });
+
+            if (newCompanyResponse.data && newCompanyResponse.data.data) {
+              targetCid = newCompanyResponse.data.data;
+            } else {
+              targetCid = formData.businessNumber.replace(/-/g, '');
+            }
+          } catch (apiErr) {
+            console.error('Company creation failed', apiErr);
+            await deleteUser(userCredential.user);
+            handleApiError(apiErr);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        const companyData = {
+          ...commonData,
+          companyName: formData.companyName,
+          businessNumber: formData.businessNumber.replace(/-/g, ''),
+          managerName: formData.name,
+          managerPhone: formData.phone.replace(/-/g, ''),
+          address: formData.address,
+          busiSize: formData.industry,
+          employeeCount: formData.employeeCount ? Number(formData.employeeCount) : 0,
+          busiCont: formData.introduction,
+          homepageUrl: formData.homepageUrl || null,
+          cid: targetCid,
+        };
+
         signupMutate(
           {
             type: 'COMPANY',
-            data: {
-              ...commonData,
-              companyName: formData.companyName,
-              businessNumber: formData.businessNumber.replace(/-/g, ''),
-              managerName: formData.name,
-              managerPhone: formData.phone.replace(/-/g, ''),
-              address: formData.address,
-              companySize: formData.companySize,
-              homepageUrl: formData.homepageUrl || null,
-            },
+            data: companyData as unknown as CompanySignupRequest,
           },
           {
-            onSuccess: () => {
-              setIsSubmitting(false);
-            },
-            onError: async (error) => {
-              await handleRollback(error);
+            onSuccess: () => setIsSubmitting(false),
+            onError: async (err) => {
+              await handleRollback(err);
               setIsSubmitting(false);
             },
           },
@@ -257,9 +349,6 @@ function SignupPage() {
       if (err instanceof FirebaseError) {
         let message = '회원가입 처리 중 오류가 발생했습니다.';
         if (err.code === 'auth/email-already-in-use') message = '이미 사용 중인 이메일입니다.';
-        else if (err.code === 'auth/invalid-email') message = '유효하지 않은 이메일 형식입니다.';
-        else if (err.code === 'auth/weak-password') message = '비밀번호가 너무 취약합니다.';
-
         setErrors((prev) => ({ ...prev, submit: message }));
       } else {
         handleApiError(err);
@@ -277,6 +366,16 @@ function SignupPage() {
       }));
     }
   };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.company-search-container')) {
+        setShowCompanyDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <div className="bg-pure-white relative flex min-h-screen min-w-300 flex-col items-center justify-center overflow-x-auto py-12">
@@ -328,7 +427,7 @@ function SignupPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-pure-white w-180 shrink-0 rounded-[48px] border border-gray-100 px-16 py-14 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]"
+        className="bg-pure-white w-180 shrink-0 rounded-[48px] border border-gray-100 px-16 py-14 shadow-lg"
       >
         <div className="mb-12 text-center">
           <span className="text-point-blue text-[12px] font-black tracking-[0.4em] uppercase opacity-50">
@@ -399,7 +498,7 @@ function SignupPage() {
                     disabled={isLoading}
                     error={errors[field] ? ' ' : undefined}
                   />
-                  <WarningBubble message={errors[field]} isVisible={!!errors[field]} />
+                  <WarningBubble message={errors[field]} isVisible={Boolean(errors[field])} />
                 </motion.div>
               ))}
             </div>
@@ -444,7 +543,10 @@ function SignupPage() {
                         error={!!errors.birthYear}
                       />
                     </div>
-                    <WarningBubble message={errors.birthYear} isVisible={!!errors.birthYear} />
+                    <WarningBubble
+                      message={errors.birthYear}
+                      isVisible={Boolean(errors.birthYear)}
+                    />
                   </motion.div>
                   <motion.div
                     ref={(el) => {
@@ -463,7 +565,7 @@ function SignupPage() {
                       onChange={(e) => handleInputChange('gender', e.target.value)}
                       error={!!errors.gender}
                     />
-                    <WarningBubble message={errors.gender} isVisible={!!errors.gender} />
+                    <WarningBubble message={errors.gender} isVisible={Boolean(errors.gender)} />
                   </motion.div>
                   <Input
                     label="총 경력 (년)"
@@ -483,82 +585,129 @@ function SignupPage() {
                     animate={
                       shakeField === 'companyName' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }
                     }
-                    className="relative col-span-2"
+                    className="company-search-container relative col-span-2"
                   >
                     <Input
                       label="기업명 *"
-                      placeholder="공식 기업명을 입력하세요"
+                      placeholder="기업명을 입력하세요 (기존 기업 검색 가능)"
                       value={formData.companyName}
-                      onChange={(e) => handleInputChange('companyName', e.target.value)}
+                      onChange={(e) => handleCompanyNameChange(e.target.value)}
                       disabled={isLoading}
                       error={errors.companyName ? ' ' : undefined}
                     />
-                    <WarningBubble message={errors.companyName} isVisible={!!errors.companyName} />
-                  </motion.div>
-                  <motion.div
-                    ref={(el) => {
-                      fieldRefs.current.businessNumber = el;
-                    }}
-                    animate={
-                      shakeField === 'businessNumber' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }
-                    }
-                    className="relative"
-                  >
-                    <Input
-                      label="사업자 등록번호 *"
-                      placeholder="000-00-00000"
-                      value={formData.businessNumber}
-                      onChange={(e) => handleInputChange('businessNumber', e.target.value)}
-                      maxLength={12}
-                      disabled={isLoading}
-                      error={errors.businessNumber ? ' ' : undefined}
-                    />
+                    <AnimatePresence>
+                      {showCompanyDropdown && filteredCompanies.length > 0 && (
+                        <motion.ul
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute top-full right-0 left-0 z-20 mt-2 max-h-60 overflow-y-auto rounded-xl border border-gray-100 bg-white py-2 shadow-xl"
+                        >
+                          {filteredCompanies.map((company) => (
+                            <li
+                              key={company.cid}
+                              onClick={() => handleSelectCompany(company)}
+                              className="cursor-pointer px-4 py-3 hover:bg-gray-50"
+                            >
+                              <div className="font-bold text-gray-900">{company.corpName}</div>
+                              <div className="text-sm text-gray-500">
+                                {company.cid} | {company.corpAddr}
+                              </div>
+                            </li>
+                          ))}
+                        </motion.ul>
+                      )}
+                    </AnimatePresence>
                     <WarningBubble
-                      message={errors.businessNumber}
-                      isVisible={!!errors.businessNumber}
+                      message={errors.companyName}
+                      isVisible={Boolean(errors.companyName)}
                     />
                   </motion.div>
-                  <Input
-                    label="홈페이지 URL"
-                    placeholder="https://..."
-                    value={formData.homepageUrl}
-                    onChange={(e) => handleInputChange('homepageUrl', e.target.value)}
-                    disabled={isLoading}
-                  />
+
+                  <div className="col-span-2 grid grid-cols-2 gap-8">
+                    <motion.div
+                      ref={(el) => {
+                        fieldRefs.current.businessNumber = el;
+                      }}
+                      animate={
+                        shakeField === 'businessNumber' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }
+                      }
+                      className="relative"
+                    >
+                      <Input
+                        label="사업자 등록번호 *"
+                        placeholder="000-00-00000"
+                        value={formData.businessNumber}
+                        onChange={(e) => handleInputChange('businessNumber', e.target.value)}
+                        maxLength={12}
+                        disabled={isLoading}
+                        error={errors.businessNumber ? ' ' : undefined}
+                      />
+                      <WarningBubble
+                        message={errors.businessNumber}
+                        isVisible={Boolean(errors.businessNumber)}
+                      />
+                    </motion.div>
+                    <Input
+                      label="홈페이지 URL"
+                      placeholder="https://..."
+                      value={formData.homepageUrl}
+                      onChange={(e) => handleInputChange('homepageUrl', e.target.value)}
+                      disabled={isLoading || isCompanySelected}
+                    />
+                  </div>
+
                   <motion.div
                     ref={(el) => {
                       fieldRefs.current.address = el;
                     }}
-                    animate={shakeField === 'address' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }}
                     className="relative col-span-2"
                   >
                     <Input
-                      label="기업 주소 *"
+                      label="기업 위치 (주소)"
                       placeholder="상세 주소를 입력하세요"
                       value={formData.address}
                       onChange={(e) => handleInputChange('address', e.target.value)}
-                      disabled={isLoading}
-                      error={errors.address ? ' ' : undefined}
+                      disabled={isLoading || isCompanySelected}
                     />
-                    <WarningBubble message={errors.address} isVisible={!!errors.address} />
                   </motion.div>
-                  <motion.div
-                    ref={(el) => {
-                      fieldRefs.current.companySize = el;
-                    }}
-                    animate={
-                      shakeField === 'companySize' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }
-                    }
-                    className="relative col-span-2"
-                  >
-                    <Select
-                      label="기업 형태 *"
-                      options={COMPANY_SIZE_OPTIONS}
-                      onChange={(e) => handleInputChange('companySize', e.target.value)}
-                      error={!!errors.companySize}
+
+                  <div className="relative">
+                    <Input
+                      label="산업군"
+                      placeholder="예: IT/웹서비스"
+                      value={formData.industry}
+                      onChange={(e) => handleInputChange('industry', e.target.value)}
+                      disabled={isLoading || isCompanySelected}
                     />
-                    <WarningBubble message={errors.companySize} isVisible={!!errors.companySize} />
-                  </motion.div>
+                  </div>
+
+                  <div className="relative">
+                    <Input
+                      label="사원수"
+                      type="text"
+                      placeholder="예: 50명 이하, 100명 등"
+                      value={formData.employeeCount}
+                      onChange={(e) => handleInputChange('employeeCount', e.target.value)}
+                      disabled={isLoading || isCompanySelected}
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="mb-2 block text-sm font-bold text-gray-700">기업 소개</label>
+                    <textarea
+                      value={formData.introduction}
+                      onChange={(e) => handleInputChange('introduction', e.target.value)}
+                      placeholder="기업에 대한 간단한 소개를 입력해주세요."
+                      disabled={isLoading || isCompanySelected}
+                      className={`focus:ring-point-blue/20 w-full rounded-[15px] border px-5 py-4 text-[15px] font-medium transition-all outline-none focus:ring-2 ${
+                        isCompanySelected
+                          ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-500'
+                          : 'focus:border-point-blue border-gray-200 bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:bg-white'
+                      }`}
+                      rows={4}
+                    />
+                  </div>
                 </>
               )}
             </div>
