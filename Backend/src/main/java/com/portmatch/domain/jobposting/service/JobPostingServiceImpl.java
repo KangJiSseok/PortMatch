@@ -81,6 +81,7 @@ public class JobPostingServiceImpl implements JobPostingService {
             // 팁: cascade = CascadeType.ALL이 설정되어 있어도
             // 리스트를 clear() 하거나 명시적으로 지워주는 게 안전해!
             jobPosting.getTechStacks().clear();
+            postingStackRepository.flush();
         }
 
         // 3. 새로운 기술 스택 ID 리스트를 다시 등록
