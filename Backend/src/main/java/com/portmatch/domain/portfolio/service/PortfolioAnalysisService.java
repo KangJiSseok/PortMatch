@@ -93,6 +93,45 @@ public class PortfolioAnalysisService {
         }
     }
 
+    public Object analyzeV2(Long userId, Long portfolioId) {
+        // 1. 포트폴리오 검증 (기존 analyze와 동일)
+        Portfolio portfolio = portfolioRepository.findByIdAndUserId(portfolioId, userId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.PORTFOLIO_NOT_FOUND));
+
+        // 2. Presigned URL 생성
+        PresignedUrlResponse presigned = portfolioService.getPresignedUrlForUser(userId, portfolioId, 10);
+
+        System.out.println("[analysis-v2] presigned url = " + presigned.getUrl());
+
+        // 3. V2 엔드포인트 설정 (/api/parse-v2)
+        String endpoint = normalizeBaseUrl(portfolioAnalysisBaseUrl) + "/api/parse-v2";
+
+        // 4. 요청 헤더 및 페이로드 구성 (기존 스타일 준수)
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        String payloadJson;
+        try {
+            payloadJson = objectMapper.writeValueAsString(Map.of("s3_url", presigned.getUrl()));
+        } catch (JsonProcessingException exception) {
+            throw new BusinessException(ResponseCode.PORTFOLIO_ANALYSIS_PAYLOAD_FAILED);
+        }
+
+        byte[] payloadBytes = payloadJson.getBytes(StandardCharsets.UTF_8);
+        headers.setContentLength(payloadBytes.length);
+        HttpEntity<byte[]> request = new HttpEntity<>(payloadBytes, headers);
+
+        // 5. 요청 전송 및 결과 반환 (V2는 아직 DB 저장을 하지 않음)
+        try {
+            ResponseEntity<Object> response = restTemplate.exchange(endpoint, HttpMethod.POST, request, Object.class);
+            return response.getBody();
+        } catch (RestClientException exception) {
+            exception.printStackTrace();
+            throw new BusinessException(ResponseCode.PORTFOLIO_ANALYSIS_SERVICE_UNAVAILABLE);
+        }
+    }
+
+
     @Transactional(readOnly = true)
     public PortfolioAnalysisResponse getAnalysis(Long userId, Long portfolioId) {
         portfolioRepository.findByIdAndUserId(portfolioId, userId)
