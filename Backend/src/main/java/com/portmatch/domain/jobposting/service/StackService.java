@@ -13,4 +13,6 @@ public interface StackService {
     List<TechStackDto> getPostingStacks(Long posting_id);
 
     TechStackDto getTechStackById(Long id);
+
+    List<TechStackDto> getTechStackByName(String name);
 }

@@ -57,7 +57,6 @@ public class SecurityConfig {
                                 "/api/stacks/**",
                                 "/api/companies/**",
                                 "/api/interview/sessions/**",
-                                "/api/stacks/**",
                                 "/api/interview/webhook",
                                 "/api/company-scraps/**",
                                 "/api/interview-templates/**",
