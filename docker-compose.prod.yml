@@ -113,6 +113,7 @@ services:
       context: ./crawler 
       dockerfile: Dockerfile
     container_name: portmatch-wanted-crawler
+    profiles: ['crawler']
     env_file:
       - .env.prod
     environment:
