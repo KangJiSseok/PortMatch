@@ -49,18 +49,12 @@ type SignupParams =
   | { type: Extract<UserRole, 'COMPANY'>; data: CompanySignupRequest };
 
 export const useSignup = () => {
-  const navigate = useNavigate();
-
   return useMutation({
     mutationFn: ({ type, data }: SignupParams) => {
       if (type === 'APPLICANT') {
         return signupApplicant(data);
       }
       return signupCompany(data);
-    },
-    onSuccess: () => {
-      alert('회원가입이 완료되었습니다.');
-      navigate('/login');
     },
   });
 };

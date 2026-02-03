@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
@@ -32,10 +32,12 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => ({ value: `${i + 1}`, label:
 const DAYS = Array.from({ length: 31 }, (_, i) => ({ value: `${i + 1}`, label: `${i + 1}일` }));
 
 function SignupPage() {
+  const navigate = useNavigate();
   const [userType, setUserType] = useState<UserRole>('APPLICANT');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shakeField, setShakeField] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const [allCompanies, setAllCompanies] = useState<CompanyApiData[]>([]);
   const [filteredCompanies, setFilteredCompanies] = useState<CompanyApiData[]>([]);
@@ -213,6 +215,14 @@ function SignupPage() {
     handleApiError(error);
   };
 
+  const handleSignupSuccess = () => {
+    setIsSubmitting(false);
+    setShowSuccessToast(true);
+    setTimeout(() => {
+      navigate('/login');
+    }, 1000);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
@@ -280,7 +290,7 @@ function SignupPage() {
             },
           },
           {
-            onSuccess: () => setIsSubmitting(false),
+            onSuccess: handleSignupSuccess,
             onError: async (err) => {
               await handleRollback(err);
               setIsSubmitting(false);
@@ -336,7 +346,7 @@ function SignupPage() {
             data: companyData as unknown as CompanySignupRequest,
           },
           {
-            onSuccess: () => setIsSubmitting(false),
+            onSuccess: handleSignupSuccess,
             onError: async (err) => {
               await handleRollback(err);
               setIsSubmitting(false);
@@ -426,8 +436,8 @@ function SignupPage() {
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-pure-white w-180 shrink-0 rounded-[48px] border border-gray-100 px-16 py-14 shadow-lg"
+        animate={showSuccessToast ? { opacity: 0.5, scale: 0.98 } : { opacity: 1, y: 0, scale: 1 }}
+        className={`bg-pure-white w-180 shrink-0 rounded-[48px] border border-gray-100 px-16 py-14 shadow-lg ${showSuccessToast ? 'pointer-events-none' : ''}`}
       >
         <div className="mb-12 text-center">
           <span className="text-point-blue text-[12px] font-black tracking-[0.4em] uppercase opacity-50">
@@ -737,6 +747,35 @@ function SignupPage() {
           </div>
         </form>
       </motion.div>
+
+      <AnimatePresence>
+        {showSuccessToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-10 z-50 flex items-center gap-3 rounded-2xl bg-gray-900 px-8 py-4 text-white shadow-2xl"
+          >
+            <div className="bg-point-blue flex h-6 w-6 items-center justify-center rounded-full">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <span className="font-bold">
+              회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -13,6 +13,8 @@ import {
   FileText,
   Briefcase,
   Sparkles,
+  Lock,
+  LogIn,
 } from 'lucide-react';
 import { useMessenger } from '../../hooks/useMessenger';
 import { useAuth } from '../../hooks/useAuth';
@@ -55,100 +57,138 @@ const ChatList = () => {
   const { rooms, setCurrentRoomId } = useMessenger();
   const { user } = useAuth();
 
+  const isLoggedIn = !!user;
   const isEmpty = !rooms || rooms.length === 0;
   const isCompany = user?.role === 'COMPANY';
+
+  const handleLoginRedirect = () => {
+    window.location.href = '/login';
+  };
+
+  const renderContent = () => {
+    if (!isLoggedIn) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center px-8 pb-10 text-center">
+          <div className="bg-soft-pebble/30 mb-6 flex h-24 w-24 items-center justify-center rounded-full">
+            <Lock size={36} className="text-silver-mist opacity-80" />
+          </div>
+
+          <h3 className="text-midnight-ink mb-2 text-lg font-black tracking-tight">
+            로그인이 필요해요
+          </h3>
+
+          <p className="text-slate-gray mb-8 text-xs leading-relaxed font-medium whitespace-pre-wrap">
+            쪽지함을 확인하려면
+            <br />
+            먼저 로그인을 진행해주세요.
+          </p>
+
+          <button
+            onClick={handleLoginRedirect}
+            className="bg-point-blue text-pure-white hover:bg-point-blue/90 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+          >
+            <LogIn size={14} /> 로그인하러 가기
+          </button>
+        </div>
+      );
+    }
+
+    if (isEmpty) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center px-8 pb-10 text-center">
+          <div className="bg-soft-pebble/30 mb-6 flex h-24 w-24 items-center justify-center rounded-full">
+            {isCompany ? (
+              <Briefcase size={36} className="text-silver-mist opacity-80" />
+            ) : (
+              <FileText size={36} className="text-silver-mist opacity-80" />
+            )}
+          </div>
+
+          <h3 className="text-midnight-ink mb-2 text-lg font-black tracking-tight">
+            아직 주고받은 쪽지가 없어요
+          </h3>
+
+          <p className="text-slate-gray mb-8 text-xs leading-relaxed font-medium whitespace-pre-wrap">
+            {isCompany
+              ? '새로운 공고를 등록해 지원자를 모집하거나\n인재 추천을 받아 딱 맞는 분을 찾아보세요!'
+              : '매력적인 이력서로 기업의 제안을 받아보거나\n관심 있는 공고에 지원해 대화를 시작해보세요!'}
+          </p>
+
+          <div className="flex w-full flex-col gap-3">
+            <button className="bg-point-blue text-pure-white hover:bg-point-blue/90 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+              {isCompany ? (
+                <>
+                  <Briefcase size={14} /> 채용 공고 등록하기
+                </>
+              ) : (
+                <>
+                  <FileText size={14} /> 이력서 작성하러 가기
+                </>
+              )}
+            </button>
+
+            <button className="bg-soft-pebble/30 text-midnight-ink hover:bg-soft-pebble/50 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black transition-all active:scale-95">
+              {isCompany ? (
+                <>
+                  <Sparkles size={14} className="text-point-blue" /> 인재 풀 탐색하기
+                </>
+              ) : (
+                <>
+                  <Briefcase size={14} className="text-point-blue" /> 채용 공고 보러가기
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="divide-soft-pebble divide-y">
+        {rooms.map((room: ChatRoom) => {
+          const opponentName = user?.role === 'COMPANY' ? room.applicantName : room.companyName;
+          const isMyLastMessage = room.lastSenderId === String(user?.userId);
+
+          return (
+            <div
+              key={room.id}
+              onClick={() => setCurrentRoomId(room.id)}
+              className="hover:bg-soft-pebble/10 flex cursor-pointer items-start gap-4 p-5 transition-all active:scale-[0.98]"
+            >
+              <CompanyLogo room={room} />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="mb-1 flex items-center justify-between">
+                  <h4 className="text-midnight-ink truncate text-sm font-bold">
+                    {opponentName || '이름 없음'}
+                  </h4>
+                  <span className="text-silver-mist text-[10px] font-bold">
+                    {getRelativeTime(room.lastUpdatedAt)}
+                  </span>
+                </div>
+                <p className="text-slate-gray truncate text-xs leading-relaxed font-medium">
+                  {room.lastMessage}
+                </p>
+                {room.unreadCount > 0 && !isMyLastMessage && (
+                  <div className="mt-2">
+                    <span className="bg-point-blue inline-flex h-1.5 w-1.5 rounded-full" />
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-pure-white flex h-full flex-col overflow-hidden">
       <div className="border-soft-pebble bg-pure-white sticky top-0 z-10 flex items-center justify-between border-b p-6">
         <h2 className="text-midnight-ink text-xl font-black tracking-tighter">쪽지함</h2>
-        <Search size={20} className="text-silver-mist cursor-pointer" />
+        {isLoggedIn && <Search size={20} className="text-silver-mist cursor-pointer" />}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {isEmpty ? (
-          <div className="flex h-full flex-col items-center justify-center px-8 pb-10 text-center">
-            <div className="bg-soft-pebble/30 mb-6 flex h-24 w-24 items-center justify-center rounded-full">
-              {isCompany ? (
-                <Briefcase size={36} className="text-silver-mist opacity-80" />
-              ) : (
-                <FileText size={36} className="text-silver-mist opacity-80" />
-              )}
-            </div>
-
-            <h3 className="text-midnight-ink mb-2 text-lg font-black tracking-tight">
-              아직 주고받은 쪽지가 없어요
-            </h3>
-
-            <p className="text-slate-gray mb-8 text-xs leading-relaxed font-medium whitespace-pre-wrap">
-              {isCompany
-                ? '새로운 공고를 등록해 지원자를 모집하거나\n인재 추천을 받아 딱 맞는 분을 찾아보세요!'
-                : '매력적인 이력서로 기업의 제안을 받아보거나\n관심 있는 공고에 지원해 대화를 시작해보세요!'}
-            </p>
-
-            <div className="flex w-full flex-col gap-3">
-              <button className="bg-point-blue text-pure-white hover:bg-point-blue/90 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black shadow-lg shadow-blue-500/20 transition-all active:scale-95">
-                {isCompany ? (
-                  <>
-                    <Briefcase size={14} /> 채용 공고 등록하기
-                  </>
-                ) : (
-                  <>
-                    <FileText size={14} /> 이력서 작성하러 가기
-                  </>
-                )}
-              </button>
-
-              <button className="bg-soft-pebble/30 text-midnight-ink hover:bg-soft-pebble/50 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black transition-all active:scale-95">
-                {isCompany ? (
-                  <>
-                    <Sparkles size={14} className="text-point-blue" /> 인재 풀 탐색하기
-                  </>
-                ) : (
-                  <>
-                    <Briefcase size={14} className="text-point-blue" /> 채용 공고 보러가기
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="divide-soft-pebble divide-y">
-            {rooms.map((room: ChatRoom) => {
-              const opponentName = user?.role === 'COMPANY' ? room.applicantName : room.companyName;
-              const isMyLastMessage = room.lastSenderId === String(user?.userId);
-
-              return (
-                <div
-                  key={room.id}
-                  onClick={() => setCurrentRoomId(room.id)}
-                  className="hover:bg-soft-pebble/10 flex cursor-pointer items-start gap-4 p-5 transition-all active:scale-[0.98]"
-                >
-                  <CompanyLogo room={room} />
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="mb-1 flex items-center justify-between">
-                      <h4 className="text-midnight-ink truncate text-sm font-bold">
-                        {opponentName || '이름 없음'}
-                      </h4>
-                      <span className="text-silver-mist text-[10px] font-bold">
-                        {getRelativeTime(room.lastUpdatedAt)}
-                      </span>
-                    </div>
-                    <p className="text-slate-gray truncate text-xs leading-relaxed font-medium">
-                      {room.lastMessage}
-                    </p>
-                    {room.unreadCount > 0 && !isMyLastMessage && (
-                      <div className="mt-2">
-                        <span className="bg-point-blue inline-flex h-1.5 w-1.5 rounded-full" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <div className="flex-1 overflow-y-auto">{renderContent()}</div>
     </div>
   );
 };
