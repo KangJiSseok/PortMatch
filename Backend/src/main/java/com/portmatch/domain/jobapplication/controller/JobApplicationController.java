@@ -13,11 +13,13 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @Tag(name = "공고 지원", description = "공고 지원 생성/취소 API")
 @RestController
 @RequestMapping("/api/job-postings")
@@ -34,7 +36,9 @@ public class JobApplicationController {
             @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long jobPostingId,
             @Valid @RequestBody JobApplicationCreateRequest request
     ) {
+        log.info("id");
         Long userId = principal.getUser().getId();
+        log.info(userId.toString());
         return BaseApiResponse.ok(jobApplicationService.apply(userId, jobPostingId, request));
     }
 
