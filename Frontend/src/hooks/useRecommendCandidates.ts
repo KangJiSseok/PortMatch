@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchRecommendedCandidates } from '@/api/company/recommendCandidates';
+import { fetchRecommendedCandidates } from '@/api/recommend/recommendCandidates';
 import type {
   RecommendCandidatesRequest,
   RecommendCandidatesResponse,
