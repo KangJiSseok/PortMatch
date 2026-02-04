@@ -10,7 +10,17 @@ import {
   FileText,
   MousePointerClick,
   ChevronDown,
+  Building2,
 } from 'lucide-react';
+import {
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ResponsiveContainer,
+} from 'recharts';
+import type { BaseTickContentProps, TickItem } from 'recharts/types/util/types';
 import {
   fetchPortfolioRecommendedCompanies,
   fetchCompanyMatchExplanation,
@@ -25,7 +35,6 @@ import type {
 
 type Factor = '프로젝트' | '도메인' | '문제' | '해결' | '기술스택';
 const FACTOR_ORDER: Factor[] = ['프로젝트', '도메인', '문제', '해결', '기술스택'];
-const DONUT_ORDER: Factor[] = ['기술스택', '프로젝트', '도메인', '문제', '해결'];
 
 type Headline = {
   line1: string;
@@ -79,58 +88,20 @@ const FACTOR_COLOR: Record<Factor, string> = {
 // ✅ 채도 낮춘 포인트 블루
 const POINT_BLUE = '#5563C1';
 
-/** ---------------- distance(0~1) -> weights(%) ---------------- **/
+/** ---------------- similarity(0~1 or 0~100) -> weights(%) ---------------- **/
 
-function distancesToWeights(dist: Record<Factor, number>): Record<Factor, number> {
-  // distance 작을수록 좋음 → strength는 1-distance
-  const strengths: Record<Factor, number> = {
-    프로젝트: 1 - dist.프로젝트,
-    도메인: 1 - dist.도메인,
-    문제: 1 - dist.문제,
-    해결: 1 - dist.해결,
-    기술스택: 1 - dist.기술스택,
-  };
+function toScore(similarity: number): number {
+  if (!Number.isFinite(similarity)) return 0;
+  if (similarity > 1) return Math.max(0, Math.min(100, Math.round(similarity)));
+  return Math.max(0, Math.min(100, Math.round(similarity * 100)));
+}
 
-  const sum = FACTOR_ORDER.reduce((acc, k) => acc + Math.max(0, strengths[k]), 0);
-
-  // 방어: sum이 0이면 균등 분배
-  if (sum <= 0) {
-    const even = Math.floor(100 / FACTOR_ORDER.length);
-    const base: Record<Factor, number> = {
-      프로젝트: even,
-      도메인: even,
-      문제: even,
-      해결: even,
-      기술스택: even,
-    };
-    const remain = 100 - even * FACTOR_ORDER.length;
-    if (remain > 0) base[FACTOR_ORDER[0]] += remain;
-    return base;
-  }
-
-  const raw = FACTOR_ORDER.map((k) => ({ k, v: (strengths[k] / sum) * 100 }));
-
-  const rounded: Record<Factor, number> = {
-    프로젝트: 0,
-    도메인: 0,
-    문제: 0,
-    해결: 0,
-    기술스택: 0,
-  };
-
-  raw.forEach(({ k, v }) => {
-    rounded[k] = Math.round(v);
+function similaritiesToWeights(sim: Record<Factor, number>): Record<Factor, number> {
+  const out = {} as Record<Factor, number>;
+  FACTOR_ORDER.forEach((k) => {
+    out[k] = toScore(sim[k] ?? 0);
   });
-
-  const total = FACTOR_ORDER.reduce((acc, k) => acc + rounded[k], 0);
-  const diff = 100 - total;
-
-  if (diff !== 0) {
-    const maxKey = raw.sort((a, b) => b.v - a.v)[0]?.k ?? FACTOR_ORDER[0];
-    rounded[maxKey] = Math.max(0, rounded[maxKey] + diff);
-  }
-
-  return rounded;
+  return out;
 }
 
 function pickTopFactors(weights: Record<Factor, number>, n = 2): Factor[] {
@@ -145,65 +116,73 @@ const FACTOR_LABEL: Record<Factor, string> = {
   기술스택: '기술스택',
 };
 
-/** ---------------- DonutChart (CI-safe) ---------------- **/
+/** ---------------- Radar Chart ---------------- **/
 
-function DonutChart({ weights, score }: { weights: Record<Factor, number>; score: number }) {
-  const size = 120;
-  const stroke = 11;
-  const r = (size - stroke) / 2;
-  const cx = size / 2;
-  const cy = size / 2;
-  const START_ANGLE_OFFSET = 180;
+type RadarDataPoint = { category: string; value: number };
 
-  type Segment = { key: Factor; angle: number; start: number; end: number };
+function CompanyRadarChart({ weights, score }: { weights: Record<Factor, number>; score: number }) {
+  const data: RadarDataPoint[] = FACTOR_ORDER.map((f) => ({
+    category: FACTOR_LABEL[f],
+    value: weights[f] ?? 0,
+  }));
 
-  const segments: Segment[] = DONUT_ORDER.reduce(
-    (state, k) => {
-      const value = weights[k] ?? 0;
-      const angle = (value / 100) * 360;
+  const maxValue = Math.max(...data.map((d) => d.value));
 
-      const start = state.acc;
-      const end = start + angle;
+  const renderTick = (props: BaseTickContentProps) => {
+    const { x, y, payload } = props;
+    const tick = payload as TickItem | undefined;
+    const label = tick?.value != null ? String(tick.value) : undefined;
+    if (x == null || y == null || !label) return null;
+    const xNum = typeof x === 'string' ? Number(x) : x;
+    const yNum = typeof y === 'string' ? Number(y) : y;
+    if (!Number.isFinite(xNum) || !Number.isFinite(yNum)) return null;
+    const isMax = data.find((d) => d.category === label)?.value === maxValue;
 
-      if (angle < 1) return { acc: end, segs: state.segs };
-
-      return {
-        acc: end,
-        segs: [...state.segs, { key: k, angle, start, end }],
-      };
-    },
-    { acc: 0, segs: [] as Segment[] },
-  ).segs;
+    return (
+      <text
+        x={xNum}
+        y={yNum}
+        textAnchor="middle"
+        fill={isMax ? '#c15555' : '#1e293b'}
+        fontSize={10}
+        fontWeight={700}
+      >
+        {label}
+      </text>
+    );
+  };
 
   return (
-    <div className="relative flex items-center justify-center">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f1f1" strokeWidth={stroke} />
-
-        {segments.map(({ key, angle, start, end }) => {
-          const startRad = ((start - 90 + START_ANGLE_OFFSET) * Math.PI) / 180;
-          const endRad = ((end - 90 + START_ANGLE_OFFSET) * Math.PI) / 180;
-
-          return (
-            <path
-              key={key}
-              d={`M ${cx + r * Math.cos(startRad)} ${cy + r * Math.sin(startRad)} A ${r} ${r} 0 ${
-                angle > 180 ? 1 : 0
-              } 1 ${cx + r * Math.cos(endRad)} ${cy + r * Math.sin(endRad)}`}
-              fill="none"
-              stroke={FACTOR_COLOR[key]}
-              strokeWidth={stroke}
-              strokeLinecap="round"
+    <div className="w-full">
+      <div className="mb-2 flex items-center justify-center gap-2">
+        <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">match</span>
+        <span className="text-[18px] font-black text-gray-900">{score}</span>
+      </div>
+      <div className="h-[200px] w-full flex items-center justify-center">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart
+            data={data}
+            outerRadius="70%"
+            margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+            style={{ outline: 'none' }}
+          >
+            <defs>
+              <radialGradient id="companyRadarFillGradient" cx="50%" cy="50%" r="60%">
+                <stop offset="0%" stopColor="#93c5fd" stopOpacity={0.2} />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.4} />
+              </radialGradient>
+            </defs>
+            <PolarGrid strokeDasharray="2 2" stroke="#f1f5f9" />
+            <PolarAngleAxis dataKey="category" tick={renderTick} />
+            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+            <Radar
+              dataKey="value"
+              stroke="#93c5fd"
+              strokeWidth={1.5}
+              fill="url(#companyRadarFillGradient)"
             />
-          );
-        })}
-      </svg>
-
-      <div className="absolute flex flex-col items-center">
-        <span className="text-[30px] leading-none font-black text-gray-900">{score}</span>
-        <span className="mt-1 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-          match
-        </span>
+          </RadarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
@@ -343,23 +322,23 @@ function ComparisonTable({
   const matchedTechTags = companyTechTags.filter((tag) => portfolioTechTags.includes(tag));
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full table-fixed text-left text-[13px]">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <table className="w-full table-fixed text-left">
         <colgroup>
-          <col className="w-[90px]" />
-          <col className="w-[32px]" />
-          <col className="w-[280px]" />
-          <col className="w-[280px]" />
+          <col className="w-[140px]" />
+          <col className="w-[100px]" />
+          <col />
+          <col />
         </colgroup>
-        <thead className="bg-gray-50/70 text-[12px] font-bold text-gray-500">
-          <tr>
-            <th className="px-6 py-3">비교 항목</th>
-            <th className="px-2 py-3 text-center">매칭도</th>
-            <th className="px-6 py-3">내 포트폴리오</th>
-            <th className="px-6 py-3">기업 과제</th>
+        <thead className="border-b border-gray-200 bg-gray-50/50">
+          <tr className="text-[13px] font-medium tracking-wider text-gray-500 uppercase">
+            <th className="px-6 py-4 text-center">비교 항목</th>
+            <th className="px-4 py-4 text-center">매칭도</th>
+            <th className="px-6 py-4">내 포트폴리오</th>
+            <th className="px-6 py-4">기업 과제</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="text-[14px]">
           {FACTOR_ORDER.map((factor) => {
             if (factor === '기술스택') {
               return (
@@ -372,8 +351,22 @@ function ComparisonTable({
                       </p>
                     )}
                   </td>
-                  <td className="w-[32px] px-2 py-4 text-center text-[13px] font-bold text-blue-600">
-                    {weights[factor]}%
+                  <td className="px-4 py-5 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-[14px] font-bold text-gray-900">
+                        {weights[factor]}
+                        <span className="ml-0.5 text-[12px] font-medium opacity-80">점</span>
+                      </span>
+                      <div className="h-1.5 w-full max-w-[60px] overflow-hidden rounded-full bg-gray-100">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${weights[factor]}%` }}
+                          transition={{ duration: 0.6, ease: 'easeOut' }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: FACTOR_COLOR[factor] }}
+                        />
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1.5">
@@ -431,13 +424,27 @@ function ComparisonTable({
             return (
               <tr key={factor} className="border-t border-gray-100">
                 <td className="px-6 py-4 font-bold text-gray-900">{FACTOR_LABEL[factor]}</td>
-                <td className="w-[32px] px-2 py-4 text-center text-[13px] font-bold text-blue-600">
-                  {weights[factor]}%
+                <td className="px-4 py-5 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-[14px] font-bold text-gray-900">
+                      {weights[factor]}
+                      <span className="ml-0.5 text-[12px] font-medium opacity-80">점</span>
+                    </span>
+                    <div className="h-1.5 w-full max-w-[60px] overflow-hidden rounded-full bg-gray-100">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${weights[factor]}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: FACTOR_COLOR[factor] }}
+                      />
+                    </div>
+                  </div>
                 </td>
-                <td className="px-6 py-4 text-[13px] leading-relaxed text-gray-700">
+                <td className="px-6 py-5 text-[14px] leading-relaxed text-gray-600">
                   {portfolioValue || '포트폴리오 요약 데이터가 없습니다.'}
                 </td>
-                <td className="px-6 py-4 text-[13px] leading-relaxed text-gray-700">
+                <td className="px-6 py-5 text-[14px] leading-relaxed text-gray-600">
                   {companyValue || '기업 과제 요약 데이터가 없습니다.'}
                 </td>
               </tr>
@@ -506,9 +513,7 @@ function CompanyCard({
             </div>
 
             <div className="flex flex-1 flex-col items-center justify-end pt-[13px]">
-              <div className="flex items-center justify-center">
-                <DonutChart weights={company.weights} score={company.matchScore} />
-              </div>
+              <CompanyRadarChart weights={company.weights} score={company.matchScore} />
 
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {company.topFactors.map((f) => (
@@ -873,40 +878,48 @@ function ReasonModal({
 
           <motion.div
             initial={{ y: 28, opacity: 0, scale: 0.99 }}
-            animate={{ y: 0, opacity: 1, scale: 0.8 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 28, opacity: 0, scale: 0.99 }}
             transition={{ type: 'spring', stiffness: 260, damping: 24 }}
             className="relative z-[201] flex max-h-[94vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
           >
             <div
+              className="relative px-6 py-6 text-white sm:px-8"
               style={{ backgroundColor: PALETTE.midnightInk }}
-              className="relative px-7 py-5 text-white sm:px-10 sm:py-6"
             >
-              <div className="mb-5 flex items-center justify-between gap-4">
-                <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-black tracking-widest text-blue-300 uppercase">
-                  AI INSIGHT REPORT
-                </span>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-bold tracking-[0.05em] text-blue-200">
+                      COMPANY REPORT
+                    </span>
+                    <span className="text-[12px] font-medium text-white/40">|</span>
+                    <span className="text-[12px] font-medium text-blue-200/80">
+                      ID #{company.companyId}
+                    </span>
+                  </div>
+
+                  <h4 className="text-[22px] leading-[1.25] font-bold tracking-tight sm:text-[24px]">
+                    {headline.line1}
+                    <br />
+                    <span className="text-blue-300">{headline.highlight}</span> {headline.line2}
+                    <br />
+                    {headline.line3}
+                  </h4>
+                </div>
+
+                <button
+                  onClick={onClose}
+                  className="group relative -mt-4 -mr-2 flex h-10 w-10 items-center justify-center rounded-full transition-all hover:bg-white/10 active:scale-95"
+                  aria-label="close"
+                >
+                  <X className="h-5 w-5 text-white/60 group-hover:text-white" />
+                </button>
               </div>
-
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 rounded-xl p-2 text-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none"
-                aria-label="close"
-              >
-                <X className="h`-5 w-5" />
-              </button>
-
-              {/* ✅ 백엔드 headline 기반 3줄 */}
-              <h4 className="text-[20px] leading-[1.2] font-black tracking-tight sm:text-[22px]">
-                {company.name} 기준,
-                <br />
-                <span className="text-blue-400">#{topFactorLabel}</span> 항목이 가장 유사하게
-                평가되었습니다.
-              </h4>
             </div>
 
             <div
-              className="soft-scrollbar flex-1 overflow-y-auto px-7 py-6 text-[16px] sm:px-10 sm:py-8 sm:text-[17px]"
+              className="soft-scrollbar flex-1 overflow-y-auto px-7 pt-4 pb-6 sm:px-10 sm:pt-4 sm:pb-4"
               style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(15,23,42,0.22) transparent' }}
             >
               <style>
@@ -922,11 +935,11 @@ function ReasonModal({
                   }
                 `}
               </style>
-              <div className="w-full space-y-12">
+              <div className="w-full space-y-8">
                 <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-600">
-                      <FileText className="h-5 w-5" />
+                  <h4 className="mb-4 flex items-center gap-2 text-[16px] font-black text-[#1a1a1a]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                      <FileText className="h-4 w-4" />
                     </span>
                     내 포트폴리오와 비교 결과
                   </h4>
@@ -1075,15 +1088,15 @@ function ReasonModal({
                 )}
 
                 <div>
-                  <h4 className="mb-4 flex items-center gap-3 text-[19px] font-black tracking-tight text-[#1a1a1a]">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-600">
-                      <MousePointerClick className="h-5 w-5" />
+                  <h4 className="mb-4 flex items-center gap-2 text-[16px] font-black text-[#1a1a1a]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-600">
+                      <MousePointerClick className="h-4 w-4" />
                     </span>
                     분석 요약
                   </h4>
                   <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
                     <p
-                      className={`text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                      className={`text-[14px] leading-relaxed font-medium ${
                         loading ? 'text-gray-300' : 'text-[#4a4a4a]'
                       }`}
                     >
@@ -1098,14 +1111,14 @@ function ReasonModal({
                       )}
                     </p>
                     <p
-                      className={`text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                      className={`text-[14px] leading-relaxed font-medium ${
                         loading ? 'text-gray-300' : 'text-[#4a4a4a]'
                       }`}
                     >
                       {loading ? '' : <>{headline.line2}</>}
                     </p>
                     <p
-                      className={`text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                      className={`text-[14px] leading-relaxed font-medium ${
                         loading ? 'text-gray-300' : 'text-[#4a4a4a]'
                       }`}
                     >
@@ -1123,16 +1136,16 @@ function ReasonModal({
                 <>
                   {/* 1 */}
                   <div>
-                    <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                        <Sparkles className="h-5 w-5" />
+                    <h4 className="mb-4 flex items-center gap-2 text-[16px] font-black text-[#1a1a1a]">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                        <Sparkles className="h-4 w-4" />
                       </span>
                       {portfolioFocus?.title ?? '포트폴리오 강조 포인트'}
                     </h4>
 
                     <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
                       <p
-                        className={`w-full text-[16px] leading-relaxed font-medium sm:text-[17px] ${
+                        className={`w-full text-[14px] leading-relaxed font-medium ${
                           loading ? 'text-gray-300' : 'text-[#4a4a4a]'
                         }`}
                       >
@@ -1143,9 +1156,9 @@ function ReasonModal({
 
                   {/* 2 */}
                   <div>
-                    <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                        <KeyRound className="h-5 w-5" />
+                    <h4 className="mb-4 flex items-center gap-2 text-[16px] font-black text-[#1a1a1a]">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
+                        <KeyRound className="h-4 w-4" />
                       </span>
                       {writingCheats?.title ?? '지원서 작성 치트키'}
                     </h4>
@@ -1154,7 +1167,7 @@ function ReasonModal({
                       {(loading ? ['분석 중'] : (writingCheats?.tags ?? ['#...'])).map((tag) => (
                         <span
                           key={tag}
-                          className={`rounded-xl border-2 border-gray-100 bg-white px-4 py-2 text-[14px] font-bold shadow-sm ${
+                          className={`rounded-xl border-2 border-gray-100 bg-white px-3 py-2 text-[13px] font-bold shadow-sm ${
                             loading ? 'text-gray-300' : 'text-gray-600'
                           }`}
                         >
@@ -1166,16 +1179,16 @@ function ReasonModal({
 
                   {/* 3 */}
                   <div>
-                    <h4 className="mb-4 flex items-center gap-3 text-[18px] font-black text-[#1a1a1a]">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                        <Puzzle className="h-5 w-5" />
+                    <h4 className="mb-4 flex items-center gap-2 text-[16px] font-black text-[#1a1a1a]">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                        <Puzzle className="h-4 w-4" />
                       </span>
                       {strategyGuide?.title ?? '합격 전략 가이드'}
                     </h4>
 
                     <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
                       <p
-                        className={`w-full text-[16px] leading-loose font-medium sm:text-[17px] ${
+                        className={`w-full text-[14px] leading-relaxed font-medium ${
                           loading ? 'text-gray-300' : 'text-[#4a4a4a]'
                         }`}
                       >
@@ -1187,11 +1200,11 @@ function ReasonModal({
               </div>
             </div>
 
-            <div className="border-t border-gray-100 px-7 py-6 sm:px-10 sm:py-7">
+            <div className="border-t border-gray-100 px-7 py-5 sm:px-10 sm:py-6">
               <button
                 onClick={onClose}
                 style={{ backgroundColor: PALETTE.midnightInk }}
-                className="w-full cursor-pointer rounded-2xl py-5 text-[16px] font-black text-white shadow-xl transition-transform hover:scale-[1.01] active:scale-[0.995]"
+                className="w-full cursor-pointer rounded-2xl py-4 text-[15px] font-black text-white shadow-xl transition-transform hover:scale-[1.01] active:scale-[0.995]"
               >
                 전략 확인 완료
               </button>
@@ -1284,35 +1297,17 @@ export default function RecommendCompanyPage() {
         if (ignore) return;
 
         const mapped = data.map((item: CompanyRecommendationResponse, idx) => {
-          const distByFactor: Record<Factor, number> = {
-            프로젝트: item.projectDistance,
-            도메인: item.domainDistance,
-            문제: item.problemDistance,
-            해결: item.solutionDistance,
-            기술스택: item.techDistance,
+          const simByFactor: Record<Factor, number> = {
+            프로젝트: item.projectSimilarity,
+            도메인: item.domainSimilarity,
+            문제: item.problemSimilarity,
+            해결: item.solutionSimilarity,
+            기술스택: item.techSimilarity,
           };
 
-          const weights = distancesToWeights(distByFactor);
+          const weights = similaritiesToWeights(simByFactor);
           const topFactors = pickTopFactors(weights, 2);
-          const similarity = item.similarity ?? 0;
-          const matchScore = Math.round(similarity * 100);
-
-          console.log('[RecommendCompany] score calc', {
-            idx,
-            companyId: item.companyId,
-            companyName: item.companyName,
-            similarity,
-            matchScore,
-            distances: {
-              projectDistance: item.projectDistance,
-              domainDistance: item.domainDistance,
-              problemDistance: item.problemDistance,
-              solutionDistance: item.solutionDistance,
-              techDistance: item.techDistance,
-            },
-            weights,
-            topFactors,
-          });
+          const matchScore = toScore(item.similarity ?? 0);
 
           return {
             id: idx + 1,
@@ -1508,21 +1503,30 @@ export default function RecommendCompanyPage() {
         )}
 
         <div className="mb-10 flex items-center justify-between gap-4 pl-6">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSortBy('matchScore')}
-              className={`${sortBtnBase} ${isScore ? sortBtnOn : sortBtnOff}`}
-            >
-              점수순
-            </button>
-            <button
-              type="button"
-              onClick={() => setSortBy('openingsCount')}
-              className={`${sortBtnBase} ${isOpenings ? sortBtnOn : sortBtnOff}`}
-            >
-              공고 많은 순
-            </button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-[#f0eee9]/70 px-4 py-2">
+              <Building2 className="h-4 w-4 text-[#4a4a4a]" />
+              <span className="text-[13px] font-black text-[#4a4a4a]">
+                {sortedCompanies.length} companies
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSortBy('matchScore')}
+                className={`${sortBtnBase} ${isScore ? sortBtnOn : sortBtnOff}`}
+              >
+                점수순
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortBy('openingsCount')}
+                className={`${sortBtnBase} ${isOpenings ? sortBtnOn : sortBtnOff}`}
+              >
+                공고 많은 순
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
