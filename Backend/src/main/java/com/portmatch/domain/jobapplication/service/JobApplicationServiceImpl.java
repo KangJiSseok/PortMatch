@@ -6,6 +6,7 @@ import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.domain.jobapplication.dto.JobApplicationCreateRequest;
 import com.portmatch.domain.jobapplication.dto.JobApplicationDetailResponse;
+import com.portmatch.domain.jobapplication.dto.JobApplicationMyResponse;
 import com.portmatch.domain.jobapplication.dto.JobApplicationResponse;
 import com.portmatch.domain.jobapplication.dto.JobApplicationSummaryResponse;
 import com.portmatch.domain.jobapplication.dto.JobApplicationStatusUpdateRequest;
@@ -88,6 +89,18 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         return jobApplicationRepository.findAllByJobPosting_IdOrderByCreatedAtDesc(jobPosting.getId())
                 .stream()
                 .map(this::toSummaryResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<JobApplicationMyResponse> getMyApplications(Long userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+
+        return jobApplicationRepository.findAllByUser_IdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::toMyResponse)
                 .toList();
     }
 
@@ -178,6 +191,24 @@ public class JobApplicationServiceImpl implements JobApplicationService {
                 .appliedAt(application.getCreatedAt())
                 .resumeViewed(application.isResumeViewed())
                 .resume(resumeSnapshot)
+                .build();
+    }
+
+    private JobApplicationMyResponse toMyResponse(JobApplication application) {
+        Resume resume = application.getResume();
+        JobPostingEntity jobPosting = application.getJobPosting();
+        Company company = jobPosting != null ? jobPosting.getCompany() : null;
+
+        return JobApplicationMyResponse.builder()
+                .applicationId(application.getId())
+                .jobPostingId(jobPosting != null ? jobPosting.getId() : null)
+                .jobPostingTitle(jobPosting != null ? jobPosting.getTitle() : null)
+                .companyName(company != null ? company.getCompaniesName() : null)
+                .companyCid(company != null ? company.getCid() : null)
+                .status(application.getStatus())
+                .resumeId(resume != null ? resume.getId() : null)
+                .resumeTitle(resume != null ? resume.getTitle() : null)
+                .appliedAt(application.getCreatedAt())
                 .build();
     }
 

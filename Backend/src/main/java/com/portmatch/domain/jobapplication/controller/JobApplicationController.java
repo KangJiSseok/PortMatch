@@ -1,11 +1,7 @@
 package com.portmatch.domain.jobapplication.controller;
 
 import com.portmatch.domain.auth.security.UserPrincipal;
-import com.portmatch.domain.jobapplication.dto.JobApplicationCreateRequest;
-import com.portmatch.domain.jobapplication.dto.JobApplicationDetailResponse;
-import com.portmatch.domain.jobapplication.dto.JobApplicationResponse;
-import com.portmatch.domain.jobapplication.dto.JobApplicationStatusUpdateRequest;
-import com.portmatch.domain.jobapplication.dto.JobApplicationSummaryResponse;
+import com.portmatch.domain.jobapplication.dto.*;
 import com.portmatch.domain.jobapplication.service.JobApplicationService;
 import com.portmatch.global.api.BaseApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,6 +49,15 @@ public class JobApplicationController {
         return BaseApiResponse.ok(null);
     }
 
+    @Operation(summary = "지원자 지원 목록 조회", description = "지원자가 본인이 지원한 공고 목록을 조회합니다.")
+    @GetMapping("/applications/me")
+    public BaseApiResponse<List<JobApplicationMyResponse>> getMyApplications(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        Long userId = principal.getUser().getId();
+        return BaseApiResponse.ok(jobApplicationService.getMyApplications(userId));
+    }
+
     @Operation(summary = "공고별 지원 목록(기업)", description = "기업이 공고별 지원 목록을 조회합니다.")
     @GetMapping("/{id}/applications")
     public BaseApiResponse<List<JobApplicationSummaryResponse>> getApplicationsForCompany(
@@ -62,6 +67,7 @@ public class JobApplicationController {
         Long userId = principal.getUser().getId();
         return BaseApiResponse.ok(jobApplicationService.getApplicationsForCompany(userId, jobPostingId));
     }
+
 
     @Operation(summary = "지원 상세 조회(기업)", description = "기업이 지원 상세(이력서 포함)를 조회합니다.")
     @GetMapping("/{id}/applications/{applicationId}")
