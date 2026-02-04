@@ -41,6 +41,13 @@ public class InterviewScheduleServiceImpl implements InterviewScheduleService {
     }
 
     @Override
+    public List<InterviewScheduleDto> getSchedulesByCompany(String cid) {
+        return interviewServiceRepository.findByJobPosting_Company_Cid(cid).stream()
+                .map(this::manualConvertToDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public Long createSchedule(InterviewScheduleDto dto) {
         // 1. JSON 구조에 맞춰 안전하게 ID 추출 (Null 체크 포함)
