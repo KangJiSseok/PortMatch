@@ -28,7 +28,7 @@ export type RecommendJobPostingsData = {
   matches: RecommendJobPostingMatch[];
 };
 
-export type JobPostingFactor = '도메인' | 'Tech' | 'Problem' | 'Architecture';
+export type JobPostingFactor = '도메인' | '기술스택' | '문제 정의' | '아키텍처';
 
 export type JobPostingWeights = Record<JobPostingFactor, number>;
 
