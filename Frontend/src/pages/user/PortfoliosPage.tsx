@@ -1072,7 +1072,7 @@ function PortfoliosPage() {
                   <Button
                     variant="outline"
                     size="xl"
-                    className="flex-1 rounded-2xl py-5! text-lg! font-black"
+                    className="flex-[1] rounded-2xl py-5! text-lg! font-black"
                     onClick={() => {
                       setSelectedPortfolioId(null);
                       setStep('upload');
@@ -1085,13 +1085,24 @@ function PortfoliosPage() {
                   <Button
                     variant="blue"
                     size="xl"
-                    className="shadow-point-blue/20 flex-2 rounded-2xl py-5! text-lg! font-black shadow-xl"
+                    className="shadow-point-blue/20 flex-[2] rounded-2xl py-5! text-lg! font-black shadow-xl"
                     onClick={() => {
                       if (!selectedPortfolioId) return;
                       navigate(`/recommend/companies?portfolioId=${selectedPortfolioId}`);
                     }}
                   >
-                    이 역량으로 맞춤 공고 확인하기 <ArrowRight size={20} className="ml-2" />
+                    맞춤 공고 확인하기
+                  </Button>
+                  <Button
+                    variant="blue"
+                    size="xl"
+                    className="shadow-point-blue/20 flex-[2] rounded-2xl py-5! text-lg! font-black shadow-xl"
+                    onClick={() => {
+                      if (!selectedPortfolioId) return;
+                      navigate(`/recommend/companies?portfolioId=${selectedPortfolioId}`);
+                    }}
+                  >
+                    추천 기업 확인하기 
                   </Button>
                 </div>
               </motion.div>
