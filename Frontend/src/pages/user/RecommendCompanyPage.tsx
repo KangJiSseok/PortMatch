@@ -1327,6 +1327,7 @@ export default function RecommendCompanyPage() {
         setApiCompanies(mapped);
       } catch (err) {
         if (!ignore) {
+          console.error('추천 기업 조회 실패:', err);
           setApiCompanies([]);
           setLoadError('추천 기업 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
         }
@@ -1368,6 +1369,7 @@ export default function RecommendCompanyPage() {
             const count = Array.isArray(res.data) ? res.data.length : 0;
             return [id, count] as const;
           } catch (err) {
+            console.error('실패:', err);
             return [id, 0] as const;
           }
         }),
@@ -1480,10 +1482,10 @@ export default function RecommendCompanyPage() {
       <div className="mx-auto w-full max-w-[1280px] px-8 md:px-10 lg:px-12">
         <header className="mb-6 border-l-[6px] border-[#5151E7] pl-6">
           <h1 className="text-4xl font-black tracking-tight text-[#1a1a1a] md:text-5xl">
-            AI 추천 리스트
+            추천 기업 리스트
           </h1>
           <p className="mt-3 text-[16px] font-semibold text-[#a3a3a3] italic md:text-[17px]">
-            데이터 매칭 알고리즘이 분석한 최적의 합격 전략입니다.
+            포트폴리오 기준으로 유사도가 높은 기업을 추천합니다.
           </p>
         </header>
 

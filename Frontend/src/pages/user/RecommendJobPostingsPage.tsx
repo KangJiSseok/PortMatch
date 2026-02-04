@@ -425,15 +425,20 @@ export default function RecommendJobPostingsPage() {
   const portfolioId = portfolioIdParam && Number.isFinite(Number(portfolioIdParam)) ? Number(portfolioIdParam) : null;
 
   const [page, setPage] = useState(1);
+  const [prevCardsLength, setPrevCardsLength] = useState(0);
   const [detailTarget, setDetailTarget] = useState<JobPostingCardModel | null>(null);
 
   const { response, cards, isLoading, isFetching, error } = useRecommendJobPostings(portfolioId);
 
   const displayCards = cards;
 
-  useEffect(() => {
-    setPage(1);
-  }, [cards.length]);
+  // React 권장 패턴: 렌더링 중 상태 조정 (useEffect 대신)
+  if (cards.length !== prevCardsLength) {
+    setPrevCardsLength(cards.length);
+    if (prevCardsLength !== 0) {
+      setPage(1);
+    }
+  }
 
   const totalPages = Math.max(1, Math.ceil(displayCards.length / PAGE_SIZE));
   const safePage = Math.min(Math.max(1, page), totalPages);
@@ -451,10 +456,10 @@ export default function RecommendJobPostingsPage() {
       <div className="mx-auto w-full max-w-[1280px] px-8 md:px-10 lg:px-12">
         <header className="mb-6 border-l-[6px] border-[#5151E7] pl-6">
           <h1 className="text-4xl font-black tracking-tight text-[#1a1a1a] md:text-5xl">
-            AI 추천 공고
+            추천 공고 리스트
           </h1>
           <p className="mt-3 text-[16px] font-semibold text-[#a3a3a3] italic md:text-[17px]">
-            포트폴리오를 기준으로 공고를 추천합니다.
+            포트폴리오를 기준으로 유사도가 높은 공고를 추천합니다.
           </p>
         </header>
 
