@@ -130,6 +130,37 @@ deploy:
   script:
     - set -e
 
+    # ---------- 변경된 서비스 감지 (디렉토리 이동 전!) ----------
+    - |
+      SERVICES=""
+      
+      # Git diff 범위 개선 (푸시된 전체 범위 체크)
+      if [ -n "$CI_COMMIT_BEFORE_SHA" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+        # Shallow clone 에러 방지
+        if CHANGED_FILES=$(git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA 2>/dev/null); then
+          echo "✅ 전체 범위 변경 감지 성공"
+        else
+          echo "⚠️  Shallow clone으로 인해 전체 범위 확인 불가. 마지막 커밋만 체크합니다."
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA)
+        fi
+      else
+        CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA)
+      fi
+      
+      echo "📄 변경된 파일 (배포):"
+      echo "$CHANGED_FILES"
+      echo "---"
+      
+      echo "$CHANGED_FILES" | grep -q "^Backend/" && SERVICES="$SERVICES backend"
+      echo "$CHANGED_FILES" | grep -q "^Inference/" && SERVICES="$SERVICES inference"
+      echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/" && SERVICES="$SERVICES portfolio-analysis"
+      echo "$CHANGED_FILES" | grep -q "^Frontend/" && SERVICES="$SERVICES frontend"
+      echo "$CHANGED_FILES" | grep -q "^Embedding/" && SERVICES="$SERVICES embedding"
+      echo "$CHANGED_FILES" | grep -q "^Explanation-LLM/" && SERVICES="$SERVICES explanation-llm"
+      echo "$CHANGED_FILES" | grep -q "^crawler/" && SERVICES="$SERVICES wanted-crawler"
+      
+      echo "🔍 변경 감지된 서비스:$SERVICES"
+
     # ---------- 배포 디렉토리 ----------
     - mkdir -p /home/gitlab-runner/deploy
     - cd /home/gitlab-runner/deploy
