@@ -3,6 +3,7 @@ package com.portmatch.domain.interviewschedule.service;
 import com.portmatch.domain.auth.dto.response.MeResponse;
 import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.auth.repository.UserRepository;
+import com.portmatch.domain.companies.dto.CompaniesDto;
 import com.portmatch.domain.interviewschedule.dto.InterviewScheduleDto;
 import com.portmatch.domain.interviewschedule.entity.InterviewScheduleEntity;
 import com.portmatch.domain.interviewschedule.repository.InterviewServiceRepository;
@@ -101,6 +102,19 @@ public class InterviewScheduleServiceImpl implements InterviewScheduleService {
         JobPostingEntity jp = entity.getJobPosting();
         User u = entity.getUser();
 
+        CompaniesDto companyDto = null;
+        if (jp.getCompany() != null) {
+            com.portmatch.domain.companies.entity.Company c = jp.getCompany();
+            companyDto = CompaniesDto.builder()
+                    .cid(c.getCid())
+                    .corpName(c.getCompaniesName())
+                    .corpAddr(c.getAddress())
+                    .busiSize(c.getSize())
+                    .totPsncnt(c.getTotPsncnt())
+                    .homePg(c.getBusiCont())
+                    .logo(c.getLogo())
+                    .build();
+        }
         // 공고 정보 수동 변환 (빨간 줄 날 일 없음!)
         JobPostingDto jobDto = JobPostingDto.builder()
                 .id(jp.getId())
@@ -109,7 +123,7 @@ public class InterviewScheduleServiceImpl implements InterviewScheduleService {
                 .startDate(jp.getStartDate())
                 .endDate(jp.getEndDate())
                 .vcnt(jp.getVcnt())
-                .detail(jp.getDetail())
+                .company(companyDto)
                 .jobType(jp.getJobType())
                 .build();
 
