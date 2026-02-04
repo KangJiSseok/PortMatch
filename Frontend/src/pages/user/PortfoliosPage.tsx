@@ -120,23 +120,7 @@ function PortfoliosPage() {
 
   const activeStageId = [...STAGES].reverse().find((s) => progress >= s.threshold)?.id ?? 0;
 
-  // State → URL 동기화
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (step) {
-      params.set('step', step);
-    }
 
-    if (selectedPortfolioId !== null && selectedPortfolioId !== undefined) {
-      params.set('portfolioId', String(selectedPortfolioId));
-    }
-
-    const next = params.toString();
-    const current = new URLSearchParams(window.location.search).toString();
-    if (next !== current) {
-      setSearchParams(params, { replace: true });
-    }
-  }, [step, selectedPortfolioId, setSearchParams]);
 
   const mapAnalysisData = (response: AnalysisResponse): AnalysisData => {
     const projects = response.projects || [];
