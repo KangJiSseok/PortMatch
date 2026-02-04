@@ -1,13 +1,7 @@
-﻿                                    import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Info,
-  ChevronDown,
-  Briefcase,
-  ExternalLink,
-  X,
-} from 'lucide-react';
+import { Info, FileText, ChevronDown, Briefcase, X } from 'lucide-react';
 import {
   RadarChart,
   PolarGrid,
@@ -18,7 +12,11 @@ import {
 } from 'recharts';
 import type { BaseTickContentProps, TickItem } from 'recharts/types/util/types';
 import { useRecommendJobPostings } from '@/hooks/useRecommendJobPostings';
-import type { JobPostingCardModel, JobPostingFactor, JobPostingWeights } from '@/types/recommendJobPosting';
+import type {
+  JobPostingCardModel,
+  JobPostingFactor,
+  JobPostingWeights,
+} from '@/types/recommendJobPosting';
 
 /** ---------------- Palette ---------------- */
 
@@ -33,19 +31,19 @@ const PALETTE = {
 
 /** ---------------- Factor ---------------- */
 
-const FACTOR_ORDER: JobPostingFactor[] = ['도메인', 'Tech', 'Problem', 'Architecture'];
+const FACTOR_ORDER: JobPostingFactor[] = ['도메인', '기술스택', '문제 정의', '아키텍처'];
 const FACTOR_LABEL: Record<JobPostingFactor, string> = {
   도메인: '도메인',
-  Tech: 'Tech',
-  Problem: 'Problem',
-  Architecture: 'Architecture',
+  기술스택: '기술스택',
+  '문제 정의': '문제 정의',
+  아키텍처: '아키텍처',
 };
 
 const FACTOR_COLOR: Record<JobPostingFactor, string> = {
   도메인: '#60A5FA',
-  Tech: '#FB923C',
-  Problem: '#4ADE80',
-  Architecture: '#C084FC',
+  기술스택: '#FB923C',
+  '문제 정의': '#4ADE80',
+  아키텍처: '#C084FC',
 };
 
 /** ---------------- Criteria ---------------- */
@@ -62,17 +60,17 @@ function EvaluationCriteria() {
     {
       id: '기술스택',
       desc: '단순 사용 여부보다 기술이 활용된 맥락과 숙련도의 연관성을 고려합니다.',
-      color: FACTOR_COLOR.Tech,
+      color: FACTOR_COLOR.기술스택,
     },
     {
       id: '문제 정의',
       desc: '프로젝트에서 해결하려 했던 과제의 본질(성능, 효율 등)에 집중합니다.',
-      color: FACTOR_COLOR.Problem,
+      color: FACTOR_COLOR['문제 정의'],
     },
     {
       id: '아키텍처',
       desc: '설계/구조/성능/분산 등 아키텍처 경험의 유사도를 평가합니다.',
-      color: FACTOR_COLOR.Architecture,
+      color: FACTOR_COLOR.아키텍처,
     },
   ];
 
@@ -108,7 +106,6 @@ function EvaluationCriteria() {
               <br />
               <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
                 "해당 직무의 도메인에서 다루는 기술과 문제 정의, 그리고 아키텍처"
-                {/* Domain, Tech, Problem, Architecture */}
               </span>{' '}
               가 실무 요구사항과 얼마나 맞닿아 있는지를 종합적으로 산출합니다.
             </p>
@@ -161,6 +158,50 @@ function lockBodyScroll(lock: boolean) {
 
 type RadarDataPoint = { category: string; value: number };
 
+function parseStructuredContent(content: string): Record<string, string> {
+  if (!content) return {};
+  const result: Record<string, string> = {};
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  lines.forEach((line) => {
+    const match = line.match(/^\[([^\]]+)\]\s*(.+)$/);
+    if (match) {
+      result[match[1]] = match[2].trim();
+    }
+  });
+
+  if (Object.keys(result).length === 0) {
+    const regex = /\[([^\]]+)\]\s*([^[]+)/g;
+    let match = regex.exec(content);
+    while (match) {
+      result[match[1]] = match[2].trim();
+      match = regex.exec(content);
+    }
+  }
+
+  return result;
+}
+
+function getExcerpt(text: string): string {
+  if (!text) return '';
+  const parts = text
+    .split(/[\n.!?]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return parts[0] ?? text.slice(0, 120);
+}
+
+function getStructuredValue(content: string, labels: string[], fallback: string): string {
+  const parsed = parseStructuredContent(content);
+  for (const label of labels) {
+    if (parsed[label]) return parsed[label];
+  }
+  return fallback;
+}
+
 function JobPostingRadarChart({ weights, score }: { weights: JobPostingWeights; score: number }) {
   const data: RadarDataPoint[] = FACTOR_ORDER.map((f) => ({
     category: FACTOR_LABEL[f],
@@ -194,12 +235,20 @@ function JobPostingRadarChart({ weights, score }: { weights: JobPostingWeights; 
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full job-radar">
+      <style>
+        {`
+          .job-radar svg:focus { outline: none; }
+          .job-radar svg:focus-visible { outline: none; }
+          .job-radar *:focus { outline: none; }
+          .job-radar *:focus-visible { outline: none; }
+        `}
+      </style>
       <div className="mb-2 flex items-center justify-center gap-2">
         <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">match</span>
         <span className="text-[18px] font-black text-gray-900">{score}</span>
       </div>
-      <div className="h-[200px] w-full flex items-center justify-center">
+      <div className="flex h-[200px] w-full items-center justify-center">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart
             data={data}
@@ -231,6 +280,92 @@ function JobPostingRadarChart({ weights, score }: { weights: JobPostingWeights; 
 
 /** ---------------- Detail Modal ---------------- */
 
+function JobPostingComparisonTable({
+  portfolioContent,
+  jobPostingContent,
+  weights,
+}: {
+  portfolioContent: string;
+  jobPostingContent: string;
+  weights: JobPostingWeights;
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <table className="w-full table-fixed text-left">
+        <colgroup>
+          <col className="w-[140px]" />
+          <col className="w-[100px]" />
+          <col />
+          <col />
+        </colgroup>
+        <thead className="border-b border-gray-200 bg-gray-50/50">
+          <tr className="text-[13px] font-medium tracking-wider text-gray-500 uppercase">
+            <th className="px-6 py-4 text-center">비교 항목</th>
+            <th className="px-4 py-4 text-center">매칭도</th>
+            <th className="px-6 py-4">내 포트폴리오</th>
+            <th className="px-6 py-4">공고 내용</th>
+          </tr>
+        </thead>
+        <tbody className="text-[14px]">
+          {FACTOR_ORDER.map((factor) => {
+            const portfolioValue = getStructuredValue(
+              portfolioContent,
+              factor === '도메인'
+                ? ['도메인', 'Domain']
+                : factor === '기술스택'
+                  ? ['기술', '기술스택', 'Tech']
+                  : factor === '문제 정의'
+                    ? ['문제', '문제 정의', 'Problem']
+                    : ['아키텍처', 'Architecture'],
+              getExcerpt(portfolioContent),
+            );
+            const jobPostingValue = getStructuredValue(
+              jobPostingContent,
+              factor === '도메인'
+                ? ['도메인', 'Domain']
+                : factor === '기술스택'
+                  ? ['기술', '기술스택', 'Tech']
+                  : factor === '문제 정의'
+                    ? ['문제', '문제 정의', 'Problem']
+                    : ['아키텍처', 'Architecture'],
+              getExcerpt(jobPostingContent),
+            );
+
+            return (
+              <tr key={factor} className="border-t border-gray-100">
+                <td className="px-6 py-4 font-bold text-gray-900">{FACTOR_LABEL[factor]}</td>
+                <td className="px-4 py-5 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-[14px] font-bold text-gray-900">
+                      {weights[factor]}
+                      <span className="ml-0.5 text-[12px] font-medium opacity-80">점</span>
+                    </span>
+                    <div className="h-1.5 w-full max-w-[60px] overflow-hidden rounded-full bg-gray-100">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${weights[factor]}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: FACTOR_COLOR[factor] }}
+                      />
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-5 text-[14px] leading-relaxed text-gray-600">
+                  {portfolioValue || '포트폴리오 요약 데이터가 없습니다.'}
+                </td>
+                <td className="px-6 py-5 text-[14px] leading-relaxed text-gray-600">
+                  {jobPostingValue || '공고 요약 데이터가 없습니다.'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function JobPostingDetailModal({
   open,
   posting,
@@ -248,9 +383,9 @@ function JobPostingDetailModal({
   return (
     <AnimatePresence>
       {open && posting && (
-        <div className="fixed inset-0 z-[70]">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
           <motion.div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -258,71 +393,83 @@ function JobPostingDetailModal({
           />
 
           <motion.div
-            className="absolute left-1/2 top-[6vh] flex max-h-[86vh] w-[92vw] max-w-[960px] -translate-x-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
-            initial={{ opacity: 0, y: 30, scale: 0.98 }}
+            className="relative z-[201] flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
+            initial={{ opacity: 0, y: 28, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+            exit={{ opacity: 0, y: 28, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 24 }}
           >
-            <div className="flex items-center justify-between border-b border-gray-100 px-7 py-5">
-              <div>
-                <p className="text-[12px] font-bold text-gray-400">Recommendation Detail</p>
-                <h3 className="text-[20px] font-black text-[#1a1a1a]">
-                  {posting.title}
-                </h3>
-                <p className="text-[13px] font-semibold text-gray-500">{posting.companyName}</p>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50"
-                aria-label="close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+            <div
+              className="relative px-6 py-6 text-white sm:px-8"
+              style={{ backgroundColor: PALETTE.midnightInk }}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-bold tracking-[0.05em] text-blue-200">
+                      JOB REPORT
+                    </span>
+                    <span className="text-[12px] font-medium text-white/40">|</span>
+                    <span className="text-[12px] font-medium text-blue-200/80">
+                      ID #{posting.jobPostingId}
+                    </span>
+                  </div>
 
-            <div className="flex-1 overflow-y-auto px-7 py-6">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-gray-100 bg-[#fcfcfc] p-4">
-                    <h4 className="mb-2 text-[13px] font-black text-gray-900">Problem</h4>
-                    <p className="text-[12px] leading-relaxed text-gray-600">
-                      {posting.problem || 'No problem summary provided.'}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-gray-100 bg-[#fcfcfc] p-4">
-                    <h4 className="mb-2 text-[13px] font-black text-gray-900">Solution</h4>
-                    <p className="text-[12px] leading-relaxed text-gray-600">
-                      {posting.solution || 'No solution summary provided.'}
-                    </p>
-                  </div>
+                  <h4 className="text-[22px] leading-[1.25] font-bold tracking-tight sm:text-[24px]">
+                    {posting.companyName}
+                    <span className="ml-2 text-[14px] font-normal text-white/50">Company</span>
+                  </h4>
+                  <p className="mt-2 text-[13px] font-medium text-blue-100">{posting.title}</p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                    <h4 className="mb-2 text-[13px] font-black text-gray-900">Portfolio Content</h4>
-                    <pre className="whitespace-pre-wrap text-[12px] leading-relaxed text-gray-600">
-                      {posting.portfolioContent || 'No portfolio content.'}
-                    </pre>
-                  </div>
-                  <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                    <h4 className="mb-2 text-[13px] font-black text-gray-900">Job Posting Content</h4>
-                    <pre className="whitespace-pre-wrap text-[12px] leading-relaxed text-gray-600">
-                      {posting.jobPostingContent || 'No job posting content.'}
-                    </pre>
-                  </div>
-                </div>
+                <button
+                  onClick={onClose}
+                  className="group relative -mt-4 -mr-2 flex h-10 w-10 items-center justify-center rounded-full transition-all hover:bg-white/10 active:scale-95"
+                  aria-label="close"
+                >
+                  <X className="h-5 w-5 text-white/60 group-hover:text-white" />
+                </button>
               </div>
             </div>
 
-            <div className="border-t border-gray-100 bg-white px-7 py-5">
+            <div className="soft-scrollbar flex-1 overflow-y-auto px-7 pt-4 pb-6 sm:px-10 sm:pt-4 sm:pb-4">
+              <style>
+                {`
+                  .soft-scrollbar::-webkit-scrollbar { width: 8px; }
+                  .soft-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                  .soft-scrollbar::-webkit-scrollbar-thumb {
+                    background: rgba(15,23,42,0.18);
+                    border-radius: 999px;
+                  }
+                  .soft-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: rgba(15,23,42,0.28);
+                  }
+                `}
+              </style>
+              <div className="space-y-8">
+                <div>
+                  <h4 className="mb-4 flex items-center gap-2 text-[16px] font-black text-[#1a1a1a]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                      <FileText className="h-4 w-4" />
+                    </span>
+                    추천 공고 비교 결과
+                  </h4>
+                  <JobPostingComparisonTable
+                    portfolioContent={posting.portfolioContent}
+                    jobPostingContent={posting.jobPostingContent}
+                    weights={posting.weights}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 bg-white px-7 py-5 sm:px-10 sm:py-6">
               <button
                 onClick={onClose}
                 className="w-full cursor-pointer rounded-2xl py-4 text-[15px] font-black text-white shadow-lg transition-all hover:scale-[1.01] hover:shadow-xl active:scale-[0.995]"
                 style={{ backgroundColor: PALETTE.midnightInk }}
               >
-                Close
+                확인 완료
               </button>
             </div>
           </motion.div>
@@ -343,6 +490,8 @@ function JobPostingCard({
   onOpen: (p: JobPostingCardModel) => void;
   onViewDetail: (p: JobPostingCardModel) => void;
 }) {
+  const [isFlipped, setIsFlipped] = useState(false);
+
   return (
     <motion.div
       whileHover={{
@@ -362,53 +511,99 @@ function JobPostingCard({
         style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)' }}
       />
 
-      <div className="flex flex-1 flex-col p-6">
-        <div className="flex min-h-[44px] items-center justify-center pt-[8px]">
-          <div className="text-center">
-            <h3 className="line-clamp-2 text-[16px] font-black text-[#1a1a1a]">
-              {posting.title}
-            </h3>
-            <p className="mt-1 text-[12px] font-semibold text-gray-500">{posting.companyName}</p>
-          </div>
-        </div>
+      <div
+        className="relative flex-shrink-0 cursor-pointer [perspective:1000px]"
+        style={{ height: 300 }}
+        onClick={() => setIsFlipped((v) => !v)}
+      >
+        <motion.div
+          className="relative h-full w-full [transform-style:preserve-3d]"
+          animate={{ rotateY: isFlipped ? 180 : 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          {/* Front */}
+          <div className="absolute inset-0 flex h-full flex-col p-6 [backface-visibility:hidden]">
+            <div className="flex min-h-[44px] items-center justify-center pt-[8px]">
+              <div className="text-center">
+                <h3 className="text-[16px] font-black text-[#1a1a1a]">{posting.companyName}</h3>
+                <p className="mt-1 line-clamp-2 text-[12px] font-semibold break-words text-gray-500">
+                  {posting.title}
+                </p>
+              </div>
+            </div>
 
-        <div className="flex flex-1 flex-col items-center justify-end pt-[8px]">
-          <JobPostingRadarChart weights={posting.weights} score={posting.matchScore} />
-
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
-            {posting.topFactors.map((f) => (
-              <span
-                key={f}
-                className="rounded-full px-3 py-1 text-[11px] font-bold"
-                style={{
-                  backgroundColor: `${FACTOR_COLOR[f]}12`,
-                  color: FACTOR_COLOR[f],
-                  border: `1px solid ${FACTOR_COLOR[f]}25`,
-                }}
-              >
-                #{FACTOR_LABEL[f]}
-              </span>
-            ))}
+            <div className="flex flex-1 flex-col items-center justify-end pt-[8px]">
+              <JobPostingRadarChart weights={posting.weights} score={posting.matchScore} />
+            </div>
           </div>
-        </div>
+
+          {/* Back */}
+          <div
+            className="absolute inset-0 flex h-full [transform:rotateY(180deg)] flex-col p-6 [backface-visibility:hidden]"
+            style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #FBFBFB 100%)' }}
+          >
+            <div className="flex min-h-[44px] items-center justify-center pt-[8px]">
+              <h3 className="w-full truncate text-center text-[16px] font-black text-[#1a1a1a]">
+                {posting.companyName} 분석 지표
+              </h3>
+            </div>
+
+            <div className="flex flex-1 flex-col justify-center pt-4">
+              <div className="space-y-3">
+                {FACTOR_ORDER.map((f) => (
+                  <div key={f} className="text-[12px]">
+                    <div className="mb-1.5 flex justify-between">
+                      <span className="font-semibold text-gray-500">{FACTOR_LABEL[f]}</span>
+                      <span className="font-bold text-[#4a4a4a]">{posting.weights[f]}%</span>
+                    </div>
+
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-black/5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: isFlipped ? `${posting.weights[f]}%` : 0 }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: FACTOR_COLOR[f] }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div
+              className="pointer-events-none absolute inset-0 rounded-2xl"
+              style={{
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85), inset 0 0 0 1px rgba(0,0,0,0.04)',
+              }}
+            />
+          </div>
+        </motion.div>
       </div>
 
-      <div className="mt-auto flex items-center justify-between border-t border-gray-100 px-5 py-4">
-        <button
-          type="button"
-          onClick={() => onOpen(posting)}
-          className="text-[12px] font-black text-gray-500 hover:text-gray-800"
-        >
-          View details
-        </button>
-        <button
-          type="button"
-          onClick={() => onViewDetail(posting)}
-          className="inline-flex items-center gap-2 rounded-full bg-[#1f2937] px-4 py-2 text-[12px] font-black text-white shadow-sm"
-        >
-          <ExternalLink className="h-3 w-3" />
-          Job post
-        </button>
+      <div className="mt-2 flex items-center justify-between border-t border-gray-100 px-5 py-4">
+        <div className="w-full space-y-2">
+          <button
+            type="button"
+            onClick={() => onViewDetail(posting)}
+            className="relative w-full cursor-pointer overflow-hidden rounded-xl py-3 text-[13px] font-bold shadow-sm transition-all duration-200 outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:opacity-0 after:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-1px_0_rgba(0,0,0,0.06)] after:transition-opacity after:duration-200 after:content-[''] hover:-translate-y-0.5 hover:after:opacity-100 focus-visible:ring-2 focus-visible:ring-black/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:after:opacity-100 active:translate-y-0 active:scale-[0.99]"
+            style={{
+              backgroundColor: '#F8F8F6',
+              color: PALETTE.slateGray,
+              border: '1px solid rgba(0,0,0,0.04)',
+            }}
+          >
+            채용 공고
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onOpen(posting)}
+            className="relative w-full cursor-pointer overflow-hidden rounded-xl py-3 text-[13px] font-bold text-white shadow-md transition-all duration-200 outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:opacity-0 after:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-1px_0_rgba(0,0,0,0.06)] after:transition-opacity after:duration-200 after:content-[''] hover:-translate-y-0.5 hover:after:opacity-100 focus-visible:ring-2 focus-visible:ring-black/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:after:opacity-100 active:translate-y-0 active:scale-[0.99]"
+            style={{ backgroundColor: '#5563C1' }}
+          >
+            상세 분석 결과
+          </button>
+        </div>
       </div>
     </motion.div>
   );
@@ -422,13 +617,14 @@ export default function RecommendJobPostingsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const portfolioIdParam = searchParams.get('portfolioId');
-  const portfolioId = portfolioIdParam && Number.isFinite(Number(portfolioIdParam)) ? Number(portfolioIdParam) : null;
+  const portfolioId =
+    portfolioIdParam && Number.isFinite(Number(portfolioIdParam)) ? Number(portfolioIdParam) : null;
 
   const [page, setPage] = useState(1);
   const [prevCardsLength, setPrevCardsLength] = useState(0);
   const [detailTarget, setDetailTarget] = useState<JobPostingCardModel | null>(null);
 
-  const { response, cards, isLoading, isFetching, error } = useRecommendJobPostings(portfolioId);
+  const { cards, isLoading, isFetching, error } = useRecommendJobPostings(portfolioId);
 
   const displayCards = cards;
 
@@ -465,7 +661,7 @@ export default function RecommendJobPostingsPage() {
 
         <EvaluationCriteria />
 
-        <div className="mb-8 pl-6">
+        {/* <div className="mb-8 pl-6">
           <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-2 rounded-full bg-[#f0eee9]/70 px-4 py-2">
@@ -481,7 +677,7 @@ export default function RecommendJobPostingsPage() {
               ) : null}
             </div>
           </div>
-        </div>
+        </div> */}
 
         {portfolioId === null && (
           <div className="mb-6 rounded-2xl border border-amber-100 bg-amber-50/70 px-6 py-4 text-[13px] font-bold text-amber-700">
@@ -544,12 +740,10 @@ export default function RecommendJobPostingsPage() {
 
         {pagedCards.length === 0 && !isLoading && !error ? (
           <div className="rounded-2xl border border-gray-100 bg-white px-6 py-10 text-center">
-            <p className="text-[14px] font-bold text-gray-500">
-              추천 결과가 없습니다.
-            </p>
+            <p className="text-[14px] font-bold text-gray-500">추천 결과가 없습니다.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-4 gap-7">
             {pagedCards.map((p) => (
               <JobPostingCard
                 key={p.jobPostingId}

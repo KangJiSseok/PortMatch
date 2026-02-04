@@ -9,7 +9,7 @@ import type {
   RecommendJobPostingsData,
 } from '@/types/recommendJobPosting';
 
-const FACTOR_ORDER: JobPostingFactor[] = ['Domain', 'Tech', 'Problem', 'Architecture'];
+const FACTOR_ORDER: JobPostingFactor[] = ['도메인', '기술스택', '문제 정의', '아키텍처'];
 
 function toScore(similarity: number): number {
   if (!Number.isFinite(similarity)) return 0;
@@ -31,10 +31,10 @@ function pickTopFactors(weights: JobPostingWeights, n = 2): JobPostingFactor[] {
 
 function mapToCardModel(item: RecommendJobPostingMatch, index: number): JobPostingCardModel {
   const weights = similaritiesToScores({
-    Domain: item.domainSimilarity,
-    Tech: item.techSimilarity,
-    Problem: item.problemSimilarity,
-    Architecture: item.architectureSimilarity,
+    도메인: item.domainSimilarity,
+    기술스택: item.techSimilarity,
+    '문제 정의': item.problemSimilarity,
+    아키텍처: item.architectureSimilarity,
   });
 
   return {
