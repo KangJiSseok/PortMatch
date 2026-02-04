@@ -1,5 +1,5 @@
 // src/pages/company/CompanyInterviewSchedulePage.tsx
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
@@ -9,6 +9,7 @@ import {
   type InterviewSessionView,
   upsertExtraInterviewView,
 } from '../../api/myPage';
+import { fetchJobPostDetail } from '../../api/jobPost/detail';
 
 type NavState = {
   applicantName?: string;
@@ -122,6 +123,46 @@ export default function CompanyInterviewSchedulePage() {
 
   const [toast, setToast] = useState<string>('');
   const [errors, setErrors] = useState<FormErrors>({});
+
+  useEffect(() => {
+    if (applicantName.trim()) return;
+    const next = navState.applicantName?.trim();
+    if (next) setApplicantName(next);
+  }, [applicantName, navState.applicantName]);
+
+  useEffect(() => {
+    if (!Number.isFinite(safeJobPostId) || safeJobPostId <= 0) return;
+
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const detail = await fetchJobPostDetail(safeJobPostId);
+        if (cancelled || !detail) return;
+
+        if (!postingTitle.trim() && detail.jobPost?.title) {
+          setPostingTitle(detail.jobPost.title);
+        }
+
+        if (!companyName.trim()) {
+          const nextCompanyName =
+            detail.company?.companies_name ??
+            detail.company?.id ??
+            (detail.jobPost?.id ? `Company ${detail.jobPost.id}` : '');
+
+          if (nextCompanyName.trim()) setCompanyName(nextCompanyName);
+        }
+      } catch (err) {
+        console.error('Failed to load job posting detail:', err);
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [safeJobPostId, postingTitle, companyName]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);

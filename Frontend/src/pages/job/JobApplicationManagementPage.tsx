@@ -23,6 +23,7 @@ import {
   type CompanyApplicationView,
 } from '../../api/company/applications';
 import { getExtraInterviewViews } from '../../api/myPage';
+import { fetchJobPostDetail } from '../../api/jobPost/detail';
 import { useMessenger } from '../../hooks/useMessenger';
 
 const EMPLOYMENT_STATUS_MAP: Record<string, string> = {
@@ -160,6 +161,8 @@ const JobApplicationManagementPage = () => {
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [jobPostTitle, setJobPostTitle] = useState<string>('');
+  const [companyName, setCompanyName] = useState<string>('');
 
   // [추가] 채팅방 연결 핸들러
   const handleContactApplicant = async (
@@ -189,9 +192,21 @@ const JobApplicationManagementPage = () => {
       setError('');
 
       try {
-        const data = await fetchCompanyApplications(safeJobPostId);
+        const [data, detail] = await Promise.all([
+          fetchCompanyApplications(safeJobPostId),
+          fetchJobPostDetail(safeJobPostId).catch(() => null),
+        ]);
         if (cancelled) return;
         setApplications(data);
+        if (detail) {
+          if (detail.jobPost?.title) setJobPostTitle(detail.jobPost.title);
+
+          const resolvedCompanyName =
+            detail.company?.companies_name ??
+            detail.company?.id ??
+            (detail.jobPost?.id ? `Company ${detail.jobPost.id}` : '');
+          if (resolvedCompanyName.trim()) setCompanyName(resolvedCompanyName);
+        }
       } catch (e) {
         if (cancelled) return;
         console.error(e);
@@ -209,9 +224,10 @@ const JobApplicationManagementPage = () => {
   }, [safeJobPostId]);
 
   const postingTitle =
-    applications[0]?.postingTitle && applications[0].postingTitle !== '공고 제목'
+    jobPostTitle.trim() ||
+    (applications[0]?.postingTitle && applications[0].postingTitle !== '공고 제목'
       ? applications[0].postingTitle
-      : '지원자 관리';
+      : '지원자 관리');
 
   const sortedApplications = useMemo(() => {
     const list = [...applications];
@@ -290,8 +306,8 @@ const JobApplicationManagementPage = () => {
       state: {
         applicantName: app.applicantName,
         resumeId: app.resumeId,
-        postingTitle: app.postingTitle,
-        companyName: app.companyName,
+        postingTitle: jobPostTitle.trim() || app.postingTitle,
+        companyName: companyName.trim() || app.companyName,
         appliedAt: app.appliedAt,
         experience: app.experience,
         experienceYears: app.experienceYears,
