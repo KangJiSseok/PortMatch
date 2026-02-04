@@ -1088,10 +1088,10 @@ function PortfoliosPage() {
                     className="shadow-point-blue/20 flex-[2] rounded-2xl py-5! text-lg! font-black shadow-xl"
                     onClick={() => {
                       if (!selectedPortfolioId) return;
-                      navigate(`/recommend/companies?portfolioId=${selectedPortfolioId}`);
+                      navigate(`/recommend/jobposting?portfolioId=${selectedPortfolioId}`);
                     }}
                   >
-                    맞춤 공고 확인하기
+                    추천 공고 확인하기
                   </Button>
                   <Button
                     variant="blue"
