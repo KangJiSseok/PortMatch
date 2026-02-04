@@ -1,5 +1,7 @@
 package com.portmatch.domain.scrap.entity;
 
+import com.portmatch.domain.auth.entity.User;
+import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -21,9 +23,11 @@ public class CompanyScrapEntity extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private Long uid; // User ID
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user; // User ID
 
-    @Column(nullable = false)
-    private String cid; // Company ID (기업 ID)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_cid", nullable = false)
+    private Company company; // Company ID (기업 ID)
 }

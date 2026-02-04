@@ -23,8 +23,10 @@ public class CompanyScrapDto {
     public static CompanyScrapDto fromEntity(CompanyScrapEntity entity) {
         return CompanyScrapDto.builder()
                 .id(entity.getId())
-                .uid(entity.getUid())
-                .cid(entity.getCid())
+                // entity.getUid() 대신 객체에서 꺼내오기!
+                .uid(entity.getUser() != null ? entity.getUser().getId() : null)
+                // entity.getCid() 대신 객체에서 꺼내오기!
+                .cid(entity.getCompany() != null ? entity.getCompany().getCid() : null)
                 .createdAt(entity.getCreatedAt())
                 .build();
     }
