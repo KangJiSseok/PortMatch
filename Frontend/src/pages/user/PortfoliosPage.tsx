@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -90,6 +90,7 @@ const STAGES = [
 
 function PortfoliosPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [step, setStep] = useState<AnalysisStep>('upload');
   const [isDragging, setIsDragging] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -109,8 +110,51 @@ function PortfoliosPage() {
 
   const projectSectionRef = useRef<HTMLDivElement>(null);
   const techSectionRef = useRef<HTMLDivElement>(null);
+  const lastSyncedParamsRef = useRef<string | null>(null);
 
   const activeStageId = [...STAGES].reverse().find((s) => progress >= s.threshold)?.id ?? 0;
+
+  useEffect(() => {
+    const current = searchParams.toString();
+    if (lastSyncedParamsRef.current === current) return;
+
+    const stepParam = searchParams.get('step') as AnalysisStep | null;
+    const portfolioIdParam = searchParams.get('portfolioId');
+
+    if (portfolioIdParam && String(selectedPortfolioId) !== portfolioIdParam) {
+      setSelectedPortfolioId(portfolioIdParam);
+    }
+
+    if (stepParam && stepParam !== step) {
+      setStep(stepParam);
+    }
+
+    lastSyncedParamsRef.current = current;
+  }, [searchParams, selectedPortfolioId, step]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (step) {
+      params.set('step', step);
+    }
+
+    if (selectedPortfolioId !== null && selectedPortfolioId !== undefined) {
+      params.set('portfolioId', String(selectedPortfolioId));
+    }
+
+    const next = params.toString();
+    const current = new URLSearchParams(window.location.search).toString();
+    if (next !== current) {
+      lastSyncedParamsRef.current = next;
+      setSearchParams(params, { replace: true });
+    }
+  }, [step, selectedPortfolioId, setSearchParams]);
+
+  useEffect(() => {
+    if (step !== 'result') return;
+    if (!selectedPortfolioId || analysisData) return;
+    handleViewResults();
+  }, [step, selectedPortfolioId, analysisData]);
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (ref.current) {
