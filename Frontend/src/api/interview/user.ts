@@ -1,8 +1,8 @@
-// src/api/myPage/interviews.ts
+// src/api/interview/user.ts
 import { isAxiosError } from 'axios';
 import axiosInstance from '@/api/axiosInstance';
 import { getMyInfo } from '@/api/auth';
-import type { ApiEnvelope } from './types';
+import type { ApiEnvelope } from '@/api/myPage/types';
 
 export type InterviewUserApi = {
   userId?: number;

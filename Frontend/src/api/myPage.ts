@@ -1,5 +1,5 @@
 // src/api/myPage.ts
-import { fetchInterviewRowsForMe, type InterviewApiRow } from './myPage/interviews';
+import { fetchInterviewRowsForMe, type InterviewApiRow } from './interview/user';
 
 export type UserRole = 'APPLICANT' | 'COMPANY';
 
