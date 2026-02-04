@@ -12,6 +12,7 @@ import {
   toYmd,
   toYmdFromIso,
 } from '../../components/Calendar/calendarUtils';
+import { fetchCompanyInterviewEvents } from '../../api/interview';
 
 const ROUTES = {
   jobPostManage: '/company/jobs',
@@ -205,47 +206,17 @@ async function fetchCompanyJobPosts(cid?: string): Promise<JobPostView[]> {
 }
 
 async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
-  await new Promise((r) => setTimeout(r, 360));
-
-  const now = new Date();
-  const year = now.getFullYear();
-  const month0 = now.getMonth();
-  const start = new Date(year, month0, now.getDate(), 0, 0, 0, 0);
-  const end = new Date(year, month0 + 1, 0, 23, 59, 59, 999);
-
-  const slots = [
-    { h: 9, m: 0, title: '1차 면접' },
-    { h: 10, m: 30, title: '실무 면접' },
-    { h: 13, m: 0, title: '2차 면접' },
-  ] as const;
-  const candidateBase = ['지원자 A', '지원자 B', '지원자 C', '지원자 D', '지원자 E'];
-  const positions = ['Frontend', 'Backend', 'Data', 'DevOps', 'AI'];
-  let id = 201;
-  let applicantId = 101;
-  const out: InterviewEvent[] = [];
-
-  for (
-    let d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-    d.getTime() <= end.getTime();
-    d.setDate(d.getDate() + 1)
-  ) {
-    if (d.getDay() === 0 || d.getDay() === 6) continue;
-    const dailyCount = (d.getDate() % 2) + 1;
-    for (let i = 0; i < dailyCount; i++) {
-      const s = slots[i % slots.length];
-      const when = new Date(d.getFullYear(), d.getMonth(), d.getDate(), s.h, s.m, 0, 0);
-      out.push({
-        id: id++,
-        title: s.title,
-        scheduledAt: when.toISOString(),
-        applicantId: applicantId++,
-        candidateName: `${candidateBase[i]}`,
-        position: positions[d.getDate() % positions.length],
-      });
-    }
-  }
-  return out;
+  const rows = await fetchCompanyInterviewEvents();
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    scheduledAt: row.scheduledAt,
+    applicantId: row.applicantId,
+    candidateName: row.candidateName,
+    position: row.position,
+  }));
 }
+
 
 export default function CompanyMyPage() {
   const navigate = useNavigate();
@@ -434,15 +405,6 @@ export default function CompanyMyPage() {
                       마감임박
                     </Button>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={() => navigate(ROUTES.jobPostManage)}
-                  >
-                    공고 관리
-                  </Button>
                 </div>
 
                 <div className="flex-1">

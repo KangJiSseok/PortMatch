@@ -292,9 +292,6 @@ export default function CompanyInterviewSchedulePage() {
               <p className="text-slate-gray mt-2 text-lg font-black">
                 {formatDateTime(currentInterview.scheduledAt)}
               </p>
-              <p className="text-slate-gray mt-2 text-xs font-bold opacity-50">
-                자동으로 로비로 안 보냅니다. 원하면 아래 버튼으로 이동하세요 😇
-              </p>
             </div>
           )}
 

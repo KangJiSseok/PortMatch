@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import Button from '../../components/Button/Button';
 import {
-  fetchMyInterviewViewsByStatus,
+  fetchCompanyInterviewViewsByStatus,
   type InterviewListStatus,
   type InterviewSessionView,
 } from '../../api/interview';
@@ -97,7 +97,7 @@ export default function CorporateInterviewListPage() {
     setErrorMessage('면접 목록을 불러오지 못했어요.');
 
     try {
-      const data = (await fetchMyInterviewViewsByStatus(tab)) as CorporateView[];
+      const data = (await fetchCompanyInterviewViewsByStatus(tab)) as CorporateView[];
       setItems(data);
     } catch (err) {
       setItems([]);
