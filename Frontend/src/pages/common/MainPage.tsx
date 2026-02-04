@@ -5,7 +5,6 @@ import {
   Timer,
   Calculator,
   FileText,
-  Mic,
   Calendar,
   BarChart3,
   CheckSquare,
@@ -16,7 +15,8 @@ import {
   User as UserIcon,
   Briefcase,
   MapPin,
-  PlusCircle, // 아이콘 추가
+  PlusCircle,
+  FileDiff,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import EmptyState from '../../components/states/EmptyState';
@@ -162,7 +162,7 @@ const COMPANY_QUICK_MENUS: QuickMenu[] = [
   { id: 2, title: '인건비 계산기', icon: Wallet, link: '/support/employer-cost' },
   { id: 3, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
   { id: 4, title: '글로벌 단위 변환기', icon: Globe, link: '/support/unit-converter' },
-  { id: 5, title: '면접 질문 생성', icon: Mic, link: '/support/interview-generator' },
+  { id: 5, title: '문서 비교 분석', icon: FileDiff, link: '/support/doc-comparator' },
   { id: 6, title: '면접 평가지', icon: CheckSquare, link: '/support/interview-template' },
 ];
 

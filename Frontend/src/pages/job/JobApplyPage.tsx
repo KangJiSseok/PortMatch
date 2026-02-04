@@ -145,7 +145,7 @@ function Modal({
         }}
       >
         <motion.div
-          className="w-full max-w-lg rounded-[32px] border border-zinc-100 bg-white p-10 shadow-2xl"
+          className="w-full max-w-lg rounded-4xl border border-zinc-100 bg-white p-10 shadow-2xl"
           initial={{ y: 20, opacity: 0, scale: 0.95 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 20, opacity: 0, scale: 0.95 }}
