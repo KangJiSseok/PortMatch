@@ -1,7 +1,7 @@
 -- Align portfolio_project_embeddings table with JPA entity fields
 -- Generated on 2026-02-02
 
-ALTER TABLE portfolio_project_embeddings
+ALTER TABLE IF EXISTS portfolio_project_embeddings
     ADD COLUMN IF NOT EXISTS portfolio_id BIGINT,
     ADD COLUMN IF NOT EXISTS analysis_id BIGINT,
     ADD COLUMN IF NOT EXISTS project_id BIGINT,
