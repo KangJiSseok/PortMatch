@@ -52,11 +52,13 @@ const SearchBar = () => {
 
   const handleSearch = () => {
     const trimmed = searchKeyword.trim();
+    const targetPath = user?.role === 'COMPANY' ? '/company/recommend/candidates' : '/job-postings';
+
     if (!trimmed) {
-      navigate('/job-postings');
+      navigate(targetPath);
       return;
     }
-    navigate(`/job-postings?keyword=${encodeURIComponent(trimmed)}`);
+    navigate(`${targetPath}?keyword=${encodeURIComponent(trimmed)}`);
   };
 
   const searchPlaceholder = user?.role === 'COMPANY' ? '인재 검색' : '공고 검색';

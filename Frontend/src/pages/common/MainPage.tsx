@@ -10,7 +10,8 @@ import {
   BarChart3,
   CheckSquare,
   Globe,
-  TrendingUp,
+  Wallet,
+  Pen,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import EmptyState from '../../components/states/EmptyState';
@@ -36,16 +37,16 @@ const USER_QUICK_MENUS: QuickMenu[] = [
   { id: 3, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
   { id: 4, title: '글로벌 단위 변환기', icon: Globe, link: '/support/unit-converter' },
   { id: 5, title: '면접 예상 질문', icon: FileText, link: '/support/interview-template' },
-  { id: 6, title: '이력서 첨삭', icon: Mic, link: '/support/resume-feedback' },
+  { id: 6, title: '포트폴리오 첨삭', icon: Pen, link: '/support/portfolio-feedback' },
 ];
 
 const COMPANY_QUICK_MENUS: QuickMenu[] = [
   { id: 1, title: '캐파 계산기', icon: BarChart3, link: '/support/sprint-capacity' },
-  { id: 2, title: '인건비 계산기', icon: TrendingUp, link: '/support/employer-cost' },
+  { id: 2, title: '인건비 계산기', icon: Wallet, link: '/support/employer-cost' },
   { id: 3, title: '협업 일정 관리', icon: Calendar, link: '/support/schedule' },
   { id: 4, title: '글로벌 단위 변환기', icon: Globe, link: '/support/unit-converter' },
-  { id: 5, title: '면접 평가지', icon: CheckSquare, link: '/support/interview-template' },
-  { id: 6, title: '면접 질문 생성', icon: Mic, link: '/support/interview-generator' },
+  { id: 5, title: '면접 질문 생성', icon: Mic, link: '/support/interview-generator' },
+  { id: 6, title: '면접 평가지', icon: CheckSquare, link: '/support/interview-template' },
 ];
 
 function MainPage() {

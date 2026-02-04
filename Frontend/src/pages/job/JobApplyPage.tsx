@@ -1,26 +1,26 @@
-// src/pages/JobApplyPage.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import Button from '../../components/Button/Button';
-import { fetchJobPostDetail } from '../../api/jobPosts';
+import { fetchJobPostDetail } from '../../api/applyJobPost';
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
 type ApiResult = Awaited<ReturnType<typeof fetchJobPostDetail>>;
 type JobPostDetailData = NonNullable<ApiResult>;
 
-type ResumeLite = {
-  id: string;
+type ResumeItem = {
+  id: number;
   title: string;
-  experienceCount?: number;
-  educationCount?: number;
+  isMain: boolean;
+  updatedAt: string;
 };
 
-type StoredApplication = {
-  jobPostId: number;
-  resumeId: string;
-  appliedAt: string; // ISO
+type ResumeApiResponse = {
+  status: boolean;
+  code: number;
+  message: string;
+  data: ResumeItem[];
 };
 
 function formatYmdDot(ymd?: string | null) {
@@ -30,50 +30,19 @@ function formatYmdDot(ymd?: string | null) {
 
 function calcDday(deadline?: string | null) {
   if (!deadline) return '-';
-  const end = new Date(`${deadline}T23:59:59`);
+
   const now = new Date();
-  const diffMs = end.getTime() - now.getTime();
+  const target = new Date(deadline);
+
+  now.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+
+  const diffMs = target.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays > 0) return `D-${diffDays}`;
+
+  if (diffDays < 0) return '마감';
   if (diffDays === 0) return 'D-DAY';
-  return '마감';
-}
-
-function safeParseJson<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function loadResumesFromLocalStorage(): ResumeLite[] {
-  const raw = localStorage.getItem('resumes');
-  if (raw) {
-    try {
-      const record = JSON.parse(raw) as Record<string, any>;
-      const list = Object.values(record)
-        .filter((v) => v && typeof v === 'object')
-        .map((v) => {
-          const id = String(v.id ?? '');
-          const title = String(v.title ?? '이력서');
-          const experienceCount = Array.isArray(v.experience) ? v.experience.length : undefined;
-          const educationCount = Array.isArray(v.education) ? v.education.length : undefined;
-          return { id, title, experienceCount, educationCount } satisfies ResumeLite;
-        })
-        .filter((v) => v.id.trim().length > 0);
-
-      if (list.length > 0) return list;
-    } catch {
-      // ignore
-    }
-  }
-
-  return [
-    { id: 'frontend', title: '프론트엔드 이력서' },
-    { id: 'backend', title: '백엔드 이력서' },
-  ];
+  return `D-${diffDays}`;
 }
 
 function CardSkeleton() {
@@ -109,7 +78,7 @@ function Modal({
         }}
       >
         <motion.div
-          className="w-full max-w-lg rounded-[24px] border border-zinc-100 bg-white p-8 shadow-xl"
+          className="w-full max-w-lg rounded-3xl border border-zinc-100 bg-white p-8 shadow-xl"
           initial={{ y: 16, opacity: 0, scale: 0.98 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 16, opacity: 0, scale: 0.98 }}
@@ -133,20 +102,44 @@ export default function JobApplyPage() {
   const [errorMessage, setErrorMessage] = useState('지원 정보를 불러오지 못했어요.');
   const [data, setData] = useState<JobPostDetailData | null>(null);
 
-  const [resumes, setResumes] = useState<ResumeLite[]>(() => loadResumesFromLocalStorage());
-  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(() => {
-    const list = loadResumesFromLocalStorage();
-    return list[0]?.id ?? null;
-  });
+  const [resumes, setResumes] = useState<ResumeItem[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null);
 
   const [doneModalOpen, setDoneModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
 
-  const load = async () => {
+  const fetchResumes = useCallback(async () => {
+    try {
+      const response = await fetch('/api/resumes', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('이력서 목록을 불러오는데 실패했습니다.');
+
+      const json = (await response.json()) as ResumeApiResponse;
+      if (json.status && Array.isArray(json.data)) {
+        setResumes(json.data);
+        if (json.data.length > 0) {
+          const mainResume = json.data.find((r) => r.isMain);
+          setSelectedResumeId(mainResume ? mainResume.id : json.data[0].id);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setToast('이력서 목록을 불러오지 못했어요.');
+    }
+  }, []);
+
+  const load = useCallback(async () => {
     if (!Number.isFinite(jobPostId)) {
       setStatus('notfound');
       setData(null);
@@ -158,24 +151,25 @@ export default function JobApplyPage() {
 
     try {
       const res = await fetchJobPostDetail(jobPostId);
-      if (!res) {
+      if (!res || !res.jobPost || !res.company) {
         setStatus('notfound');
         setData(null);
         return;
       }
       setData(res);
       setStatus('success');
+
+      fetchResumes();
     } catch (err) {
       setStatus('error');
       setData(null);
       setErrorMessage(err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
     }
-  };
+  }, [jobPostId, fetchResumes]);
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [load]);
 
   useEffect(() => {
     if (!toast) return;
@@ -184,30 +178,20 @@ export default function JobApplyPage() {
   }, [toast]);
 
   const canApply = useMemo(() => {
-    if (!data) return false;
+    if (!data?.jobPost) return false;
+
     const { jobPost } = data;
     const st = (jobPost.status ?? 'OPEN').toUpperCase();
     const d = calcDday(jobPost.deadline);
+
     if (st !== 'OPEN') return false;
     if (d === '마감') return false;
     return true;
   }, [data]);
 
-  const refreshResumes = () => {
-    const next = loadResumesFromLocalStorage();
-    setResumes(next);
-
-    setSelectedResumeId((prev) => {
-      if (!next.length) return null;
-      if (!prev) return next[0].id;
-      return next.some((r) => r.id === prev) ? prev : next[0].id;
-    });
-
-    setToast('이력서 목록을 새로 불러왔어요.');
-  };
-
-  const submit = () => {
+  const submit = async () => {
     if (!Number.isFinite(jobPostId)) return;
+    if (isSubmitting) return;
 
     if (!selectedResumeId) {
       setToast('이력서를 먼저 선택해줘!');
@@ -218,22 +202,66 @@ export default function JobApplyPage() {
       return;
     }
 
-    const key = 'jobApplications';
-    const prev = safeParseJson<StoredApplication[]>(localStorage.getItem(key), []);
+    setIsSubmitting(true);
 
-    const next: StoredApplication[] = [
-      ...prev.filter((a) => a.jobPostId !== jobPostId),
-      { jobPostId, resumeId: selectedResumeId, appliedAt: new Date().toISOString() },
-    ];
+    try {
+      const response = await fetch(`/api/job-postings/${jobPostId}/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ resumeId: selectedResumeId }),
+      });
 
-    localStorage.setItem(key, JSON.stringify(next));
-    setDoneModalOpen(true);
+      if (!response.ok) {
+        throw new Error('지원에 실패했습니다.');
+      }
+
+      setHasApplied(true);
+      setDoneModalOpen(true);
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : '지원에 실패했어요. 잠시 후 다시 시도해주세요.';
+      setToast(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // ✅ 가로 스크롤: body 자체가 넓어지도록 root/min-w + container/w 고정
+  const cancel = async () => {
+    if (!Number.isFinite(jobPostId)) return;
+    if (isSubmitting) return;
+
+    if (!confirm('정말 지원을 취소하시겠습니까?')) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/job-postings/${jobPostId}/apply`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('지원 취소에 실패했습니다.');
+      }
+
+      setHasApplied(false);
+      setToast('지원이 취소되었습니다.');
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : '취소에 실패했어요. 잠시 후 다시 시도해주세요.';
+      setToast(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const Root = ({ children }: { children: React.ReactNode }) => (
-    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-32 pb-20">
-      <div className="mx-auto w-[1280px] px-6">{children}</div>
+    <div className="text-midnight-ink min-h-screen min-w-7xl bg-white pt-32 pb-20">
+      <div className="mx-auto w-7xl px-6">{children}</div>
     </div>
   );
 
@@ -269,7 +297,7 @@ export default function JobApplyPage() {
     return (
       <Root>
         <div className="mx-auto max-w-3xl">
-          <div className="rounded-[24px] border border-zinc-100 bg-white p-10 text-center shadow-sm">
+          <div className="rounded-3xl border border-zinc-100 bg-white p-10 text-center shadow-sm">
             <p className="text-xl font-black">지원 정보를 불러오지 못했어요</p>
             <p className="mt-2 text-sm font-medium text-zinc-500">{errorMessage}</p>
             <div className="mt-6 flex justify-center gap-3">
@@ -286,11 +314,11 @@ export default function JobApplyPage() {
     );
   }
 
-  if (status === 'notfound' || !data) {
+  if (status === 'notfound' || !data || !data.jobPost || !data.company) {
     return (
       <Root>
         <div className="mx-auto max-w-3xl">
-          <div className="rounded-[24px] border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
+          <div className="rounded-3xl border border-zinc-100 bg-zinc-50 p-10 text-center shadow-sm">
             <p className="text-xl font-black">공고를 찾을 수 없어요</p>
             <p className="mt-2 text-sm font-medium text-zinc-500">
               상세 페이지에서 다시 시도해 주세요.
@@ -310,16 +338,14 @@ export default function JobApplyPage() {
   const dday = calcDday(jobPost.deadline);
 
   return (
-    <div className="text-midnight-ink min-h-screen min-w-[1280px] bg-white pt-26 pb-20">
-      <div className="mx-auto w-[1280px] px-6">
-        {/* 상단 */}
+    <div className="text-midnight-ink min-h-screen min-w-7xl bg-white pt-26 pb-20">
+      <div className="mx-auto w-7xl px-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="space-y-1">
             <h2 className="text-midnight-ink text-2xl font-black tracking-tighter">지원서 작성</h2>
           </div>
         </div>
 
-        {/* 요약 헤더 */}
         <section className="rounded-[20px] border border-zinc-100 bg-zinc-50 p-8 shadow-sm">
           <p className="text-xs font-black tracking-[0.2em] text-zinc-400 uppercase">JOB</p>
           <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -352,16 +378,14 @@ export default function JobApplyPage() {
           </div>
         </section>
 
-        {/* 본문 */}
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          {/* 이력서 선택 */}
           <div className="lg:col-span-2">
             <section className="rounded-[20px] border border-zinc-100 bg-white p-8 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-midnight-ink text-xl font-black tracking-tighter">
                   이력서 선택
                 </h3>
-                <Button type="button" variant="outline" size="md" onClick={refreshResumes}>
+                <Button type="button" variant="outline" size="md" onClick={fetchResumes}>
                   목록 새로고침
                 </Button>
               </div>
@@ -377,9 +401,9 @@ export default function JobApplyPage() {
                       type="button"
                       variant="dark"
                       size="md"
-                      onClick={() => navigate('/resumes/frontend')}
+                      onClick={() => navigate('/resumes/new')}
                     >
-                      이력서 작성/수정
+                      이력서 작성하러 가기
                     </Button>
                   </div>
                 </div>
@@ -388,11 +412,10 @@ export default function JobApplyPage() {
                   {resumes.map((r) => {
                     const selected = selectedResumeId === r.id;
                     return (
-                      <button
+                      <div
                         key={r.id}
-                        type="button"
                         onClick={() => setSelectedResumeId(r.id)}
-                        className={`w-full rounded-2xl border p-5 text-left transition ${
+                        className={`w-full cursor-pointer rounded-2xl border p-5 text-left transition ${
                           selected
                             ? 'border-point-blue/40 bg-point-blue/5 shadow-sm'
                             : 'border-zinc-100 bg-white hover:border-zinc-200 hover:shadow-sm'
@@ -414,20 +437,15 @@ export default function JobApplyPage() {
                               <p className="text-midnight-ink truncate text-base font-black">
                                 {r.title}
                               </p>
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {typeof r.experienceCount === 'number' && (
-                                <span className="rounded-xl border border-zinc-200 bg-white px-3 py-1 text-xs font-black text-zinc-700">
-                                  경력 {r.experienceCount}개
-                                </span>
-                              )}
-                              {typeof r.educationCount === 'number' && (
-                                <span className="rounded-xl border border-zinc-200 bg-white px-3 py-1 text-xs font-black text-zinc-700">
-                                  학력 {r.educationCount}개
+                              {r.isMain && (
+                                <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-bold text-zinc-500">
+                                  대표
                                 </span>
                               )}
                             </div>
+                            <p className="mt-2 text-xs font-medium text-zinc-400">
+                              최종 수정: {new Date(r.updatedAt).toLocaleDateString()}
+                            </p>
                           </div>
 
                           <div className="shrink-0">
@@ -444,7 +462,7 @@ export default function JobApplyPage() {
                             </Button>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -452,7 +470,6 @@ export default function JobApplyPage() {
             </section>
           </div>
 
-          {/* 제출 요약/CTA */}
           <aside className="lg:col-span-1">
             <div className="sticky top-32 rounded-[20px] border border-zinc-100 bg-white p-6 shadow-sm">
               <p className="text-midnight-ink text-lg font-black tracking-tighter">제출 요약</p>
@@ -461,7 +478,7 @@ export default function JobApplyPage() {
                 <div className="rounded-xl bg-zinc-50 px-4 py-3">
                   <p className="text-xs font-black text-zinc-400">선택한 이력서</p>
                   <p className="mt-1 text-sm font-black text-zinc-800">
-                    {selectedResumeId ?? '선택 없음'}
+                    {resumes.find((r) => r.id === selectedResumeId)?.title ?? '선택 없음'}
                   </p>
                 </div>
 
@@ -476,16 +493,30 @@ export default function JobApplyPage() {
               </div>
 
               <div className="mt-6 space-y-2">
-                <Button
-                  type="button"
-                  variant="blue"
-                  size="lg"
-                  className="w-full rounded-2xl"
-                  onClick={submit}
-                  disabled={!selectedResumeId || !canApply}
-                >
-                  지원서 제출
-                </Button>
+                {hasApplied ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="w-full rounded-2xl border-red-200 text-red-500 hover:border-red-300 hover:bg-red-50"
+                    onClick={cancel}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? '처리 중...' : '지원 취소하기'}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="blue"
+                    size="lg"
+                    className="w-full rounded-2xl"
+                    onClick={submit}
+                    disabled={!selectedResumeId || !canApply || isSubmitting}
+                  >
+                    {isSubmitting ? '제출 중...' : '지원서 제출'}
+                  </Button>
+                )}
+
                 {!canApply && (
                   <p className="mt-2 text-xs font-medium text-zinc-500">
                     공고 상태/마감일 때문에 제출이 비활성화돼요.
@@ -497,7 +528,6 @@ export default function JobApplyPage() {
         </div>
       </div>
 
-      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -511,14 +541,13 @@ export default function JobApplyPage() {
         )}
       </AnimatePresence>
 
-      {/* Done modal */}
-      {doneModalOpen && (
+      {doneModalOpen && data?.jobPost && (
         <Modal
           title="지원서 제출 완료!"
           description=""
           onClose={() => {
             setDoneModalOpen(false);
-            navigate(`/job-posts/${jobPost.id}`);
+            if (data?.jobPost) navigate(`/job-posts/${data.jobPost.id}`);
           }}
           actions={
             <>
@@ -528,7 +557,7 @@ export default function JobApplyPage() {
                 size="md"
                 onClick={() => {
                   setDoneModalOpen(false);
-                  navigate(`/job-posts/${jobPost.id}`);
+                  if (data?.jobPost) navigate(`/job-posts/${data.jobPost.id}`);
                 }}
               >
                 공고로 돌아가기
