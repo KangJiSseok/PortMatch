@@ -71,4 +71,15 @@ public class JobApplication extends BaseTimeEntity {
     public void updateStatus(ApplicationStatus status) {
         this.status = status;
     }
+
+    @Override
+    public String toString() {
+        return "JobApplication{" +
+                "id=" + id +
+                ", user=" + user +
+                ", jobPosting=" + jobPosting +
+                ", resume=" + resume +
+                ", status=" + status +
+                '}';
+    }
 }

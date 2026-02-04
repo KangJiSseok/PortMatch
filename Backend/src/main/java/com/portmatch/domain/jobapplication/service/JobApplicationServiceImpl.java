@@ -53,11 +53,17 @@ public class JobApplicationServiceImpl implements JobApplicationService {
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
         if (jobApplicationRepository.existsByUser_IdAndJobPosting_Id(user.getId(), jobPosting.getId())) {
+            log.info("Errorrrrrrrrrrr");
             throw new BusinessException(ResponseCode.INVALID_PARAMETER);
         }
 
+        log.info("create 전");
         JobApplication application = JobApplication.create(user, jobPosting, resume);
+        log.info("create 후, save 전");
+        log.info(application.toString());
         JobApplication saved = jobApplicationRepository.save(application);
+        log.info("반환");
+        log.info(saved.toString());
         return toResponse(saved);
     }
 
