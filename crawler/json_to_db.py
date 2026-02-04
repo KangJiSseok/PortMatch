@@ -27,12 +27,12 @@ def truncate(value, max_len):
     return value[:max_len] if len(value) > max_len else value
 
 def check_company_project_exists(cur, company_name):
-    """회사 이름을 가지고 embeddings 테이블에 데이터가 있는지 확인"""
+    """embeddings 테이블 대신 실제 분석 결과가 있는 analyses 테이블을 확인하도록 수정"""
     cur.execute("""
         SELECT EXISTS(
             SELECT 1 
-            FROM company_project_embeddings e
-            JOIN companies c ON e.company_id = c.id
+            FROM company_project_analyses a
+            JOIN companies c ON a.company_id = c.id
             WHERE c.companies_name = %s
         )
     """, (company_name,))
