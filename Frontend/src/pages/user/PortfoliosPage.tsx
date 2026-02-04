@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -91,7 +91,12 @@ const STAGES = [
 function PortfoliosPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [step, setStep] = useState<AnalysisStep>('upload');
+
+  // URL 파라미터에서 초기값 읽기
+  const initialStep = (searchParams.get('step') as AnalysisStep) || 'upload';
+  const initialPortfolioId = searchParams.get('portfolioId');
+
+  const [step, setStep] = useState<AnalysisStep>(initialStep);
   const [isDragging, setIsDragging] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -102,7 +107,9 @@ function PortfoliosPage() {
     type: 'alert',
   });
   const [savedPortfolios, setSavedPortfolios] = useState<SavedPortfolio[]>([]);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | number | null>(null);
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | number | null>(
+    initialPortfolioId,
+  );
   const [isListOpen, setIsListOpen] = useState(false);
   const [progress, setProgress] = useState(0);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
@@ -110,28 +117,10 @@ function PortfoliosPage() {
 
   const projectSectionRef = useRef<HTMLDivElement>(null);
   const techSectionRef = useRef<HTMLDivElement>(null);
-  const lastSyncedParamsRef = useRef<string | null>(null);
 
   const activeStageId = [...STAGES].reverse().find((s) => progress >= s.threshold)?.id ?? 0;
 
-  useEffect(() => {
-    const current = searchParams.toString();
-    if (lastSyncedParamsRef.current === current) return;
-
-    const stepParam = searchParams.get('step') as AnalysisStep | null;
-    const portfolioIdParam = searchParams.get('portfolioId');
-
-    if (portfolioIdParam && String(selectedPortfolioId) !== portfolioIdParam) {
-      setSelectedPortfolioId(portfolioIdParam);
-    }
-
-    if (stepParam && stepParam !== step) {
-      setStep(stepParam);
-    }
-
-    lastSyncedParamsRef.current = current;
-  }, [searchParams, selectedPortfolioId, step]);
-
+  // State → URL 동기화
   useEffect(() => {
     const params = new URLSearchParams();
     if (step) {
@@ -145,24 +134,9 @@ function PortfoliosPage() {
     const next = params.toString();
     const current = new URLSearchParams(window.location.search).toString();
     if (next !== current) {
-      lastSyncedParamsRef.current = next;
       setSearchParams(params, { replace: true });
     }
   }, [step, selectedPortfolioId, setSearchParams]);
-
-  useEffect(() => {
-    if (step !== 'result') return;
-    if (!selectedPortfolioId || analysisData) return;
-    handleViewResults();
-  }, [step, selectedPortfolioId, analysisData]);
-
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (ref.current) {
-      const yOffset = -100;
-      const y = ref.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
-  };
 
   const mapAnalysisData = (response: AnalysisResponse): AnalysisData => {
     const projects = response.projects || [];
@@ -172,6 +146,59 @@ function PortfoliosPage() {
       strengths: projects.map((p) => p.solution),
       techStacks: Array.from(new Set(allTech)),
     };
+  };
+
+  const handleViewResults = useCallback(async () => {
+    if (!selectedPortfolioId) return;
+    try {
+      const result = await portfolioApi.getAnalysisResult(selectedPortfolioId);
+      if (!result) {
+        setModal({
+          isOpen: true,
+          title: '조회 결과 없음',
+          message: '아직 분석 결과가 생성되지 않았습니다.',
+          type: 'alert',
+        });
+        return;
+      }
+      setAnalysisData(mapAnalysisData(result));
+      setStep('result');
+    } catch (err) {
+      setModal({
+        isOpen: true,
+        title: '조회 실패',
+        message: '분석 결과를 불러올 수 없습니다.',
+        type: 'alert',
+      });
+      console.error(err);
+    }
+  }, [selectedPortfolioId]);
+
+  // 초기 로드 시 URL에 step=result가 있으면 결과 가져오기
+  useEffect(() => {
+    if (initialStep !== 'result' || !initialPortfolioId) return;
+
+    const fetchInitialResults = async () => {
+      try {
+        const result = await portfolioApi.getAnalysisResult(initialPortfolioId);
+        if (result) {
+          setAnalysisData(mapAnalysisData(result));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchInitialResults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+    if (ref.current) {
+      const yOffset = -100;
+      const y = ref.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -322,32 +349,6 @@ function PortfoliosPage() {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
-  };
-
-  const handleViewResults = async () => {
-    if (!selectedPortfolioId) return;
-    try {
-      const result = await portfolioApi.getAnalysisResult(selectedPortfolioId);
-      if (!result) {
-        setModal({
-          isOpen: true,
-          title: '조회 결과 없음',
-          message: '아직 분석 결과가 생성되지 않았습니다.',
-          type: 'alert',
-        });
-        return;
-      }
-      setAnalysisData(mapAnalysisData(result));
-      setStep('result');
-    } catch (err) {
-      setModal({
-        isOpen: true,
-        title: '조회 실패',
-        message: '분석 결과를 불러올 수 없습니다.',
-        type: 'alert',
-      });
-      console.error(err);
-    }
   };
 
   const handleAnalysis = async () => {
