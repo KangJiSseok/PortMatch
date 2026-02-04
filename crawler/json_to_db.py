@@ -54,7 +54,7 @@ def request_company_analysis(company_name):
             url,
             json=payload,
             headers={"Content-Type": "application/json"},
-            timeout=180  # AI 분석이 오래 걸릴 수 있으니 넉넉하게 3분!
+            timeout=500  # AI 분석이 오래 걸릴 수 있으니 넉넉하게 3분!
         )
         
         if response.status_code == 200:
