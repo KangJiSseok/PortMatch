@@ -130,7 +130,7 @@ function EvaluationCriteria() {
             <div>
               <h4 className="text-[15px] font-black text-[#1a1a1a]">인재 평가 지표</h4>
               <p className="mt-0.5 text-[12px] font-medium text-gray-500">
-                추천 알고리즘이 비교하는 4가지 핵심 관점
+                AI가 추천인을 선별하는 4가지 핵심 관점
               </p>
             </div>
           </div>
@@ -748,7 +748,7 @@ export default function RecommendCandidatesPage() {
         {/* Header */}
         <header className="mb-6 border-l-[6px] border-[#5151E7] pl-6">
           <h1 className="text-4xl font-black tracking-tight text-[#1a1a1a] md:text-5xl">
-            AI 추천 지원자
+            추천 인재 리스트
           </h1>
           <p className="mt-3 text-[16px] font-semibold text-[#a3a3a3] italic md:text-[17px]">
             검색 문장을 기준으로 포트폴리오 유사도를 계산해 추천합니다.
