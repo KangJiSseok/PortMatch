@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { X, Info, FileText, ChevronDown, Users, Search, SlidersHorizontal } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useRecommendCandidates } from '@/hooks/useRecommendCandidates';
 import CompactRadarChart from '@/components/charts/CompactRadarChart';
+import axiosInstance from '@/api/axiosInstance';
 import { resumeApi } from '@/api/resumeApi';
 import { portfolioApi } from '@/api/portfolioApi';
 import type { CandidateCardModel, CandidateFactor } from '@/types/recommendCandidate';
@@ -36,6 +38,19 @@ const FACTOR_COLOR: Record<CandidateFactor, string> = {
   주제: '#FB923C',
   아키텍처: '#4ADE80',
   맥락: '#C084FC',
+};
+
+type StackItem = {
+  stackId: number;
+  stackName: string;
+};
+
+type RawStackItem = {
+  stackId?: number;
+  id?: number;
+  stackName?: string;
+  name?: string;
+  stack_name?: string;
 };
 //   기술: '#64748B',
 //   주제: '#94A3B8',
@@ -670,6 +685,9 @@ export default function RecommendCandidatesPage() {
   const DEFAULT_LIMIT = 30;
   const [limitEnabled, setLimitEnabled] = useState(true);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
+  const [stackInput, setStackInput] = useState('');
+  const [selectedStacks, setSelectedStacks] = useState<StackItem[]>([]);
+  const [duplicateStackError, setDuplicateStackError] = useState(false);
 
   // 페이지네이션
   const PAGE_SIZE = 8;
@@ -687,6 +705,38 @@ export default function RecommendCandidatesPage() {
     query: requestQuery,
     limit: limitEnabled ? limit : undefined,
   });
+
+  const { data: stackSearchResults } = useQuery({
+    queryKey: ['stacks', stackInput],
+    queryFn: async () => {
+      if (!stackInput.trim()) return [];
+      const response = await axiosInstance.get(`/stacks/name/${stackInput}`);
+      const rawData = (response.data?.data ?? []) as RawStackItem[];
+      return rawData
+        .map((item: RawStackItem) => ({
+          stackId: item.stackId || item.id || 0,
+          stackName: item.stackName || item.name || item.stack_name || '',
+        }))
+        .filter((item: StackItem) => item.stackId !== 0);
+    },
+    enabled: stackInput.length > 0,
+    staleTime: 1000 * 60,
+  });
+
+  const handleSelectStack = (stack: StackItem) => {
+    if (selectedStacks.some((s) => s.stackId === stack.stackId)) {
+      setDuplicateStackError(true);
+      setTimeout(() => setDuplicateStackError(false), 1000);
+      setStackInput('');
+      return;
+    }
+    setSelectedStacks((prev) => [...prev, stack]);
+    setStackInput('');
+  };
+
+  const removeStack = (stackId: number) => {
+    setSelectedStacks((prev) => prev.filter((s) => s.stackId !== stackId));
+  };
 
   const hasRequestQuery = Boolean(requestQuery.trim());
   const displayCards = hasRequestQuery ? cards : [];
@@ -774,8 +824,8 @@ export default function RecommendCandidatesPage() {
         {/* Search Bar */}
         <div className="mb-8 pl-6">
           <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <div className="flex flex-1 items-center gap-2 rounded-xl border border-gray-200 bg-[#fcfcfc] px-4 py-3">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div className="flex flex-1 items-center gap-3 rounded-2xl border border-gray-200 bg-[#fcfcfc] px-5 py-4">
                 <Search className="h-4 w-4 text-gray-400" />
                 <input
                   value={queryInput}
@@ -786,12 +836,95 @@ export default function RecommendCandidatesPage() {
                     }
                   }}
                   placeholder="예) PostgreSQL 추천 시스템 유사도 검색"
-                  className="w-full bg-transparent text-[14px] font-semibold text-gray-800 outline-none placeholder:text-gray-400"
+                  className="w-full bg-transparent text-[15px] font-bold text-gray-800 outline-none placeholder:text-gray-400"
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex w-[200px] items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3">
+              <button
+                type="button"
+                onClick={runSearch}
+                className="rounded-xl px-5 py-4 text-[14px] font-black text-white shadow-md transition hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-white/70"
+                style={{ backgroundColor: queryInput.trim() ? POINT_BLUE : '#d1d5db' }}
+                disabled={!queryInput.trim()}
+              >
+                검색
+              </button>
+            </div>
+
+            {/* Summary chips (응답 상단 데이터) */}
+            {displayResponse && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(displayResponse.tech ?? []).slice(0, 6).map((t: string) => (
+                  <span
+                    key={`tech-${t}`}
+                    className="rounded-full border border-blue-100 bg-white px-3 py-1 text-[12px] font-bold text-blue-700"
+                  >
+                    #{t}
+                  </span>
+                ))}
+                {(displayResponse.keywords ?? []).slice(0, 6).map((k: string) => (
+                  <span
+                    key={`kw-${k}`}
+                    className="rounded-full border border-amber-100 bg-white px-3 py-1 text-[12px] font-bold text-amber-700"
+                  >
+                    #{k}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5 space-y-3">
+              <div className="flex items-center gap-3 text-[12px] font-bold text-gray-500">
+                <span className="rounded-full bg-[#f0eee9] px-3 py-1 text-[11px] font-black text-[#4a4a4a]">
+                  선택 옵션
+                </span>
+                <span>기술 스택과 제한 숫자는 선택값입니다</span>
+              </div>
+
+              <div className="flex flex-col gap-3 md:flex-row md:items-start">
+                <div className="relative flex-[5]">
+                <motion.input
+                  animate={duplicateStackError ? { x: [-4, 4, -4, 4, 0] } : {}}
+                  type="text"
+                  value={stackInput}
+                  onChange={(e) => setStackInput(e.target.value)}
+                  placeholder="기술 스택 검색 (예: React)"
+                  className={`w-full rounded-2xl border px-5 py-4 text-[14px] font-bold transition-all outline-none ${
+                    duplicateStackError
+                      ? 'border-red-500 bg-red-50/30'
+                      : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
+                  }`}
+                />
+
+                {stackInput && stackSearchResults && stackSearchResults.length > 0 && (
+                  <div className="absolute top-full z-10 mt-2 w-full overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+                    {stackSearchResults.map((stack: StackItem) => (
+                      <button
+                        key={stack.stackId}
+                        onClick={() => handleSelectStack(stack)}
+                        className="w-full px-5 py-3 text-left text-[14px] font-bold text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        {stack.stackName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <AnimatePresence>
+                  {duplicateStackError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute -bottom-6 left-2 text-[11px] font-black text-red-500"
+                    >
+                      이미 추가된 기술 스택입니다.
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+                </div>
+
+                <div className="flex flex-[1] items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-3">
                   <SlidersHorizontal className="h-4 w-4 text-gray-400" />
                   <button
                     type="button"
@@ -829,40 +962,30 @@ export default function RecommendCandidatesPage() {
                     }`}
                   />
                 </div>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={runSearch}
-                  className="rounded-xl px-4 py-3 text-[13px] font-black text-white shadow-md transition hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-white/70"
-                  style={{ backgroundColor: queryInput.trim() ? POINT_BLUE : '#d1d5db' }}
-                  disabled={!queryInput.trim()}
-                >
-                  검색
-                </button>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <AnimatePresence>
+                  {selectedStacks.map((stack) => (
+                    <motion.span
+                      key={stack.stackId}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-[12px] font-black text-blue-600"
+                    >
+                      {stack.stackName}
+                      <button
+                        onClick={() => removeStack(stack.stackId)}
+                        className="text-blue-300 transition-colors hover:text-blue-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    </motion.span>
+                  ))}
+                </AnimatePresence>
               </div>
             </div>
-
-            {/* Summary chips (응답 상단 데이터) */}
-            {displayResponse && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(displayResponse.tech ?? []).slice(0, 6).map((t: string) => (
-                  <span
-                    key={`tech-${t}`}
-                    className="rounded-full border border-blue-100 bg-white px-3 py-1 text-[12px] font-bold text-blue-700"
-                  >
-                    #{t}
-                  </span>
-                ))}
-                {(displayResponse.keywords ?? []).slice(0, 6).map((k: string) => (
-                  <span
-                    key={`kw-${k}`}
-                    className="rounded-full border border-amber-100 bg-white px-3 py-1 text-[12px] font-bold text-amber-700"
-                  >
-                    #{k}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
