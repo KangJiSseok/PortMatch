@@ -86,7 +86,8 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
                 LIMIT 1
             ) unified ON true
         ) t
-        WHERE t.rn = 1
+        WHERE (:excludeUserId IS NULL OR t.user_id <> :excludeUserId)
+          AND t.rn = 1
         ORDER BY t.similarity DESC
         LIMIT :limit
         """, nativeQuery = true)
@@ -98,6 +99,7 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
             double techWeight,
             double architectureWeight,
             double unifiedWeight,
+            Long excludeUserId,
             int limit
     );
 }
