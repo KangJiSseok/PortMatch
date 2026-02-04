@@ -630,7 +630,7 @@ function CandidateCard({
                 e.stopPropagation();
                 onResumeView(candidate);
               }}
-              disabled={!candidate.resumeId}
+              disabled={!candidate.userId}
               className="group relative overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 py-2.5 text-[12px] font-semibold shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
               style={{ color: POINT_BLUE }}
             >
@@ -677,6 +677,10 @@ export default function RecommendCandidatesPage() {
 
   // 모달
   const [detailTarget, setDetailTarget] = useState<CandidateCardModel | null>(null);
+  const [resumeNotice, setResumeNotice] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: '',
+  });
 
   // API 호출 (query가 비면 enabled=false)
   const { response, cards, isLoading, isFetching, error, refetch } = useRecommendCandidates({
@@ -703,18 +707,27 @@ export default function RecommendCandidatesPage() {
   };
 
   const handleResumeView = async (candidate: CandidateCardModel) => {
-    const resumeId = candidate.resumeId;
-    if (!resumeId) {
-      alert('이력서 ID가 없습니다.');
+    const userId = candidate.userId;
+    if (!userId) {
+      alert('사용자 ID가 없습니다.');
       return;
     }
 
     try {
-      await resumeApi.getResumeDetail(resumeId);
-      navigate(`/resumes/${resumeId}`);
+      const resume = await resumeApi.getMainResumeByUserId(userId);
+      if (!resume?.id) {
+        throw new Error('empty resume');
+      }
+      navigate(`/resumes/${resume.id}`);
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message : '이력서 조회에 실패했습니다.';
       console.error('이력서 조회 실패: ', err);
-      alert('이력서 조회에 실패했습니다.');
+      if (message.includes('이력서가 없습니다')) {
+        setResumeNotice({ open: true, message: '해당 유저의 이력서가 없습니다.' });
+        return;
+      }
+      setResumeNotice({ open: true, message: '이력서 조회에 실패했습니다.' });
     }
   };
   
@@ -937,6 +950,47 @@ export default function RecommendCandidatesPage() {
         searchQuery={requestQuery}
         onClose={() => setDetailTarget(null)}
       />
+
+      <AnimatePresence>
+        {resumeNotice.open && (
+          <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setResumeNotice({ open: false, message: '' })}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+              className="relative z-[211] w-full max-w-[420px] rounded-[24px] bg-white p-6 shadow-2xl"
+            >
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0eee9] text-[#4a4a4a]">
+                  <Info className="h-5 w-5" />
+                </span>
+                <div>
+                  <h4 className="text-[16px] font-black text-[#1a1a1a]">안내</h4>
+                </div>
+              </div>
+              <p className="text-[14px] leading-relaxed font-medium text-[#4a4a4a]">
+                {resumeNotice.message}
+              </p>
+              <button
+                type="button"
+                onClick={() => setResumeNotice({ open: false, message: '' })}
+                className="mt-6 w-full cursor-pointer rounded-2xl py-3 text-[14px] font-black text-white shadow-lg transition-all hover:scale-[1.01] hover:shadow-xl active:scale-[0.995]"
+                style={{ backgroundColor: PALETTE.midnightInk }}
+              >
+                확인
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
