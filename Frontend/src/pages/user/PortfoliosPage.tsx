@@ -90,7 +90,7 @@ const STAGES = [
 
 function PortfoliosPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // URL 파라미터에서 초기값 읽기
   const initialStep = (searchParams.get('step') as AnalysisStep) || 'upload';
