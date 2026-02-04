@@ -9,6 +9,7 @@ public enum ResponseCode {
     OK(true, 1000, "success"),
     ANALYSIS_NOT_FOUND(false, 1001, "분석 결과가 없습니다."),
     RESUME_NOT_FOUND(false, 1002, "유저의 이력서가 없습니다."),
+    ALREADY_APPLIED(false, 1003, "이미 지원한 공고입니다."),
 
     // 2000: client error (4xx)
     // common

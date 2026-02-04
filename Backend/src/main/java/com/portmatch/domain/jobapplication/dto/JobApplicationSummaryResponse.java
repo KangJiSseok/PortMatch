@@ -16,4 +16,5 @@ public class JobApplicationSummaryResponse {
     private String resumeTitle;
     private ApplicationStatus status;
     private LocalDateTime appliedAt;
+    private boolean resumeViewed;
 }

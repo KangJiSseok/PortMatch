@@ -34,13 +34,35 @@ BEGIN
     FROM information_schema.tables
     WHERE table_schema = 'public'
       AND table_name = 'applicants'
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'job_applications'
+      AND column_name = 'applicant_id'
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'applicants'
+      AND column_name = 'user_id'
   ) THEN
     EXECUTE 'UPDATE job_applications ja SET user_id = a.user_id FROM applicants a WHERE ja.applicant_id = a.id';
   END IF;
 END$$;
 
-ALTER TABLE IF EXISTS job_applications
-  ALTER COLUMN user_id SET NOT NULL;
+DO $$
+DECLARE
+  has_null_user_id boolean;
+BEGIN
+  IF to_regclass('public.job_applications') IS NOT NULL THEN
+    EXECUTE 'SELECT EXISTS (SELECT 1 FROM job_applications WHERE user_id IS NULL)'
+      INTO has_null_user_id;
+    IF NOT has_null_user_id THEN
+      EXECUTE 'ALTER TABLE job_applications ALTER COLUMN user_id SET NOT NULL';
+    END IF;
+  END IF;
+END$$;
 
 DO $$
 BEGIN

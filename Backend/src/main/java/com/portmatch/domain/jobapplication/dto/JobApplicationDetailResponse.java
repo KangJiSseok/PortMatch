@@ -19,5 +19,6 @@ public class JobApplicationDetailResponse {
     private Long resumeId;
     private ApplicationStatus status;
     private LocalDateTime appliedAt;
+    private boolean resumeViewed;
     private ResumeResponse resume;
 }

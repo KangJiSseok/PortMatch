@@ -2,6 +2,7 @@ package com.portmatch.domain.resume.service;
 
 import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.auth.repository.UserRepository;
+import com.portmatch.domain.jobapplication.service.JobApplicationResumeSnapshotService;
 import com.portmatch.domain.portfolio.entity.Portfolio;
 import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.domain.resume.dto.CareerCreateRequest;
@@ -60,6 +61,7 @@ public class ResumeServiceImpl implements ResumeService {
     private final JobApplicationRepository jobApplicationRepository;
     private final JobPostingRepository jobPostingRepository;
     private final CompanyRepository companyRepository;
+    private final JobApplicationResumeSnapshotService resumeSnapshotService;
     private final S3Presigner s3Presigner;
     private final AwsS3Properties awsS3Properties;
 
@@ -201,6 +203,8 @@ public class ResumeServiceImpl implements ResumeService {
     @Override
     public void deleteResume(Long userId, Long resumeId) {
         Resume resume = getResumeOwned(userId, resumeId);
+        List<Long> applicationIds = jobApplicationRepository.findIdsByResume_Id(resumeId);
+        resumeSnapshotService.createSnapshotsIfAbsent(resume, applicationIds);
         boolean wasMain = Boolean.TRUE.equals(resume.getIsMain());
         resumeRepository.delete(resume);
         if (wasMain) {

@@ -58,7 +58,7 @@ public class ResumeController {
     }
 
     @GetMapping("/main/{userId}")
-    @Operation(summary = "메인 이력서 상세 조회", description = "사용자의 메인 이력서를 상세 조회합니다.")
+    @Operation(summary = "메인 이력서 상세 조회", description = "기업유저만 지원자의 메인 이력서를 상세 조회합니다.")
     public BaseApiResponse<ResumeResponse> getMainResume(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long userId
