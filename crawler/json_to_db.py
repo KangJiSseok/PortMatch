@@ -29,15 +29,14 @@ def truncate(value, max_len):
 
 def check_company_project_exists(cur, company_name):
     """
-    company_project_embeddings 테이블에 회사가 있는지 확인
-    
-    Returns:
-        bool: 존재하면 True, 없으면 False
+    회사 이름을 가지고 embeddings 테이블에 데이터가 있는지 확인 (JOIN 필요)
     """
     cur.execute("""
         SELECT EXISTS(
-            SELECT 1 FROM company_project_embeddings 
-            WHERE company_name = %s
+            SELECT 1 
+            FROM company_project_embeddings e
+            JOIN companies c ON e.company_id = c.id
+            WHERE c.companies_name = %s
         )
     """, (company_name,))
     
