@@ -1,4 +1,5 @@
 // src/api/myPage.ts
+import { fetchInterviewRowsForMe, type InterviewApiRow } from './myPage/interviews';
 
 export type UserRole = 'APPLICANT' | 'COMPANY';
 
@@ -275,6 +276,113 @@ export type InterviewSessionView = {
 
   status: InterviewListStatus;
 };
+
+type ApiStatusLike = string | null | undefined;
+
+function pickString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function pickCompanyName(jobPosting: InterviewApiRow['jobPosting']): string | null {
+  if (!jobPosting) return null;
+
+  const jp = jobPosting as InterviewApiRow['jobPosting'] & {
+    companyName?: unknown;
+    company?: {
+      name?: unknown;
+      companies_name?: unknown;
+      corpName?: unknown;
+      companyName?: unknown;
+    } | null;
+    companies_name?: unknown;
+    corpName?: unknown;
+  };
+
+  return (
+    pickString(jp.companyName) ??
+    pickString(jp.company?.companyName) ??
+    pickString(jp.company?.name) ??
+    pickString(jp.company?.companies_name) ??
+    pickString(jp.company?.corpName) ??
+    pickString(jp.companies_name) ??
+    pickString(jp.corpName)
+  );
+}
+
+function toInterviewListStatus(apiStatus: ApiStatusLike, scheduledAt: string): InterviewListStatus {
+  const normalized = (apiStatus ?? '').toString().trim().toUpperCase();
+  if (
+    normalized.includes('DONE') ||
+    normalized.includes('COMPLETED') ||
+    normalized.includes('FINISHED') ||
+    normalized.includes('CANCEL')
+  ) {
+    return 'DONE';
+  }
+
+  const t = new Date(scheduledAt).getTime();
+  if (Number.isFinite(t) && t < Date.now()) return 'DONE';
+
+  return 'UPCOMING';
+}
+
+function toInterviewSessionViewFromApi(row: InterviewApiRow): InterviewSessionView | null {
+  const interviewId = typeof row.id === 'number' ? row.id : Number(row.id);
+  if (!Number.isFinite(interviewId)) return null;
+
+  const scheduledAt =
+    pickString(row.time) ?? pickString(row.scheduledAt) ?? pickString(row.scheduled_at);
+  if (!scheduledAt) return null;
+
+  const jobPosting = row.jobPosting ?? null;
+  const jobPostIdRaw = row.jobPostingId ?? row.job_posting_id ?? jobPosting?.id;
+  const jobPostId = typeof jobPostIdRaw === 'number' ? jobPostIdRaw : Number(jobPostIdRaw);
+  const safeJobPostId = Number.isFinite(jobPostId) ? jobPostId : interviewId;
+
+  const postingTitle = pickString(jobPosting?.title) ?? `Interview #${interviewId}`;
+  const companyName = pickCompanyName(jobPosting) ?? '-';
+  const applicantName = pickString(row.user?.name) ?? undefined;
+
+  const applicationIdRaw =
+    row.applicationId ?? row.application_id ?? row.jobPostingId ?? row.job_posting_id ?? interviewId;
+  const applicationId = Number.isFinite(Number(applicationIdRaw))
+    ? Number(applicationIdRaw)
+    : interviewId;
+
+  const roomId = pickString(row.roomId) ?? pickString(row.room_id) ?? `room_${interviewId}`;
+
+  return {
+    interview_id: interviewId,
+    application_id: applicationId,
+    room_id: roomId,
+    scheduledAt,
+    job_post_id: safeJobPostId,
+    postingTitle,
+    companyName,
+    applicantName,
+    status: toInterviewListStatus(row.status, scheduledAt),
+  };
+}
+
+function sortByScheduledAt(a: InterviewSessionView, b: InterviewSessionView) {
+  return a.scheduledAt > b.scheduledAt ? 1 : -1;
+}
+
+async function buildInterviewViewsFromApi(): Promise<InterviewSessionView[]> {
+  const rows = await fetchInterviewRowsForMe();
+  const mapped = rows
+    .map((row) => toInterviewSessionViewFromApi(row))
+    .filter((it): it is InterviewSessionView => Boolean(it));
+
+  const extra = getExtraInterviewViews();
+  const map = new Map<number, InterviewSessionView>();
+  for (const item of mapped) map.set(item.interview_id, item);
+  for (const item of extra) map.set(item.interview_id, item);
+
+  return Array.from(map.values()).sort(sortByScheduledAt);
+}
 
 export type ScrapView = {
   scrap_id: number;
@@ -599,14 +707,33 @@ async function mockFetch<T>(value: T, options?: FetchOptions): Promise<T> {
 }
 
 export function fetchMyInterviewViews(options?: FetchOptions): Promise<InterviewSessionView[]> {
-  return mockFetch(buildAllInterviewViews(), options);
+  if (options?.shouldFail) {
+    return Promise.reject(
+      new Error('?ㅽ듃?뚰겕 ?ㅻ쪟媛 諛쒖깮?덉뼱?? ?ㅼ떆 ?쒕료??二쇱꽭??'),
+    );
+  }
+
+  if (options?.delayMs && options.delayMs > 0) {
+    return sleep(options.delayMs).then(() => buildInterviewViewsFromApi());
+  }
+
+  return buildInterviewViewsFromApi();
 }
 
 export function fetchMyUpcomingInterviewViews(
   limit = 2,
   options?: FetchOptions,
 ): Promise<InterviewSessionView[]> {
-  return mockFetch(getMyUpcomingInterviewViews(limit), options);
+  const run = async () => {
+    const views = await fetchMyInterviewViews(options);
+    const nowMs = Date.now();
+    return views
+      .filter((v) => v.status === 'UPCOMING')
+      .filter((v) => new Date(v.scheduledAt).getTime() >= nowMs)
+      .slice(0, limit);
+  };
+
+  return run();
 }
 
 export function fetchMyScrapViews(options?: FetchOptions): Promise<ScrapView[]> {
@@ -625,12 +752,22 @@ export function fetchMyInterviewViewsByStatus(
   status: InterviewListStatus,
   options?: FetchOptions,
 ): Promise<InterviewSessionView[]> {
-  return mockFetch(getMyInterviewViewsByStatus(status), options);
+  const run = async () => {
+    const views = await fetchMyInterviewViews(options);
+    return views.filter((v) => v.status === status);
+  };
+
+  return run();
 }
 
 export function fetchMyInterviewViewById(
   interviewId: number,
   options?: FetchOptions,
 ): Promise<InterviewSessionView | undefined> {
-  return mockFetch(getMyInterviewViewById(interviewId), options);
+  const run = async () => {
+    const views = await fetchMyInterviewViews(options);
+    return views.find((v) => v.interview_id === interviewId);
+  };
+
+  return run();
 }

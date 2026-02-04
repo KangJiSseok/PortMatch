@@ -2,3 +2,4 @@
 
 export * from './types';
 export * from './scraps';
+export * from './interviews';
