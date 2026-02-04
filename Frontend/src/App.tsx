@@ -27,6 +27,7 @@ import LogoutPage from './pages/auth/LogoutPage';
 import PortfoliosPage from './pages/user/PortfoliosPage';
 import ResumeDetailPage from './pages/user/ResumeDetailPage';
 import RecommendCompanyPage from './pages/user/RecommendCompanyPage';
+import RecommendJobPostingsPage from './pages/user/RecommendJobPostingsPage';
 
 import JobPostingsPage from './pages/job/JobPostingsPage';
 import CompanyJobManagementPage from './pages/job/CompanyJobManagementPage';
@@ -224,6 +225,14 @@ const router = createBrowserRouter([
         element: (
           <AuthGuard mode="AUTHENTICATED">
             <RecommendCompanyPage />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: 'recommend/jobposting',
+        element: (
+          <AuthGuard mode="AUTHENTICATED">
+            <RecommendJobPostingsPage />
           </AuthGuard>
         ),
       },

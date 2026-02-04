@@ -532,7 +532,7 @@ function CompanyCard({
               </div>
             </div>
 
-            <div className="absolute top-4 right-4 text-gray-300 opacity-20">
+            <div className="absolute top-4 right-4 text-gray-500 opacity-40">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -838,7 +838,14 @@ function ReasonModal({
   // ✅ 백엔드 headline 사용 + fallback
   const fallbackTopFactor = pickTopFactors(company.weights, 1)[0] ?? '프로젝트';
   const topFactorLabel = FACTOR_LABEL[fallbackTopFactor];
-  const headline: Headline = company.headline ?? {
+  const headerHeadline: Headline = {
+    line1: `${company.name} 기준, 당신의`,
+    highlight: `#${topFactorLabel}`,
+    line2: '항목이',
+    line3: '가장 유사하게 평가되었습니다.',
+  };
+
+  const summaryHeadline: Headline = company.headline ?? {
     line1: `${company.name} 기준, 당신의`,
     highlight: `#${topFactorLabel}`,
     line2: '항목이',
@@ -900,11 +907,12 @@ function ReasonModal({
                   </div>
 
                   <h4 className="text-[22px] leading-[1.25] font-bold tracking-tight sm:text-[24px]">
-                    {headline.line1}
+                    {headerHeadline.line1}
                     <br />
-                    <span className="text-blue-300">{headline.highlight}</span> {headline.line2}
+                    <span className="text-blue-300">{headerHeadline.highlight}</span>{' '}
+                    {headerHeadline.line2}
                     <br />
-                    {headline.line3}
+                    {headerHeadline.line3}
                   </h4>
                 </div>
 
@@ -1104,9 +1112,9 @@ function ReasonModal({
                         '분석 중'
                       ) : (
                         <>
-                          <span className="font-black text-blue-500">{headline.highlight}</span>
+                          <span className="font-black text-blue-500">{summaryHeadline.highlight}</span>
                           <br></br>
-                          {headline.line1}
+                          {summaryHeadline.line1}
                         </>
                       )}
                     </p>
@@ -1115,14 +1123,14 @@ function ReasonModal({
                         loading ? 'text-gray-300' : 'text-[#4a4a4a]'
                       }`}
                     >
-                      {loading ? '' : <>{headline.line2}</>}
+                      {loading ? '' : <>{summaryHeadline.line2}</>}
                     </p>
                     <p
                       className={`text-[14px] leading-relaxed font-medium ${
                         loading ? 'text-gray-300' : 'text-[#4a4a4a]'
                       }`}
                     >
-                      {loading ? '' : headline.line3}
+                      {loading ? '' : summaryHeadline.line3}
                     </p>
                   </div>
                 </div>
@@ -1327,6 +1335,7 @@ export default function RecommendCompanyPage() {
         setApiCompanies(mapped);
       } catch (err) {
         if (!ignore) {
+          console.error('추천 기업 조회 실패:', err);
           setApiCompanies([]);
           setLoadError('추천 기업 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
         }
@@ -1368,6 +1377,7 @@ export default function RecommendCompanyPage() {
             const count = Array.isArray(res.data) ? res.data.length : 0;
             return [id, count] as const;
           } catch (err) {
+            console.error('실패:', err);
             return [id, 0] as const;
           }
         }),
@@ -1480,10 +1490,10 @@ export default function RecommendCompanyPage() {
       <div className="mx-auto w-full max-w-[1280px] px-8 md:px-10 lg:px-12">
         <header className="mb-6 border-l-[6px] border-[#5151E7] pl-6">
           <h1 className="text-4xl font-black tracking-tight text-[#1a1a1a] md:text-5xl">
-            AI 추천 리스트
+            추천 기업 리스트
           </h1>
           <p className="mt-3 text-[16px] font-semibold text-[#a3a3a3] italic md:text-[17px]">
-            데이터 매칭 알고리즘이 분석한 최적의 합격 전략입니다.
+            포트폴리오 기준으로 유사도가 높은 기업을 추천합니다.
           </p>
         </header>
 
