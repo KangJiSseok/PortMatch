@@ -15,7 +15,7 @@ import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.domain.jobposting.repository.JobPostingRepository;
 import com.portmatch.domain.resume.entity.Resume;
 import com.portmatch.domain.resume.repository.ResumeRepository;
-import com.portmatch.domain.resume.service.ResumeService;
+import com.portmatch.domain.resume.dto.ResumeResponse;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +35,7 @@ public class JobApplicationServiceImpl implements JobApplicationService {
     private final JobPostingRepository jobPostingRepository;
     private final ResumeRepository resumeRepository;
     private final CompanyRepository companyRepository;
-    private final ResumeService resumeService;
+    private final JobApplicationResumeSnapshotService resumeSnapshotService;
 
     @Override
     @Transactional
@@ -54,7 +54,7 @@ public class JobApplicationServiceImpl implements JobApplicationService {
 
         if (jobApplicationRepository.existsByUser_IdAndJobPosting_Id(user.getId(), jobPosting.getId())) {
             log.info("Errorrrrrrrrrrr");
-            throw new BusinessException(ResponseCode.INVALID_PARAMETER);
+            throw new BusinessException(ResponseCode.ALREADY_APPLIED);
         }
 
         log.info("create 전");
@@ -62,6 +62,7 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         log.info("create 후, save 전");
         log.info(application.toString());
         JobApplication saved = jobApplicationRepository.save(application);
+        resumeSnapshotService.createSnapshotIfAbsent(saved);
         log.info("반환");
         log.info(saved.toString());
         return toResponse(saved);
@@ -91,13 +92,19 @@ public class JobApplicationServiceImpl implements JobApplicationService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public JobApplicationDetailResponse getApplicationDetailForCompany(Long userId, Long jobPostingId, Long applicationId) {
         JobPostingEntity jobPosting = getOwnedJobPosting(userId, jobPostingId);
         JobApplication application = jobApplicationRepository
                 .findByIdAndJobPosting_Id(applicationId, jobPosting.getId())
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
-        return toDetailResponse(userId, application);
+        if (!application.isResumeViewed()) {
+            application.markResumeViewed();
+        }
+        ResumeResponse resumeSnapshot = resumeSnapshotService.toResumeResponse(
+                resumeSnapshotService.getOrCreateSnapshotPayload(application)
+        );
+        return toDetailResponse(application, resumeSnapshot);
     }
 
     @Override
@@ -122,7 +129,10 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         application.updateStatus(request.getStatus());
         log.info("[APP] updateApplicationStatusForCompany saved applicationId={} status={}",
                 application.getId(), application.getStatus());
-        return toDetailResponse(userId, application);
+        ResumeResponse resumeSnapshot = resumeSnapshotService.toResumeResponse(
+                resumeSnapshotService.getOrCreateSnapshotPayload(application)
+        );
+        return toDetailResponse(application, resumeSnapshot);
     }
 
     private JobApplicationResponse toResponse(JobApplication application) {
@@ -138,19 +148,24 @@ public class JobApplicationServiceImpl implements JobApplicationService {
 
     private JobApplicationSummaryResponse toSummaryResponse(JobApplication application) {
         Resume resume = application.getResume();
+        var snapshot = resumeSnapshotService.getSnapshotPayload(application);
+        Long resumeId = resume != null ? resume.getId() : (snapshot != null ? snapshot.getId() : null);
+        String resumeTitle = resume != null ? resume.getTitle() : (snapshot != null ? snapshot.getTitle() : null);
         return JobApplicationSummaryResponse.builder()
                 .applicationId(application.getId())
                 .userId(application.getUser().getId())
                 .userName(application.getUser().getName())
-                .resumeId(resume.getId())
-                .resumeTitle(resume.getTitle())
+                .resumeId(resumeId)
+                .resumeTitle(resumeTitle)
                 .status(application.getStatus())
                 .appliedAt(application.getCreatedAt())
+                .resumeViewed(application.isResumeViewed())
                 .build();
     }
 
-    private JobApplicationDetailResponse toDetailResponse(Long userId, JobApplication application) {
+    private JobApplicationDetailResponse toDetailResponse(JobApplication application, ResumeResponse resumeSnapshot) {
         Resume resume = application.getResume();
+        Long resumeId = resume != null ? resume.getId() : (resumeSnapshot != null ? resumeSnapshot.getId() : null);
         return JobApplicationDetailResponse.builder()
                 .applicationId(application.getId())
                 .jobPostingId(application.getJobPosting().getId())
@@ -158,10 +173,11 @@ public class JobApplicationServiceImpl implements JobApplicationService {
                 .userName(application.getUser().getName())
                 .userEmail(application.getUser().getEmail())
                 .userPhone(application.getUser().getPhone())
-                .resumeId(resume.getId())
+                .resumeId(resumeId)
                 .status(application.getStatus())
                 .appliedAt(application.getCreatedAt())
-                .resume(resumeService.getResumeForCompany(userId, application.getJobPosting().getId(), application.getId()))
+                .resumeViewed(application.isResumeViewed())
+                .resume(resumeSnapshot)
                 .build();
     }
 

@@ -53,7 +53,11 @@ public class SecurityConfig {
                                 "/api/auth/logout",
                                 "/api/company-projects/**",
 
-                                "/api/job-postings/**",
+                                "/api/job-postings",
+                                "/api/job-postings/*",
+                                "/api/job-postings/*/detail",
+                                "/api/job-postings/*/matching",
+                                "/api/job-postings/match/**",
                                 "/api/stacks/**",
                                 "/api/companies/**",
                                 "/api/interview/sessions/**",

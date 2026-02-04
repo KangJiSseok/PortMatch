@@ -47,10 +47,10 @@ public class JobApplication extends BaseTimeEntity {
     )
     private JobPostingEntity jobPosting;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(
             name = "resume_id",
-            nullable = false,
+            nullable = true,
             foreignKey = @ForeignKey(name = "fk_job_applications_resume")
     )
     private Resume resume;
@@ -59,17 +59,25 @@ public class JobApplication extends BaseTimeEntity {
     @Column(length = 20, nullable = false)
     private ApplicationStatus status;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean resumeViewed = false;
+
     public static JobApplication create(User user, JobPostingEntity jobPosting, Resume resume) {
         JobApplication application = new JobApplication();
         application.user = user;
         application.jobPosting = jobPosting;
         application.resume = resume;
         application.status = ApplicationStatus.APPLIED;
+        application.resumeViewed = false;
         return application;
     }
 
     public void updateStatus(ApplicationStatus status) {
         this.status = status;
+    }
+
+    public void markResumeViewed() {
+        this.resumeViewed = true;
     }
 
     @Override
@@ -78,8 +86,9 @@ public class JobApplication extends BaseTimeEntity {
                 "id=" + id +
                 ", user=" + user +
                 ", jobPosting=" + jobPosting +
-                ", resume=" + resume +
+                ", resume=" + (resume != null ? resume.getId() : null) +
                 ", status=" + status +
+                ", resumeViewed=" + resumeViewed +
                 '}';
     }
 }
