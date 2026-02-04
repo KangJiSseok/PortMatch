@@ -40,7 +40,7 @@ public class InterviewRoomController {
             description = "생성 성공",
             content = @Content(schema = @Schema(implementation = Map.class))
     )
-    @PostMapping("/{scheduleId}")
+    @PostMapping("/schedules/{scheduleId}")
     public ResponseEntity<Map<String, String>> createRoom(@PathVariable Long scheduleId) {
         String roomId = service.createRoom(scheduleId);
         return ResponseEntity.ok(Map.of("roomId", roomId));
