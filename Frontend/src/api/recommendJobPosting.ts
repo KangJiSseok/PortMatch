@@ -7,10 +7,7 @@ export async function fetchRecommendedJobPostings(
 ): Promise<RecommendJobPostingsData> {
   try {
     const res = await axiosInstance.get<ApiEnvelope<RecommendJobPostingsData>>(
-      '/recommend/jobposting',
-      {
-        params: { portfolioId },
-      },
+      `/job-postings/match/portfolio/${portfolioId}`,
     );
 
     if (!res.data?.status) {
