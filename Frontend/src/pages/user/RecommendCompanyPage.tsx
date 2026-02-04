@@ -24,7 +24,7 @@ import type { BaseTickContentProps, TickItem } from 'recharts/types/util/types';
 import {
   fetchPortfolioRecommendedCompanies,
   fetchCompanyMatchExplanation,
-} from '@/api/recommendCompany';
+} from '@/api/recommend/recommendCompany';
 import { fetchJobPostingsByCompany } from '@/api/jobPostings';
 import type {
   CompanyRecommendationResponse,
