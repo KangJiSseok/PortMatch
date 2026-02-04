@@ -20,9 +20,6 @@ ALTER TABLE job_applications
   ALTER COLUMN user_id SET NOT NULL;
 
 ALTER TABLE job_applications
-  DROP CONSTRAINT IF EXISTS fk_job_applications_user;
-
-ALTER TABLE job_applications
   ADD CONSTRAINT fk_job_applications_user
   FOREIGN KEY (user_id) REFERENCES users(id);
 
@@ -34,6 +31,6 @@ CREATE INDEX idx_job_applications_user_id
   ON job_applications(user_id);
 
 ALTER TABLE job_applications
-  DROP COLUMN IF EXISTS applicant_id;
+  DROP COLUMN applicant_id;
 
 COMMIT;
