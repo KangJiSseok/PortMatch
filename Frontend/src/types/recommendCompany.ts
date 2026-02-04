@@ -48,17 +48,16 @@ export type ViewState = 'ok' | 'loading' | 'empty' | 'error';
 export interface CompanyRecommendationResponse {
   companyId: number;
   companyName: string;
-  distance: number;
   similarity: number;
   portfolioProjectId: number;
   companyProjectId: number;
   portfolioContent: string;
   companyContent: string;
-  projectDistance: number;
-  domainDistance: number;
-  problemDistance: number;
-  solutionDistance: number;
-  techDistance: number;
+  projectSimilarity: number;
+  domainSimilarity: number;
+  problemSimilarity: number;
+  solutionSimilarity: number;
+  techSimilarity: number;
 }
 
 export interface BaseApiResponse<T> {
