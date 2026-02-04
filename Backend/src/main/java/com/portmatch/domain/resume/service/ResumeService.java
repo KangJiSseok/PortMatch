@@ -5,6 +5,7 @@ import com.portmatch.domain.resume.dto.ResumeResponse;
 import com.portmatch.domain.resume.dto.ResumeSummaryResponse;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ResumeService {
 
@@ -13,6 +14,8 @@ public interface ResumeService {
     List<ResumeSummaryResponse> getResumes(Long userId);
 
     ResumeResponse getResume(Long userId, Long resumeId);
+
+    Optional<ResumeResponse> getMainResume(Long userId);
 
     ResumeResponse getResumeForCompany(Long userId, Long jobPostingId, Long applicationId);
 

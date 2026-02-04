@@ -42,6 +42,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -109,6 +110,13 @@ public class ResumeServiceImpl implements ResumeService {
     public ResumeResponse getResume(Long userId, Long resumeId) {
         Resume resume = getResumeOwned(userId, resumeId);
         return toResumeResponse(resume);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ResumeResponse> getMainResume(Long userId) {
+        return resumeRepository.findByUser_IdAndIsMainTrue(userId)
+                .map(this::toResumeResponse);
     }
 
     @Override
