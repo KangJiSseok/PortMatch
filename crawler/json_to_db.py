@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 load_dotenv(".env.prod")
 
 # Spring API URL
-SPRING_API_URL = os.getenv('SPRING_API_URL', 'http://backend:8080')
+SPRING_API_URL = os.getenv('SPRING_API_URL', 'http://portmatch-backend-prod:8080')
 
 def get_db_connection():
     return psycopg2.connect(
@@ -55,18 +55,17 @@ def request_company_analysis(company_name):
     """
     url = f"{SPRING_API_URL}/api/company-projects/analysis"
     
+    # 💡 백엔드 에러 메시지에 맞춰 리스트(배열) 형태로 변경
     payload = {
-        "companyName": company_name
+        "companyNames": [company_name]  # 'companyName' 대신 'companyNames'일 확률이 높아!
     }
     
     try:
-        print(f"    🔍 회사 프로젝트 분석 요청: {company_name}")
-        
         response = requests.post(
             url,
             json=payload,
             headers={"Content-Type": "application/json"},
-            timeout=60  # 분석에 시간이 걸릴 수 있으므로 60초
+            timeout=60
         )
         
         if response.status_code == 200:
