@@ -45,7 +45,7 @@ import EmployerCostCalculatorPage from './pages/support/EmployerCostCalculatorPa
 import ScheduleManagementPage from './pages/support/ScheduleManagementPage';
 import InterviewTemplatePage from './pages/support/InterviewTemplatePage';
 import ResumeFeedbackPage from './pages/support/ResumeFeedbackPage';
-import InterviewQuestionGeneratorPage from './pages/support/InterviewQuestionGeneratorPage';
+import SmartDocComparatorPage from './pages/support/SmartDocComparatorPage';
 import InterviewSpeechTimerPage from './pages/support/InterviewSpeechTimerPage';
 import SprintCapacityCalculatorPage from './pages/support/SprintCapacityCalculatorPage';
 import UnitConverterPage from './pages/support/UnitConverterPage';
@@ -371,10 +371,10 @@ const router = createBrowserRouter([
             ),
           },
           {
-            path: 'interview-generator',
+            path: 'doc-comparator',
             element: (
               <AuthGuard mode="COMPANY">
-                <InterviewQuestionGeneratorPage />
+                <SmartDocComparatorPage />
               </AuthGuard>
             ),
           },

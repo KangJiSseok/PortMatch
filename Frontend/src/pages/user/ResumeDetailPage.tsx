@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Star,
   Lock,
+  Copy,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import { portfolioApi } from '../../api/portfolioApi';
@@ -217,9 +218,9 @@ const MAX_LENGTHS = {
   EMAIL: 100,
   ADDRESS: 200,
   COMPANY: 50,
-  ROLE: 50,
+  ROLE: 30,
   SCHOOL: 50,
-  MAJOR: 50,
+  MAJOR: 30,
   CONTACT: 13,
 };
 
@@ -265,6 +266,8 @@ function ResumeDetailPage() {
   const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>({});
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [hasFetchError, setHasFetchError] = useState(false);
+
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
     const saved = localStorage.getItem('selfIntros');
@@ -451,7 +454,7 @@ function ResumeDetailPage() {
         if (!response.ok) throw new Error('Failed to fetch application');
         const json: ApplicationResponse = await response.json();
 
-        if (json.status && json.data?.resume) {
+        if (json.data?.resume) {
           const mappedResume = mapApiToResume(json.data.resume, null, true);
 
           if (json.data.resume.selfIntroductions) {
@@ -517,7 +520,6 @@ function ResumeDetailPage() {
 
   const resume = allResumes[targetId];
 
-  // [수정됨] 권한 로직 변경: 기업이 아니면 무조건 편집 권한(isOwner=true) 부여
   const authContext = useMemo(() => {
     if (!user) return { isOwner: false, isCompany: false };
 
@@ -527,7 +529,6 @@ function ResumeDetailPage() {
       return { isOwner: false, isCompany: true };
     }
 
-    // 개인이면 무조건 편집 가능 (백엔드에서 방어 로직 수행)
     return { isOwner: true, isCompany: false };
   }, [user]);
 
@@ -629,6 +630,10 @@ function ResumeDetailPage() {
     }
   };
 
+  const toggleExpandItem = (id: string) => {
+    setExpandedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const handleCreateResume = async () => {
     if (isEditing) return;
 
@@ -664,11 +669,93 @@ function ResumeDetailPage() {
     }
   };
 
-  const toggleEditMode = () => {
+  const handleDuplicateAndEdit = async () => {
+    if (!displayResume) return;
     if (authContext.isCompany) return;
-    setResumeSnapshot({ ...allResumes });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setIsEditing(true);
+
+    const baseTitle = `${displayResume.title} (복사본)`;
+    let finalTitle = baseTitle;
+    let counter = 1;
+    const existingTitles = Object.values(allResumes).map((r) => r.title);
+    while (existingTitles.includes(finalTitle)) {
+      finalTitle = `${baseTitle} ${counter}`;
+      counter++;
+    }
+
+    try {
+      const createdData = await resumeApi.createResume({
+        title: finalTitle,
+        isMain: false,
+      });
+      const newId = createdData.id;
+
+      const payload: ResumeUpdatePayload = {
+        title: finalTitle,
+        isMain: false,
+        profile: {
+          name: displayResume.name,
+          contact: displayResume.contact || '',
+          email: displayResume.email,
+          address: displayResume.address || '',
+          profileImageId: displayResume.profileImageId
+            ? Number(displayResume.profileImageId)
+            : null,
+        },
+        portfolio: displayResume.selectedPortfolioId
+          ? { portfolioId: Number(displayResume.selectedPortfolioId) }
+          : undefined,
+        careers: (displayResume.experience || []).map((exp, index) => {
+          const periodParts = exp.period ? exp.period.split(' - ') : ['2026.01', '2026.01'];
+          return {
+            company: exp.company,
+            role: exp.role,
+            periodStart: convertToDateStr(periodParts[0]),
+            periodEnd: convertToDateStr(periodParts[1]),
+            employmentStatus: exp.employmentStatus || 'FULL_TIME',
+            description: '',
+            orderIndex: index,
+          };
+        }),
+        educations: (displayResume.education || []).map((edu, index) => {
+          const periodParts = edu.period ? edu.period.split(' - ') : ['2026.01', '2026.01'];
+          return {
+            school: edu.school,
+            major: edu.major,
+            degree: edu.degree || 'BACHELOR',
+            periodStart: convertToDateStr(periodParts[0]),
+            periodEnd: convertToDateStr(periodParts[1]),
+            status: edu.status || 'GRADUATED',
+            orderIndex: index,
+          };
+        }),
+        selfIntroductions: selfIntros.map((intro, index) => ({
+          title: intro.title,
+          answerText: intro.content,
+          orderIndex: index,
+        })),
+      };
+
+      await resumeApi.updateResume(newId, payload);
+
+      setResumeSnapshot({ ...allResumes });
+
+      const updatedNewResumeData = (await resumeApi.getResumeDetail(
+        String(newId),
+      )) as unknown as ApiResumeResponse;
+      const mappedNewResume = mapApiToResume(updatedNewResumeData, user, true);
+
+      setAllResumes((prev) => ({ ...prev, [String(newId)]: mappedNewResume }));
+      navigate(`/resumes/${newId}`, { replace: true });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        setIsEditing(true);
+        showToast('이력서가 복제되었습니다.', 'success');
+      }, 100);
+    } catch (error) {
+      console.error('Duplicate failed:', error);
+      showToast('이력서 복제 중 오류가 발생했습니다.', 'error');
+    }
   };
 
   const handleCancelEdit = async () => {
@@ -1585,8 +1672,13 @@ function ResumeDetailPage() {
                                 <span className="mr-3 shrink-0 rounded bg-slate-100 px-2 py-1 text-sm font-black tracking-tighter text-slate-400 uppercase">
                                   {type === 'experience' ? '직무/형태' : '전공/학위'}
                                 </span>
-                                <div className="flex flex-col">
-                                  <span className="truncate text-lg font-bold break-all text-slate-600">
+                                <div className="flex min-w-0 flex-col">
+                                  <span
+                                    onClick={() => toggleExpandItem(`${type}-${i}-role`)}
+                                    className={`cursor-pointer text-lg font-bold break-all text-slate-600 ${
+                                      expandedItems[`${type}-${i}-role`] ? '' : 'truncate'
+                                    }`}
+                                  >
                                     {type === 'experience'
                                       ? `${(item as Experience).role}`
                                       : `${(item as Education).major}`}
@@ -1649,6 +1741,9 @@ function ResumeDetailPage() {
                                   placeholder={
                                     type === 'experience' ? '예) 프론트엔드 개발' : '예) 컴퓨터공학'
                                   }
+                                  maxLength={
+                                    type === 'experience' ? MAX_LENGTHS.ROLE : MAX_LENGTHS.MAJOR
+                                  }
                                   value={
                                     type === 'experience'
                                       ? (item as Experience).role
@@ -1667,6 +1762,11 @@ function ResumeDetailPage() {
                                     }
                                   }}
                                 />
+                                <span className="absolute right-4 bottom-2 text-[10px] font-black text-slate-300">
+                                  {type === 'experience'
+                                    ? `${(item as Experience).role.length}/${MAX_LENGTHS.ROLE}`
+                                    : `${(item as Education).major.length}/${MAX_LENGTHS.MAJOR}`}
+                                </span>
                               </div>
                               <div className="relative col-span-1 md:col-span-4">
                                 <label className={labelClass}>
@@ -2129,9 +2229,10 @@ function ResumeDetailPage() {
                         variant="blue"
                         size="xl"
                         className="w-full min-w-70 rounded-[20px] px-10 py-5 font-black shadow-lg shadow-blue-600/20 sm:w-auto"
-                        onClick={toggleEditMode}
+                        onClick={handleDuplicateAndEdit}
                       >
-                        이력서 수정하기
+                        <Copy size={20} className="mr-2" />
+                        이력서 복제하기
                       </Button>
                     )}
                     {authContext.isCompany && (

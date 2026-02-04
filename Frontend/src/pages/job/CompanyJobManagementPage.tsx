@@ -35,6 +35,7 @@ const CompanyJobManagementPage = () => {
   const { cid: paramCid } = useParams<{ cid: string }>();
 
   const [jobs, setJobs] = useState<JobPosting[]>([]);
+  const [applicantCounts, setApplicantCounts] = useState<Record<number, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [modal, setModal] = useState<ModalConfig>({
     isOpen: false,
@@ -46,12 +47,12 @@ const CompanyJobManagementPage = () => {
       try {
         setIsLoading(true);
         let targetCid = paramCid;
+
         if (!targetCid) {
           const meResponse = await axios.get('/api/auth/me');
           if (meResponse.data.status && meResponse.data.data.cid) {
             targetCid = meResponse.data.data.cid;
           } else {
-            console.error('사용자 정보를 불러올 수 없거나 기업 회원이 아닙니다.');
             setIsLoading(false);
             return;
           }
@@ -63,7 +64,28 @@ const CompanyJobManagementPage = () => {
           );
 
           if (jobResponse.data.status) {
-            setJobs(jobResponse.data.data || []);
+            const jobList = jobResponse.data.data || [];
+            setJobs(jobList);
+
+            const countMap: Record<number, number> = {};
+
+            await Promise.all(
+              jobList.map(async (job) => {
+                try {
+                  const appResponse = await axios.get(`/api/job-postings/${job.id}/applications`);
+                  if (appResponse.data.status && Array.isArray(appResponse.data.data)) {
+                    countMap[job.id] = appResponse.data.data.length;
+                  } else {
+                    countMap[job.id] = 0;
+                  }
+                } catch (error) {
+                  console.error(`공고(ID: ${job.id}) 지원자 조회 실패:`, error);
+                  countMap[job.id] = 0;
+                }
+              }),
+            );
+
+            setApplicantCounts(countMap);
           } else {
             console.error('공고 목록 조회 실패:', jobResponse.data.message);
           }
@@ -207,6 +229,8 @@ const CompanyJobManagementPage = () => {
 
                 const isRecruiting = isAlwaysOpen || job.active === 1 || jobEndDate >= today;
 
+                const count = applicantCounts[job.id] || 0;
+
                 return (
                   <div
                     key={job.id}
@@ -252,7 +276,7 @@ const CompanyJobManagementPage = () => {
                             지원자
                           </span>
                           <span className="text-2xl font-black tabular-nums">
-                            {job.vcnt.toString().padStart(2, '0')}
+                            {count.toString().padStart(2, '0')}
                           </span>
                         </div>
                       </Button>

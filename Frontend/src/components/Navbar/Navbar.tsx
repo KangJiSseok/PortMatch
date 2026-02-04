@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { useMessenger } from '@/hooks/useMessenger';
 import { resumeApi } from '@/api/resumeApi';
 
 interface NavActionProps {
@@ -47,12 +46,11 @@ const NavAction = ({ to, onClick, children, isError, noDefaultUnderline }: NavAc
 
 const SearchBar = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   const [searchKeyword, setSearchKeyword] = useState('');
 
   const handleSearch = () => {
     const trimmed = searchKeyword.trim();
-    const targetPath = user?.role === 'COMPANY' ? '/company/recommend/candidates' : '/job-postings';
+    const targetPath = '/job-postings';
 
     if (!trimmed) {
       navigate(targetPath);
@@ -61,7 +59,6 @@ const SearchBar = () => {
     navigate(`${targetPath}?keyword=${encodeURIComponent(trimmed)}`);
   };
 
-  const searchPlaceholder = user?.role === 'COMPANY' ? '인재 검색' : '공고 검색';
   const isSearchActive = searchKeyword.trim().length > 0;
 
   return (
@@ -72,7 +69,7 @@ const SearchBar = () => {
         value={searchKeyword}
         onChange={(e) => setSearchKeyword(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-        placeholder={searchPlaceholder}
+        placeholder="공고 검색"
         className="bg-cloud-dancer/50 border-soft-pebble focus:border-midnight-ink text-midnight-ink w-full rounded-xl border px-6 py-3 text-base transition-all outline-none"
       />
       <button
@@ -105,7 +102,6 @@ function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoggedIn } = useAuthStore();
-  const { startNewChat } = useMessenger();
   const [logoKey, setLogoKey] = useState(0);
 
   const handleLogout = () => {
@@ -135,18 +131,6 @@ function Navbar() {
 
   const handleLogoClick = () => {
     setLogoKey((prev) => prev + 1);
-  };
-
-  const handleTestChat = async () => {
-    const targetUid = window.prompt('대화할 상대방의 UID를 입력하세요:');
-    if (!targetUid) return;
-
-    try {
-      await startNewChat(targetUid, '테스트 유저', '');
-    } catch (error) {
-      console.error(error);
-      alert('채팅방 생성에 실패했습니다.');
-    }
   };
 
   const logoPart1 = 'PORT'.split('');
@@ -220,13 +204,15 @@ function Navbar() {
             {user?.role === 'COMPANY' && (
               <>
                 <NavAction to="/company/jobs">공고 관리</NavAction>
-                <NavAction onClick={handleTestChat}>채팅 테스트</NavAction>
+                <NavAction to="/support/interview-template">면접 평가지</NavAction>
+                <NavAction to="/interviews">면접 목록</NavAction>
+                <NavAction to="/company/recommend/candidates">인재 탐색</NavAction>
               </>
             )}
           </div>
         </div>
 
-        <SearchBar key={location.pathname + location.search} />
+        {user?.role !== 'COMPANY' && <SearchBar key={location.pathname + location.search} />}
 
         <div className="z-10 mr-12 flex items-center gap-10">
           {!isLoggedIn ? (

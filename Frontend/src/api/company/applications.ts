@@ -1,94 +1,124 @@
-// src/api/company/applications.ts
-// ✅ 기업이 공고별 지원자 목록을 보는 화면용 "임시" API 레이어
-// - 백엔드 연결되면 이 파일만 교체하면 됨
+import axios from 'axios';
 
-export type CompanyApplicationStatus = '미열람' | '열람함' | '합격' | '불합격';
-
-export type CompanyApplicationView = {
+export interface ApplicationListItemDto {
   applicationId: number;
-  jobPostId: number;
+  userId: number;
+  userName: string;
+  resumeId: number;
+  resumeTitle: string;
+  status: 'APPLIED' | 'PASS' | 'FAIL' | 'READ';
+  appliedAt: string;
+}
+
+export interface CareerDto {
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface ApplicationDetailDto {
+  applicationId: number;
+  resume: {
+    careers: CareerDto[];
+  };
+}
+
+interface ApiResponse<T> {
+  status: boolean;
+  code: number;
+  message: string;
+  data: T;
+}
+
+export interface CompanyApplicationView {
+  applicationId: number;
+  applicantName: string;
+  resumeId: string;
   postingTitle: string;
   companyName: string;
-
-  applicantId: number;
-  applicantName: string;
+  appliedAt: string;
+  status: string;
   experience: string;
   experienceYears: number;
-  resumeId: string;
-
-  appliedAt: string; // ISO
-  status: CompanyApplicationStatus;
   isScrapped: boolean;
+}
+
+const mapStatusToKorean = (status: string): string => {
+  switch (status) {
+    case 'APPLIED':
+      return '미열람';
+    case 'READ':
+      return '열람';
+    case 'PASS':
+      return '합격';
+    case 'FAIL':
+      return '불합격';
+    default:
+      return '미열람';
+  }
 };
 
-type FetchOptions = {
-  delayMs?: number;
-  shouldFail?: boolean;
+const calculateExperience = (careers: CareerDto[]): { text: string; years: number } => {
+  if (!careers || careers.length === 0) {
+    return { text: '신입', years: 0 };
+  }
+
+  let totalMonths = 0;
+
+  careers.forEach((career) => {
+    const start = new Date(career.periodStart);
+    const end = career.periodEnd ? new Date(career.periodEnd) : new Date();
+
+    const years = end.getFullYear() - start.getFullYear();
+    const months = end.getMonth() - start.getMonth();
+
+    totalMonths += years * 12 + months;
+  });
+
+  const totalYears = Math.floor(totalMonths / 12);
+
+  if (totalYears === 0) return { text: '1년 미만', years: 0 };
+  return { text: `${totalYears}년차`, years: totalYears };
 };
 
-function sleep(ms: number) {
-  return new Promise<void>((r) => setTimeout(r, ms));
-}
+export const fetchCompanyApplications = async (
+  jobPostingId: number,
+): Promise<CompanyApplicationView[]> => {
+  const listResponse = await axios.get<ApiResponse<ApplicationListItemDto[]>>(
+    `/api/job-postings/${jobPostingId}/applications`,
+  );
 
-async function mockFetch<T>(value: T, options?: FetchOptions): Promise<T> {
-  const delay = options?.delayMs ?? 350;
-  await sleep(delay);
-  if (options?.shouldFail) throw new Error('지원자 목록을 불러오지 못했어요.');
-  return value;
-}
+  const listData = listResponse.data.data;
 
-// ✅ 데모용 기본 데이터 (ResumeDetailPage의 기본 resumeId: "frontend"는 항상 존재)
-const DEFAULT_APPLICATIONS: CompanyApplicationView[] = [
-  {
-    applicationId: 9101,
-    jobPostId: 1001,
-    postingTitle: '시니어 프론트엔드 개발자 채용',
-    companyName: 'PortMatch',
-    applicantId: 501,
-    applicantName: '김싸피',
-    experience: '프론트엔드 3년 (React/TS)',
-    experienceYears: 3,
-    resumeId: 'frontend',
-    appliedAt: '2026-01-23T13:10:00',
-    status: '미열람',
-    isScrapped: false,
-  },
-  {
-    applicationId: 9102,
-    jobPostId: 1001,
-    postingTitle: '시니어 프론트엔드 개발자 채용',
-    companyName: 'PortMatch',
-    applicantId: 502,
-    applicantName: '이싸피',
-    experience: '프론트엔드 1년 (Next.js)',
-    experienceYears: 1,
-    resumeId: 'frontend',
-    appliedAt: '2026-01-26T09:40:00',
-    status: '열람함',
-    isScrapped: true,
-  },
-  {
-    applicationId: 9103,
-    jobPostId: 1001,
-    postingTitle: '시니어 프론트엔드 개발자 채용',
-    companyName: 'PortMatch',
-    applicantId: 503,
-    applicantName: '박싸피',
-    experience: '프론트엔드 5년 (대규모 서비스)',
-    experienceYears: 5,
-    resumeId: 'frontend',
-    appliedAt: '2026-01-27T18:25:00',
-    status: '열람함',
-    isScrapped: false,
-  },
-];
+  const detailPromises = listData.map((item) =>
+    axios.get<ApiResponse<ApplicationDetailDto>>(
+      `/api/job-postings/${jobPostingId}/applications/${item.applicationId}`,
+    ),
+  );
 
-export async function fetchCompanyApplications(
-  jobPostId: number,
-  options?: FetchOptions,
-): Promise<CompanyApplicationView[]> {
-  const data = DEFAULT_APPLICATIONS.filter((a) => a.jobPostId === jobPostId);
-  // ✅ jobPostId가 다른데도 일단 화면이 비지 않게: 첫 공고 데이터로 fallback
-  const fallback = data.length > 0 ? data : DEFAULT_APPLICATIONS;
-  return mockFetch(fallback, options);
-}
+  const detailResponses = await Promise.all(detailPromises);
+  const detailMap = new Map<number, ApplicationDetailDto>();
+
+  detailResponses.forEach((res) => {
+    const detail = res.data.data;
+    detailMap.set(detail.applicationId, detail);
+  });
+
+  return listData.map((item) => {
+    const detail = detailMap.get(item.applicationId);
+    const careers = detail?.resume?.careers ?? [];
+    const { text, years } = calculateExperience(careers);
+
+    return {
+      applicationId: item.applicationId,
+      applicantName: item.userName,
+      resumeId: String(item.resumeId),
+      postingTitle: '지원자 관리',
+      companyName: '',
+      appliedAt: item.appliedAt,
+      status: mapStatusToKorean(item.status),
+      experience: text,
+      experienceYears: years,
+      isScrapped: false,
+    };
+  });
+};
