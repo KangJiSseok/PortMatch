@@ -532,7 +532,7 @@ function CompanyCard({
               </div>
             </div>
 
-            <div className="absolute top-4 right-4 text-gray-300 opacity-20">
+            <div className="absolute top-4 right-4 text-gray-500 opacity-40">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
