@@ -838,7 +838,14 @@ function ReasonModal({
   // ✅ 백엔드 headline 사용 + fallback
   const fallbackTopFactor = pickTopFactors(company.weights, 1)[0] ?? '프로젝트';
   const topFactorLabel = FACTOR_LABEL[fallbackTopFactor];
-  const headline: Headline = company.headline ?? {
+  const headerHeadline: Headline = {
+    line1: `${company.name} 기준, 당신의`,
+    highlight: `#${topFactorLabel}`,
+    line2: '항목이',
+    line3: '가장 유사하게 평가되었습니다.',
+  };
+
+  const summaryHeadline: Headline = company.headline ?? {
     line1: `${company.name} 기준, 당신의`,
     highlight: `#${topFactorLabel}`,
     line2: '항목이',
@@ -900,11 +907,12 @@ function ReasonModal({
                   </div>
 
                   <h4 className="text-[22px] leading-[1.25] font-bold tracking-tight sm:text-[24px]">
-                    {headline.line1}
+                    {headerHeadline.line1}
                     <br />
-                    <span className="text-blue-300">{headline.highlight}</span> {headline.line2}
+                    <span className="text-blue-300">{headerHeadline.highlight}</span>{' '}
+                    {headerHeadline.line2}
                     <br />
-                    {headline.line3}
+                    {headerHeadline.line3}
                   </h4>
                 </div>
 
@@ -1104,9 +1112,9 @@ function ReasonModal({
                         '분석 중'
                       ) : (
                         <>
-                          <span className="font-black text-blue-500">{headline.highlight}</span>
+                          <span className="font-black text-blue-500">{summaryHeadline.highlight}</span>
                           <br></br>
-                          {headline.line1}
+                          {summaryHeadline.line1}
                         </>
                       )}
                     </p>
@@ -1115,14 +1123,14 @@ function ReasonModal({
                         loading ? 'text-gray-300' : 'text-[#4a4a4a]'
                       }`}
                     >
-                      {loading ? '' : <>{headline.line2}</>}
+                      {loading ? '' : <>{summaryHeadline.line2}</>}
                     </p>
                     <p
                       className={`text-[14px] leading-relaxed font-medium ${
                         loading ? 'text-gray-300' : 'text-[#4a4a4a]'
                       }`}
                     >
-                      {loading ? '' : headline.line3}
+                      {loading ? '' : summaryHeadline.line3}
                     </p>
                   </div>
                 </div>
