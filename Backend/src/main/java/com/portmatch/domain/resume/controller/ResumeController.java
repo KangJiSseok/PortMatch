@@ -1,11 +1,14 @@
 package com.portmatch.domain.resume.controller;
 
+import com.portmatch.domain.auth.enums.Role;
 import com.portmatch.domain.auth.security.UserPrincipal;
 import com.portmatch.domain.resume.dto.ResumeCreateRequest;
 import com.portmatch.domain.resume.dto.ResumeResponse;
 import com.portmatch.domain.resume.dto.ResumeSummaryResponse;
 import com.portmatch.domain.resume.service.ResumeService;
 import com.portmatch.global.api.BaseApiResponse;
+import com.portmatch.global.exception.BusinessException;
+import com.portmatch.global.response.ResponseCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -14,6 +17,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
+import static com.portmatch.global.response.ResponseCode.RESUME_NOT_FOUND;
 
 @RestController
 @RequestMapping("/api/resumes")
@@ -50,6 +55,20 @@ public class ResumeController {
     ) {
         Long userId = principal.getUser().getId();
         return BaseApiResponse.ok(resumeService.getResume(userId, resumeId));
+    }
+
+    @GetMapping("/main/{userId}")
+    @Operation(summary = "메인 이력서 상세 조회", description = "사용자의 메인 이력서를 상세 조회합니다.")
+    public BaseApiResponse<ResumeResponse> getMainResume(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long userId
+    ) {
+        if (principal.getUser().getRole() != Role.COMPANY) {
+            throw new BusinessException(ResponseCode.ROLE_MISMATCH);
+        }
+        return resumeService.getMainResume(userId)
+                .map(BaseApiResponse::ok)
+                .orElseGet(() -> BaseApiResponse.error(RESUME_NOT_FOUND));
     }
 
     @DeleteMapping("/{resumeId}")
