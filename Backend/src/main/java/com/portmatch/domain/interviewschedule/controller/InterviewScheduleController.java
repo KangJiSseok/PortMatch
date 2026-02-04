@@ -78,4 +78,10 @@ public class InterviewScheduleController {
         interviewScheduleService.updateSchedule(scheduleId, dto);
         return ResponseEntity.ok().build();
     }
+    @Operation(summary = "기업별 면접 일정 조회", description = "특정 기업(cid)에 등록된 모든 공고의 면접 일정을 가져옵니다.")
+    @GetMapping("/company/{cid}")
+    public ResponseEntity<List<InterviewScheduleDto>> getSchedulesByCompany(@PathVariable String cid) {
+        List<InterviewScheduleDto> response = interviewScheduleService.getSchedulesByCompany(cid);
+        return ResponseEntity.ok(response);
+    }
 }

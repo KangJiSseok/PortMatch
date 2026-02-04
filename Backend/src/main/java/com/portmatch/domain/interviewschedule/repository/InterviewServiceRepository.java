@@ -11,5 +11,7 @@ public interface InterviewServiceRepository extends JpaRepository<InterviewSched
 
     List<InterviewScheduleEntity> findByJobPostingId(Long jobPostingId);
 
+    List<InterviewScheduleEntity> findByJobPosting_Company_Cid(String cid);
+
     boolean existsByUserIdAndJobPostingId(Long userId, Long jobPostingId);
 }
