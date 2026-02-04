@@ -22,7 +22,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-fix/job-apply-error"'
+    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -54,7 +54,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-fix/job-apply-error"'
+    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
 
   script:
     - set -e
@@ -126,12 +126,33 @@ deploy:
       DB_HOST=${DB_HOST}
       DB_PORT=${DB_PORT}
 
-
       ENV
+
+    # ---------- 변경된 서비스 감지 ----------
+    - |
+      SERVICES=""
+      CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA || echo "")
+      
+      echo "$CHANGED_FILES" | grep -q "^Backend/" && SERVICES="$SERVICES backend"
+      echo "$CHANGED_FILES" | grep -q "^Inference/" && SERVICES="$SERVICES inference"
+      echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/" && SERVICES="$SERVICES portfolio-analysis"
+      echo "$CHANGED_FILES" | grep -q "^Frontend/" && SERVICES="$SERVICES frontend"
+      echo "$CHANGED_FILES" | grep -q "^Embedding/" && SERVICES="$SERVICES embedding"
+      echo "$CHANGED_FILES" | grep -q "^Explanation-LLM/" && SERVICES="$SERVICES explanation-llm"
+      echo "$CHANGED_FILES" | grep -q "^crawler/" && SERVICES="$SERVICES wanted-crawler"
+      
+      echo "🔍 변경된 서비스: $SERVICES"
 
     # ---------- Docker 배포 ----------
     - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
-    - docker compose -f docker-compose.prod.yml pull
-    - docker compose -f docker-compose.prod.yml down
-    - docker compose -f docker-compose.prod.yml up -d --remove-orphans
-
+    
+    - |
+      if [ -n "$SERVICES" ]; then
+        echo "📦 배포할 서비스: $SERVICES"
+        docker compose -f docker-compose.prod.yml pull $SERVICES
+        docker compose -f docker-compose.prod.yml up -d --no-deps $SERVICES
+      else
+        echo "⚠️ 변경된 서비스가 없습니다."
+      fi
+    
+    - docker image prune -f
