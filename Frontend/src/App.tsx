@@ -363,7 +363,7 @@ const router = createBrowserRouter([
             element: <UnitConverterPage />,
           },
           {
-            path: 'resume-feedback',
+            path: 'portfolio-feedback',
             element: (
               <AuthGuard mode="AUTHENTICATED">
                 <ResumeFeedbackPage />

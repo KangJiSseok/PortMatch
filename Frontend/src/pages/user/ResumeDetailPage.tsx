@@ -162,6 +162,16 @@ interface ApiResumeResponse {
   selfIntroductions?: ApiSelfIntro[];
 }
 
+interface ApplicationResponse {
+  status: boolean;
+  data: {
+    applicationId: number;
+    userId: number;
+    userName: string;
+    resume: ApiResumeResponse;
+  };
+}
+
 interface ResumeUpdatePayload {
   title: string;
   isMain: boolean;
@@ -238,7 +248,11 @@ const SectionCard = ({
 );
 
 function ResumeDetailPage() {
-  const { resumeId } = useParams<{ resumeId: string }>();
+  const { resumeId, jobId, applicationId } = useParams<{
+    resumeId: string;
+    jobId: string;
+    applicationId: string;
+  }>();
   const navigate = useNavigate();
   const { startNewChat } = useMessenger();
 
@@ -246,9 +260,11 @@ function ResumeDetailPage() {
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [isResumesLoading, setIsResumesLoading] = useState(true);
   const [isDetailLoading, setIsDetailLoading] = useState(() => !!(resumeId && resumeId !== 'me'));
+  const [isApplicationLoading, setIsApplicationLoading] = useState(false);
 
   const [allResumes, setAllResumes] = useState<Record<string, ResumeData>>({});
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [hasFetchError, setHasFetchError] = useState(false);
 
   const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
     const saved = localStorage.getItem('selfIntros');
@@ -258,6 +274,27 @@ function ResumeDetailPage() {
   const formatDateToDot = (dateStr?: string) => {
     if (!dateStr) return '';
     return dateStr.substring(0, 7).replace(/-/g, '.');
+  };
+
+  const handleResumeManagement = async () => {
+    try {
+      const resumes = await resumeApi.getResumes();
+
+      if (resumes.length === 0) {
+        navigate('/resumes/me');
+        return;
+      }
+
+      const mainResume = resumes.find((r) => r.isMain);
+      if (mainResume) {
+        navigate(`/resumes/${mainResume.id}`);
+      } else {
+        navigate(`/resumes/${resumes[0].id}`);
+      }
+    } catch (error) {
+      console.error('Failed to fetch resumes navigation info:', error);
+      navigate('/resumes/me');
+    }
   };
 
   const mapApiToResume = useCallback(
@@ -344,6 +381,10 @@ function ResumeDetailPage() {
   }, []);
 
   const fetchResumes = useCallback(async (currentUser: UserData | null) => {
+    if (currentUser?.role === 'COMPANY') {
+      setIsResumesLoading(false);
+      return;
+    }
     try {
       const data = await resumeApi.getResumes();
       const resumeMap: Record<string, ResumeData> = {};
@@ -368,22 +409,7 @@ function ResumeDetailPage() {
           };
         }
       });
-
-      setAllResumes((prev) => {
-        const next = { ...prev };
-        Object.entries(resumeMap).forEach(([id, newResume]) => {
-          if (next[id]?.isDetail) {
-            next[id] = {
-              ...next[id],
-              title: newResume.title,
-              isMain: newResume.isMain,
-            };
-          } else {
-            next[id] = newResume;
-          }
-        });
-        return next;
-      });
+      setAllResumes(resumeMap);
     } catch (error) {
       console.error('Failed to fetch resumes:', error);
     } finally {
@@ -393,6 +419,7 @@ function ResumeDetailPage() {
 
   const fetchResumeDetail = useCallback(
     async (id: string, currentUser: UserData | null) => {
+      setHasFetchError(false);
       try {
         const data = (await resumeApi.getResumeDetail(id)) as unknown as ApiResumeResponse;
         const mappedResume = mapApiToResume(data, currentUser, true);
@@ -410,6 +437,40 @@ function ResumeDetailPage() {
         setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
       } catch (error) {
         console.error('Failed to fetch resume detail:', error);
+        setHasFetchError(true);
+      }
+    },
+    [mapApiToResume],
+  );
+
+  const fetchApplicationResume = useCallback(
+    async (jId: string, appId: string) => {
+      setIsApplicationLoading(true);
+      try {
+        const response = await fetch(`/api/job-postings/${jId}/applications/${appId}`);
+        if (!response.ok) throw new Error('Failed to fetch application');
+        const json: ApplicationResponse = await response.json();
+
+        if (json.status && json.data?.resume) {
+          const mappedResume = mapApiToResume(json.data.resume, null, true);
+
+          if (json.data.resume.selfIntroductions) {
+            const mappedIntros = json.data.resume.selfIntroductions.map((intro) => ({
+              id: String(intro.id),
+              realId: intro.id,
+              title: intro.title,
+              content: intro.answerText,
+            }));
+            setSelfIntros(mappedIntros);
+          }
+
+          setAllResumes({ [mappedResume.id]: mappedResume });
+        }
+      } catch (error) {
+        console.error('Fetch application error:', error);
+        showToast('지원서 정보를 불러오는데 실패했습니다.', 'error');
+      } finally {
+        setIsApplicationLoading(false);
       }
     },
     [mapApiToResume],
@@ -418,12 +479,18 @@ function ResumeDetailPage() {
   useEffect(() => {
     if (!isUserLoading) {
       fetchResumes(user);
-      fetchPortfolios();
+      if (user?.role !== 'COMPANY') {
+        fetchPortfolios();
+      }
     }
   }, [isUserLoading, user, fetchResumes, fetchPortfolios]);
 
   useEffect(() => {
-    if (resumeId && resumeId !== 'me' && !isUserLoading) {
+    if (isUserLoading) return;
+
+    if (jobId && applicationId) {
+      fetchApplicationResume(jobId, applicationId);
+    } else if (resumeId && resumeId !== 'me') {
       setIsDetailLoading(true);
       fetchResumeDetail(resumeId, user).finally(() => {
         setIsDetailLoading(false);
@@ -431,40 +498,43 @@ function ResumeDetailPage() {
     } else {
       setIsDetailLoading(false);
     }
-  }, [resumeId, user, isUserLoading, fetchResumeDetail]);
+  }, [
+    resumeId,
+    jobId,
+    applicationId,
+    user,
+    isUserLoading,
+    fetchResumeDetail,
+    fetchApplicationResume,
+  ]);
 
-  const targetId = resumeId && resumeId !== 'me' ? resumeId : Object.keys(allResumes)[0];
+  const targetId =
+    jobId && applicationId
+      ? Object.keys(allResumes)[0]
+      : resumeId && resumeId !== 'me'
+        ? resumeId
+        : Object.keys(allResumes)[0];
+
   const resume = allResumes[targetId];
 
+  // [수정됨] 권한 로직 변경: 기업이 아니면 무조건 편집 권한(isOwner=true) 부여
   const authContext = useMemo(() => {
-    if (!user || !resume) return { isOwner: false, isCompany: false };
+    if (!user) return { isOwner: false, isCompany: false };
 
-    const resumeUserId = String(resume.userId);
-    const currentUserId = String(user.userId);
+    const isCompany = user.role === 'COMPANY';
 
-    let isOwner = resumeUserId === currentUserId;
-
-    if (
-      !isOwner &&
-      (resume.userId === 0 || !resume.userId) &&
-      Object.keys(allResumes).includes(String(resume.id))
-    ) {
-      isOwner = true;
+    if (isCompany) {
+      return { isOwner: false, isCompany: true };
     }
 
-    const isCompany = user.role === 'COMPANY' && !isOwner;
-
-    return { isOwner, isCompany };
-  }, [user, resume, allResumes]);
+    // 개인이면 무조건 편집 가능 (백엔드에서 방어 로직 수행)
+    return { isOwner: true, isCompany: false };
+  }, [user]);
 
   const displayResume = useMemo(() => {
     if (!resume) return undefined;
-    if (authContext.isOwner) return resume;
-    if (resumeId && resumeId !== 'me') {
-      return resume;
-    }
     return resume;
-  }, [resume, authContext.isOwner, resumeId]);
+  }, [resume]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileImgRef = useRef<HTMLInputElement>(null);
@@ -481,7 +551,10 @@ function ResumeDetailPage() {
     authContext.isOwner &&
     !resumeId &&
     Object.keys(allResumes).length > 0;
-  const isLoading = isUserLoading || isResumesLoading || isDetailLoading || isRedirecting;
+
+  const isLoading =
+    isUserLoading || isResumesLoading || isDetailLoading || isApplicationLoading || isRedirecting;
+
   const isEmpty = !isLoading && Object.keys(allResumes).length === 0;
 
   useEffect(() => {
@@ -592,6 +665,7 @@ function ResumeDetailPage() {
   };
 
   const toggleEditMode = () => {
+    if (authContext.isCompany) return;
     setResumeSnapshot({ ...allResumes });
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setIsEditing(true);
@@ -962,7 +1036,7 @@ function ResumeDetailPage() {
       errorFields.includes(fieldId || '')
         ? 'border-red-500 bg-red-50/30 ring-4 ring-red-500/5'
         : 'focus:bg-pure-white border-slate-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5'
-    }`;
+    } ${!isEditing ? 'cursor-not-allowed bg-slate-50 text-slate-500' : ''}`;
   const labelClass =
     'mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase';
   const selectClass =
@@ -976,7 +1050,33 @@ function ResumeDetailPage() {
     );
   }
 
-  if (!isLoading && !displayResume && !authContext.isOwner && !isEmpty) {
+  if (hasFetchError) {
+    return (
+      <div className="bg-pure-white flex min-h-screen flex-col items-center justify-center gap-6 pt-32 pb-32 text-center">
+        <div className="flex h-32 w-32 items-center justify-center rounded-full bg-red-50 text-red-400">
+          <Lock size={64} />
+        </div>
+        <div>
+          <h2 className="text-3xl font-black text-slate-900">접근 권한이 없습니다</h2>
+          <p className="mt-2 text-lg font-bold text-slate-500">
+            해당 이력서를 볼 수 있는 권한이 없거나,
+            <br />
+            존재하지 않는 이력서입니다.
+          </p>
+        </div>
+        <Button
+          variant="blue"
+          size="lg"
+          onClick={handleResumeManagement}
+          className="mt-4 rounded-xl font-bold"
+        >
+          내 이력서로 돌아가기
+        </Button>
+      </div>
+    );
+  }
+
+  if (!isLoading && !displayResume && authContext.isCompany) {
     return (
       <div className="bg-pure-white flex min-h-screen flex-col items-center justify-center gap-6 pt-32 pb-32 text-center">
         <div className="flex h-32 w-32 items-center justify-center rounded-full bg-slate-50 text-slate-300">
@@ -985,7 +1085,31 @@ function ResumeDetailPage() {
         <div>
           <h2 className="text-3xl font-black text-slate-900">공개된 이력서가 없습니다</h2>
           <p className="mt-2 text-lg font-bold text-slate-500">
-            해당 사용자의 대표 이력서가 설정되지 않았습니다.
+            해당 사용자의 대표 이력서가 없거나 비공개 상태입니다.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => navigate(-1)}
+          className="mt-4 rounded-xl"
+        >
+          뒤로 가기
+        </Button>
+      </div>
+    );
+  }
+
+  if (!isLoading && !displayResume && !authContext.isOwner && !isEmpty) {
+    return (
+      <div className="bg-pure-white flex min-h-screen flex-col items-center justify-center gap-6 pt-32 pb-32 text-center">
+        <div className="flex h-32 w-32 items-center justify-center rounded-full bg-slate-50 text-slate-300">
+          <Lock size={64} />
+        </div>
+        <div>
+          <h2 className="text-3xl font-black text-slate-900">이력서를 볼 수 없습니다</h2>
+          <p className="mt-2 text-lg font-bold text-slate-500">
+            올바르지 않은 접근이거나 이력서가 존재하지 않습니다.
           </p>
         </div>
         <Button
@@ -1030,7 +1154,7 @@ function ResumeDetailPage() {
         )}
       </AnimatePresence>
       <div className="mx-auto w-5xl px-6">
-        {isEmpty ? (
+        {isEmpty && !authContext.isCompany ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1141,7 +1265,9 @@ function ResumeDetailPage() {
                   </AnimatePresence>
                 </div>
                 <p className="mt-2 text-lg font-bold whitespace-nowrap text-slate-400 italic">
-                  당신의 특별한 커리어 스토리를 완성하세요
+                  {authContext.isCompany
+                    ? '지원자 이력서'
+                    : '당신의 특별한 커리어 스토리를 완성하세요'}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-4">

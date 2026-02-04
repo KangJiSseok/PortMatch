@@ -19,7 +19,7 @@ interface ExtendedUserData {
   email: string;
   name: string;
   role: string;
-  cid?: string;
+  cid?: string | number;
 }
 
 type JobPostExtraFields = {
@@ -247,6 +247,7 @@ export default function JobPostDetailPage() {
   const uid = user?.userId;
   const extendedUser = user as ExtendedUserData | null;
   const isCompanyViewer = user?.role === 'COMPANY';
+  const [myCid, setMyCid] = useState<string | number | undefined>(extendedUser?.cid);
 
   const [status, setStatus] = useState<PageStatus>('loading');
   const [errorMessage, setErrorMessage] = useState('공고 정보를 불러오지 못했어요.');
@@ -258,6 +259,27 @@ export default function JobPostDetailPage() {
   const [stackNameMap, setStackNameMap] = useState<Record<number, string>>({});
 
   const pid = useMemo(() => (Number.isFinite(jobPostId) ? String(jobPostId) : ''), [jobPostId]);
+
+  useEffect(() => {
+    if (extendedUser?.cid) {
+      setMyCid(extendedUser.cid);
+      return;
+    }
+
+    if (isLoggedIn && isCompanyViewer) {
+      axios
+        .get('/api/auth/me')
+        .then((res) => {
+          const fetchedCid = res.data?.cid || res.data?.data?.cid;
+          if (fetchedCid) {
+            setMyCid(fetchedCid);
+          }
+        })
+        .catch((err) => {
+          console.warn(err);
+        });
+    }
+  }, [isLoggedIn, isCompanyViewer, extendedUser]);
 
   const goLogin = () => {
     navigate('/login', { state: { from: location.pathname } });
@@ -458,9 +480,9 @@ export default function JobPostDetailPage() {
   const isOwner =
     isLoggedIn &&
     isCompanyViewer &&
-    !!extendedUser?.cid &&
+    !!myCid &&
     !!company?.id &&
-    String(extendedUser.cid) === String(company.id);
+    String(myCid) === String(company.id);
 
   const canApply = (() => {
     if (isClosed) return false;
@@ -559,7 +581,6 @@ export default function JobPostDetailPage() {
                   </span>
                 )}
 
-                {/* [수정됨] 기업 회원이 아닐 때만 스크랩 버튼 표시 (!isCompanyViewer 추가) */}
                 {isLoggedIn && uid && !isCompanyViewer ? (
                   <Button
                     type="button"

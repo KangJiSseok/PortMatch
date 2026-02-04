@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Mail,
   Send,
   ChevronLeft,
-  Search,
   MoreHorizontal,
   User,
   Building2,
@@ -54,15 +54,17 @@ const CompanyLogo = ({ room }: { room: ChatRoom }) => {
 };
 
 const ChatList = () => {
-  const { rooms, setCurrentRoomId } = useMessenger();
+  const { rooms, setCurrentRoomId, toggleMessenger } = useMessenger();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const isLoggedIn = !!user;
   const isEmpty = !rooms || rooms.length === 0;
   const isCompany = user?.role === 'COMPANY';
 
-  const handleLoginRedirect = () => {
-    window.location.href = '/login';
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    toggleMessenger();
   };
 
   const renderContent = () => {
@@ -84,7 +86,7 @@ const ChatList = () => {
           </p>
 
           <button
-            onClick={handleLoginRedirect}
+            onClick={() => handleNavigation('/login')}
             className="bg-point-blue text-pure-white hover:bg-point-blue/90 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black shadow-lg shadow-blue-500/20 transition-all active:scale-95"
           >
             <LogIn size={14} /> 로그인하러 가기
@@ -115,7 +117,10 @@ const ChatList = () => {
           </p>
 
           <div className="flex w-full flex-col gap-3">
-            <button className="bg-point-blue text-pure-white hover:bg-point-blue/90 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+            <button
+              onClick={() => handleNavigation(isCompany ? '/company/jobs/new' : '/resumes/me')}
+              className="bg-point-blue text-pure-white hover:bg-point-blue/90 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+            >
               {isCompany ? (
                 <>
                   <Briefcase size={14} /> 채용 공고 등록하기
@@ -127,7 +132,12 @@ const ChatList = () => {
               )}
             </button>
 
-            <button className="bg-soft-pebble/30 text-midnight-ink hover:bg-soft-pebble/50 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black transition-all active:scale-95">
+            <button
+              onClick={() =>
+                handleNavigation(isCompany ? '/company/recommend/candidates' : '/job-postings')
+              }
+              className="bg-soft-pebble/30 text-midnight-ink hover:bg-soft-pebble/50 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black transition-all active:scale-95"
+            >
               {isCompany ? (
                 <>
                   <Sparkles size={14} className="text-point-blue" /> 인재 풀 탐색하기
@@ -185,7 +195,6 @@ const ChatList = () => {
     <div className="bg-pure-white flex h-full flex-col overflow-hidden">
       <div className="border-soft-pebble bg-pure-white sticky top-0 z-10 flex items-center justify-between border-b p-6">
         <h2 className="text-midnight-ink text-xl font-black tracking-tighter">쪽지함</h2>
-        {isLoggedIn && <Search size={20} className="text-silver-mist cursor-pointer" />}
       </div>
 
       <div className="flex-1 overflow-y-auto">{renderContent()}</div>
