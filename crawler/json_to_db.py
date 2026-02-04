@@ -63,6 +63,7 @@ def request_company_analysis(company_name):
         
         if response.status_code == 200:
             print(f"    ✅ 분석 완료: {company_name}")
+            print(f"DEBUG RESPONSE: {response.json()}")
             return True
         else:
             print(f"    ⚠️  분석 실패 [{response.status_code}]: {company_name}")
