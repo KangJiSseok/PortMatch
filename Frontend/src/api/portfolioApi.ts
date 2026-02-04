@@ -1,4 +1,4 @@
-import type { PortfolioResponse, AnalysisResponse } from '../types/portfolio';
+﻿import type { PortfolioResponse, AnalysisResponse } from '../types/portfolio';
 
 interface ApiResponse<T = null> {
   status: boolean;
@@ -43,6 +43,7 @@ export const portfolioApi = {
   },
 
   deletePortfolio: async (id: number | string): Promise<void> => {
+    // 수정: URL에 id가 포함되도록 템플릿 리터럴(``) 사용
     const response = await fetch(`/api/portfolios/me/${id}`, {
       method: 'DELETE',
       credentials: 'include',
@@ -51,11 +52,12 @@ export const portfolioApi = {
     const result: ApiResponse = await response.json();
 
     if (!response.ok || !result.status) {
-      throw new Error(result.message || '삭제 요청이 실패했습니다.');
+      throw new Error(result.message || '삭제 요청에 실패했습니다.');
     }
   },
 
   requestAnalysis: async (portfolioId: number | string): Promise<void> => {
+    // 수정: URL 경로 사이에 portfolioId 삽입
     const response = await fetch(`/api/portfolios/me/${portfolioId}/analysis`, {
       method: 'POST',
       credentials: 'include',
@@ -68,7 +70,23 @@ export const portfolioApi = {
     }
   },
 
+  requestAnalysisV2: async (portfolioId: number | string): Promise<any> => {
+    // 수정: URL 경로 사이에 portfolioId 삽입
+    const response = await fetch(`/api/portfolios/me/${portfolioId}/analysis-v2`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    const result: ApiResponse<any> = await response.json();
+
+    if (!response.ok || !result.status) {
+      throw new Error(result.message || '분석 요청에 실패했습니다.');
+    }
+    return result.data;
+  },
+
   getAnalysisResult: async (portfolioId: number | string): Promise<AnalysisResponse | null> => {
+    // 수정: URL 경로 사이에 portfolioId 삽입
     const response = await fetch(`/api/portfolios/me/${portfolioId}/analysis`, {
       method: 'GET',
       credentials: 'include',
@@ -77,7 +95,7 @@ export const portfolioApi = {
     const result: ApiResponse<AnalysisResponse> = await response.json();
 
     if (!response.ok) {
-      throw new Error('분석 결과를 가져오는 데 실패했습니다.');
+      throw new Error('분석 결과를 가져오는데 실패했습니다.');
     }
 
     if (!result.status) {
@@ -88,6 +106,7 @@ export const portfolioApi = {
   },
 
   getPresignedUrl: async (portfolioId: number | string): Promise<{ url: string }> => {
+    // 수정: URL 경로 사이에 portfolioId 삽입
     const response = await fetch(`/api/portfolios/${portfolioId}/presigned-url`, {
       method: 'GET',
       credentials: 'include',
