@@ -44,23 +44,16 @@ def check_company_project_exists(cur, company_name):
 
 
 def request_company_analysis(company_name):
-    """
-    Spring API로 회사 프로젝트 분석 요청
-    
-    Args:
-        company_name: 회사명
-        
-    Returns:
-        bool: 성공 여부
-    """
     url = f"{SPRING_API_URL}/api/company-projects/analysis"
     
-    # 💡 백엔드 에러 메시지에 맞춰 리스트(배열) 형태로 변경
+    # ⭐ 수정: company_name (스네이크 케이스 + 리스트)
     payload = {
-        "companyNames": [company_name]  # 'companyName' 대신 'companyNames'일 확률이 높아!
+        "company_name": [company_name]  # companyNames ❌ → company_name ✅
     }
     
     try:
+        print(f"    🔍 회사 프로젝트 분석 요청: {company_name}")
+        
         response = requests.post(
             url,
             json=payload,
@@ -69,16 +62,11 @@ def request_company_analysis(company_name):
         )
         
         if response.status_code == 200:
-            result = response.json()
             print(f"    ✅ 분석 완료: {company_name}")
             return True
         else:
             print(f"    ⚠️  분석 실패 [{response.status_code}]: {company_name}")
             return False
-            
-    except requests.exceptions.Timeout:
-        print(f"    ⏱️  타임아웃: {company_name} (60초 초과)")
-        return False
     except Exception as e:
         print(f"    ❌ API 요청 실패: {e}")
         return False
