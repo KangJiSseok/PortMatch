@@ -111,7 +111,7 @@ public class InterviewScheduleServiceImpl implements InterviewScheduleService {
                     .corpAddr(c.getAddress())
                     .busiSize(c.getSize())
                     .totPsncnt(c.getTotPsncnt())
-                    .homePg(c.getBusiCont())
+                    .homePg(c.getHomepageUrl())
                     .logo(c.getLogo())
                     .build();
         }
