@@ -1,6 +1,6 @@
 ﻿import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchRecommendedJobPostings } from '@/api/recommendJobPosting';
+import { fetchRecommendedJobPostings } from '@/api/recommend/recommendJobPosting';
 import type {
   JobPostingCardModel,
   JobPostingFactor,
