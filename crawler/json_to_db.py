@@ -139,6 +139,8 @@ def insert_to_db():
                 print(f"  🆕 신규 회사 (CID: {target_cid})")
 
             company_id_map[c_name] = target_cid
+
+            conn.commit()
             
             # ⭐ 회사 프로젝트 분석 체크 및 요청
             if check_company_project_exists(cur, c_name):
@@ -152,6 +154,7 @@ def insert_to_db():
                     analysis_stats["success"] += 1
                 else:
                     analysis_stats["failed"] += 1
+            conn.commit()
 
         # 4. 채용 공고 적재 (제목+cid로 중복 체크하여 찜하기 보호)
         print("\n" + "=" * 60)
