@@ -40,12 +40,15 @@ public class JobApplicationServiceImpl implements JobApplicationService {
     @Override
     @Transactional
     public JobApplicationResponse apply(Long userId, Long jobPostingId, JobApplicationCreateRequest request) {
+        log.info("userid: "+userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
+        log.info("resumeId: "+request.getResumeId());
         Resume resume = resumeRepository.findByIdAndUser_Id(request.getResumeId(), userId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
+        log.info("posting");
         JobPostingEntity jobPosting = jobPostingRepository.findById(jobPostingId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
