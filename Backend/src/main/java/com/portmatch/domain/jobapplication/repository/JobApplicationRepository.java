@@ -13,6 +13,8 @@ public interface JobApplicationRepository extends JpaRepository<JobApplication, 
 
     List<JobApplication> findAllByJobPosting_IdOrderByCreatedAtDesc(Long jobPostingId);
 
+	List<JobApplication> findAllByUser_IdOrderByCreatedAtDesc(Long userId);
+
     @org.springframework.data.jpa.repository.Query(
             "select ja.id from JobApplication ja where ja.resume.id = :resumeId"
     )
