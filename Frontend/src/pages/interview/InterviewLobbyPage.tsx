@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
+import { useAuthStore } from '../../store/authStore';
 import {
   fetchCompanyInterviewViewById,
   fetchMyInterviewViewById,
@@ -53,7 +54,6 @@ function defer(fn: () => void) {
 
 // --- Types ---
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
-type UserRole = 'guest' | 'individual' | 'corporate';
 
 type LobbyNavState = {
   sessionId?: string;
@@ -100,8 +100,8 @@ export default function InterviewLobbyPage() {
 
   const interviewId = Number(id);
 
-  const role = ((localStorage.getItem('userRole') ?? 'guest') as UserRole) || 'guest';
-  const isCorporate = role === 'corporate';
+  const { user } = useAuthStore();
+  const isCorporate = user?.role === 'COMPANY';
 
   const [status, setStatus] = useState<PageStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('세션 정보를 불러오지 못했어요.');

@@ -41,3 +41,16 @@ export async function fetchInterviewPartnerPeer(
   });
   return res.data?.partnerId ?? null;
 }
+
+export async function getRoomStatus(
+  roomId: string,
+): Promise<'WAITING' | 'OPEN' | 'CLOSED'> {
+  const res = await axiosInstance.get<{ status: 'WAITING' | 'OPEN' | 'CLOSED' }>(
+    `/interview-rooms/${roomId}/status`,
+  );
+  return res.data.status;
+}
+
+export async function closeInterviewRoom(roomId: string): Promise<void> {
+  await axiosInstance.delete(`/interview-rooms/${roomId}`);
+}
