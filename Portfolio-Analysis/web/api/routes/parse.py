@@ -1,6 +1,6 @@
 import json
 from fastapi import APIRouter, HTTPException, Request
-from ..tasks import parse_pdf_task, parse_pdf_v2_task
+from ..task import parse_pdf_task, parse_pdf_v2_task
 
 router = APIRouter()
 
