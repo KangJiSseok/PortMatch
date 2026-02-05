@@ -37,6 +37,12 @@ public class InterviewRoomService {
                 .orElseGet(() -> {
                     String roomId = UUID.randomUUID().toString();
                     InterviewRoomEntity room = new InterviewRoomEntity(roomId, schedule);
+                    
+                    // [수정] 생성 시점이 이미 시작 10분 전 이내라면 OPEN 상태로 시작
+                    if (schedule.getTime().isBefore(LocalDateTime.now().plusMinutes(10))) {
+                        room.setStatus(RoomStatus.OPEN);
+                    }
+                    
                     repository.save(room);
                     return roomId;
                 });
