@@ -1,12 +1,15 @@
 package com.portmatch.domain.companies.service;
 
 import com.portmatch.domain.companies.dto.CompaniesDto;
+import com.portmatch.domain.companies.dto.CompanyNameResponse;
 import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
+import com.portmatch.domain.jobposting.repository.JobPostingRepository;
 import com.portmatch.global.exception.BusinessException; // 공통 예외
 import com.portmatch.global.response.ResponseCode; // 공통 코드
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,6 +19,7 @@ import java.util.List;
 public class CompanyServiceImpl implements CompaniesService {
 
     private final CompanyRepository companyRepository;
+    private final JobPostingRepository jobPostingRepository;
 
     @Override
     @Transactional
@@ -58,6 +62,32 @@ public class CompanyServiceImpl implements CompaniesService {
 
         // 만약 리스트가 비어있는 게 에러라고 판단된다면 에러를 던질 수도 있어 (선택사항)
         return list;
+    }
+
+    @Override
+    public List<CompanyNameResponse> getCompanyByName(String keyword) {
+        List<Company> companies = companyRepository.findByCompaniesNameContaining(keyword);
+
+        return companies.stream()
+                .map(company -> {
+                    // PageRequest.of(0, 3)으로 딱 3개만 가져오라고 시키기!
+                    List<String> recentTitles = jobPostingRepository.findTop3TitlesByCid(
+                            company.getCid(),
+                            PageRequest.of(0, 3)
+                    );
+
+                    return CompanyNameResponse.builder()
+                            .cid(company.getCid())
+                            .corpName(company.getCompaniesName())
+                            .totPsncnt(company.getTotPsncnt())
+                            .busiSize(company.getSize())
+                            .corpAddr(company.getAddress())
+                            .homePg(company.getHomepageUrl())
+                            .logo(company.getLogo())
+                            .recentJobTitles(recentTitles) // 이미 List<String>이라 그대로 쏙!
+                            .build();
+                })
+                .toList();
     }
 
     @Override

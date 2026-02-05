@@ -1,7 +1,9 @@
 package com.portmatch.domain.companies.controller;
 
 import com.portmatch.domain.companies.dto.CompaniesDto;
+import com.portmatch.domain.companies.dto.CompanyNameResponse;
 import com.portmatch.domain.companies.service.CompaniesService;
+import com.portmatch.domain.jobposting.dto.JobPostingDto;
 import com.portmatch.global.api.BaseApiResponse;
 import com.portmatch.global.response.ResponseCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -98,5 +100,12 @@ public class CompaniesController {
         } catch (Exception e) {
             return BaseApiResponse.error(ResponseCode.NOT_FOUND);
         }
+    }
+
+    @Operation(summary = "이름 키워드 검색", description = "기업 이름에 키워드가 포함된 기업을 검색합니다.")
+    @GetMapping("/search")
+    public BaseApiResponse<List<CompanyNameResponse>> getJobsByTitle(@RequestParam("keyword") String keyword) {
+        List<CompanyNameResponse> jobs = jobCompaniesService.getCompanyByName(keyword);
+        return BaseApiResponse.ok(jobs);
     }
 }
