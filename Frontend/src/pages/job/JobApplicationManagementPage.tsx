@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Calendar,
   MessageSquare,
+  Ban,
 } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
@@ -22,12 +23,17 @@ import {
   fetchCompanyApplications,
   type CompanyApplicationView,
 } from '../../api/company/applications';
-import {
-  fetchInterviewRowsByJobPostId,
-  type InterviewCompanyApiRow,
-} from '../../api/interview';
 import { fetchJobPostDetail } from '../../api/jobPost/detail';
 import { useMessenger } from '../../hooks/useMessenger';
+
+interface CompanyApplicationViewExtended extends CompanyApplicationView {
+  resumeViewed: boolean;
+  status: string;
+  userName?: string;
+  resume?: {
+    userId: number;
+  };
+}
 
 const EMPLOYMENT_STATUS_MAP: Record<string, string> = {
   FULL_TIME: '정규직',
@@ -127,6 +133,7 @@ interface ApplicationDetailData {
   resumeId: number;
   status: string;
   appliedAt: string;
+  resumeViewed: boolean;
   resume: Resume;
 }
 
@@ -149,24 +156,24 @@ function formatYmdDot(iso: string) {
 const JobApplicationManagementPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { startNewChat } = useMessenger();
+  const { startNewChat, sendMessage } = useMessenger();
 
   const jobPostId = Number(id);
   const safeJobPostId = Number.isFinite(jobPostId) && jobPostId > 0 ? jobPostId : 0;
 
   const [sortBy, setSortBy] = useState<'최신순' | '경력순' | '이름순'>('최신순');
-  const [applications, setApplications] = useState<CompanyApplicationView[]>([]);
+  const [applications, setApplications] = useState<CompanyApplicationViewExtended[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  
-  // Map<userId, interviewRow>
-  const [interviewMap, setInterviewMap] = useState<Map<number, InterviewCompanyApiRow>>(new Map());
 
-  const [selectedApplication, setSelectedApplication] = useState<ApplicationDetailData | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<ApplicationDetailData | null>(
+    null,
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [jobPostTitle, setJobPostTitle] = useState<string>('');
-  const [companyName, setCompanyName] = useState<string>('');
+
+  const [myCorpName, setMyCorpName] = useState<string>('');
 
   const handleContactApplicant = async (
     userId: number | string,
@@ -182,6 +189,27 @@ const JobApplicationManagementPage = () => {
   };
 
   useEffect(() => {
+    const fetchMyCorpInfo = async () => {
+      try {
+        const meRes = await fetch('/api/auth/me');
+        const meJson = await meRes.json();
+
+        if (meJson.status && meJson.data?.cid) {
+          const compRes = await fetch(`/api/companies/${meJson.data.cid}`);
+          const compJson = await compRes.json();
+
+          if (compJson.status && compJson.data?.corpName) {
+            setMyCorpName(compJson.data.corpName);
+          }
+        }
+      } catch (e) {
+        console.error('기업 정보 로드 실패', e);
+      }
+    };
+    fetchMyCorpInfo();
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
@@ -194,33 +222,48 @@ const JobApplicationManagementPage = () => {
       setError('');
 
       try {
-        const [data, detail, interviews] = await Promise.all([
+        const [data, detail] = await Promise.all([
           fetchCompanyApplications(safeJobPostId),
           fetchJobPostDetail(safeJobPostId).catch(() => null),
-          fetchInterviewRowsByJobPostId(safeJobPostId).catch(() => []),
         ]);
-        
+
         if (cancelled) return;
-        setApplications(data);
-        
-        // Build map for existing interviews
-        const newMap = new Map<number, InterviewCompanyApiRow>();
-        if (interviews && interviews.length > 0) {
-           interviews.forEach(iv => {
-               const uid = iv.userId ?? iv.user?.userId;
-               if (uid) newMap.set(Number(uid), iv);
-           });
-        }
-        setInterviewMap(newMap);
+
+        const initialApps = data as CompanyApplicationViewExtended[];
+        setApplications(initialApps);
 
         if (detail) {
           if (detail.jobPost?.title) setJobPostTitle(detail.jobPost.title);
+        }
 
-          const resolvedCompanyName =
-            detail.company?.companies_name ??
-            detail.company?.id ??
-            (detail.jobPost?.id ? `Company ${detail.jobPost.id}` : '');
-          if (resolvedCompanyName.trim()) setCompanyName(resolvedCompanyName);
+        if (initialApps.length > 0) {
+          const syncedApps = await Promise.all(
+            initialApps.map(async (app) => {
+              try {
+                const res = await fetch(
+                  `/api/job-postings/${safeJobPostId}/applications/${app.applicationId}`,
+                );
+                const json: ApplicationDetailResponse = await res.json();
+
+                if (res.ok && json.data) {
+                  return {
+                    ...app,
+                    status: json.data.status,
+                    resumeViewed: json.data.resumeViewed,
+                    userName: json.data.userName || app.userName,
+                    resume: json.data.resume,
+                  };
+                }
+                return app;
+              } catch {
+                return app;
+              }
+            }),
+          );
+
+          if (!cancelled) {
+            setApplications(syncedApps);
+          }
         }
       } catch (e) {
         if (cancelled) return;
@@ -244,6 +287,10 @@ const JobApplicationManagementPage = () => {
       ? applications[0].postingTitle
       : '지원자 관리');
 
+  const getApplicantName = (app: CompanyApplicationViewExtended) => {
+    return app.userName || app.applicantName || '이름 없음';
+  };
+
   const sortedApplications = useMemo(() => {
     const list = [...applications];
     switch (sortBy) {
@@ -254,7 +301,7 @@ const JobApplicationManagementPage = () => {
       case '경력순':
         return list.sort((a, b) => b.experienceYears - a.experienceYears);
       case '이름순':
-        return list.sort((a, b) => a.applicantName.localeCompare(b.applicantName, 'ko'));
+        return list.sort((a, b) => getApplicantName(a).localeCompare(getApplicantName(b), 'ko'));
       default:
         return list;
     }
@@ -262,13 +309,86 @@ const JobApplicationManagementPage = () => {
 
   const markAsRead = async (applicationId: number) => {
     try {
-      await fetch(`/api/applications/${applicationId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: '열람' }),
-      });
+      await fetch(
+        `/api/job-postings/${safeJobPostId}/applications/${applicationId}/resume-viewed`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
     } catch (error) {
-      console.error('Failed to update application status:', error);
+      console.error('Failed to update resume viewed status:', error);
+    }
+  };
+
+  const handleRejectApplication = async () => {
+    if (!selectedApplication) return;
+
+    const targetAppId = selectedApplication.applicationId;
+    let targetUserId = selectedApplication.userId;
+
+    if ((!targetUserId || targetUserId === 0) && selectedApplication.resume) {
+      targetUserId = selectedApplication.resume.userId;
+    }
+
+    const targetUserName =
+      selectedApplication.userName || selectedApplication.resume?.profile?.name || '지원자';
+    const targetProfileImg = selectedApplication.resume?.profile?.profileImageUrl;
+
+    if (!targetUserId || targetUserId === 0) {
+      alert('지원자의 ID 정보를 찾을 수 없어 메시지를 전송할 수 없습니다.');
+      return;
+    }
+
+    if (
+      !confirm(
+        `${targetUserName}님을 불합격 처리하시겠습니까?\n불합격 안내 메시지가 자동으로 전송됩니다.`,
+      )
+    )
+      return;
+
+    try {
+      const createdRoomId = await startNewChat(
+        String(targetUserId),
+        targetUserName,
+        targetProfileImg,
+      );
+
+      setTimeout(async () => {
+        const senderName = myCorpName || '기업';
+        const currentPostingTitle = postingTitle || '채용 공고';
+        const msg = `[채용 안내] 안녕하세요 ${targetUserName}님, ${senderName}입니다. [${currentPostingTitle}] 공고에 귀한 시간을 내어 지원해 주셔서 진심으로 감사드립니다. 안타깝게도 이번 채용에서는 귀하와 함께하지 못하게 되었습니다. 귀하의 앞날에 무궁한 발전이 있기를 기원합니다.`;
+
+        if (createdRoomId) {
+          await sendMessage(msg, 'text', createdRoomId);
+        }
+      }, 500);
+
+      const response = await fetch(
+        `/api/job-postings/${safeJobPostId}/applications/${targetAppId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'REJECTED' }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error('상태 변경에 실패했습니다.');
+      }
+
+      setApplications((prev) =>
+        prev.map((app) =>
+          String(app.applicationId) === String(targetAppId) ? { ...app, status: 'REJECTED' } : app,
+        ),
+      );
+      setSelectedApplication((prev) => (prev ? { ...prev, status: 'REJECTED' } : null));
+
+      alert('불합격 처리 및 안내 메시지가 전송되었습니다.');
+      closeModal();
+    } catch (err) {
+      console.error(err);
+      alert('처리 중 오류가 발생했습니다.');
     }
   };
 
@@ -282,18 +402,28 @@ const JobApplicationManagementPage = () => {
         throw new Error('이력서 상세 정보를 불러오는데 실패했습니다.');
       }
       const json: ApplicationDetailResponse = await response.json();
-      setSelectedApplication(json.data);
+      const detailData = json.data;
+
+      setSelectedApplication(detailData);
       setIsModalOpen(true);
 
-      const targetApp = applications.find((app) => app.applicationId === applicationId);
-      if (targetApp && (targetApp.status === '미열람' || targetApp.status === 'APPLIED')) {
-        setApplications((prev) =>
-          prev.map((app) =>
-            app.applicationId === applicationId ? { ...app, status: '열람' } : app,
-          ),
-        );
+      if (!detailData.resumeViewed) {
         markAsRead(applicationId);
       }
+
+      setApplications((prev) =>
+        prev.map((app) =>
+          String(app.applicationId) === String(applicationId)
+            ? {
+                ...app,
+                status: detailData.status,
+                resumeViewed: true,
+                userName: detailData.userName || app.userName,
+                resume: detailData.resume,
+              }
+            : app,
+        ),
+      );
     } catch (err) {
       console.error(err);
       alert('이력서 정보를 불러올 수 없습니다.');
@@ -307,21 +437,35 @@ const JobApplicationManagementPage = () => {
     setSelectedApplication(null);
   };
 
-  const goSchedule = (app: CompanyApplicationView, existingScheduleId?: number) => {
-    const applicantUserId = app.userId;
-    navigate(`/company/jobs/${safeJobPostId}/applicants/${app.applicationId}/schedule`, {
-      state: {
-        scheduleId: existingScheduleId, // Pass the detected schedule ID
-        applicantName: app.applicantName,
-        applicantUserId,
-        resumeId: app.resumeId,
-        postingTitle: jobPostTitle.trim() || app.postingTitle,
-        companyName: companyName.trim() || app.companyName,
-        appliedAt: app.appliedAt,
-        experience: app.experience,
-        experienceYears: app.experienceYears,
-      },
-    });
+  const goSchedule = async (app: CompanyApplicationViewExtended) => {
+    let targetUserId = app.userId;
+    if ((!targetUserId || targetUserId === 0) && app.resume) {
+      targetUserId = app.resume.userId;
+    }
+
+    const targetName = app.userName || app.applicantName || '지원자';
+
+    if (!targetUserId || targetUserId === 0) {
+      alert('지원자 ID 오류로 채팅방을 열 수 없습니다.');
+      return;
+    }
+
+    try {
+      await startNewChat(String(targetUserId), targetName);
+
+      setTimeout(() => {
+        const event = new CustomEvent('OPEN_INTERVIEW_MODAL', {
+          detail: {
+            id: safeJobPostId,
+            title: postingTitle,
+          },
+        });
+        window.dispatchEvent(event);
+      }, 300);
+    } catch (error) {
+      console.error('채팅방 열기 실패:', error);
+      alert('채팅방을 여는 데 실패했습니다.');
+    }
   };
 
   return (
@@ -386,8 +530,24 @@ const JobApplicationManagementPage = () => {
               <div className="border-silver-mist bg-pure-white overflow-hidden rounded-4xl border shadow-xl shadow-gray-200/50">
                 <div className="divide-cloud-dancer divide-y">
                   {sortedApplications.map((app) => {
-                    const existingInterview = interviewMap.get(app.userId);
-                    const hasInterview = !!existingInterview; // Check real backend map
+                    const status = app.status ? app.status.toUpperCase() : 'APPLIED';
+                    const displayName = app.userName || app.applicantName || '이름 없음';
+
+                    let statusBadgeLabel = '채용 진행중';
+                    let statusBadgeClass = 'text-point-blue bg-blue-50';
+
+                    if (status === 'REJECTED' || status === '불합격') {
+                      statusBadgeLabel = '불합격';
+                      statusBadgeClass = 'text-error bg-red-50';
+                    } else if (status === 'ACCEPTED' || status === 'PASS' || status === '합격') {
+                      statusBadgeLabel = '합격';
+                      statusBadgeClass = 'bg-emerald-50 text-emerald-600';
+                    }
+
+                    const viewedBadgeLabel = app.resumeViewed ? '열람' : '미열람';
+                    const viewedBadgeClass = app.resumeViewed
+                      ? 'bg-cloud-dancer text-slate-gray'
+                      : 'text-point-blue bg-blue-50';
 
                     return (
                       <div
@@ -409,28 +569,20 @@ const JobApplicationManagementPage = () => {
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-4">
                               <span className="text-midnight-ink text-2xl font-black tracking-tight whitespace-nowrap">
-                                {app.applicantName}
+                                {displayName}
                               </span>
 
                               <span
-                                className={`shrink-0 rounded-full px-4 py-1 text-[11px] font-black tracking-widest whitespace-nowrap uppercase ${
-                                  app.status === '미열람' || app.status === 'APPLIED'
-                                    ? 'text-point-blue bg-blue-50'
-                                    : app.status === '합격'
-                                      ? 'bg-emerald-50 text-emerald-600'
-                                      : app.status === '불합격'
-                                        ? 'text-error bg-red-50'
-                                        : 'bg-cloud-dancer text-slate-gray'
-                                }`}
+                                className={`shrink-0 rounded-full px-4 py-1 text-[11px] font-black tracking-widest whitespace-nowrap uppercase ${statusBadgeClass}`}
                               >
-                                {app.status === 'APPLIED' ? '미열람' : app.status}
+                                {statusBadgeLabel}
                               </span>
 
-                              {hasInterview && (
-                                <span className="bg-cloud-dancer text-slate-gray shrink-0 rounded-full px-4 py-1 text-[11px] font-black tracking-widest whitespace-nowrap uppercase">
-                                  INTERVIEW SET
-                                </span>
-                              )}
+                              <span
+                                className={`shrink-0 rounded-full px-4 py-1 text-[11px] font-black tracking-widest whitespace-nowrap uppercase ${viewedBadgeClass}`}
+                              >
+                                {viewedBadgeLabel}
+                              </span>
                             </div>
 
                             <div className="text-slate-gray mt-2 flex flex-wrap items-center gap-3 text-[15px] font-bold opacity-40">
@@ -446,8 +598,16 @@ const JobApplicationManagementPage = () => {
                         <div className="flex shrink-0 items-center gap-4">
                           <button
                             onClick={(e) => {
+                              let chatUserId = app.userId;
+                              if ((!chatUserId || chatUserId === 0) && app.resume) {
+                                chatUserId = app.resume.userId;
+                              }
                               e.stopPropagation();
-                              handleContactApplicant(app.userId || 0, app.applicantName);
+                              if (chatUserId && chatUserId !== 0) {
+                                handleContactApplicant(chatUserId, displayName);
+                              } else {
+                                alert('지원자 ID 정보를 찾을 수 없습니다.');
+                              }
                             }}
                             className="hover:text-point-blue flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-blue-50"
                             title="1:1 메시지 보내기"
@@ -468,19 +628,7 @@ const JobApplicationManagementPage = () => {
                             {isDetailLoading ? '로딩 중...' : '이력서 보기'}
                           </Button>
 
-                          {hasInterview ? (
-                            <Button
-                              variant="outline"
-                              size="md"
-                              className="w-40 rounded-xl whitespace-nowrap"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                goSchedule(app, existingInterview?.id);
-                              }}
-                            >
-                              일정 수정
-                            </Button>
-                          ) : (
+                          {status !== 'REJECTED' && status !== '불합격' && (
                             <Button
                               variant="blue"
                               size="md"
@@ -790,13 +938,31 @@ const JobApplicationManagementPage = () => {
                     닫기
                   </Button>
 
+                  {selectedApplication.status !== 'REJECTED' &&
+                    selectedApplication.status !== '불합격' && (
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="flex items-center gap-2 rounded-xl border-red-200 font-bold text-red-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                        onClick={handleRejectApplication}
+                      >
+                        <Ban size={18} />
+                        불합격
+                      </Button>
+                    )}
+
                   <Button
                     variant="outline"
                     size="lg"
                     className="flex items-center gap-2 rounded-xl font-bold text-slate-600 hover:text-blue-600"
                     onClick={() => {
+                      let chatUserId = selectedApplication.userId;
+                      if ((!chatUserId || chatUserId === 0) && selectedApplication.resume) {
+                        chatUserId = selectedApplication.resume.userId;
+                      }
+
                       handleContactApplicant(
-                        selectedApplication.userId,
+                        chatUserId,
                         selectedApplication.userName,
                         selectedApplication.resume.profile.profileImageUrl,
                       );
@@ -805,20 +971,22 @@ const JobApplicationManagementPage = () => {
                     <MessageSquare size={18} />
                     1:1 메시지
                   </Button>
-
-                  <Button
-                    variant="blue"
-                    size="lg"
-                    className="rounded-xl font-black shadow-lg shadow-blue-600/20"
-                    onClick={() => {
-                      const app = applications.find(
-                        (a) => a.applicationId === selectedApplication.applicationId,
-                      );
-                      if (app) goSchedule(app);
-                    }}
-                  >
-                    면접 일정 잡기
-                  </Button>
+                  {selectedApplication.status !== 'REJECTED' &&
+                    selectedApplication.status !== '불합격' && (
+                      <Button
+                        variant="blue"
+                        size="lg"
+                        className="rounded-xl font-black shadow-lg shadow-blue-600/20"
+                        onClick={() => {
+                          const app = applications.find(
+                            (a) => a.applicationId === selectedApplication.applicationId,
+                          );
+                          if (app) goSchedule(app);
+                        }}
+                      >
+                        면접 일정 잡기
+                      </Button>
+                    )}
                 </div>
               </div>
             </motion.div>

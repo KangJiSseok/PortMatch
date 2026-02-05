@@ -478,7 +478,7 @@ export default function JobApplyPage() {
                       type="button"
                       variant="dark"
                       size="md"
-                      onClick={() => navigate('/resumes/new')}
+                      onClick={() => navigate('/resumes/me')}
                       className="rounded-xl px-8 py-3 font-bold"
                     >
                       이력서 작성하러 가기

@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mail,
   Send,
   ChevronLeft,
-  MoreHorizontal,
   User,
   Building2,
   Calendar,
@@ -21,6 +21,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { getRelativeTime } from '../../utils/date';
 import InterviewModal from './InterviewModal';
 import type { ChatRoom, Message } from '../../types/messenger';
+
+interface JobPostingItem {
+  id: number;
+  title: string;
+  [key: string]: unknown;
+}
 
 const CompanyLogo = ({ room }: { room: ChatRoom }) => {
   const { user } = useAuth();
@@ -202,24 +208,74 @@ const ChatList = () => {
   );
 };
 
-const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
+interface ChatRoomWindowProps {
+  roomId: string;
+  pendingJobInfo: { id: number; title: string } | null;
+  onConsumeJobInfo: () => void;
+}
+
+const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWindowProps) => {
+  const navigate = useNavigate();
   const { rooms, messages, setCurrentRoomId, sendMessage, acceptInterview, declineInterview } =
     useMessenger();
   const { user } = useAuth();
   const [input, setInput] = useState('');
+
+  const [targetJobInfo, setTargetJobInfo] = useState<{ id: number; title: string } | null>(null);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
+
+  const [myJobPostings, setMyJobPostings] = useState<{ id: number; title: string }[]>([]);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const room = rooms.find((r: ChatRoom) => r.id === roomId);
+  const isCompany = user?.role === 'COMPANY';
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (isCompany) {
+      const fetchMyJobs = async () => {
+        try {
+          const meRes = await fetch('/api/auth/me');
+          const meJson = await meRes.json();
+
+          if (meJson.status && meJson.data?.cid) {
+            const cid = meJson.data.cid;
+            const jobRes = await fetch(`/api/job-postings/company/${cid}`);
+            const jobJson = await jobRes.json();
+
+            if (jobJson.status && Array.isArray(jobJson.data)) {
+              setMyJobPostings(
+                jobJson.data.map((job: JobPostingItem) => ({
+                  id: job.id,
+                  title: job.title,
+                })),
+              );
+            }
+          }
+        } catch (e) {
+          console.error('공고 목록 로드 실패', e);
+        }
+      };
+      fetchMyJobs();
+    }
+  }, [isCompany]);
+
+  useEffect(() => {
+    if (pendingJobInfo) {
+      setTargetJobInfo(pendingJobInfo);
+      setIsInterviewModalOpen(true);
+      onConsumeJobInfo();
+    }
+  }, [pendingJobInfo, onConsumeJobInfo]);
+
   if (!room) return null;
 
-  const opponentName = user?.role === 'COMPANY' ? room.applicantName : room.companyName;
+  const opponentName = isCompany ? room.applicantName : room.companyName;
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,9 +284,23 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
     setInput('');
   };
 
-  const handleInterviewConfirm = async (dateTime: string, note: string) => {
-    const interviewText = `[면접 제안]\n일시: ${dateTime}\n안내: ${note || '없음'}\n위 일정으로 면접을 제안합니다. 확인 부탁드립니다.`;
-    await sendMessage(interviewText, 'interview');
+  const handleInterviewConfirm = async (
+    dateTime: string,
+    note: string,
+    selectedJob: { id: number; title: string },
+  ) => {
+    const companyName = room?.companyName || '기업';
+
+    const interviewText = `[면접 제안]\n\n기업명: ${companyName}\n공고명: ${selectedJob.title}\n\n일시: ${dateTime}\n안내: ${note || '없음'}\n\n위 일정으로 면접을 제안합니다. 확인 부탁드립니다.`;
+
+    await sendMessage(interviewText, 'interview', undefined, {
+      interviewId: 'pending',
+      jobPostingId: selectedJob.id,
+      jobPostingTitle: selectedJob.title,
+    });
+
+    setIsInterviewModalOpen(false);
+    setTargetJobInfo(null);
   };
 
   const handleAccept = async (msg: Message) => {
@@ -297,7 +367,7 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
                 />
               ) : (
                 <div className="text-silver-mist">
-                  {user?.role === 'COMPANY' ? <User size={20} /> : <Building2 size={20} />}
+                  {isCompany ? <User size={20} /> : <Building2 size={20} />}
                 </div>
               )}
             </div>
@@ -307,19 +377,19 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
                 <span className="text-midnight-ink text-sm leading-none font-black tracking-tight">
                   {opponentName || '이름 없음'}
                 </span>
-                {!room.logoUrl && room.companyName && user?.role !== 'COMPANY' && (
+                {!room.logoUrl && room.companyName && !isCompany && (
                   <span className="bg-point-blue/10 text-point-blue rounded px-1.5 py-0.5 text-[9px] leading-none font-black uppercase">
                     Corp
                   </span>
                 )}
               </div>
               <span className="text-silver-mist mt-0.5 text-[10px] font-medium">
-                {user?.role === 'COMPANY' ? '지원자' : '기업 담당자'}
+                {isCompany ? '지원자' : '기업 담당자'}
               </span>
             </div>
           </div>
         </div>
-        <MoreHorizontal size={18} className="text-silver-mist cursor-pointer" />
+        {/* [수정] ... (MoreHorizontal) 버튼 제거 완료 */}
       </div>
 
       <div className="bg-pure-white flex-1 space-y-6 overflow-y-auto p-5 pb-18">
@@ -388,6 +458,24 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
                     {msg.text}
                   </p>
 
+                  {isInterview && msg.jobPostingId && !isCompany && (
+                    <div
+                      className={`mt-3 border-t pt-3 ${isMe ? 'border-pure-white/20' : 'border-black/5'}`}
+                    >
+                      <button
+                        onClick={() => navigate(`/job-postings/${msg.jobPostingId}`)}
+                        className={`flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold transition-colors ${
+                          isMe
+                            ? 'bg-white/20 text-white hover:bg-white/30'
+                            : 'bg-white/50 text-slate-700 hover:bg-white hover:text-blue-600'
+                        }`}
+                      >
+                        <FileText size={12} />
+                        공고 상세 보기
+                      </button>
+                    </div>
+                  )}
+
                   {isInterview && !isMe && !msg.isAccepted && !msg.isDeclined && (
                     <div className="mt-4 flex gap-2">
                       <button
@@ -427,10 +515,13 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
             placeholder={'회신할 내용을 입력하세요...\n(Enter: 전송 / Shift+Enter: 줄바꿈)'}
           />
           <div className="flex items-center justify-between">
-            {user?.role === 'COMPANY' && (
+            {isCompany && (
               <button
                 type="button"
-                onClick={() => setIsInterviewModalOpen(true)}
+                onClick={() => {
+                  setTargetJobInfo(null);
+                  setIsInterviewModalOpen(true);
+                }}
                 className="text-point-blue flex items-center gap-1.5 text-[11px] font-black transition-opacity hover:opacity-80"
               >
                 <Calendar size={14} /> 면접 제안
@@ -454,9 +545,12 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
       </div>
 
       <InterviewModal
+        key={isInterviewModalOpen ? 'open' : 'closed'}
         isOpen={isInterviewModalOpen}
         onClose={() => setIsInterviewModalOpen(false)}
         onConfirm={handleInterviewConfirm}
+        defaultJob={targetJobInfo}
+        jobPostings={myJobPostings}
       />
     </div>
   );
@@ -465,13 +559,42 @@ const ChatRoomWindow = ({ roomId }: { roomId: string }) => {
 const MessengerContainer = () => {
   const { isOpen, currentRoomId, totalUnreadCount, toggleMessenger } = useMessenger();
 
+  const [pendingJobInfo, setPendingJobInfo] = useState<{ id: number; title: string } | null>(null);
+
+  useEffect(() => {
+    const handleOpenModal = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail) {
+        setPendingJobInfo(customEvent.detail);
+      }
+    };
+    window.addEventListener('OPEN_INTERVIEW_MODAL', handleOpenModal);
+    return () => window.removeEventListener('OPEN_INTERVIEW_MODAL', handleOpenModal);
+  }, []);
+
   return (
     <>
-      {isOpen && (
-        <div className="border-soft-pebble bg-pure-white animate-in fade-in slide-in-from-bottom-6 fixed right-8 bottom-30 z-9999 flex h-130 w-95 flex-col overflow-hidden rounded-4xl border shadow-[0_20px_50px_rgba(26,26,26,0.15)] duration-300">
-          {currentRoomId ? <ChatRoomWindow roomId={currentRoomId} /> : <ChatList />}
-        </div>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="border-soft-pebble bg-pure-white fixed right-8 bottom-30 z-9999 flex h-150 w-95 flex-col overflow-hidden rounded-4xl border shadow-[0_20px_50px_rgba(26,26,26,0.15)]"
+          >
+            {currentRoomId ? (
+              <ChatRoomWindow
+                roomId={currentRoomId}
+                pendingJobInfo={pendingJobInfo}
+                onConsumeJobInfo={() => setPendingJobInfo(null)}
+              />
+            ) : (
+              <ChatList />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <button
         onClick={toggleMessenger}

@@ -953,7 +953,7 @@ function CompanyProfileEditPage() {
       {/* ✅ 취소(confirm) 모달 */}
       <AnimatePresence>
         {cancelConfirmOpen && (
-          <div className="fixed inset-0 z-[320] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-320 flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1017,7 +1017,7 @@ function CompanyProfileEditPage() {
       {/* ✅ 이탈 방지 모달 (라우트 이동 시) */}
       <AnimatePresence>
         {blocker.state === 'blocked' && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-300 flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1085,7 +1085,7 @@ function CompanyProfileEditPage() {
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className="bg-midnight-ink text-pure-white fixed bottom-10 left-1/2 z-[100] rounded-2xl px-6 py-3 text-center text-sm font-bold whitespace-nowrap shadow-2xl"
+            className="bg-midnight-ink text-pure-white fixed bottom-10 left-1/2 z-100 rounded-2xl px-6 py-3 text-center text-sm font-bold whitespace-nowrap shadow-2xl"
           >
             {toast.message}
           </motion.div>
