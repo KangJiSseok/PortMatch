@@ -1,6 +1,8 @@
 package com.portmatch.domain.jobapplication.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.portmatch.domain.jobapplication.enums.ApplicationStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -16,5 +18,7 @@ public class JobApplicationSummaryResponse {
     private String resumeTitle;
     private ApplicationStatus status;
     private LocalDateTime appliedAt;
+    @Schema(description = "Resume view status")
+    @JsonProperty("resumeViewed")
     private boolean resumeViewed;
 }
