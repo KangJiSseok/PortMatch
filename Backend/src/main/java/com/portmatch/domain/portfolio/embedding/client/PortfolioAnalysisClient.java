@@ -7,46 +7,43 @@ import com.portmatch.domain.portfolio.embedding.dto.PortfolioQueryEmbeddingRespo
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 
 @Component
 public class PortfolioAnalysisClient {
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final String baseUrl;
 
     public PortfolioAnalysisClient(
-            RestTemplateBuilder builder,
+            RestClient.Builder builder,
             @Value("${portfolio-embedding.base-url}") String baseUrl
     ) {
         SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
         rf.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
         rf.setReadTimeout((int) Duration.ofMinutes(2).toMillis());
 
-        this.restTemplate = builder.requestFactory(() -> rf).build();
+        this.restClient = builder.requestFactory(rf).build();
         this.baseUrl = normalize(baseUrl);
     }
 
     public PortfolioEmbeddingResponse embed(PortfolioEmbeddingRequest request) {
         String endpoint = baseUrl + "/embeddings/portfolio";
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
         try {
-            ResponseEntity<PortfolioEmbeddingResponse> res = restTemplate.exchange(
-                    endpoint,
-                    HttpMethod.POST,
-                    new HttpEntity<>(request, headers),
-                    PortfolioEmbeddingResponse.class
-            );
+            ResponseEntity<PortfolioEmbeddingResponse> res = restClient.post()
+                    .uri(endpoint)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .toEntity(PortfolioEmbeddingResponse.class);
             if (res.getBody() == null) {
                 //throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Embedding service returned empty body");
                 throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_EMPTY);
@@ -61,16 +58,13 @@ public class PortfolioAnalysisClient {
     public PortfolioEmbeddingResponse embedTags(PortfolioEmbeddingRequest request) {
         String endpoint = baseUrl + "/embeddings/portfolio-tags";
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
         try {
-            ResponseEntity<PortfolioEmbeddingResponse> res = restTemplate.exchange(
-                    endpoint,
-                    HttpMethod.POST,
-                    new HttpEntity<>(request, headers),
-                    PortfolioEmbeddingResponse.class
-            );
+            ResponseEntity<PortfolioEmbeddingResponse> res = restClient.post()
+                    .uri(endpoint)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .toEntity(PortfolioEmbeddingResponse.class);
             if (res.getBody() == null) {
                 throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_EMPTY);
             }
@@ -83,16 +77,13 @@ public class PortfolioAnalysisClient {
     public PortfolioQueryEmbeddingResponse embedQuery(PortfolioQueryEmbeddingRequest request) {
         String endpoint = baseUrl + "/embeddings/portfolio-query";
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
         try {
-            ResponseEntity<PortfolioQueryEmbeddingResponse> res = restTemplate.exchange(
-                    endpoint,
-                    HttpMethod.POST,
-                    new HttpEntity<>(request, headers),
-                    PortfolioQueryEmbeddingResponse.class
-            );
+            ResponseEntity<PortfolioQueryEmbeddingResponse> res = restClient.post()
+                    .uri(endpoint)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .toEntity(PortfolioQueryEmbeddingResponse.class);
             if (res.getBody() == null) {
                 throw new BusinessException(ResponseCode.PORTFOLIO_EMBEDDING_EMPTY);
             }

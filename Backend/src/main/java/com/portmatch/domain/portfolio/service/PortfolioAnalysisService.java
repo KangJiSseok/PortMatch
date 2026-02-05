@@ -15,18 +15,14 @@ import com.portmatch.domain.portfolio.repository.PortfolioRepository;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -40,7 +36,7 @@ public class PortfolioAnalysisService {
     private final PortfolioService portfolioService;
     private final PortfolioRepository portfolioRepository;
     private final PortfolioAnalysisRepository portfolioAnalysisRepository;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final String portfolioAnalysisBaseUrl;
     private final ObjectMapper objectMapper;
 
@@ -48,7 +44,7 @@ public class PortfolioAnalysisService {
             PortfolioService portfolioService,
             PortfolioRepository portfolioRepository,
             PortfolioAnalysisRepository portfolioAnalysisRepository,
-            RestTemplateBuilder restTemplateBuilder,
+            RestClient.Builder restClientBuilder,
             @Value("${portfolio-analysis.base-url}") String portfolioAnalysisBaseUrl,
             ObjectMapper objectMapper
     ) {
@@ -58,8 +54,8 @@ public class PortfolioAnalysisService {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
         requestFactory.setReadTimeout((int) Duration.ofMinutes(10).toMillis());
-        this.restTemplate = restTemplateBuilder
-                .requestFactory(() -> requestFactory)
+        this.restClient = restClientBuilder
+                .requestFactory(requestFactory)
                 .build();
         this.portfolioAnalysisBaseUrl = portfolioAnalysisBaseUrl;
         this.objectMapper = objectMapper;
@@ -70,9 +66,6 @@ public class PortfolioAnalysisService {
                 .orElseThrow(() -> new BusinessException(ResponseCode.PORTFOLIO_NOT_FOUND));
         PresignedUrlResponse presigned = portfolioService.getPresignedUrlForUser(userId, portfolioId, 10);
         String endpoint = normalizeBaseUrl(portfolioAnalysisBaseUrl) + "/api/parse";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
         String payloadJson;
         try {
             payloadJson = objectMapper.writeValueAsString(Map.of("s3_url", presigned.getUrl()));
@@ -81,10 +74,14 @@ public class PortfolioAnalysisService {
         }
 
         byte[] payloadBytes = payloadJson.getBytes(StandardCharsets.UTF_8);
-        headers.setContentLength(payloadBytes.length);
-        HttpEntity<byte[]> request = new HttpEntity<>(payloadBytes, headers);
         try {
-            ResponseEntity<Object> response = restTemplate.exchange(endpoint, HttpMethod.POST, request, Object.class);
+            ResponseEntity<Object> response = restClient.post()
+                    .uri(endpoint)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(payloadBytes.length))
+                    .body(payloadBytes)
+                    .retrieve()
+                    .toEntity(Object.class);
             Object body = response.getBody();
             persistResult(portfolio, body);
             return body;
@@ -107,9 +104,6 @@ public class PortfolioAnalysisService {
         String endpoint = normalizeBaseUrl(portfolioAnalysisBaseUrl) + "/api/parse-v2";
 
         // 4. 요청 헤더 및 페이로드 구성 (기존 스타일 준수)
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
         String payloadJson;
         try {
             payloadJson = objectMapper.writeValueAsString(Map.of("s3_url", presigned.getUrl()));
@@ -117,13 +111,17 @@ public class PortfolioAnalysisService {
             throw new BusinessException(ResponseCode.PORTFOLIO_ANALYSIS_PAYLOAD_FAILED);
         }
 
-        byte[] payloadBytes = payloadJson.getBytes(StandardCharsets.UTF_8);
-        headers.setContentLength(payloadBytes.length);
-        HttpEntity<byte[]> request = new HttpEntity<>(payloadBytes, headers);
 
         // 5. 요청 전송 및 결과 반환 (V2는 아직 DB 저장을 하지 않음)
+        byte[] payloadBytes = payloadJson.getBytes(StandardCharsets.UTF_8);
         try {
-            ResponseEntity<Object> response = restTemplate.exchange(endpoint, HttpMethod.POST, request, Object.class);
+            ResponseEntity<Object> response = restClient.post()
+                    .uri(endpoint)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(payloadBytes.length))
+                    .body(payloadBytes)
+                    .retrieve()
+                    .toEntity(Object.class);
             return response.getBody();
         } catch (RestClientException exception) {
             exception.printStackTrace();
