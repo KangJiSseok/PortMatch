@@ -14,6 +14,7 @@ import { useJobPostings } from '@/hooks/useJobPostings';
 import { fetchJobPostingStacks } from '@/api/jobPostings';
 import { useStackNames } from '@/hooks/useStackNames';
 import type { JobPostingDto } from '@/types/backendJobPosting';
+import { fetchCompanySearch, type CompanySearchResult } from '@/api/company/search';
 
 type Sort = 'latest' | 'deadline';
 type DeadlineFilter = 'all' | 'urgent' | 'week' | 'relaxed' | 'always';
@@ -470,6 +471,8 @@ function JobPostingsPage() {
 
   const [postingStackMap, setPostingStackMap] = useState<Record<number, string[]>>({});
   const postingStackInFlight = useRef<Set<number>>(new Set());
+  const [companySearchResult, setCompanySearchResult] = useState<CompanySearchResult | null>(null);
+  const [companySearchLoading, setCompanySearchLoading] = useState(false);
 
   const rawKeyword = searchParams.get('keyword') ?? '';
   const keyword = useMemo(() => {
@@ -510,6 +513,34 @@ function JobPostingsPage() {
     const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement | null;
     if (!navbarInput) return;
     navbarInput.value = keyword ?? '';
+  }, [keyword]);
+
+  useEffect(() => {
+    if (!keyword) {
+      setCompanySearchResult(null);
+      setCompanySearchLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCompanySearchLoading(true);
+    fetchCompanySearch(keyword)
+      .then((result) => {
+        if (cancelled) return;
+        setCompanySearchResult(result);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCompanySearchResult(null);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setCompanySearchLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [keyword]);
 
   const setParams = (next: Record<string, string>) => setSearchParams(next);
@@ -766,6 +797,97 @@ function JobPostingsPage() {
 
             <main className="min-w-0 flex-1">
               <div ref={listTopRef} />
+
+              {!companySearchLoading && companySearchResult && (
+                <div className="mb-8 space-y-6">
+                  <div className="border-silver-mist/20 bg-pure-white flex flex-col gap-5 rounded-4xl border p-6 shadow-sm">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <div className="border-silver-mist/20 bg-pure-white flex h-16 w-16 items-center justify-center rounded-2xl border p-2">
+                        {companySearchResult.logo ? (
+                          <img
+                            src={companySearchResult.logo}
+                            alt={companySearchResult.corpName}
+                            className="h-full w-full object-contain"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span className="text-slate-gray text-xl font-black">
+                            {companySearchResult.corpName?.[0] ?? '?'}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <h3 className="text-midnight-ink text-[20px] font-black tracking-tight">
+                          {companySearchResult.corpName}
+                        </h3>
+                        <div className="text-slate-gray mt-1 flex flex-wrap gap-3 text-[12px] font-semibold">
+                          {companySearchResult.busiSize && (
+                            <span className="rounded-full bg-[#f0eee9]/70 px-3 py-1">
+                              규모 {companySearchResult.busiSize}
+                            </span>
+                          )}
+                          {companySearchResult.totPsncnt && (
+                            <span className="rounded-full bg-[#f0eee9]/70 px-3 py-1">
+                              인원 {companySearchResult.totPsncnt}
+                            </span>
+                          )}
+                          {companySearchResult.corpAddr && (
+                            <span className="rounded-full bg-[#f0eee9]/70 px-3 py-1">
+                              {companySearchResult.corpAddr}
+                            </span>
+                          )}
+                          {companySearchResult.homePg && (
+                            <a
+                              href={companySearchResult.homePg}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-point-blue rounded-full bg-[#f0eee9]/70 px-3 py-1 font-black"
+                            >
+                              홈페이지
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {companySearchResult.recentJobTitles?.length ? (
+                      <div>
+                        <p className="text-slate-gray mb-2 text-[12px] font-bold opacity-70">
+                          최근 채용 공고
+                        </p>
+                        <div className="border-silver-mist/20 overflow-hidden rounded-2xl border">
+                          {companySearchResult.recentJobTitles.map((title, index) => (
+                            <div
+                              key={`${title}-${index}`}
+                              className={[
+                                'flex items-center justify-between gap-4 px-4 py-3 text-[13px] font-semibold text-[#1a1a1a]',
+                                'bg-white',
+                                index === 0 ? '' : 'border-silver-mist/20 border-t',
+                              ].join(' ')}
+                            >
+                              <span className="min-w-0 flex-1 truncate">{title}</span>
+                              <span className="text-slate-gray text-[11px] font-bold">채용</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="border-silver-mist/30 flex items-center gap-4">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d6d2c4] to-transparent" />
+                    <span className="text-slate-gray text-[11px] font-black uppercase tracking-[0.3em]">
+                      공고 리스트
+                    </span>
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d6d2c4] to-transparent" />
+                  </div>
+                </div>
+              )}
 
               {isLoading && (
                 <div className="py-20">
