@@ -18,7 +18,6 @@ const ROUTES = {
   interviewManage: '/interviews',
   resumeView: (applicantId: number) => `/resume/${applicantId}`,
   jobPostDetail: (jobPostId: number) => `/job-posts/${jobPostId}`,
-  // ✅ 수정됨: 회사 ID를 받아 수정 페이지로 이동
   companyEdit: (companyId: string) => `/companies/${companyId}/edit`,
   companyDetail: (companyId: string) => `/companies/${companyId}`,
 } as const;
@@ -40,6 +39,19 @@ type UserProfileData = {
   companyName?: string;
   managerName?: string;
 };
+
+// ✅ 추가: 기업 상세 정보 타입 정의
+interface CompanyDetailData {
+  cid: string;
+  corpName: string;
+  totPsncnt: string;
+  busiSize: string;
+  yrSalesAmt: string;
+  corpAddr: string;
+  homePg: string;
+  busiCont: string;
+  logo: string;
+}
 
 type JobPostView = {
   id: number;
@@ -162,6 +174,7 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
 
   useEffect(() => {
     void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return { data, isLoading, isError, errorMessage, refetch: run };
@@ -185,6 +198,20 @@ async function fetchMyProfile(): Promise<UserProfileData> {
     managerName: data.name,
     companyName: '',
   };
+}
+
+// ✅ 추가: 기업 상세 정보 조회 API 함수
+async function fetchCompanyDetail(cid?: string): Promise<CompanyDetailData | null> {
+  if (!cid) return null;
+
+  const response = await axios.get(`/api/companies/${cid}`);
+  const result = response.data;
+
+  if (!result.status) {
+    throw new Error(result.message || '기업 정보를 불러오지 못했습니다.');
+  }
+
+  return result.data;
 }
 
 async function fetchCompanyJobPosts(cid?: string): Promise<JobPostView[]> {
@@ -266,8 +293,10 @@ export default function CompanyMyPage() {
   const navigate = useNavigate();
   const profileQuery = useQueryLike(fetchMyProfile, []);
   const myCid = profileQuery.data?.cid;
-  const jobPostQuery = useQueryLike(() => fetchCompanyJobPosts(myCid), [myCid]);
 
+  // ✅ 추가: CID를 기반으로 기업 상세 정보 직접 조회
+  const companyQuery = useQueryLike(() => fetchCompanyDetail(myCid), [myCid]);
+  const jobPostQuery = useQueryLike(() => fetchCompanyJobPosts(myCid), [myCid]);
   const interviewQuery = useQueryLike(fetchCompanyInterviews, []);
 
   const [entered, setEntered] = useState(false);
@@ -278,8 +307,12 @@ export default function CompanyMyPage() {
     return () => window.cancelAnimationFrame(raf);
   }, []);
 
+  // ✅ 수정됨: 기업 정보를 companyQuery에서 1순위로 가져옴
   const displayCompanyName =
-    jobPostQuery.data?.[0]?.companyName ?? profileQuery.data?.companyName ?? '기업명 로딩중...';
+    companyQuery.data?.corpName ??
+    jobPostQuery.data?.[0]?.companyName ??
+    profileQuery.data?.companyName ??
+    '기업명 로딩중...';
 
   const managerName = profileQuery.data?.managerName ?? '-';
   const email = profileQuery.data?.email ?? '-';
@@ -362,10 +395,10 @@ export default function CompanyMyPage() {
   });
   const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
 
-  const interviewEvents = interviewQuery.data ?? [];
   const interviewEventMap = useMemo(() => {
+    const events = interviewQuery.data ?? [];
     const m = new Map<string, InterviewEvent[]>();
-    for (const ev of interviewEvents) {
+    for (const ev of events) {
       const ymd = toYmdFromIso(ev.scheduledAt);
       const list = m.get(ymd) ?? [];
       list.push(ev);
@@ -376,7 +409,7 @@ export default function CompanyMyPage() {
       m.set(k, list);
     }
     return m;
-  }, [interviewEvents]);
+  }, [interviewQuery.data]);
 
   const selectedEvents = useMemo(
     () => interviewEventMap.get(selectedDate) ?? [],
@@ -394,7 +427,6 @@ export default function CompanyMyPage() {
         <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
           <div className="relative p-10">
             <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
-            {/* ✅ items-start -> items-center로 변경하여 수직 중앙 정렬 */}
             <div className="relative flex flex-nowrap items-center justify-between gap-5">
               <div>
                 <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
@@ -404,7 +436,9 @@ export default function CompanyMyPage() {
                   className="mt-2 cursor-pointer text-4xl font-black tracking-wide transition-colors hover:text-blue-600/80"
                   onClick={() => myCid && navigate(ROUTES.companyDetail(myCid))}
                 >
-                  {profileQuery.isLoading ? '불러오는 중…' : displayCompanyName}
+                  {companyQuery.isLoading && profileQuery.isLoading
+                    ? '불러오는 중…'
+                    : displayCompanyName}
                 </h1>
                 <p className="mt-3 text-sm font-semibold text-zinc-500">
                   {managerName} · {email}
@@ -416,7 +450,6 @@ export default function CompanyMyPage() {
                   variant="blue"
                   size="md"
                   className="h-12 rounded-2xl px-6 text-[15px] shadow-md transition-transform active:scale-95"
-                  // ✅ 회사 ID를 포함한 URL로 이동
                   onClick={() => myCid && navigate(ROUTES.companyEdit(myCid))}
                 >
                   정보 수정
@@ -851,7 +884,7 @@ function CalendarSkeleton() {
         {Array.from({ length: 42 }).map((_, i) => (
           <div
             key={i}
-            className="min-h-[78px] animate-pulse rounded-2xl border border-zinc-200 bg-white/60 p-3"
+            className="min-h-19.5 animate-pulse rounded-2xl border border-zinc-200 bg-white/60 p-3"
           >
             <div className="h-4 w-8 rounded bg-zinc-200/70" />
             <div className="mt-3 h-3 w-20 rounded bg-zinc-200/50" />

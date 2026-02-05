@@ -79,63 +79,12 @@ function SignupPage() {
             setAllCompanies(response.data.data);
           }
         } catch (error) {
-          console.error('Failed to fetch companies:', error);
+          console.error(error);
         }
       };
       fetchCompanies();
     }
   }, [userType]);
-
-  const handleCompanyNameChange = (value: string) => {
-    setFormData((prev) => {
-      if (isCompanySelected && value !== selectedCompany.corpName) {
-        return {
-          ...prev,
-          companyName: value,
-          address: '',
-          industry: '',
-          employeeCount: '',
-          homepageUrl: '',
-          introduction: '',
-        };
-      }
-      return { ...prev, companyName: value };
-    });
-
-    if (isCompanySelected && value !== selectedCompany.corpName) {
-      setSelectedCompany(null);
-    }
-
-    if (value.trim()) {
-      const filtered = allCompanies.filter((company) =>
-        company.corpName.toLowerCase().includes(value.toLowerCase()),
-      );
-      setFilteredCompanies(filtered);
-      setShowCompanyDropdown(true);
-    } else {
-      setShowCompanyDropdown(false);
-    }
-  };
-
-  const handleSelectCompany = (company: CompanyApiData) => {
-    setFormData((prev) => ({
-      ...prev,
-      companyName: company.corpName,
-      address: company.corpAddr || '',
-      industry: company.busiSize || '',
-      employeeCount: company.totPsncnt || '',
-      homepageUrl: company.homePg || '',
-      introduction: company.busiCont || '',
-    }));
-    setSelectedCompany(company);
-    setShowCompanyDropdown(false);
-    setErrors((prev) => {
-      const newErrors = { ...prev };
-      delete newErrors.companyName;
-      delete newErrors.address;
-      return newErrors;
-    });
-  };
 
   const validateField = (field: string, value: string, currentFormData = formData) => {
     let error = '';
@@ -168,7 +117,7 @@ function SignupPage() {
       else if (value !== currentFormData.password) error = '비밀번호가 일치하지 않습니다.';
     }
 
-    if (['name', 'phone', 'companyName', 'businessNumber'].includes(field) && !value) {
+    if (['name', 'phone', 'companyName', 'businessNumber', 'address'].includes(field) && !value) {
       error = '필수 입력 항목입니다.';
     }
 
@@ -176,6 +125,59 @@ function SignupPage() {
       const newErrors = { ...prev };
       delete newErrors.submit;
       return { ...newErrors, [field]: error };
+    });
+  };
+
+  const handleCompanyNameChange = (value: string) => {
+    setFormData((prev) => {
+      if (isCompanySelected && value !== selectedCompany.corpName) {
+        return {
+          ...prev,
+          companyName: value,
+          address: '',
+          industry: '',
+          employeeCount: '',
+          homepageUrl: '',
+          introduction: '',
+        };
+      }
+      return { ...prev, companyName: value };
+    });
+
+    if (isCompanySelected && value !== selectedCompany.corpName) {
+      setSelectedCompany(null);
+    }
+
+    if (value.trim()) {
+      const filtered = allCompanies.filter((company) =>
+        company.corpName.toLowerCase().includes(value.toLowerCase()),
+      );
+      setFilteredCompanies(filtered);
+      setShowCompanyDropdown(true);
+    } else {
+      setShowCompanyDropdown(false);
+    }
+
+    validateField('companyName', value, { ...formData, companyName: value });
+  };
+
+  const handleSelectCompany = (company: CompanyApiData) => {
+    setFormData((prev) => ({
+      ...prev,
+      companyName: company.corpName,
+      address: company.corpAddr || '',
+      industry: company.busiSize || '',
+      employeeCount: company.totPsncnt || '',
+      homepageUrl: company.homePg || '',
+      introduction: company.busiCont || '',
+    }));
+    setSelectedCompany(company);
+    setShowCompanyDropdown(false);
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.companyName;
+      delete newErrors.address;
+      return newErrors;
     });
   };
 
@@ -209,7 +211,7 @@ function SignupPage() {
       try {
         await deleteUser(user);
       } catch (deleteErr) {
-        console.error('롤백 실패:', deleteErr);
+        console.error(deleteErr);
       }
     }
     handleApiError(error);
@@ -238,6 +240,7 @@ function SignupPage() {
             'phone',
             'companyName',
             'businessNumber',
+            'address',
           ];
 
     const newErrors: Record<string, string> = { ...errors };
@@ -274,6 +277,7 @@ function SignupPage() {
       );
       const uid = userCredential.user.uid;
       const commonData = { email: formData.email, password: formData.password, uid };
+
       if (userType === 'APPLICANT') {
         signupMutate(
           {
@@ -298,33 +302,9 @@ function SignupPage() {
           },
         );
       } else {
-        let targetCid = selectedCompany ? selectedCompany.cid : null;
-
-        if (!selectedCompany) {
-          try {
-            const newCompanyResponse = await axios.post('/api/companies', {
-              cid: formData.businessNumber.replace(/-/g, ''),
-              corpName: formData.companyName,
-              totPsncnt: formData.employeeCount,
-              corpAddr: formData.address,
-              busiSize: formData.industry,
-              homePg: formData.homepageUrl,
-              busiCont: formData.introduction,
-            });
-
-            if (newCompanyResponse.data && newCompanyResponse.data.data) {
-              targetCid = newCompanyResponse.data.data;
-            } else {
-              targetCid = formData.businessNumber.replace(/-/g, '');
-            }
-          } catch (apiErr) {
-            console.error('Company creation failed', apiErr);
-            await deleteUser(userCredential.user);
-            handleApiError(apiErr);
-            setIsSubmitting(false);
-            return;
-          }
-        }
+        const targetCid = selectedCompany
+          ? selectedCompany.cid
+          : formData.businessNumber.replace(/-/g, '');
 
         const companyData = {
           ...commonData,
@@ -671,15 +651,18 @@ function SignupPage() {
                     ref={(el) => {
                       fieldRefs.current.address = el;
                     }}
+                    animate={shakeField === 'address' ? { x: [0, -10, 10, -10, 10, 0] } : { x: 0 }}
                     className="relative col-span-2"
                   >
                     <Input
-                      label="기업 위치 (주소)"
+                      label="기업 위치 (주소) *"
                       placeholder="상세 주소를 입력하세요"
                       value={formData.address}
                       onChange={(e) => handleInputChange('address', e.target.value)}
                       disabled={isLoading || isCompanySelected}
+                      error={errors.address ? ' ' : undefined}
                     />
+                    <WarningBubble message={errors.address} isVisible={Boolean(errors.address)} />
                   </motion.div>
 
                   <div className="relative">
