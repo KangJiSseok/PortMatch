@@ -157,7 +157,7 @@ function EvaluationCriteria() {
 
         {open && (
           <div className="border-t border-gray-100 bg-[#fcfcfc] px-5 py-4">
-            <p className="mb-4 max-w-[80ch] text-[13px] leading-relaxed text-[#4a4a4a]">
+            <p className="mb-4 max-w-[80ch] text-[13px] leading-relaxed break-keep text-[#4a4a4a]">
               이 리포트는 입력한 검색 문장을 기준으로, 추천 후보자들의 포트폴리오 내용을 비교해
               <br />
               <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
@@ -177,7 +177,9 @@ function EvaluationCriteria() {
                     style={{ backgroundColor: item.color }}
                   />
                   <h5 className="mb-1 text-[13px] font-black text-[#1a1a1a]">{item.id}</h5>
-                  <p className="text-[11px] leading-[1.5] font-medium text-gray-500">{item.desc}</p>
+                  <p className="text-[11px] leading-[1.5] break-keep font-medium text-gray-500">
+                    {item.desc}
+                  </p>
                 </div>
               ))}
             </div>
