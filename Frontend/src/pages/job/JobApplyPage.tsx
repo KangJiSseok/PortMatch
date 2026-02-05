@@ -4,15 +4,16 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import Button from '../../components/Button/Button';
 import { fetchJobPostDetail } from '../../api/applyJobPost';
+import { useMessenger } from '../../hooks/useMessenger';
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
 type ApiResult = Awaited<ReturnType<typeof fetchJobPostDetail>>;
 type JobPostDetailData = NonNullable<ApiResult>;
 
-// API 데이터 타입 확장
 type JobPostWithExtras = JobPostDetailData['jobPost'] & {
   active?: number;
-  applied?: boolean; // 백엔드에서 지원 여부를 보내준다고 가정
+  applied?: boolean;
+  userId?: number;
 };
 
 type ResumeItem = {
@@ -158,6 +159,7 @@ function Modal({
 export default function JobApplyPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { sendSystemNotification } = useMessenger();
 
   const jobPostId = Number(id);
 
@@ -172,7 +174,6 @@ export default function JobApplyPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // [추가] 지원 여부 상태 (초기값 false)
   const [hasApplied, setHasApplied] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -235,7 +236,6 @@ export default function JobApplyPage() {
       setData(res);
       setStatus('success');
 
-      // [추가] 지원 여부 초기화 (백엔드 데이터 기반)
       const jp = res.jobPost as JobPostWithExtras;
       setHasApplied(!!jp.applied);
 
@@ -257,30 +257,20 @@ export default function JobApplyPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // [수정] canApply 로직: 텍스트 의존성 제거 및 상시채용/마감 정확히 판별
   const canApply = useMemo(() => {
     if (!data?.jobPost) return false;
 
     const jp = data.jobPost as JobPostWithExtras;
     const status = (jp.status ?? 'OPEN').toUpperCase();
 
-    // 1. 공고 상태가 OPEN이 아니면 지원 불가
     if (status !== 'OPEN') return false;
-
-    // 2. active가 0(비활성)이면 지원 불가
     if (jp.active === 0) return false;
-
-    // 3. 상시채용(deadline 없음)이면 지원 가능
     if (!jp.deadline) return true;
 
-    // 4. 마감일 체크 (오늘 날짜와 비교)
     const end = new Date(`${jp.deadline}T23:59:59`);
     const now = new Date();
 
-    // 날짜 형식이 잘못된 경우 -> 상시채용으로 처리
     if (isNaN(end.getTime())) return true;
-
-    // 현재 시간이 마감 시간을 지났으면 지원 불가
     return now <= end;
   }, [data]);
 
@@ -294,11 +284,7 @@ export default function JobApplyPage() {
     }
 
     if (!selectedResumeId) {
-      setToast('이력서를 먼저 선택해줘!');
-      return;
-    }
-    if (!canApply) {
-      setToast('현재 공고 상태/마감일 때문에 지원할 수 없어요.');
+      setToast('이력서를 선택해주세요!');
       return;
     }
 
@@ -317,18 +303,41 @@ export default function JobApplyPage() {
         throw new Error('지원에 실패했습니다.');
       }
 
+      // [핵심 수정] 알림 발송을 먼저 완수하고 성공 모달을 띄웁니다.
+      // 로그를 통해 실제 어떤 CID로 가는지 확인합니다.
+      const rawCid = data?.company?.cid;
+      const jobTitle = data?.jobPost?.title;
+
+      if (rawCid) {
+        const finalCid = String(rawCid).trim(); // 공백 제거 및 확실한 문자열화
+        console.log(`[Apply] 알림 전송 시도 - CID: ${finalCid}, Job: ${jobTitle}`);
+
+        try {
+          await sendSystemNotification(
+            finalCid,
+            `[지원 알림] 새로운 지원자가 [${jobTitle}] 공고에 지원했습니다.`,
+            jobPostId,
+          );
+          console.log('[Apply] 알림 전송 함수 실행 완료');
+        } catch (notifyError) {
+          // 알림 전송 실패가 지원 전체의 실패는 아니므로 에러만 로그로 남깁니다.
+          console.error('[Apply] 알림 전송 중 오류:', notifyError);
+        }
+      } else {
+        console.warn('[Apply] 알림 전송 스킵: 기업 CID가 없습니다.', data?.company);
+      }
+
       setHasApplied(true);
       setDoneModalOpen(true);
     } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : '지원에 실패했어요. 잠시 후 다시 시도해주세요.';
+      const msg = error instanceof Error ? error.message : '지원에 실패했습니다.';
       setToast(msg);
+      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // [추가] 지원 취소 함수 (DELETE 요청)
   const cancel = async () => {
     if (!Number.isFinite(jobPostId)) return;
     if (isSubmitting) return;
@@ -598,7 +607,6 @@ export default function JobApplyPage() {
                 </div>
 
                 <div className="mt-8 space-y-3">
-                  {/* 상태에 따라 지원 또는 취소 버튼 표시 */}
                   {hasApplied ? (
                     <Button
                       type="button"
