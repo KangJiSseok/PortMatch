@@ -342,10 +342,11 @@ export default function JobApplyPage() {
       }
 
       const rawCid = data?.company?.cid;
-      const jobTitle = data?.jobPost?.title;
+      const jobTitle = data?.jobPost?.title || '공고';
 
       if (rawCid) {
         const finalCid = String(rawCid).trim();
+        console.log(`Sending Notification to CID: ${finalCid}`);
         try {
           await sendSystemNotification(
             finalCid,
@@ -353,8 +354,10 @@ export default function JobApplyPage() {
             jobPostId,
           );
         } catch (notifyError) {
-          console.error(notifyError);
+          console.error('Failed to send notification:', notifyError);
         }
+      } else {
+        console.warn('No CID found for notification.');
       }
 
       setHasApplied(true);
