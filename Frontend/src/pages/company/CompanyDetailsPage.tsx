@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Globe, MapPin, Building2 } from 'lucide-react';
+import { Heart, Globe, MapPin, Building2, Edit } from 'lucide-react';
 import Button from '../../components/Button/Button';
 
 interface UserData {
@@ -10,6 +10,7 @@ interface UserData {
   email: string;
   name: string;
   role: string;
+  cid?: string;
 }
 
 interface ApiResponse<T> {
@@ -65,13 +66,19 @@ interface CompanyBackendData {
 const DEFAULT_LOGO =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Logo%3C/text%3E%3C/svg%3E";
 
-const calculateDDay = (endDate: string): string => {
+const calculateDDay = (endDate: string | null): string => {
+  if (!endDate || endDate === '상시채용' || endDate === 'null') return '상시채용';
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const target = new Date(endDate);
   target.setHours(0, 0, 0, 0);
+
+  if (isNaN(target.getTime())) return '상시채용';
+
   const diffTime = target.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
   if (diffDays === 0) return '오늘 마감';
   if (diffDays < 0) return '마감됨';
   return `D-${diffDays}`;
@@ -91,6 +98,8 @@ function CompanyDetailsPage() {
   });
 
   const isApplicant = currentUser?.role === 'APPLICANT';
+  const isOwner =
+    currentUser?.role === 'COMPANY' && company && String(currentUser?.cid) === String(company.id);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -346,7 +355,7 @@ function CompanyDetailsPage() {
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-pure-white mb-3 line-clamp-1 w-full text-left text-5xl font-black tracking-tight"
+                  className="text-pure-white mb-3 line-clamp-2 w-full pb-2 text-left text-5xl leading-tight font-black tracking-tight"
                 >
                   {company.name}
                 </motion.h1>
@@ -365,52 +374,66 @@ function CompanyDetailsPage() {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
-                className="flex shrink-0 items-center justify-end gap-3 pb-2"
+                className="flex w-64 shrink-0 flex-col items-end justify-end gap-3 pb-2"
               >
-                <Button
-                  variant="light"
-                  size="lg"
-                  disabled={!company.website}
-                  className={`group h-14 rounded-2xl px-6 transition-all ${
-                    company.website
-                      ? 'cursor-pointer bg-white/10 text-white ring-1 ring-white/10 hover:bg-white/20 hover:text-white'
-                      : 'cursor-not-allowed bg-white/5 text-white/30 ring-1 ring-white/5 hover:bg-white/5 hover:text-white/30'
-                  }`}
-                  onClick={() => {
-                    if (company.website) {
-                      const targetUrl = company.website.match(/^https?:\/\//)
-                        ? company.website
-                        : `https://${company.website}`;
-                      window.open(targetUrl, '_blank');
-                    }
-                  }}
-                >
-                  <Globe
-                    size={18}
-                    className={`mr-2 ${company.website ? 'opacity-70 group-hover:opacity-100' : 'opacity-30'}`}
-                  />
-                  홈페이지
-                </Button>
-                <motion.button
-                  disabled={!isApplicant || isScraping}
-                  onClick={handleScrap}
-                  whileHover={isApplicant && !isScraping ? { scale: 1.05 } : {}}
-                  whileTap={isApplicant && !isScraping ? { scale: 0.95 } : {}}
-                  className={`flex h-14 w-14 items-center justify-center rounded-2xl border transition-all duration-300 ${
-                    !isApplicant
-                      ? 'cursor-not-allowed border-transparent bg-white/5 text-white/40 grayscale'
-                      : company.isScrapped
-                        ? 'border-red-500/50 bg-red-500/10 text-red-400'
-                        : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
-                  }`}
-                >
-                  <Heart
-                    size={24}
-                    fill={company.isScrapped ? 'currentColor' : 'none'}
-                    stroke={company.isScrapped ? 'currentColor' : 'currentColor'}
-                    strokeWidth={2.5}
-                  />
-                </motion.button>
+                {isOwner && (
+                  <Button
+                    variant="light"
+                    size="lg"
+                    className="group mb-2 flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl bg-white/10 px-4 text-lg text-white ring-1 ring-white/10 transition-all hover:bg-white/20 hover:text-white"
+                    onClick={() => navigate(`/companies/${company.id}/edit`)}
+                  >
+                    <Edit size={20} className="mr-2 opacity-70 group-hover:opacity-100" />
+                    정보 수정하기
+                  </Button>
+                )}
+
+                <div className="flex w-full items-center gap-3">
+                  <Button
+                    variant="light"
+                    size="lg"
+                    disabled={!company.website}
+                    className={`group h-14 w-full flex-1 rounded-2xl px-6 transition-all ${
+                      company.website
+                        ? 'cursor-pointer bg-white/10 text-white ring-1 ring-white/10 hover:bg-white/20 hover:text-white'
+                        : 'cursor-not-allowed bg-white/5 text-white/30 ring-1 ring-white/5 hover:bg-white/5 hover:text-white/30'
+                    }`}
+                    onClick={() => {
+                      if (company.website) {
+                        const targetUrl = company.website.match(/^https?:\/\//)
+                          ? company.website
+                          : `https://${company.website}`;
+                        window.open(targetUrl, '_blank');
+                      }
+                    }}
+                  >
+                    <Globe
+                      size={18}
+                      className={`mr-2 ${company.website ? 'opacity-70 group-hover:opacity-100' : 'opacity-30'}`}
+                    />
+                    홈페이지
+                  </Button>
+                  <motion.button
+                    disabled={!isApplicant || isScraping}
+                    onClick={handleScrap}
+                    whileHover={isApplicant && !isScraping ? { scale: 1.05 } : {}}
+                    whileTap={isApplicant && !isScraping ? { scale: 0.95 } : {}}
+                    className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 ${
+                      !isApplicant
+                        ? 'cursor-not-allowed border-transparent bg-white/5 text-white/40 grayscale'
+                        : company.isScrapped
+                          ? 'border-red-500/50 bg-red-500/10 text-red-400'
+                          : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    <Heart
+                      size={24}
+                      fill={company.isScrapped ? 'currentColor' : 'none'}
+                      stroke={company.isScrapped ? 'currentColor' : 'currentColor'}
+                      strokeWidth={2.5}
+                    />
+                  </motion.button>
+                </div>
               </motion.div>
             </div>
           </div>

@@ -22,7 +22,8 @@ const ROUTES = {
     `/company/jobs/${jobPostId}/applicants/${applicationId}/schedule`,
   resumeView: (applicantId: number) => `/resume/${applicantId}`,
   jobPostDetail: (jobPostId: number) => `/job-posts/${jobPostId}`,
-  companyEdit: '/company/profile',
+  companyEdit: (companyId: string) => `/companies/${companyId}/edit`,
+  companyDetail: (companyId: string) => `/companies/${companyId}`,
 } as const;
 
 type QueryState<T> = {
@@ -42,6 +43,19 @@ type UserProfileData = {
   companyName?: string;
   managerName?: string;
 };
+
+// ✅ 추가: 기업 상세 정보 타입 정의
+interface CompanyDetailData {
+  cid: string;
+  corpName: string;
+  totPsncnt: string;
+  busiSize: string;
+  yrSalesAmt: string;
+  corpAddr: string;
+  homePg: string;
+  busiCont: string;
+  logo: string;
+}
 
 type JobPostView = {
   id: number;
@@ -99,7 +113,9 @@ function daysUntil(iso: string) {
 }
 
 function ddayLabel(deadlineAt?: string) {
-  if (!deadlineAt) return null;
+  if (!deadlineAt || deadlineAt === '상시채용') {
+    return { text: '상시채용', tone: 'always' as const, left: 999 };
+  }
   const left = daysUntil(deadlineAt);
   if (left < 0) return { text: '마감', tone: 'closed' as const, left };
   if (left === 0) return { text: 'D-DAY', tone: 'urgent' as const, left };
@@ -139,7 +155,6 @@ function formatScheduleHint(startIso: string) {
   return null;
 }
 
-/** ✅ React Query 느낌 미니 훅 */
 function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -165,6 +180,7 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
 
   useEffect(() => {
     void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return { data, isLoading, isError, errorMessage, refetch: run };
@@ -190,6 +206,20 @@ async function fetchMyProfile(): Promise<UserProfileData> {
   };
 }
 
+// ✅ 추가: 기업 상세 정보 조회 API 함수
+async function fetchCompanyDetail(cid?: string): Promise<CompanyDetailData | null> {
+  if (!cid) return null;
+
+  const response = await axios.get(`/api/companies/${cid}`);
+  const result = response.data;
+
+  if (!result.status) {
+    throw new Error(result.message || '기업 정보를 불러오지 못했습니다.');
+  }
+
+  return result.data;
+}
+
 async function fetchCompanyJobPosts(cid?: string): Promise<JobPostView[]> {
   if (!cid) return [];
 
@@ -200,14 +230,26 @@ async function fetchCompanyJobPosts(cid?: string): Promise<JobPostView[]> {
     throw new Error(result.message || '공고 목록을 불러오지 못했습니다.');
   }
 
-  return result.data.map((item: JobPostApiItem) => ({
-    id: item.id,
-    postingTitle: item.title,
-    position: item.detail.length > 20 ? item.detail.substring(0, 20) + '...' : item.detail,
-    createdAt: item.startDate,
-    deadlineAt: item.endDate,
-    companyName: item.company?.corpName,
-  }));
+  return result.data.map((item: JobPostApiItem) => {
+    let detailText = item.detail;
+    try {
+      const parsed = JSON.parse(item.detail);
+      if (parsed && typeof parsed === 'object' && parsed.requirement_text) {
+        detailText = parsed.requirement_text;
+      }
+    } catch {
+      detailText = item.detail;
+    }
+
+    return {
+      id: item.id,
+      postingTitle: item.title,
+      position: detailText.length > 20 ? detailText.substring(0, 20) + '...' : detailText,
+      createdAt: item.startDate,
+      deadlineAt: item.endDate,
+      companyName: item.company?.corpName,
+    };
+  });
 }
 
 async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
@@ -229,8 +271,10 @@ export default function CompanyMyPage() {
   const navigate = useNavigate();
   const profileQuery = useQueryLike(fetchMyProfile, []);
   const myCid = profileQuery.data?.cid;
-  const jobPostQuery = useQueryLike(() => fetchCompanyJobPosts(myCid), [myCid]);
 
+  // ✅ 추가: CID를 기반으로 기업 상세 정보 직접 조회
+  const companyQuery = useQueryLike(() => fetchCompanyDetail(myCid), [myCid]);
+  const jobPostQuery = useQueryLike(() => fetchCompanyJobPosts(myCid), [myCid]);
   const interviewQuery = useQueryLike(fetchCompanyInterviews, []);
 
   const [entered, setEntered] = useState(false);
@@ -241,8 +285,12 @@ export default function CompanyMyPage() {
     return () => window.cancelAnimationFrame(raf);
   }, []);
 
+  // ✅ 수정됨: 기업 정보를 companyQuery에서 1순위로 가져옴
   const displayCompanyName =
-    jobPostQuery.data?.[0]?.companyName ?? profileQuery.data?.companyName ?? '기업명 로딩중...';
+    companyQuery.data?.corpName ??
+    jobPostQuery.data?.[0]?.companyName ??
+    profileQuery.data?.companyName ??
+    '기업명 로딩중...';
 
   const managerName = profileQuery.data?.managerName ?? '-';
   const email = profileQuery.data?.email ?? '-';
@@ -254,8 +302,8 @@ export default function CompanyMyPage() {
 
     const sorted = [...list].sort((a, b) => {
       if (jobPostSort === 'latest') return a.createdAt > b.createdAt ? -1 : 1;
-      const aHas = !!a.deadlineAt;
-      const bHas = !!b.deadlineAt;
+      const aHas = !!a.deadlineAt && a.deadlineAt !== '상시채용';
+      const bHas = !!b.deadlineAt && b.deadlineAt !== '상시채용';
       if (aHas && bHas) return a.deadlineAt! < b.deadlineAt! ? -1 : 1;
       if (aHas && !bHas) return -1;
       if (!aHas && bHas) return 1;
@@ -268,9 +316,10 @@ export default function CompanyMyPage() {
         key: p.id,
         title: p.postingTitle,
         subtitle: p.position,
-        meta: p.deadlineAt
-          ? `마감 ${formatDateTime(p.deadlineAt)}`
-          : `등록 ${formatDateTime(p.createdAt)}`,
+        meta:
+          p.deadlineAt && p.deadlineAt !== '상시채용'
+            ? `마감 ${formatDateTime(p.deadlineAt)}`
+            : `등록 ${formatDateTime(p.createdAt)}`,
         badge: dday ? (
           <span
             className={[
@@ -279,7 +328,9 @@ export default function CompanyMyPage() {
                 ? 'bg-red-50 text-red-600'
                 : dday.tone === 'closed'
                   ? 'bg-zinc-100 text-zinc-500'
-                  : 'bg-zinc-100 text-zinc-600',
+                  : dday.tone === 'always'
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'bg-zinc-100 text-zinc-600',
             ].join(' ')}
           >
             {dday.tone === 'urgent' ? `마감임박 ${dday.text}` : dday.text}
@@ -325,10 +376,10 @@ export default function CompanyMyPage() {
   });
   const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
 
-  const interviewEvents = interviewQuery.data ?? [];
   const interviewEventMap = useMemo(() => {
+    const events = interviewQuery.data ?? [];
     const m = new Map<string, InterviewEvent[]>();
-    for (const ev of interviewEvents) {
+    for (const ev of events) {
       const ymd = toYmdFromIso(ev.scheduledAt);
       const list = m.get(ymd) ?? [];
       list.push(ev);
@@ -339,7 +390,7 @@ export default function CompanyMyPage() {
       m.set(k, list);
     }
     return m;
-  }, [interviewEvents]);
+  }, [interviewQuery.data]);
 
   const selectedEvents = useMemo(
     () => interviewEventMap.get(selectedDate) ?? [],
@@ -357,13 +408,18 @@ export default function CompanyMyPage() {
         <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
           <div className="relative p-10">
             <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
-            <div className="relative flex flex-nowrap items-start justify-between gap-5">
+            <div className="relative flex flex-nowrap items-center justify-between gap-5">
               <div>
                 <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
                   CORPORATE DASHBOARD
                 </p>
-                <h1 className="mt-2 text-4xl font-black tracking-wide">
-                  {profileQuery.isLoading ? '불러오는 중…' : displayCompanyName}
+                <h1
+                  className="mt-2 cursor-pointer text-4xl font-black tracking-wide transition-colors hover:text-blue-600/80"
+                  onClick={() => myCid && navigate(ROUTES.companyDetail(myCid))}
+                >
+                  {companyQuery.isLoading && profileQuery.isLoading
+                    ? '불러오는 중…'
+                    : displayCompanyName}
                 </h1>
                 <p className="mt-3 text-sm font-semibold text-zinc-500">
                   {managerName} · {email}
@@ -374,8 +430,8 @@ export default function CompanyMyPage() {
                 <Button
                   variant="blue"
                   size="md"
-                  className="rounded-2xl shadow-md"
-                  onClick={() => navigate(ROUTES.companyEdit)}
+                  className="h-12 rounded-2xl px-6 text-[15px] shadow-md transition-transform active:scale-95"
+                  onClick={() => myCid && navigate(ROUTES.companyEdit(myCid))}
                 >
                   정보 수정
                 </Button>
@@ -830,7 +886,7 @@ function CalendarSkeleton() {
         {Array.from({ length: 42 }).map((_, i) => (
           <div
             key={i}
-            className="min-h-[78px] animate-pulse rounded-2xl border border-zinc-200 bg-white/60 p-3"
+            className="min-h-19.5 animate-pulse rounded-2xl border border-zinc-200 bg-white/60 p-3"
           >
             <div className="h-4 w-8 rounded bg-zinc-200/70" />
             <div className="mt-3 h-3 w-20 rounded bg-zinc-200/50" />

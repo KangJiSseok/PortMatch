@@ -37,6 +37,7 @@ import JobApplicationManagementPage from './pages/job/JobApplicationManagementPa
 import JobApplyPage from './pages/job/JobApplyPage';
 
 import CompanyDetailsPage from './pages/company/CompanyDetailsPage';
+import CompanyEditPage from './pages/company/CompanyEditPage';
 import CompanyProfilePage from './pages/company/CompanyProfilePage';
 import CompanyProfileEditPage from './pages/company/CompanyProfileEditPage';
 import RecommendCandidatesPage from './pages/company/RecommendCandidatesPage';
@@ -170,6 +171,14 @@ const router = createBrowserRouter([
       {
         path: 'companies/:companyId',
         element: <CompanyDetailsPage />,
+      },
+      {
+        path: 'companies/:companyId/edit',
+        element: (
+          <AuthGuard mode="COMPANY">
+            <CompanyEditPage />
+          </AuthGuard>
+        ),
       },
       {
         path: 'resumes',
