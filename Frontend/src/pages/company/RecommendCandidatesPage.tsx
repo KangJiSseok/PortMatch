@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { X, Info, FileText, ChevronDown, Users, Search, SlidersHorizontal } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useRecommendCandidates } from '@/hooks/useRecommendCandidates';
@@ -680,15 +680,40 @@ function CandidateCard({
 
 export default function RecommendCandidatesPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // URL 파라미터에서 초기값 읽기 (뒤로가기 시 자동 반영)
+  const urlQuery = searchParams.get('q') || '';
+  const urlLimit = searchParams.get('limit') || '10';
+  const urlStacks = searchParams.get('stacks') || '';
 
   // 검색 폼
-  const [queryInput, setQueryInput] = useState('');
-  const [requestQuery, setRequestQuery] = useState('');
+  const [queryInput, setQueryInput] = useState(urlQuery);
   const DEFAULT_LIMIT = 10;
-  const [limitInput, setLimitInput] = useState(String(DEFAULT_LIMIT));
+  const [limitInput, setLimitInput] = useState(urlLimit);
   const [stackInput, setStackInput] = useState('');
-  const [selectedStacks, setSelectedStacks] = useState<StackItem[]>([]);
+  const [selectedStacks, setSelectedStacks] = useState<StackItem[]>(() => {
+    if (!urlStacks) return [];
+    try {
+      return JSON.parse(decodeURIComponent(urlStacks));
+    } catch {
+      return [];
+    }
+  });
   const [duplicateStackError, setDuplicateStackError] = useState(false);
+
+  // requestQuery는 URL 파라미터 기반으로 계산
+  const buildRequestQuery = useCallback((query: string, stacks: StackItem[]) => {
+    if (!query.trim()) return '';
+    const techList = stacks.map((s) => s.stackName).filter(Boolean);
+    const techPrompt =
+      techList.length > 0
+        ? `\n\n[기술 스택 입력]\n- 이 항목은 검색 문장과 별도로 입력된 기술 스택입니다.\n- 기술 스택 목록: ${techList.join(', ')}`
+        : '';
+    return `${query}${techPrompt}`;
+  }, []);
+
+  const [requestQuery, setRequestQuery] = useState(() => buildRequestQuery(urlQuery, selectedStacks));
 
   // 페이지네이션
   const PAGE_SIZE = 8;
@@ -746,11 +771,44 @@ export default function RecommendCandidatesPage() {
   const displayCards = hasRequestQuery ? cards : [];
   const displayResponse = hasRequestQuery ? response : undefined;
 
+  // URL 파라미터 업데이트 함수
+  const updateUrlParams = useCallback((query: string, limit: string, stacks: StackItem[]) => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (limit && limit !== '10') params.set('limit', limit);
+    if (stacks.length > 0) params.set('stacks', encodeURIComponent(JSON.stringify(stacks)));
+    navigate({ search: params.toString() ? `?${params.toString()}` : '' }, { replace: false });
+  }, [navigate]);
+
+  // URL 파라미터 변경 시 상태 동기화 (뒤로가기 대응)
+  useEffect(() => {
+    const newQuery = searchParams.get('q') || '';
+    const newLimit = searchParams.get('limit') || '10';
+    const newStacksStr = searchParams.get('stacks') || '';
+
+    let newStacks: StackItem[] = [];
+    if (newStacksStr) {
+      try {
+        newStacks = JSON.parse(decodeURIComponent(newStacksStr));
+      } catch {
+        newStacks = [];
+      }
+    }
+
+    setQueryInput(newQuery);
+    setLimitInput(newLimit);
+    setSelectedStacks(newStacks);
+
+    const newRequestQuery = buildRequestQuery(newQuery, newStacks);
+    setRequestQuery(newRequestQuery);
+  }, [searchParams, buildRequestQuery]);
+
   const runSearch = () => {
     const nextQuery = queryInput.trim();
     setPage(1);
     if (!nextQuery) {
       setRequestQuery('');
+      navigate({ search: '' }, { replace: false });
       return;
     }
     const nextLimit = Number(limitInput);
@@ -758,17 +816,13 @@ export default function RecommendCandidatesPage() {
       alert('1 이상의 수만 입력 가능합니다.');
       return;
     }
-    const techList = selectedStacks.map((s) => s.stackName).filter(Boolean);
-    const techPrompt =
-      techList.length > 0
-        ? `\n\n[기술 스택 입력]\n- 이 항목은 검색 문장과 별도로 입력된 기술 스택입니다.\n- 기술 스택 목록: ${techList.join(', ')}`
-        : '';
-    const finalQuery = `${nextQuery}${techPrompt}`;
+    const finalQuery = buildRequestQuery(nextQuery, selectedStacks);
     if (finalQuery === requestQuery) {
       refetch();
       return;
     }
-    setRequestQuery(finalQuery);
+    // URL 파라미터 업데이트 (이로 인해 useEffect가 트리거되어 requestQuery도 업데이트됨)
+    updateUrlParams(nextQuery, limitInput, selectedStacks);
   };
 
   const handleResumeView = async (candidate: CandidateCardModel) => {

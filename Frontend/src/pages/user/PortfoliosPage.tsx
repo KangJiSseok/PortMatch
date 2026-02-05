@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, createSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -92,11 +92,13 @@ function PortfoliosPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // URL 파라미터에서 초기값 읽기
-  const initialStep = (searchParams.get('step') as AnalysisStep) || 'upload';
-  const initialPortfolioId = searchParams.get('portfolioId');
+  // URL 파라미터에서 step과 portfolioId 파생 (뒤로가기 시 자동 반영)
+  const urlStep = (searchParams.get('step') as 'upload' | 'result') || 'upload';
+  const urlPortfolioId = searchParams.get('portfolioId');
 
-  const [step, setStep] = useState<AnalysisStep>(initialStep);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const step: AnalysisStep = isAnalyzing ? 'analyzing' : urlStep;
+
   const [isDragging, setIsDragging] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -108,7 +110,7 @@ function PortfoliosPage() {
   });
   const [savedPortfolios, setSavedPortfolios] = useState<SavedPortfolio[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | number | null>(
-    initialPortfolioId,
+    urlPortfolioId,
   );
   const [isListOpen, setIsListOpen] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -134,9 +136,13 @@ function PortfoliosPage() {
 
   const persistResultParams = useCallback(
     (portfolioId: string | number) => {
-      setSearchParams({ step: 'result', portfolioId: String(portfolioId) });
+      const search = createSearchParams({
+        step: 'result',
+        portfolioId: String(portfolioId),
+      }).toString();
+      navigate({ pathname: '/portfolios', search: `?${search}` });
     },
-    [setSearchParams],
+    [navigate],
   );
 
   const handleViewResults = useCallback(async () => {
@@ -153,7 +159,6 @@ function PortfoliosPage() {
         return;
       }
       setAnalysisData(mapAnalysisData(result));
-      setStep('result');
       persistResultParams(selectedPortfolioId);
     } catch (err) {
       setModal({
@@ -166,24 +171,24 @@ function PortfoliosPage() {
     }
   }, [selectedPortfolioId, persistResultParams]);
 
-  // 초기 로드 시 URL에 step=result가 있으면 결과 가져오기
+  // URL 파라미터 변경 시 (뒤로가기 포함) 분석 결과 가져오기
   useEffect(() => {
-    if (initialStep !== 'result' || !initialPortfolioId) return;
+    if (urlStep !== 'result' || !urlPortfolioId) return;
 
-    const fetchInitialResults = async () => {
+    const fetchResults = async () => {
       try {
-        const result = await portfolioApi.getAnalysisResult(initialPortfolioId);
+        const result = await portfolioApi.getAnalysisResult(urlPortfolioId);
         if (result) {
           setAnalysisData(mapAnalysisData(result));
+          setSelectedPortfolioId(urlPortfolioId);
         }
       } catch (err) {
         console.error(err);
       }
     };
 
-    fetchInitialResults();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchResults();
+  }, [urlStep, urlPortfolioId]);
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     if (ref.current) {
@@ -345,7 +350,7 @@ function PortfoliosPage() {
 
   const handleAnalysis = async () => {
     if (!selectedPortfolioId) return;
-    setStep('analyzing');
+    setIsAnalyzing(true);
     setProgress(0);
 
     const progressInterval = setInterval(() => {
@@ -382,7 +387,8 @@ function PortfoliosPage() {
               : p,
           ),
         );
-        setStep('result');
+        setIsAnalyzing(false);
+        persistResultParams(selectedPortfolioId);
       }, 1000);
     } catch (err) {
       clearInterval(progressInterval);
@@ -392,7 +398,7 @@ function PortfoliosPage() {
         message: '분석 처리 중 오류가 발생했거나 시간이 초과되었습니다.',
         type: 'alert',
       });
-      setStep('upload');
+      setIsAnalyzing(false);
       console.error(err);
     }
   };
@@ -1112,9 +1118,9 @@ function PortfoliosPage() {
                     className="flex-[1] rounded-2xl py-5! text-lg! font-black"
                     onClick={() => {
                       setSelectedPortfolioId(null);
-                      setStep('upload');
                       setAnalysisData(null);
                       setProgress(0);
+                      navigate('/portfolios');
                     }}
                   >
                     다시 분석하기
