@@ -70,6 +70,8 @@ services:
   celery-worker:
     image: ${PORTFOLIO_IMAGE:-kangjiseok/portmatch-portfolio-analysis:latest}
     container_name: portmatch-celery-worker
+    networks:               
+      - portmatch-network
     restart: always
     command: celery -A web.api.celery_app worker --loglevel=info
     environment:
@@ -177,7 +179,6 @@ networks:
   portmatch-network:
     name: portmatch-shared-network
     driver: bridge
-    external: true
 
 volumes:
   postgres-data:
