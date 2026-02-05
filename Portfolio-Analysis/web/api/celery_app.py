@@ -19,3 +19,5 @@ celery_app.conf.update(
     task_track_started=True,  # Task 시작 추적
     task_time_limit=3600,     # 1시간 타임아웃
 )
+
+celery_app.autodiscover_tasks(['web.api'])
