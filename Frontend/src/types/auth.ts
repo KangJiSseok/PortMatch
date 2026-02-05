@@ -11,11 +11,12 @@ export interface UserData {
   email: string;
   name: string;
   role: UserRole;
-  cid: string;
+  cid?: string | number;
 }
 
 export interface ApiResponse<T> {
-  code: string;
+  status: boolean;
+  code: number;
   message: string;
   data: T;
 }

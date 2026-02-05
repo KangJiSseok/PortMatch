@@ -41,7 +41,8 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const identifiers: string[] = [currentUserId];
 
     if (user.role === 'COMPANY' && user.cid) {
-      identifiers.push(`COMPANY_${String(user.cid)}`);
+      const companyId = `COMPANY_${String(user.cid)}`;
+      identifiers.push(companyId);
     }
 
     const q = query(
@@ -143,11 +144,13 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 
   const sendSystemNotification = useCallback(
-    async (cid: string | number, messageText: string, linkJobId?: number) => {
-      if (!user) return;
+    async (targetCid: string | number, messageText: string, linkJobId?: number) => {
+      if (!targetCid) return;
 
       try {
-        const companyIdentifier = `COMPANY_${String(cid)}`;
+        const strCid = String(targetCid).trim();
+        const companyIdentifier = `COMPANY_${strCid}`;
+
         const roomId = `system_${companyIdentifier}`;
 
         const roomRef = doc(db, 'rooms', roomId);
@@ -155,7 +158,7 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         await setDoc(
           roomRef,
           {
-            participants: [companyIdentifier, 'SYSTEM', String(user.userId)],
+            participants: [companyIdentifier, 'SYSTEM'],
             companyName: 'Giterra 알리미',
             applicantName: '알림 센터',
             lastMessage: messageText,
@@ -177,11 +180,13 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           type: 'system',
           jobPostingId: linkJobId || null,
         });
+
+        console.log(`[System Notification] Sent to ${companyIdentifier}`);
       } catch (error) {
-        console.error(error);
+        console.error('Failed to send system notification:', error);
       }
     },
-    [user],
+    [],
   );
 
   const totalUnreadCount = useMemo(

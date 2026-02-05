@@ -68,8 +68,12 @@ import ProfileEditPage from './pages/user/ProfileEditPage';
 import { MessengerProvider } from './contexts/MessengerProvider';
 import MessengerContainer from './components/Messenger/MessengerContainer';
 
+import { useMyInfo } from './hooks/useAuth';
+
 const RootLayout = () => {
   const location = useLocation();
+
+  useMyInfo();
 
   useEffect(() => {
     AOS.init({

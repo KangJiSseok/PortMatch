@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { login, logout, getMyInfo, signupApplicant, signupCompany } from '../api/auth';
@@ -61,14 +62,22 @@ export const useSignup = () => {
 
 export const useMyInfo = () => {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-
-  return useQuery({
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const query = useQuery({
     queryKey: ['myInfo'],
     queryFn: getMyInfo,
     enabled: isLoggedIn,
     select: (response) => response.data,
     staleTime: 1000 * 60 * 5,
   });
+
+  useEffect(() => {
+    if (query.data) {
+      setAuth(query.data);
+    }
+  }, [query.data, setAuth]);
+
+  return query;
 };
 
 export const useAuth = () => {
