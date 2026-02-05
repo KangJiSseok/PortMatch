@@ -162,7 +162,11 @@ public class ResumeServiceImpl implements ResumeService {
             resumeProfileRepository.delete(existingProfile);
             resume.setProfile(null);
         }
-        resume.setPortfolio(null);
+        Portfolio existingPortfolio = resume.getPortfolio();
+        if (existingPortfolio != null) {
+            existingPortfolio.markMain(false);
+            resume.setPortfolio(null);
+        }
         resumeCareerEntryRepository.deleteAll(
                 resumeCareerEntryRepository.findAllByResume_IdOrderByOrderIndexAsc(resumeId)
         );
