@@ -90,7 +90,7 @@ const STAGES = [
 
 function PortfoliosPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // URL 파라미터에서 초기값 읽기
   const initialStep = (searchParams.get('step') as AnalysisStep) || 'upload';
@@ -132,6 +132,13 @@ function PortfoliosPage() {
     };
   };
 
+  const persistResultParams = useCallback(
+    (portfolioId: string | number) => {
+      setSearchParams({ step: 'result', portfolioId: String(portfolioId) });
+    },
+    [setSearchParams],
+  );
+
   const handleViewResults = useCallback(async () => {
     if (!selectedPortfolioId) return;
     try {
@@ -147,6 +154,7 @@ function PortfoliosPage() {
       }
       setAnalysisData(mapAnalysisData(result));
       setStep('result');
+      persistResultParams(selectedPortfolioId);
     } catch (err) {
       setModal({
         isOpen: true,
@@ -156,7 +164,7 @@ function PortfoliosPage() {
       });
       console.error(err);
     }
-  }, [selectedPortfolioId]);
+  }, [selectedPortfolioId, persistResultParams]);
 
   // 초기 로드 시 URL에 step=result가 있으면 결과 가져오기
   useEffect(() => {

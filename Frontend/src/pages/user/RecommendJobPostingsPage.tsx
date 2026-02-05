@@ -491,6 +491,9 @@ function JobPostingCard({
   onViewDetail: (p: JobPostingCardModel) => void;
 }) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const rawTitle = posting.title ?? '';
+  const isLongTitle = rawTitle.length > 20;
+  const displayTitle = isLongTitle ? `${rawTitle.slice(0, 20)}...` : rawTitle;
 
   return (
     <motion.div
@@ -526,8 +529,11 @@ function JobPostingCard({
             <div className="flex min-h-[44px] items-center justify-center pt-[8px]">
               <div className="text-center">
                 <h3 className="text-[16px] font-black text-[#1a1a1a]">{posting.companyName}</h3>
-                <p className="mt-1 line-clamp-2 text-[12px] font-semibold break-words text-gray-500">
-                  {posting.title}
+                <p
+                  className="mt-1 line-clamp-2 text-[12px] font-semibold break-words text-gray-500"
+                  title={isLongTitle ? rawTitle : undefined}
+                >
+                  {displayTitle}
                 </p>
               </div>
             </div>
