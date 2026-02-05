@@ -96,7 +96,7 @@ public class JobApplicationController {
         );
     }
 
-    @Operation(summary = "족축 지원 상태 확인", description = "지원자가 해당 공고에 지원했는지 여부를 확인합니다.")
+    @Operation(summary = "족축 지원 상태 확인", description = "지원자가 해당 공고에 지원했는지 여부를 확인합니다. status가 true면 지원한 상태")
     @GetMapping("/{id}/application/exists")
     public BaseApiResponse<Boolean> hasApplied(
             @AuthenticationPrincipal UserPrincipal principal,
