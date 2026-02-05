@@ -50,6 +50,7 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
                 ) AS rn
             FROM portfolios pf
             JOIN users u ON u.id = pf.user_id
+            WHERE pf.is_main = true
             LEFT JOIN LATERAL (
                 SELECT
                     tech_text,
