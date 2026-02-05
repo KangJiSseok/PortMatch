@@ -6,8 +6,9 @@ load_dotenv()
 
 celery_app = Celery(
     'portmatch_analysis',
-    broker=f'redis://:{os.getenv("REDIS_PASSWORD")}@{os.getenv("REDIS_HOST", "localhost")}:{os.getenv("REDIS_PORT", "16379")}/0',
-    backend=f'redis://:{os.getenv("REDIS_PASSWORD")}@{os.getenv("REDIS_HOST", "localhost")}:{os.getenv("REDIS_PORT", "16379")}/0'
+    broker=f'redis://:{os.getenv("REDIS_PASSWORD")}@{os.getenv("REDIS_HOST", "portmatch-redis")}:{os.getenv("REDIS_PORT", "6379")}/0',
+    backend=f'redis://:{os.getenv("REDIS_PASSWORD")}@{os.getenv("REDIS_HOST", "portmatch-redis")}:{os.getenv("REDIS_PORT", "6379")}/0',
+    include=['web.api.task'] 
 )
 
 celery_app.conf.update(
@@ -16,8 +17,8 @@ celery_app.conf.update(
     result_serializer='json',
     timezone='Asia/Seoul',
     enable_utc=True,
-    task_track_started=True,  # Task 시작 추적
-    task_time_limit=3600,     # 1시간 타임아웃
+    task_track_started=True,
+    task_time_limit=3600,
 )
 
 celery_app.autodiscover_tasks(['web.api'])
