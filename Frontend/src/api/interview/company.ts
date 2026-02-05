@@ -217,7 +217,7 @@ export async function fetchInterviewRowsForCompany(): Promise<InterviewCompanyAp
   const me = await getMyInfo();
   const cid = me?.data?.cid;
   if (!cid) throw new Error('Failed to resolve current company id.');
-  return fetchInterviewRowsByCompanyId(cid);
+  return fetchInterviewRowsByCompanyId(String(cid));
 }
 
 export async function fetchCompanyInterviewViews(): Promise<InterviewSessionView[]> {
