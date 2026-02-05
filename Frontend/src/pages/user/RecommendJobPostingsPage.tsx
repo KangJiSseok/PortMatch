@@ -101,7 +101,7 @@ function EvaluationCriteria() {
 
         {open && (
           <div className="border-t border-gray-100 bg-[#fcfcfc] px-5 py-4">
-            <p className="mb-4 max-w-[200ch] text-[13px] leading-relaxed text-[#4a4a4a]">
+            <p className="mb-4 max-w-[200ch] text-[13px] leading-relaxed break-keep text-[#4a4a4a]">
               이 리포트는 분석한 포트폴리오와 채용 공고를 대조하여,
               <br />
               <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
@@ -110,7 +110,7 @@ function EvaluationCriteria() {
               가 실무 요구사항과 얼마나 맞닿아 있는지를 종합적으로 산출합니다.
             </p>
 
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-4 gap-2.5">
               {CRITERIA_DATA.map((item) => (
                 <div
                   key={item.id}
@@ -121,7 +121,9 @@ function EvaluationCriteria() {
                     style={{ backgroundColor: item.color }}
                   />
                   <h5 className="mb-1 text-[13px] font-black text-[#1a1a1a]">{item.id}</h5>
-                  <p className="text-[11px] leading-[1.5] font-medium text-gray-500">{item.desc}</p>
+                  <p className="text-[11px] leading-[1.5] break-keep font-medium text-gray-500">
+                    {item.desc}
+                  </p>
                 </div>
               ))}
             </div>
@@ -383,7 +385,7 @@ function JobPostingDetailModal({
   return (
     <AnimatePresence>
       {open && posting && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <motion.div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -400,7 +402,7 @@ function JobPostingDetailModal({
             transition={{ type: 'spring', stiffness: 260, damping: 24 }}
           >
             <div
-              className="relative px-6 py-6 text-white sm:px-8"
+              className="relative px-6 py-6 text-white"
               style={{ backgroundColor: PALETTE.midnightInk }}
             >
               <div className="flex items-start justify-between">
@@ -415,7 +417,7 @@ function JobPostingDetailModal({
                     </span>
                   </div>
 
-                  <h4 className="text-[22px] leading-[1.25] font-bold tracking-tight sm:text-[24px]">
+                  <h4 className="text-[22px] leading-[1.25] font-bold tracking-tight">
                     {posting.companyName}
                     <span className="ml-2 text-[14px] font-normal text-white/50">Company</span>
                   </h4>
@@ -432,7 +434,7 @@ function JobPostingDetailModal({
               </div>
             </div>
 
-            <div className="soft-scrollbar flex-1 overflow-y-auto px-7 pt-4 pb-6 sm:px-10 sm:pt-4 sm:pb-4">
+            <div className="soft-scrollbar flex-1 overflow-y-auto px-7 pt-4 pb-6">
               <style>
                 {`
                   .soft-scrollbar::-webkit-scrollbar { width: 8px; }
@@ -463,7 +465,7 @@ function JobPostingDetailModal({
               </div>
             </div>
 
-            <div className="border-t border-gray-100 bg-white px-7 py-5 sm:px-10 sm:py-6">
+            <div className="border-t border-gray-100 bg-white px-7 py-5">
               <button
                 onClick={onClose}
                 className="w-full cursor-pointer rounded-2xl py-4 text-[15px] font-black text-white shadow-lg transition-all hover:scale-[1.01] hover:shadow-xl active:scale-[0.995]"
@@ -491,6 +493,9 @@ function JobPostingCard({
   onViewDetail: (p: JobPostingCardModel) => void;
 }) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const rawTitle = posting.title ?? '';
+  const isLongTitle = rawTitle.length > 20;
+  const displayTitle = isLongTitle ? `${rawTitle.slice(0, 20)}...` : rawTitle;
 
   return (
     <motion.div
@@ -526,8 +531,11 @@ function JobPostingCard({
             <div className="flex min-h-[44px] items-center justify-center pt-[8px]">
               <div className="text-center">
                 <h3 className="text-[16px] font-black text-[#1a1a1a]">{posting.companyName}</h3>
-                <p className="mt-1 line-clamp-2 text-[12px] font-semibold break-words text-gray-500">
-                  {posting.title}
+                <p
+                  className="mt-1 line-clamp-2 text-[12px] font-semibold break-words text-gray-500"
+                  title={isLongTitle ? rawTitle : undefined}
+                >
+                  {displayTitle}
                 </p>
               </div>
             </div>
@@ -659,13 +667,16 @@ export default function RecommendJobPostingsPage() {
     'shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0';
 
   return (
-    <div style={{ backgroundColor: PALETTE.pureWhite }} className="min-h-screen pt-32 pb-24">
-      <div className="mx-auto w-full max-w-[1280px] px-8 md:px-10 lg:px-12">
+    <div
+      style={{ backgroundColor: PALETTE.pureWhite }}
+      className="min-h-screen pt-32 pb-24 overflow-x-auto"
+    >
+      <div className="mx-auto w-full max-w-[1280px] min-w-[1280px] px-8">
         <header className="mb-6 border-l-[6px] border-[#5151E7] pl-6">
-          <h1 className="text-4xl font-black tracking-tight text-[#1a1a1a] md:text-5xl">
+          <h1 className="text-4xl font-black tracking-tight text-[#1a1a1a]">
             추천 공고 리스트
           </h1>
-          <p className="mt-3 text-[16px] font-semibold text-[#a3a3a3] italic md:text-[17px]">
+          <p className="mt-3 text-[16px] font-semibold text-[#a3a3a3] italic">
             포트폴리오를 기준으로 유사도가 높은 공고를 추천합니다.
           </p>
         </header>

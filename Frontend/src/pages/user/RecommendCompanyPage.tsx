@@ -682,7 +682,7 @@ function EvaluationCriteria() {
         {/* Body - 패딩·간격 축소 */}
         {open && (
           <div className="border-t border-gray-100 bg-[#fcfcfc] px-5 py-4">
-            <p className="mb-4 max-w-[80ch] text-[13px] leading-relaxed text-[#4a4a4a]">
+            <p className="mb-4 max-w-[80ch] text-[13px] leading-relaxed break-keep text-[#4a4a4a]">
               이 리포트는 기업이 실제로 수행하는 프로젝트 내용을 기준으로,
               <br />
               <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
@@ -691,7 +691,7 @@ function EvaluationCriteria() {
               가 얼마나 유사한지를 종합적으로 평가합니다.
             </p>
 
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid grid-cols-5 gap-2.5">
               {CRITERIA_DATA.map((item) => (
                 <div
                   key={item.id}
@@ -704,7 +704,9 @@ function EvaluationCriteria() {
                     }}
                   />
                   <h5 className="mb-1 text-[13px] font-black text-[#1a1a1a]">{item.id}</h5>
-                  <p className="text-[11px] leading-[1.5] font-medium text-gray-500">{item.desc}</p>
+                  <p className="text-[11px] leading-[1.5] break-keep font-medium text-gray-500">
+                    {item.desc}
+                  </p>
                 </div>
               ))}
             </div>
@@ -874,7 +876,7 @@ function ReasonModal({
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -891,7 +893,7 @@ function ReasonModal({
             className="relative z-[201] flex max-h-[94vh] w-full max-w-[1120px] flex-col overflow-hidden rounded-[32px] bg-white shadow-2xl"
           >
             <div
-              className="relative px-6 py-6 text-white sm:px-8"
+              className="relative px-6 py-6 text-white"
               style={{ backgroundColor: PALETTE.midnightInk }}
             >
               <div className="flex items-start justify-between">
@@ -906,7 +908,7 @@ function ReasonModal({
                     </span>
                   </div>
 
-                  <h4 className="text-[22px] leading-[1.25] font-bold tracking-tight sm:text-[24px]">
+                  <h4 className="text-[22px] leading-[1.25] font-bold tracking-tight">
                     {headerHeadline.line1}
                     <br />
                     <span className="text-blue-300">{headerHeadline.highlight}</span>{' '}
@@ -927,7 +929,7 @@ function ReasonModal({
             </div>
 
             <div
-              className="soft-scrollbar flex-1 overflow-y-auto px-7 pt-4 pb-6 sm:px-10 sm:pt-4 sm:pb-4"
+              className="soft-scrollbar flex-1 overflow-y-auto px-7 pt-4 pb-6"
               style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(15,23,42,0.22) transparent' }}
             >
               <style>
@@ -987,7 +989,7 @@ function ReasonModal({
                     <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-blue-50/50 blur-3xl" />
                     <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-indigo-50/40 blur-3xl" />
 
-                    <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="relative flex flex-col gap-4">
                       <div>
                         <h3 className="text-xl font-bold tracking-tight text-slate-900">
                           전략 리포트 스캔
@@ -998,7 +1000,7 @@ function ReasonModal({
                       </div>
                     </div>
 
-                    <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_220px]">
+                    <div className="mt-6 grid gap-6">
                       {/* 메인 스캔 프리뷰 영역 */}
                       <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
                         {/* 스캐닝 라인 애니메이션 */}
@@ -1102,7 +1104,7 @@ function ReasonModal({
                     </span>
                     분석 요약
                   </h4>
-                  <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
+                  <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6">
                     <p
                       className={`text-[14px] leading-relaxed font-medium ${
                         loading ? 'text-gray-300' : 'text-[#4a4a4a]'
@@ -1151,7 +1153,7 @@ function ReasonModal({
                       {portfolioFocus?.title ?? '포트폴리오 강조 포인트'}
                     </h4>
 
-                    <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
+                    <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6">
                       <p
                         className={`w-full text-[14px] leading-relaxed font-medium ${
                           loading ? 'text-gray-300' : 'text-[#4a4a4a]'
@@ -1194,7 +1196,7 @@ function ReasonModal({
                       {strategyGuide?.title ?? '합격 전략 가이드'}
                     </h4>
 
-                    <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6 sm:p-7">
+                    <div className="rounded-2xl border border-gray-100 bg-[#f8f9fa] p-6">
                       <p
                         className={`w-full text-[14px] leading-relaxed font-medium ${
                           loading ? 'text-gray-300' : 'text-[#4a4a4a]'
@@ -1208,7 +1210,7 @@ function ReasonModal({
               </div>
             </div>
 
-            <div className="border-t border-gray-100 px-7 py-5 sm:px-10 sm:py-6">
+            <div className="border-t border-gray-100 px-7 py-5">
               <button
                 onClick={onClose}
                 style={{ backgroundColor: PALETTE.midnightInk }}
@@ -1486,13 +1488,16 @@ export default function RecommendCompanyPage() {
     'shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0';
 
   return (
-    <div style={{ backgroundColor: PALETTE.pureWhite }} className="min-h-screen pt-32 pb-24">
-      <div className="mx-auto w-full max-w-[1280px] px-8 md:px-10 lg:px-12">
+    <div
+      style={{ backgroundColor: PALETTE.pureWhite }}
+      className="min-h-screen pt-32 pb-24 overflow-x-auto"
+    >
+      <div className="mx-auto w-full max-w-[1280px] min-w-[1280px] px-8">
         <header className="mb-6 border-l-[6px] border-[#5151E7] pl-6">
-          <h1 className="text-4xl font-black tracking-tight text-[#1a1a1a] md:text-5xl">
+          <h1 className="text-4xl font-black tracking-tight text-[#1a1a1a]">
             추천 기업 리스트
           </h1>
-          <p className="mt-3 text-[16px] font-semibold text-[#a3a3a3] italic md:text-[17px]">
+          <p className="mt-3 text-[16px] font-semibold text-[#a3a3a3] italic">
             포트폴리오 기준으로 유사도가 높은 기업을 추천합니다.
           </p>
         </header>

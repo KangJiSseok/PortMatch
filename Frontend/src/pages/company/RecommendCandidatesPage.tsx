@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { X, Info, FileText, ChevronDown, Users, Search, SlidersHorizontal } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useRecommendCandidates } from '@/hooks/useRecommendCandidates';
 import CompactRadarChart from '@/components/charts/CompactRadarChart';
+import axiosInstance from '@/api/axiosInstance';
 import { resumeApi } from '@/api/resumeApi';
 import { portfolioApi } from '@/api/portfolioApi';
 import type { CandidateCardModel, CandidateFactor } from '@/types/recommendCandidate';
@@ -36,6 +38,19 @@ const FACTOR_COLOR: Record<CandidateFactor, string> = {
   주제: '#FB923C',
   아키텍처: '#4ADE80',
   맥락: '#C084FC',
+};
+
+type StackItem = {
+  stackId: number;
+  stackName: string;
+};
+
+type RawStackItem = {
+  stackId?: number;
+  id?: number;
+  stackName?: string;
+  name?: string;
+  stack_name?: string;
 };
 //   기술: '#64748B',
 //   주제: '#94A3B8',
@@ -142,7 +157,7 @@ function EvaluationCriteria() {
 
         {open && (
           <div className="border-t border-gray-100 bg-[#fcfcfc] px-5 py-4">
-            <p className="mb-4 max-w-[80ch] text-[13px] leading-relaxed text-[#4a4a4a]">
+            <p className="mb-4 max-w-[80ch] text-[13px] leading-relaxed break-keep text-[#4a4a4a]">
               이 리포트는 입력한 검색 문장을 기준으로, 추천 후보자들의 포트폴리오 내용을 비교해
               <br />
               <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
@@ -151,7 +166,7 @@ function EvaluationCriteria() {
               의 유사도를 계산합니다.
             </p>
 
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-4 gap-2.5">
               {CRITERIA_DATA.map((item) => (
                 <div
                   key={item.id}
@@ -162,7 +177,9 @@ function EvaluationCriteria() {
                     style={{ backgroundColor: item.color }}
                   />
                   <h5 className="mb-1 text-[13px] font-black text-[#1a1a1a]">{item.id}</h5>
-                  <p className="text-[11px] leading-[1.5] font-medium text-gray-500">{item.desc}</p>
+                  <p className="text-[11px] leading-[1.5] break-keep font-medium text-gray-500">
+                    {item.desc}
+                  </p>
                 </div>
               ))}
             </div>
@@ -228,7 +245,9 @@ function CandidateComparisonTable({ sections }: { sections: ComparisonSection[] 
             <tr key={section.factor} className="transition-colors hover:bg-gray-50/30">
               {/* 비교 항목 */}
               <td className="px-6 py-5">
-                <div className="text-[14px] font-semibold text-gray-700 text-center">{section.label}</div>
+                <div className="text-center text-[14px] font-semibold text-gray-700">
+                  {section.label}
+                </div>
               </td>
 
               {/* 매칭도 (점수 + 프로그레스 바) */}
@@ -342,7 +361,7 @@ function CandidateDetailModal({
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
           {/* Backdrop with blur */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -361,7 +380,7 @@ function CandidateDetailModal({
           >
             {/* Header - 구글 머티리얼 스타일의 깔끔한 구성 */}
             <div
-              className="relative px-6 py-6 text-white sm:px-8"
+              className="relative px-8 py-6 text-white"
               style={{
                 backgroundColor: PALETTE.midnightInk,
               }}
@@ -380,7 +399,7 @@ function CandidateDetailModal({
                   </div>
 
                   {/* 후보자 성함 */}
-                  <h4 className="flex items-baseline gap-2 text-[22px] font-bold tracking-tight sm:text-[24px]">
+                  <h4 className="flex items-baseline gap-2 text-[24px] font-bold tracking-tight">
                     {candidate.userName ? candidate.userName : `후보자 #${candidate.userId}`}
                     <span className="text-[14px] font-normal text-white/50">Candidate Profile</span>
                   </h4>
@@ -401,7 +420,7 @@ function CandidateDetailModal({
                 <div className="flex items-center gap-6">
                   <div className="flex flex-col items-end">
                     <div className="flex items-baseline leading-none">
-                      <span className="text-[40px] font-light tracking-tighter text-white sm:text-[48px]">
+                      <span className="text-[48px] font-light tracking-tighter text-white">
                         {candidate.matchScore}
                       </span>
                       <span className="ml-1 text-[16px] font-medium text-blue-200">점</span>
@@ -425,7 +444,7 @@ function CandidateDetailModal({
             {/* Body - scrollable */}
             <div
               ref={detailRef}
-              className="soft-scrollbar flex-1 overflow-y-auto px-7 pt-4 pb-6 sm:px-10 sm:pt-4 sm:pb-4"
+              className="soft-scrollbar flex-1 overflow-y-auto px-10 pt-4 pb-4"
               style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(15,23,42,0.22) transparent' }}
             >
               <style>
@@ -457,7 +476,7 @@ function CandidateDetailModal({
             </div>
 
             {/* Sticky Footer */}
-            <div className="border-t border-gray-100 bg-white px-7 py-5 sm:px-10 sm:py-6">
+            <div className="border-t border-gray-100 bg-white px-10 py-6">
               <button
                 onClick={onClose}
                 className="w-full cursor-pointer rounded-2xl py-4 text-[15px] font-black text-white shadow-lg transition-all hover:scale-[1.01] hover:shadow-xl active:scale-[0.995]"
@@ -663,13 +682,40 @@ function CandidateCard({
 
 export default function RecommendCandidatesPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // URL 파라미터에서 초기값 읽기 (뒤로가기 시 자동 반영)
+  const urlQuery = searchParams.get('q') || '';
+  const urlLimit = searchParams.get('limit') || '10';
+  const urlStacks = searchParams.get('stacks') || '';
 
   // 검색 폼
-  const [queryInput, setQueryInput] = useState('');
-  const [requestQuery, setRequestQuery] = useState('');
-  const DEFAULT_LIMIT = 30;
-  const [limitEnabled, setLimitEnabled] = useState(true);
-  const [limit, setLimit] = useState(DEFAULT_LIMIT);
+  const [queryInput, setQueryInput] = useState(urlQuery);
+  const DEFAULT_LIMIT = 10;
+  const [limitInput, setLimitInput] = useState(urlLimit);
+  const [stackInput, setStackInput] = useState('');
+  const [selectedStacks, setSelectedStacks] = useState<StackItem[]>(() => {
+    if (!urlStacks) return [];
+    try {
+      return JSON.parse(decodeURIComponent(urlStacks));
+    } catch {
+      return [];
+    }
+  });
+  const [duplicateStackError, setDuplicateStackError] = useState(false);
+
+  // requestQuery는 URL 파라미터 기반으로 계산
+  const buildRequestQuery = useCallback((query: string, stacks: StackItem[]) => {
+    if (!query.trim()) return '';
+    const techList = stacks.map((s) => s.stackName).filter(Boolean);
+    const techPrompt =
+      techList.length > 0
+        ? `\n\n[기술 스택 입력]\n- 이 항목은 검색 문장과 별도로 입력된 기술 스택입니다.\n- 기술 스택 목록: ${techList.join(', ')}`
+        : '';
+    return `${query}${techPrompt}`;
+  }, []);
+
+  const [requestQuery, setRequestQuery] = useState(() => buildRequestQuery(urlQuery, selectedStacks));
 
   // 페이지네이션
   const PAGE_SIZE = 8;
@@ -683,27 +729,102 @@ export default function RecommendCandidatesPage() {
   });
 
   // API 호출 (query가 비면 enabled=false)
+  const parsedLimit = Number(limitInput);
+  const resolvedLimit =
+    Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : DEFAULT_LIMIT;
   const { response, cards, isLoading, isFetching, error, refetch } = useRecommendCandidates({
     query: requestQuery,
-    limit: limitEnabled ? limit : undefined,
+    limit: resolvedLimit,
   });
+
+  const { data: stackSearchResults } = useQuery({
+    queryKey: ['stacks', stackInput],
+    queryFn: async () => {
+      if (!stackInput.trim()) return [];
+      const response = await axiosInstance.get(`/stacks/name/${stackInput}`);
+      const rawData = (response.data?.data ?? []) as RawStackItem[];
+      return rawData
+        .map((item: RawStackItem) => ({
+          stackId: item.stackId || item.id || 0,
+          stackName: item.stackName || item.name || item.stack_name || '',
+        }))
+        .filter((item: StackItem) => item.stackId !== 0);
+    },
+    enabled: stackInput.length > 0,
+    staleTime: 1000 * 60,
+  });
+
+  const handleSelectStack = (stack: StackItem) => {
+    if (selectedStacks.some((s) => s.stackId === stack.stackId)) {
+      setDuplicateStackError(true);
+      setTimeout(() => setDuplicateStackError(false), 1000);
+      setStackInput('');
+      return;
+    }
+    setSelectedStacks((prev) => [...prev, stack]);
+    setStackInput('');
+  };
+
+  const removeStack = (stackId: number) => {
+    setSelectedStacks((prev) => prev.filter((s) => s.stackId !== stackId));
+  };
 
   const hasRequestQuery = Boolean(requestQuery.trim());
   const displayCards = hasRequestQuery ? cards : [];
   const displayResponse = hasRequestQuery ? response : undefined;
+
+  // URL 파라미터 업데이트 함수
+  const updateUrlParams = useCallback((query: string, limit: string, stacks: StackItem[]) => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (limit && limit !== '10') params.set('limit', limit);
+    if (stacks.length > 0) params.set('stacks', encodeURIComponent(JSON.stringify(stacks)));
+    navigate({ search: params.toString() ? `?${params.toString()}` : '' }, { replace: false });
+  }, [navigate]);
+
+  // URL 파라미터 변경 시 상태 동기화 (뒤로가기 대응)
+  useEffect(() => {
+    const newQuery = searchParams.get('q') || '';
+    const newLimit = searchParams.get('limit') || '10';
+    const newStacksStr = searchParams.get('stacks') || '';
+
+    let newStacks: StackItem[] = [];
+    if (newStacksStr) {
+      try {
+        newStacks = JSON.parse(decodeURIComponent(newStacksStr));
+      } catch {
+        newStacks = [];
+      }
+    }
+
+    setQueryInput(newQuery);
+    setLimitInput(newLimit);
+    setSelectedStacks(newStacks);
+
+    const newRequestQuery = buildRequestQuery(newQuery, newStacks);
+    setRequestQuery(newRequestQuery);
+  }, [searchParams, buildRequestQuery]);
 
   const runSearch = () => {
     const nextQuery = queryInput.trim();
     setPage(1);
     if (!nextQuery) {
       setRequestQuery('');
+      navigate({ search: '' }, { replace: false });
       return;
     }
-    if (nextQuery === requestQuery) {
+    const nextLimit = Number(limitInput);
+    if (!Number.isFinite(nextLimit) || nextLimit < 1) {
+      alert('1 이상의 수만 입력 가능합니다.');
+      return;
+    }
+    const finalQuery = buildRequestQuery(nextQuery, selectedStacks);
+    if (finalQuery === requestQuery) {
       refetch();
       return;
     }
-    setRequestQuery(nextQuery);
+    // URL 파라미터 업데이트 (이로 인해 useEffect가 트리거되어 requestQuery도 업데이트됨)
+    updateUrlParams(nextQuery, limitInput, selectedStacks);
   };
 
   const handleResumeView = async (candidate: CandidateCardModel) => {
@@ -718,10 +839,11 @@ export default function RecommendCandidatesPage() {
       if (!resume?.id) {
         throw new Error('empty resume');
       }
-      navigate(`/resumes/${resume.id}`);
+      navigate(`/resumes/${resume.id}`, {
+        state: { companyResume: resume, companyUserId: userId },
+      });
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : '이력서 조회에 실패했습니다.';
+      const message = err instanceof Error ? err.message : '이력서 조회에 실패했습니다.';
       console.error('이력서 조회 실패: ', err);
       if (message.includes('이력서가 없습니다')) {
         setResumeNotice({ open: true, message: '해당 유저의 이력서가 없습니다.' });
@@ -730,7 +852,7 @@ export default function RecommendCandidatesPage() {
       setResumeNotice({ open: true, message: '이력서 조회에 실패했습니다.' });
     }
   };
-  
+
   const handlePdfView = async (candidate: CandidateCardModel) => {
     try {
       const { url } = await portfolioApi.getPresignedUrl(candidate.portfolioId);
@@ -756,14 +878,15 @@ export default function RecommendCandidatesPage() {
     'shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0';
 
   return (
-    <div style={{ backgroundColor: PALETTE.pureWhite }} className="min-h-screen pt-32 pb-24">
-      <div className="mx-auto w-full max-w-[1280px] px-8 md:px-10 lg:px-12">
+    <div
+      style={{ backgroundColor: PALETTE.pureWhite }}
+      className="min-h-screen pt-32 pb-24 overflow-x-auto"
+    >
+      <div className="mx-auto w-full max-w-[1280px] min-w-[1280px] px-10">
         {/* Header */}
         <header className="mb-6 border-l-[6px] border-[#5151E7] pl-6">
-          <h1 className="text-4xl font-black tracking-tight text-[#1a1a1a] md:text-5xl">
-            추천 인재 리스트
-          </h1>
-          <p className="mt-3 text-[16px] font-semibold text-[#a3a3a3] italic md:text-[17px]">
+          <h1 className="text-5xl font-black tracking-tight text-[#1a1a1a]">추천 인재 리스트</h1>
+          <p className="mt-3 text-[17px] font-semibold text-[#a3a3a3] italic">
             검색 문장을 기준으로 포트폴리오 유사도를 계산해 추천합니다.
           </p>
         </header>
@@ -774,8 +897,8 @@ export default function RecommendCandidatesPage() {
         {/* Search Bar */}
         <div className="mb-8 pl-6">
           <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <div className="flex flex-1 items-center gap-2 rounded-xl border border-gray-200 bg-[#fcfcfc] px-4 py-3">
+            <div className="flex items-center gap-4">
+              <div className="flex flex-1 items-center gap-3 rounded-2xl border border-gray-200 bg-[#fcfcfc] px-5 py-4">
                 <Search className="h-4 w-4 text-gray-400" />
                 <input
                   value={queryInput}
@@ -786,60 +909,19 @@ export default function RecommendCandidatesPage() {
                     }
                   }}
                   placeholder="예) PostgreSQL 추천 시스템 유사도 검색"
-                  className="w-full bg-transparent text-[14px] font-semibold text-gray-800 outline-none placeholder:text-gray-400"
+                  className="w-full bg-transparent text-[15px] font-bold text-gray-800 outline-none placeholder:text-gray-400"
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex w-[200px] items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3">
-                  <SlidersHorizontal className="h-4 w-4 text-gray-400" />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLimitEnabled((prev) => {
-                        const next = !prev;
-                        if (next && (!Number.isFinite(limit) || limit <= 0)) {
-                          setLimit(DEFAULT_LIMIT);
-                        }
-                        return next;
-                      })
-                    }
-                    className={`w-[44px] shrink-0 rounded-lg px-2 py-1 text-center text-[11px] font-black ${
-                      limitEnabled ? 'bg-[#5563C1] text-white' : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {limitEnabled ? 'ON' : 'OFF'}
-                  </button>
-                  <span className="w-[40px] shrink-0 text-center text-[12px] font-black text-gray-500">
-                    LIMIT
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={limit}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const next = raw === '' ? 0 : Number(raw);
-                      setLimit(next);
-                    }}
-                    placeholder="-"
-                    className={`w-[60px] shrink-0 rounded-lg border border-gray-100 bg-[#fcfcfc] px-2 py-1 text-center text-[13px] font-black text-gray-800 outline-none placeholder:text-gray-400 ${
-                      limitEnabled ? '' : 'pointer-events-none opacity-60'
-                    }`}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={runSearch}
-                  className="rounded-xl px-4 py-3 text-[13px] font-black text-white shadow-md transition hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-white/70"
-                  style={{ backgroundColor: queryInput.trim() ? POINT_BLUE : '#d1d5db' }}
-                  disabled={!queryInput.trim()}
-                >
-                  검색
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={runSearch}
+                className="rounded-xl px-5 py-4 text-[14px] font-black text-white shadow-md transition hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-white/70"
+                style={{ backgroundColor: queryInput.trim() ? POINT_BLUE : '#d1d5db' }}
+                disabled={!queryInput.trim()}
+              >
+                검색
+              </button>
             </div>
 
             {/* Summary chips (응답 상단 데이터) */}
@@ -863,6 +945,114 @@ export default function RecommendCandidatesPage() {
                 ))}
               </div>
             )}
+
+            <div className="mt-5 space-y-3">
+              {/* <div className="border-t border-gray-100 pt-4">
+                <div className="text-[13px] font-black text-[#1a1a1a]">선택 옵션</div>
+                <div className="mt-1 text-[12px] font-semibold text-gray-500">
+                  해당 기술을 보유한 지원자가 점수가 높아집니다.
+                </div>
+              </div> */}
+
+              <div className="grid grid-cols-[7fr_3fr] gap-3">
+                <div className="relative">
+                  <div className="mb-2 text-[12px] font-black text-gray-700">
+                    기술 스택 (선택)
+                    <span className="mt-1 block text-[12px] font-semibold text-gray-400">
+                      해당 기술을 보유한 지원자가 점수가 높아집니다.
+                    </span>
+                  </div>
+                  <motion.input
+                    animate={duplicateStackError ? { x: [-4, 4, -4, 4, 0] } : {}}
+                    type="text"
+                    value={stackInput}
+                    onChange={(e) => setStackInput(e.target.value)}
+                    placeholder="기술 스택 검색 (예: React)"
+                    className={`w-full rounded-2xl border px-5 py-4 text-[14px] font-bold transition-all outline-none ${
+                      duplicateStackError
+                        ? 'border-red-500 bg-red-50/30'
+                        : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
+                    }`}
+                  />
+
+                  {stackInput && stackSearchResults && stackSearchResults.length > 0 && (
+                    <div className="absolute top-full z-10 mt-2 w-full overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+                      {stackSearchResults.map((stack: StackItem) => (
+                        <button
+                          key={stack.stackId}
+                          onClick={() => handleSelectStack(stack)}
+                          className="w-full px-5 py-3 text-left text-[14px] font-bold text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                        >
+                          {stack.stackName}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <AnimatePresence>
+                    {duplicateStackError && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute -bottom-6 left-2 text-[11px] font-black text-red-500"
+                      >
+                        이미 추가된 기술 스택입니다.
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div>
+                  <div className="mb-2 text-[12px] font-black text-gray-700">
+                    추천 인원 제한
+                    <span className="mt-1 block text-[12px] font-semibold text-gray-400">
+                      추천인을 최소 1명 이상 입력해주세요.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-3">
+                    <SlidersHorizontal className="h-4 w-4 text-gray-400" />
+                    <span className="w-[40px] shrink-0 text-center text-[12px] font-black text-gray-500">
+                      LIMIT
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={limitInput}
+                      onChange={(e) => {
+                        setLimitInput(e.target.value);
+                      }}
+                      placeholder="10"
+                      className="w-[70px] shrink-0 rounded-lg border border-gray-100 bg-[#fcfcfc] px-2 py-1 text-center text-[13px] font-black text-gray-800 outline-none placeholder:text-gray-400"
+                    />
+                    <span className="text-[12px] font-bold text-gray-500">명</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <AnimatePresence>
+                  {selectedStacks.map((stack) => (
+                    <motion.span
+                      key={stack.stackId}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-[12px] font-black text-blue-600"
+                    >
+                      {stack.stackName}
+                      <button
+                        onClick={() => removeStack(stack.stackId)}
+                        className="text-blue-300 transition-colors hover:text-blue-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    </motion.span>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -953,7 +1143,7 @@ export default function RecommendCandidatesPage() {
 
       <AnimatePresence>
         {resumeNotice.open && (
-          <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-[210] flex items-center justify-center p-6">
             <motion.div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               initial={{ opacity: 0 }}
