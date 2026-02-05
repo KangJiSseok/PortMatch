@@ -49,6 +49,7 @@ export interface CompanyRecommendationResponse {
   companyId: number;
   companyName: string;
   similarity: number;
+  jobPostingSize?: number;
   portfolioProjectId: number;
   companyProjectId: number;
   portfolioContent: string;
