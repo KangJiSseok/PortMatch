@@ -7,7 +7,7 @@ import {
   fetchMyInterviewViewsByStatus,
   type InterviewListStatus,
   type InterviewSessionView,
-} from '../../api/myPage';
+} from '../../api/interview';
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);

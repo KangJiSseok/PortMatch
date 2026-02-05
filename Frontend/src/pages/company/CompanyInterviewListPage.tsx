@@ -1,14 +1,14 @@
 // src/pages/CompanyInterviewListPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 import Button from '../../components/Button/Button';
 import {
-  fetchMyInterviewViewsByStatus,
+  fetchCompanyInterviewViewsByStatus,
   type InterviewListStatus,
   type InterviewSessionView,
-} from '../../api/myPage';
+} from '../../api/interview';
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -20,41 +20,8 @@ function formatDateTime(iso: string) {
   return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
 }
 
-// datetime-local value 만들기: YYYY-MM-DDTHH:mm
-function toLocalInputValue(iso: string) {
-  const d = new Date(iso);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-}
-
-// datetime-local(YYYY-MM-DDTHH:mm) -> ISO 문자열
-function localInputToIso(value: string) {
-  const [datePart, timePart] = value.split('T');
-  if (!datePart || !timePart) return new Date().toISOString();
-
-  const [y, m, d] = datePart.split('-').map(Number);
-  const [hh, mi] = timePart.split(':').map(Number);
-
-  const dt = new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mi ?? 0, 0);
-  return dt.toISOString();
-}
 
 // ✅ 현재 시각(분 단위) -> datetime-local min 값
-function nowLocalMinValue() {
-  const d = new Date();
-  d.setSeconds(0, 0);
-
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-}
 
 type CorporateView = InterviewSessionView & {
   applicantName?: string;
@@ -63,6 +30,7 @@ type CorporateView = InterviewSessionView & {
 const ROUTES = {
   list: '/interviews',
   lobby: (id: number) => `/interviews/${id}/lobby`,
+  schedule: (jobPostId: number, applicationId: number) => `/company/jobs/${jobPostId}/applicants/${applicationId}/schedule`,
   // ✅ 테스트 로비 라우트 추가 (앞에 "/" 필수)
   test: (id: number) => `/interviews/test/${id}/lobby`,
 } as const;
@@ -86,10 +54,6 @@ export default function CorporateInterviewListPage() {
   const [errorMessage, setErrorMessage] = useState<string>('면접 목록을 불러오지 못했어요.');
 
   // ✅ 수정 모달 상태
-  const [editOpen, setEditOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<CorporateView | null>(null);
-  const [editValue, setEditValue] = useState(''); // datetime-local 값
-  const [minEditValue, setMinEditValue] = useState(nowLocalMinValue()); // ✅ 과거 선택 막기
 
   const load = async () => {
     setIsLoading(true);
@@ -97,7 +61,7 @@ export default function CorporateInterviewListPage() {
     setErrorMessage('면접 목록을 불러오지 못했어요.');
 
     try {
-      const data = (await fetchMyInterviewViewsByStatus(tab)) as CorporateView[];
+      const data = (await fetchCompanyInterviewViewsByStatus(tab)) as CorporateView[];
       setItems(data);
     } catch (err) {
       setItems([]);
@@ -114,68 +78,6 @@ export default function CorporateInterviewListPage() {
   }, [tab]);
 
   // ✅ 모달 열릴 때: 스크롤 잠금 + ESC 닫기 + min 최신 유지
-  useEffect(() => {
-    if (!editOpen) return;
-
-    setMinEditValue(nowLocalMinValue());
-    const t = window.setInterval(() => {
-      setMinEditValue(nowLocalMinValue());
-    }, 30_000);
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setEditOpen(false);
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      window.clearInterval(t);
-      window.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [editOpen]);
-
-  const openEditModal = (s: CorporateView) => {
-    const minNow = nowLocalMinValue();
-    const initial = toLocalInputValue(s.scheduledAt);
-
-    setEditTarget(s);
-    // ✅ 기존 시간이 과거면 자동으로 현재(min)로 보정
-    setEditValue(initial < minNow ? minNow : initial);
-
-    setMinEditValue(minNow);
-    setEditOpen(true);
-  };
-
-  const isPastSelected = !!editValue && editValue < minEditValue;
-
-  const modalTitle = useMemo(() => {
-    if (!editTarget) return '면접 시간 수정';
-    const applicantName = editTarget.applicantName?.trim()
-      ? editTarget.applicantName
-      : pickApplicantName(editTarget.interview_id);
-
-    return `${applicantName} · 면접 시간 수정`;
-  }, [editTarget]);
-
-  const saveEdit = () => {
-    if (!editTarget) return;
-    if (!editValue) return;
-    if (editValue < minEditValue) return;
-
-    const nextIso = localInputToIso(editValue);
-
-    setItems((prev) =>
-      prev.map((it) =>
-        it.interview_id === editTarget.interview_id ? { ...it, scheduledAt: nextIso } : it,
-      ),
-    );
-
-    setEditOpen(false);
-    setEditTarget(null);
-  };
 
   const isUpcoming = tab === 'UPCOMING';
 
@@ -191,6 +93,32 @@ export default function CorporateInterviewListPage() {
         companyName: 'TEST',
         postingTitle: 'INTERVIEW MANAGEMENT TEST',
         scheduledAt: new Date().toISOString(),
+      },
+    });
+  };
+
+  const goSchedule = (s: CorporateView) => {
+    const jobPostId = s.job_post_id;
+    const applicationId = s.application_id;
+    const applicantUserId = s.applicantUserId;
+
+    if (!Number.isFinite(jobPostId) || !Number.isFinite(applicationId)) {
+      alert('\uC9C0\uC6D0\uC11C \uC815\uBCF4\uAC00 \uC5C6\uC5B4 \uC77C\uC815 \uC218\uC815\uC774 \uBD88\uAC00\uB2A5\uD569\uB2C8\uB2E4.');
+      return;
+    }
+
+    const applicantName = s.applicantName?.trim()
+      ? s.applicantName
+      : pickApplicantName(s.interview_id);
+
+    navigate(ROUTES.schedule(jobPostId, applicationId), {
+      state: {
+        scheduleId: s.interview_id,
+        applicantName,
+        applicantUserId,
+        postingTitle: s.postingTitle,
+        companyName: s.companyName,
+        scheduledAt: s.scheduledAt,
       },
     });
   };
@@ -366,11 +294,10 @@ export default function CorporateInterviewListPage() {
                               variant="light"
                               size="md"
                               className="rounded-xl px-6"
-                              onClick={() => openEditModal(s)}
+                              onClick={() => goSchedule(s)}
                             >
-                              수정
+                              {'\uC77C\uC815 \uC218\uC815'}
                             </Button>
-
                             <Button
                               type="button"
                               variant="dark"
@@ -378,7 +305,7 @@ export default function CorporateInterviewListPage() {
                               className="rounded-2xl px-10 shadow-xl"
                               onClick={() => navigate(ROUTES.lobby(s.interview_id))}
                             >
-                              입장하기
+                              {'\uB85C\uBE44 \uC785\uC7A5'}
                             </Button>
                           </>
                         ) : (
@@ -400,112 +327,6 @@ export default function CorporateInterviewListPage() {
             </div>
           )}
         </motion.div>
-
-        {/* ✅ 면접 시간 수정 모달 */}
-        <AnimatePresence>
-          {editOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setEditOpen(false)}
-                className="bg-midnight-ink/60 fixed inset-0 backdrop-blur-sm"
-              />
-
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-pure-white relative w-full max-w-md overflow-hidden rounded-[40px] p-10 text-center shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-                role="dialog"
-                aria-modal="true"
-              >
-                <div className="text-point-blue mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
-                  <svg
-                    width="32"
-                    height="32"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 7v6l3 2" />
-                  </svg>
-                </div>
-
-                <h3 className="text-midnight-ink mb-2 text-2xl font-black tracking-tight">
-                  {modalTitle}
-                </h3>
-
-                <p className="text-slate-gray mb-8 leading-relaxed font-bold opacity-60">
-                  현재:{' '}
-                  <span className="font-black">
-                    {editTarget ? formatDateTime(editTarget.scheduledAt) : '-'}
-                  </span>
-                  <br />
-                  변경할 시간을 선택하세요. (과거는 선택 불가)
-                </p>
-
-                <div className="text-left">
-                  <label
-                    className="text-midnight-ink mb-2 block text-sm font-black"
-                    htmlFor="scheduledAt"
-                  >
-                    면접 시간
-                  </label>
-
-                  <input
-                    id="scheduledAt"
-                    type="datetime-local"
-                    value={editValue}
-                    min={minEditValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    className={[
-                      'w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3',
-                      'text-base font-bold text-zinc-700',
-                      'focus:ring-midnight-ink outline-none focus:ring-2',
-                    ].join(' ')}
-                  />
-
-                  {isPastSelected ? (
-                    <p className="mt-3 text-sm font-bold text-red-500">
-                      과거 시간은 선택할 수 없어요. 현재 이후로 설정해 주세요.
-                    </p>
-                  ) : (
-                    <p className="mt-3 text-sm font-bold text-zinc-400 opacity-60">
-                      저장하면 즉시 목록에 반영됩니다.
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-10 flex gap-4">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="flex-1 rounded-2xl"
-                    onClick={() => setEditOpen(false)}
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    variant="blue"
-                    size="lg"
-                    className="flex-1 rounded-2xl shadow-lg"
-                    onClick={saveEdit}
-                    disabled={!editValue || isPastSelected}
-                  >
-                    저장하기
-                  </Button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );

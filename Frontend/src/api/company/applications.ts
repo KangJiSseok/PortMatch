@@ -31,6 +31,7 @@ interface ApiResponse<T> {
 
 export interface CompanyApplicationView {
   applicationId: number;
+  userId: number;
   applicantName: string;
   resumeId: string;
   postingTitle: string;
@@ -110,6 +111,7 @@ export const fetchCompanyApplications = async (
 
     return {
       applicationId: item.applicationId,
+      userId: item.userId,
       applicantName: item.userName,
       resumeId: String(item.resumeId),
       postingTitle: '지원자 관리',

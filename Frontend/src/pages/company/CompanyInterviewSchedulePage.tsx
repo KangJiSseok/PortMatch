@@ -1,5 +1,5 @@
 // src/pages/company/CompanyInterviewSchedulePage.tsx
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import Button from '../../components/Button/Button';
@@ -7,13 +7,24 @@ import Input from '../../components/Input/Input';
 import {
   getExtraInterviewViewByApplicationId,
   type InterviewSessionView,
-  upsertExtraInterviewView,
 } from '../../api/myPage';
+import { fetchCompanyApplications } from '../../api/applications';
+import { fetchJobPostDetail } from '../../api/jobPost/detail';
+import {
+  createInterviewSchedule,
+  fetchCompanyInterviewRowById,
+  toInterviewSessionViewFromApi,
+  updateInterviewSchedule,
+  fetchInterviewRowsByJobPostId,
+  type InterviewCompanyApiRow,
+} from '../../api/interview';
 
 type NavState = {
   applicantName?: string;
+  applicantUserId?: number;
   postingTitle?: string;
   companyName?: string;
+  scheduleId?: number;
 };
 
 type FormErrors = {
@@ -33,15 +44,19 @@ function toLocalInputValue(iso: string) {
   return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
 }
 
-function localInputToIso(value: string) {
+function localInputToApi(value: string) {
   const [datePart, timePart] = value.split('T');
-  if (!datePart || !timePart) return new Date().toISOString();
+  if (!datePart || !timePart) return new Date().toISOString().replace('Z', '');
 
   const [y, m, d] = datePart.split('-').map(Number);
   const [hh, mi] = timePart.split(':').map(Number);
 
-  const dt = new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mi ?? 0, 0);
-  return dt.toISOString();
+  const yyyy = String(y ?? new Date().getFullYear()).padStart(4, '0');
+  const mm = String(m ?? 1).padStart(2, '0');
+  const dd = String(d ?? 1).padStart(2, '0');
+  const H = String(hh ?? 0).padStart(2, '0');
+  const M = String(mi ?? 0).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}T${H}:${M}:00`;
 }
 
 function nowLocalMinValue() {
@@ -113,6 +128,9 @@ export default function CompanyInterviewSchedulePage() {
   const [applicantName, setApplicantName] = useState<string>(
     () => navState.applicantName ?? existing?.applicantName ?? '',
   );
+  const applicantUserId = Number.isFinite(Number(navState.applicantUserId))
+    ? Number(navState.applicantUserId)
+    : undefined;
   const [postingTitle, setPostingTitle] = useState<string>(
     () => navState.postingTitle ?? existing?.postingTitle ?? '',
   );
@@ -120,8 +138,129 @@ export default function CompanyInterviewSchedulePage() {
     existing ? toLocalInputValue(existing.scheduledAt) : defaultLocalDateTime,
   );
 
+  const scheduleId =
+    typeof navState.scheduleId === 'number' && Number.isFinite(navState.scheduleId)
+      ? navState.scheduleId
+      : undefined;
+
+  // ✅ Auto-detect existing schedule logic
+  const [activeScheduleId, setActiveScheduleId] = useState<number | undefined>(scheduleId);
+
+  useEffect(() => {
+    setActiveScheduleId(scheduleId);
+  }, [scheduleId]);
+
+  // If no scheduleId explicitly passed, try to find one
+  useEffect(() => {
+    if (activeScheduleId || !Number.isFinite(safeApplicationId) || !Number.isFinite(safeJobPostId)) return;
+
+    let cancelled = false;
+    const autoDetect = async () => {
+      try {
+        // 1. Get Applicant UserId from Application ID
+        const apps = await fetchCompanyApplications(safeJobPostId);
+        const targetApp = apps.find(a => a.applicationId === safeApplicationId);
+        if (!targetApp || cancelled) return;
+
+        // 2. Get All Interviews for this Job Post
+        const interviews = await fetchInterviewRowsByJobPostId(safeJobPostId);
+        if (cancelled) return;
+
+        // 3. Find match by UserId
+         const match = interviews.find(i => {
+             const uid = i.userId ?? i.user?.userId;
+             return Number(uid) === targetApp.userId;
+         });
+
+         if (match) {
+             console.log('Auto-detected existing interview:', match);
+             setActiveScheduleId(match.id);
+             
+             // Also set current interview view immediately if easier
+             const view = toInterviewSessionViewFromApi(match);
+             if (view) setCurrentInterview(view);
+             setBaseSchedule(match);
+         }
+
+      } catch (err) {
+        console.warn('Failed to auto-detect interview:', err);
+      }
+    };
+    
+    void autoDetect();
+
+    return () => { cancelled = true; };
+  }, [activeScheduleId, safeApplicationId, safeJobPostId]);
+
   const [toast, setToast] = useState<string>('');
   const [errors, setErrors] = useState<FormErrors>({});
+  const [baseSchedule, setBaseSchedule] = useState<InterviewCompanyApiRow | null>(null);
+
+  useEffect(() => {
+    if (applicantName.trim()) return;
+    const next = navState.applicantName?.trim();
+    if (next) setApplicantName(next);
+  }, [applicantName, navState.applicantName]);
+
+  useEffect(() => {
+    if (!Number.isFinite(safeJobPostId) || safeJobPostId <= 0) return;
+
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const detail = await fetchJobPostDetail(safeJobPostId);
+        if (cancelled || !detail) return;
+
+        if (!postingTitle.trim() && detail.jobPost?.title) {
+          setPostingTitle(detail.jobPost.title);
+        }
+
+        if (!companyName.trim()) {
+          const nextCompanyName =
+            detail.company?.companies_name ??
+            detail.company?.id ??
+            (detail.jobPost?.id ? `Company ${detail.jobPost.id}` : '');
+
+          if (nextCompanyName.trim()) setCompanyName(nextCompanyName);
+        }
+      } catch (err) {
+        console.error('Failed to load job posting detail:', err);
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [safeJobPostId, postingTitle, companyName]);
+
+  useEffect(() => {
+    if (!activeScheduleId) return;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const row = await fetchCompanyInterviewRowById(activeScheduleId);
+        if (cancelled || !row) return; // Added null check
+        setBaseSchedule(row);
+        
+        // UI를 수정 모드로 전환하기 위해 currentInterview 상태 업데이트
+        const view = toInterviewSessionViewFromApi(row);
+        if (view) {
+          setCurrentInterview(view);
+        }
+      } catch (err) {
+        console.error('Failed to load interview schedule:', err);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeScheduleId]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -151,7 +290,7 @@ export default function CompanyInterviewSchedulePage() {
     if (!isParamValid) {
       setErrors((prev) => ({
         ...prev,
-        postingTitle: '라우트 파라미터(jobPostId/applicationId)가 유효하지 않아요.',
+        postingTitle: '\uC720\uD6A8\uD558\uC9C0 \uC54A\uC740 \uC720\uC54C \uC785\uB2C8\uB2E4.',
       }));
       return;
     }
@@ -159,28 +298,85 @@ export default function CompanyInterviewSchedulePage() {
     const ok = validate();
     if (!ok) return;
 
-    const scheduledAtIso = localInputToIso(scheduledLocal);
+    const scheduledAtIso = localInputToApi(scheduledLocal);
 
-    const saved = upsertExtraInterviewView({
-      application_id: safeApplicationId,
-      job_post_id: safeJobPostId,
-      companyName: companyName.trim(),
-      postingTitle: postingTitle.trim(),
-      applicantName: applicantName.trim(),
-      scheduledAt: scheduledAtIso,
-    });
+    const run = async () => {
+      if (scheduleId && baseSchedule) {
+        const body: { time: string; status?: 'PENDING' | 'CONFIRMED' | 'APPROVED' | 'CANCELED' | 'COMPLETED' } = {
+          time: scheduledAtIso,
+        };
 
-    const wasEdit = currentInterview != null;
-    setCurrentInterview(saved);
-    showToast(wasEdit ? '일정 수정 완료!' : '일정 등록 완료!');
+        // 기존 상태가 유효하면 함께 전송 (필요시)
+        /*
+        if (baseSchedule?.status) {
+           body.status = baseSchedule.status as any; 
+        }
+        */
+
+        await updateInterviewSchedule(scheduleId, body);
+
+        setCurrentInterview((prev) =>
+          prev
+            ? { ...prev, scheduledAt: scheduledAtIso }
+            : {
+                interview_id: scheduleId,
+                application_id: safeApplicationId,
+                room_id: baseSchedule.roomId ?? baseSchedule.room_id ?? `room_${scheduleId}`,
+                scheduledAt: scheduledAtIso,
+                job_post_id: safeJobPostId,
+                postingTitle: postingTitle.trim(),
+                companyName: companyName.trim(),
+                applicantName: applicantName.trim(),
+                status: 'UPCOMING',
+              },
+        );
+
+        showToast('\uC77C\uC815 \uC218\uC815 \uC644\uB8CC!');
+        return;
+      }
+
+      try {
+        if (!Number.isFinite(applicantUserId)) {
+          showToast('\uC9C0\uC6D0\uC790 ID \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.');
+          return;
+        }
+        const createdId = await createInterviewSchedule({
+          time: scheduledAtIso,
+          status: 'PENDING',
+          user: { userId: applicantUserId as number },
+          jobPosting: { id: safeJobPostId },
+        });
+
+        setCurrentInterview({
+          interview_id: createdId,
+          application_id: safeApplicationId,
+          room_id: `room_${createdId}`,
+          scheduledAt: scheduledAtIso,
+          job_post_id: safeJobPostId,
+          postingTitle: postingTitle.trim(),
+          companyName: companyName.trim(),
+          applicantName: applicantName.trim(),
+          status: 'UPCOMING',
+        });
+
+        showToast('\uC77C\uC815 \uB4F1\uB85D \uC644\uB8CC!');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : '\uC77C\uC815 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.';
+        showToast(msg);
+      }
+    };
+
+    void run();
   }, [
     applicantName,
+    baseSchedule,
     companyName,
     currentInterview,
     isParamValid,
     postingTitle,
     safeApplicationId,
     safeJobPostId,
+    scheduleId,
     scheduledLocal,
     showToast,
     validate,
@@ -250,9 +446,6 @@ export default function CompanyInterviewSchedulePage() {
               <p className="text-midnight-ink text-sm font-black">현재 저장된 면접 일정</p>
               <p className="text-slate-gray mt-2 text-lg font-black">
                 {formatDateTime(currentInterview.scheduledAt)}
-              </p>
-              <p className="text-slate-gray mt-2 text-xs font-bold opacity-50">
-                자동으로 로비로 안 보냅니다. 원하면 아래 버튼으로 이동하세요 😇
               </p>
             </div>
           )}
