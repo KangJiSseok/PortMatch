@@ -1328,7 +1328,7 @@ export default function RecommendCompanyPage() {
             portfolioContent: item.portfolioContent ?? '',
             companyContent: item.companyContent ?? '',
             matchScore,
-            openingsCount: 0,
+            openingsCount: item.jobPostingSize ?? 0,
             weights,
             topFactors,
           };
@@ -1367,7 +1367,11 @@ export default function RecommendCompanyPage() {
   useEffect(() => {
     if (companies.length === 0) return;
     const uniqueIds = Array.from(new Set(companies.map((c) => c.companyId)));
-    const missing = uniqueIds.filter((id) => openingsCountMap[id] === undefined);
+    const missing = uniqueIds.filter((id) => {
+      if (openingsCountMap[id] !== undefined) return false;
+      const company = companies.find((c) => c.companyId === id);
+      return !company || company.openingsCount === 0;
+    });
     if (missing.length === 0) return;
 
     let cancelled = false;
