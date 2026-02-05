@@ -4,6 +4,8 @@ services:
   db:
     image: pgvector/pgvector:pg17
     container_name: portmatch-db
+    networks:
+      - portmatch-network
     restart: always
     ports:
       - "8100:5432"
@@ -15,6 +17,8 @@ services:
   backend:
     image: ${BACKEND_IMAGE:-kangjiseok/portmatch-backend:latest}
     container_name: portmatch-backend-prod
+    networks:
+      - portmatch-network
     restart: always
 
     environment:
@@ -35,6 +39,8 @@ services:
   inference:
     image: ${INFERENCE_IMAGE:-kangjiseok/portmatch-inference:latest}
     container_name: portmatch-inference-prod
+    networks:
+      - portmatch-network
     restart: always
     env_file:
       - .env.prod
@@ -46,6 +52,8 @@ services:
   portfolio-analysis:
     image: ${PORTFOLIO_IMAGE:-kangjiseok/portmatch-portfolio-analysis:latest}
     container_name: portmatch-portfolio-analysis-prod
+    networks:
+      - portmatch-network
     restart: always
     env_file:
       - .env.prod
@@ -57,6 +65,8 @@ services:
   embedding:
     image: ${EMBEDDING_IMAGE:-kangjiseok/portmatch-embedding:latest}
     container_name: portmatch-embedding-prod
+    networks:
+      - portmatch-network
     restart: always
     env_file:
       - .env.prod
@@ -68,6 +78,8 @@ services:
   explanation-llm:
     image: ${EXPLANATION_IMAGE:-kangjiseok/portmatch-explanation-llm:latest}
     container_name: portmatch-explanation-llm-prod
+    networks:
+      - portmatch-network
     restart: always
     env_file:
       - .env.prod
@@ -79,6 +91,8 @@ services:
   frontend:
     image: ${FRONTEND_IMAGE:-kangjiseok/portmatch-frontend:latest}
     container_name: portmatch-frontend-prod
+    networks:
+      - portmatch-network
     restart: always
     volumes:
       - letsencrypt:/etc/letsencrypt
@@ -93,6 +107,8 @@ services:
   peerjs-server:
     image: peerjs/peerjs-server
     container_name: peerjs-server
+    networks:
+      - portmatch-network
     restart: always
     ports:
       - "9000:9000"
@@ -101,6 +117,8 @@ services:
   certbot:
     image: certbot/certbot:latest
     container_name: portmatch-certbot
+    networks:
+      - portmatch-network
     restart: unless-stopped
     volumes:
       - letsencrypt:/etc/letsencrypt
@@ -111,12 +129,19 @@ services:
   wanted-crawler:
     image: ${CRAWLER_IMAGE:-kangjiseok/portmatch-wanted-crawler:latest}
     container_name: portmatch-wanted-crawler
+    networks:
+      - portmatch-network
     profiles: ['crawler']
     env_file:
       - .env.prod
     depends_on:
       - db
     restart: "no"
+
+networks:
+  portmatch-network:
+    name: portmatch-shared-network
+    driver: bridge
 
 volumes:
   postgres-data:
