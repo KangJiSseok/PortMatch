@@ -822,8 +822,11 @@ export default function RecommendCandidatesPage() {
     'shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0';
 
   return (
-    <div style={{ backgroundColor: PALETTE.pureWhite }} className="min-h-screen pt-32 pb-24">
-      <div className="mx-auto w-full max-w-[1280px] px-10">
+    <div
+      style={{ backgroundColor: PALETTE.pureWhite }}
+      className="min-h-screen pt-32 pb-24 overflow-x-auto"
+    >
+      <div className="mx-auto w-full max-w-[1280px] min-w-[1280px] px-10">
         {/* Header */}
         <header className="mb-6 border-l-[6px] border-[#5151E7] pl-6">
           <h1 className="text-5xl font-black tracking-tight text-[#1a1a1a]">추천 인재 리스트</h1>
