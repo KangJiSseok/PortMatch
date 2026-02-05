@@ -103,7 +103,7 @@ function formatDeadlineLabel(endDate: string) {
   const diffMs = end.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-  if (!Number.isFinite(diffDays)) return '상시채용';
+  if (!Number.isFinite(diffDays)) return '상시 채용';
   if (diffDays < 0) return '마감';
   if (diffDays === 0) return '오늘마감';
   return `D-${diffDays}`;
