@@ -103,6 +103,7 @@ function formatDeadlineLabel(endDate: string) {
   const diffMs = end.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
+  if (!Number.isFinite(diffDays)) return '상시채용';
   if (diffDays < 0) return '마감';
   if (diffDays === 0) return '오늘마감';
   return `D-${diffDays}`;
@@ -690,15 +691,15 @@ function JobPostingsPage() {
   }, [cid, keyword, companyName]);
 
   return (
-    <div className="bg-pure-white min-h-screen overflow-x-auto pt-32 pb-32">
-      <div className="min-w-[1200px]">
-        <div className="mx-auto w-[1200px] px-6">
+    <div className="bg-pure-white min-h-screen overflow-x-hidden pt-32 pb-32">
+      <div className="w-full">
+        <div className="mx-auto w-full max-w-[1200px] px-6">
           <div className="mb-12 flex items-end justify-between gap-6">
             <header className="border-point-blue border-l-4 pl-6">
               <motion.h1
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="text-midnight-ink text-[42px] leading-[1.05] font-black tracking-tighter whitespace-nowrap uppercase"
+                className="text-midnight-ink text-[42px] leading-[1.05] font-black tracking-tighter uppercase break-words"
               >
                 {headerTitle}
               </motion.h1>
@@ -790,6 +791,9 @@ function JobPostingsPage() {
                       {pagedJobs.length > 0 ? (
                         pagedJobs.map((job) => {
                           const isUrgent = getUrgent(job.deadline);
+                          const rawTitle = job.title ?? '';
+                          const isLongTitle = rawTitle.length > 42;
+                          const displayTitle = isLongTitle ? `${rawTitle.slice(0, 42)}...` : rawTitle;
 
                           return (
                             <motion.div
@@ -799,9 +803,10 @@ function JobPostingsPage() {
                               exit={{ opacity: 0, y: 20 }}
                               whileHover={{ y: -4 }}
                               className={[
-                                'border-silver-mist/20 bg-pure-white flex items-center gap-6 rounded-4xl border p-8 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/40',
+                                'border-silver-mist/20 bg-pure-white flex cursor-pointer items-center gap-5 rounded-4xl border p-6 shadow-sm transition-all hover:shadow-xl hover:shadow-gray-200/40',
                                 isUrgent ? 'ring-1 ring-red-200' : '',
                               ].join(' ')}
+                              onClick={() => navigate(`/job-posts/${job.id}`)}
                             >
                               <div className="border-silver-mist/20 bg-pure-white flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border p-2">
                                 {job.logo ? (
@@ -823,7 +828,7 @@ function JobPostingsPage() {
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <div className="mb-4 flex flex-wrap items-center gap-3">
+                                <div className="mb-3 flex flex-wrap items-center gap-3">
                                   <span className="text-slate-gray text-xs font-black opacity-70">
                                     {job.company}
                                   </span>
@@ -839,12 +844,16 @@ function JobPostingsPage() {
                                   )}
                                 </div>
 
-                                <h3 className="text-midnight-ink hover:text-point-blue truncate text-2xl font-black tracking-tight transition-colors">
-                                  {job.title}
+                                <h3
+                                  className="text-midnight-ink hover:text-point-blue min-h-[34px] min-w-0 break-words text-[18px] font-black leading-[1.25] tracking-tight transition-colors"
+                                  style={{ wordBreak: 'keep-all' }}
+                                  title={isLongTitle ? rawTitle : undefined}
+                                >
+                                  {displayTitle}
                                 </h3>
 
                                 {/* ✅ stackId -> stackName 표시 */}
-                                <div className="mt-3 flex flex-wrap gap-2">
+                                <div className="mt-1 flex flex-wrap gap-2">
                                   {(job.stackIds ?? []).length > 0
                                     ? (job.stackIds ?? []).map((id) => (
                                         <span
@@ -866,14 +875,14 @@ function JobPostingsPage() {
                               </div>
 
                               <div className="border-silver-mist/20 flex w-[170px] shrink-0 flex-col items-center gap-4 border-l pl-6">
-                                <div className="flex flex-col items-center text-center">
+                                <div className="flex flex-col items-center gap-1.5 text-center">
                                   <span className="text-slate-gray text-[11px] font-black tracking-widest uppercase opacity-50">
                                     Deadline
                                   </span>
 
                                   <span
                                     className={[
-                                      'text-2xl font-black tabular-nums',
+                                      'text-[18px] font-black tabular-nums',
                                       isUrgent ? 'text-red-600' : 'text-midnight-ink',
                                     ].join(' ')}
                                   >
@@ -884,7 +893,10 @@ function JobPostingsPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => navigate(`/job-posts/${job.id}`)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/job-posts/${job.id}`);
+                                  }}
                                   className="hover:text-point-blue rounded-2xl px-6 font-bold shadow-md hover:bg-soft-pebble/30"
                                 >
                                   공고 보기
