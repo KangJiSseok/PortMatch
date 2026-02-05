@@ -87,7 +87,7 @@ services:
     networks:                
       - portmatch-network
     restart: always
-    command: celery -A web.api.celery_app worker --loglevel=info
+    command: python -m celery -A web.api.celery_app worker --loglevel=info
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
