@@ -4,35 +4,7 @@ import axiosInstance from '@/api/axiosInstance';
 import { getMyInfo } from '@/api/auth';
 import type { ApiEnvelope } from '@/api/myPage/types';
 import type { InterviewListStatus, InterviewSessionView } from './list';
-
-export type InterviewUserApi = {
-  userId?: number;
-  email?: string;
-  name?: string;
-  role?: string;
-  cid?: string | null;
-};
-
-export type JobPostingApi = {
-  id?: number;
-  title?: string;
-  active?: number;
-  startDate?: string;
-  endDate?: string | null;
-  vcnt?: number;
-  cid?: string | null;
-  detail?: string | null;
-  jobType?: number | string;
-  stackIds?: number[] | string[] | null;
-  company?: {
-    cid?: string;
-    corpName?: string;
-    companies_name?: string;
-    name?: string;
-  } | null;
-  companies_name?: string;
-  corpName?: string;
-};
+import type { InterviewUserApi, JobPostingApi } from './user';
 
 export type InterviewCompanyApiRow = {
   id: number;
