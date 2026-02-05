@@ -23,7 +23,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-feat/applicant-jobapplication"'
+    - if: '$CI_COMMIT_BRANCH == "infra/portfolio-analysis"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -125,7 +125,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-feat/applicant-jobapplication"'
+    - if: '$CI_COMMIT_BRANCH == "infra/portfolio-analysis"'
 
   script:
     - set -e
@@ -153,12 +153,22 @@ deploy:
       
       echo "$CHANGED_FILES" | grep -q "^Backend/" && SERVICES="$SERVICES backend"
       echo "$CHANGED_FILES" | grep -q "^Inference/" && SERVICES="$SERVICES inference"
-      echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/" && SERVICES="$SERVICES portfolio-analysis"
       echo "$CHANGED_FILES" | grep -q "^Frontend/" && SERVICES="$SERVICES frontend"
       echo "$CHANGED_FILES" | grep -q "^Embedding/" && SERVICES="$SERVICES embedding"
       echo "$CHANGED_FILES" | grep -q "^Explanation-LLM/" && SERVICES="$SERVICES explanation-llm"
       echo "$CHANGED_FILES" | grep -q "^crawler/" && SERVICES="$SERVICES wanted-crawler"
       
+      # .gitlab-ci.yml에서 Worker 재시작 로직 추가
+
+      if echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/"; then
+      SERVICES="$SERVICES portfolio-analysis celery-worker"
+      fi
+
+      if echo "$CHANGED_FILES" | grep -q "docker-compose.prod.yml"; then
+        echo "⚙️ 설정 파일 변경: Redis & Worker 재시작"
+        SERVICES="$SERVICES redis celery-worker"
+      fi
+
       echo "🔍 변경 감지된 서비스:$SERVICES"
 
     # ---------- 배포 디렉토리 ----------
@@ -174,6 +184,7 @@ deploy:
       # ---------- ENV ----------
       APP_ENV=prod
       SPRING_PROFILES_ACTIVE=prod
+      REDIS_PASSWORD=${REDIS_PASSWORD}
 
       # ---------- DB ----------
       POSTGRES_DB=${POSTGRES_DB}
@@ -227,6 +238,9 @@ deploy:
       CRAWL_LIMIT=${CRAWL_LIMIT}
       DB_HOST=${DB_HOST}
       DB_PORT=${DB_PORT}
+
+      # ---------- Redis ----------
+      REDIS_PASSWORD=${REDIS_PASSWORD}
 
       ENV
 
