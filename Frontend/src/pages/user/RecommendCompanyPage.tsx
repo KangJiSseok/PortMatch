@@ -682,7 +682,7 @@ function EvaluationCriteria() {
         {/* Body - 패딩·간격 축소 */}
         {open && (
           <div className="border-t border-gray-100 bg-[#fcfcfc] px-5 py-4">
-            <p className="mb-4 max-w-[80ch] text-[13px] leading-relaxed text-[#4a4a4a]">
+            <p className="mb-4 max-w-[80ch] text-[13px] leading-relaxed break-keep text-[#4a4a4a]">
               이 리포트는 기업이 실제로 수행하는 프로젝트 내용을 기준으로,
               <br />
               <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
@@ -691,7 +691,7 @@ function EvaluationCriteria() {
               가 얼마나 유사한지를 종합적으로 평가합니다.
             </p>
 
-            <div className="grid grid-cols-1 gap-2.5">
+            <div className="grid grid-cols-5 gap-2.5">
               {CRITERIA_DATA.map((item) => (
                 <div
                   key={item.id}
@@ -704,7 +704,9 @@ function EvaluationCriteria() {
                     }}
                   />
                   <h5 className="mb-1 text-[13px] font-black text-[#1a1a1a]">{item.id}</h5>
-                  <p className="text-[11px] leading-[1.5] font-medium text-gray-500">{item.desc}</p>
+                  <p className="text-[11px] leading-[1.5] break-keep font-medium text-gray-500">
+                    {item.desc}
+                  </p>
                 </div>
               ))}
             </div>

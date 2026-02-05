@@ -101,7 +101,7 @@ function EvaluationCriteria() {
 
         {open && (
           <div className="border-t border-gray-100 bg-[#fcfcfc] px-5 py-4">
-            <p className="mb-4 max-w-[200ch] text-[13px] leading-relaxed text-[#4a4a4a]">
+            <p className="mb-4 max-w-[200ch] text-[13px] leading-relaxed break-keep text-[#4a4a4a]">
               이 리포트는 분석한 포트폴리오와 채용 공고를 대조하여,
               <br />
               <span className="border-b-2 border-[#d6d2c4] font-bold text-[#1a1a1a]">
@@ -110,7 +110,7 @@ function EvaluationCriteria() {
               가 실무 요구사항과 얼마나 맞닿아 있는지를 종합적으로 산출합니다.
             </p>
 
-            <div className="grid grid-cols-1 gap-2.5">
+            <div className="grid grid-cols-4 gap-2.5">
               {CRITERIA_DATA.map((item) => (
                 <div
                   key={item.id}
@@ -121,7 +121,9 @@ function EvaluationCriteria() {
                     style={{ backgroundColor: item.color }}
                   />
                   <h5 className="mb-1 text-[13px] font-black text-[#1a1a1a]">{item.id}</h5>
-                  <p className="text-[11px] leading-[1.5] font-medium text-gray-500">{item.desc}</p>
+                  <p className="text-[11px] leading-[1.5] break-keep font-medium text-gray-500">
+                    {item.desc}
+                  </p>
                 </div>
               ))}
             </div>
