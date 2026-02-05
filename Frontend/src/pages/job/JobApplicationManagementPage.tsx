@@ -58,6 +58,7 @@ const GRADUATION_STATUS_MAP: Record<string, string> = {
   DROPPED: '중퇴',
 };
 
+// ... (인터페이스들은 그대로 유지) ...
 interface Career {
   id: number;
   resumeId: number;
@@ -602,7 +603,7 @@ const JobApplicationManagementPage = () => {
                               if ((!chatUserId || chatUserId === 0) && app.resume) {
                                 chatUserId = app.resume.userId;
                               }
-                              e.stopPropagation();
+                              e.stopPropagation(); // 💥 여기처럼 이벤트 전파를 막아야 합니다.
                               if (chatUserId && chatUserId !== 0) {
                                 handleContactApplicant(chatUserId, displayName);
                               } else {
@@ -621,7 +622,7 @@ const JobApplicationManagementPage = () => {
                             className="w-32 rounded-xl whitespace-nowrap"
                             disabled={isDetailLoading}
                             onClick={(e) => {
-                              e.stopPropagation();
+                              e.stopPropagation(); // 💥 여기도 막아야 함
                               handleOpenResumeModal(app.applicationId);
                             }}
                           >
@@ -634,7 +635,7 @@ const JobApplicationManagementPage = () => {
                               size="md"
                               className="w-40 rounded-xl whitespace-nowrap"
                               onClick={(e) => {
-                                e.stopPropagation();
+                                e.stopPropagation(); // 💥 여기도 막아야 함
                                 goSchedule(app);
                               }}
                             >
@@ -686,18 +687,20 @@ const JobApplicationManagementPage = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={closeModal}
-              className="fixed inset-0 z-400 bg-slate-900/70 backdrop-blur-md"
+              // ✅ z-index 수정: z-400 -> z-[400]
+              className="fixed inset-0 z-[400] bg-slate-900/70 backdrop-blur-md"
             />
             <motion.div
               initial={{ opacity: 0, y: 50, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.95 }}
-              className="fixed inset-0 z-500 flex items-center justify-center p-4 sm:p-6"
+              // ✅ z-index 수정: z-500 -> z-[500]
+              className="fixed inset-0 z-[500] flex items-center justify-center p-4 sm:p-6"
               onClick={closeModal}
             >
               <div
                 className="relative flex h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-slate-50 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()} // ✅ 내부 클릭 시 닫기 방지
               >
                 <div className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/80 px-6 py-4 backdrop-blur-md sm:px-8">
                   <div className="flex items-center gap-3">
@@ -724,6 +727,7 @@ const JobApplicationManagementPage = () => {
                 </div>
 
                 <div className="flex-1 space-y-8 overflow-y-auto p-6 sm:p-8">
+                  {/* ... (이력서 내용 렌더링 부분은 수정 없음) ... */}
                   <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-100">
                     <div className="flex flex-col gap-8 lg:flex-row">
                       <div className="flex shrink-0 justify-center lg:block">
@@ -929,22 +933,16 @@ const JobApplicationManagementPage = () => {
                 </div>
 
                 <div className="sticky bottom-0 z-20 flex justify-end gap-3 border-t border-slate-200 bg-white/90 px-6 py-4 backdrop-blur-md sm:px-8">
-                  <Button
-                    variant="light"
-                    size="lg"
-                    onClick={closeModal}
-                    className="min-w-24 rounded-xl font-bold"
-                  >
-                    닫기
-                  </Button>
-
                   {selectedApplication.status !== 'REJECTED' &&
                     selectedApplication.status !== '불합격' && (
                       <Button
                         variant="outline"
                         size="lg"
                         className="flex items-center gap-2 rounded-xl border-red-200 font-bold text-red-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-                        onClick={handleRejectApplication}
+                        onClick={(e) => {
+                          e.stopPropagation(); // ✅ 이벤트 전파 중단
+                          handleRejectApplication();
+                        }}
                       >
                         <Ban size={18} />
                         불합격
@@ -955,7 +953,8 @@ const JobApplicationManagementPage = () => {
                     variant="outline"
                     size="lg"
                     className="flex items-center gap-2 rounded-xl font-bold text-slate-600 hover:text-blue-600"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation(); // ✅ 이벤트 전파 중단
                       let chatUserId = selectedApplication.userId;
                       if ((!chatUserId || chatUserId === 0) && selectedApplication.resume) {
                         chatUserId = selectedApplication.resume.userId;
@@ -971,13 +970,15 @@ const JobApplicationManagementPage = () => {
                     <MessageSquare size={18} />
                     1:1 메시지
                   </Button>
+
                   {selectedApplication.status !== 'REJECTED' &&
                     selectedApplication.status !== '불합격' && (
                       <Button
                         variant="blue"
                         size="lg"
                         className="rounded-xl font-black shadow-lg shadow-blue-600/20"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation(); // ✅ 이벤트 전파 중단
                           const app = applications.find(
                             (a) => a.applicationId === selectedApplication.applicationId,
                           );

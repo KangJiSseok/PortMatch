@@ -16,6 +16,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { MessengerContext } from './MessengerContext';
 import type { Message, ChatRoom } from '../types/messenger';
+import SystemIcon from '../assets/images/system/alarm.png';
 
 export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -73,9 +74,7 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const timer = setTimeout(() => setMessages([]), 0);
       return () => clearTimeout(timer);
     }
-
     const q = query(collection(db, `rooms/${currentRoomId}/messages`), orderBy('createdAt', 'asc'));
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -83,7 +82,6 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })) as Message[];
       setMessages(data);
     });
-
     return () => unsubscribe();
   }, [currentRoomId]);
 
@@ -91,7 +89,6 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const markAsRead = async () => {
       if (!currentRoomId || !isOpen || !myIdentifier) return;
       const currentRoom = rooms.find((r) => r.id === currentRoomId);
-
       if (currentRoom && currentRoom.lastSenderId !== myIdentifier && currentRoom.unreadCount > 0) {
         try {
           const roomRef = doc(db, 'rooms', currentRoomId);
@@ -105,6 +102,48 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [currentRoomId, messages, isOpen, rooms, myIdentifier]);
 
   const toggleMessenger = useCallback(() => setIsOpen((prev) => !prev), []);
+
+  const startNewChat = useCallback(
+    async (targetUserId: string, targetName: string, targetProfileImg?: string) => {
+      if (!user || !myIdentifier) return null;
+
+      try {
+        const existingRoom = rooms.find(
+          (r) => r.participants.includes(targetUserId) && r.participants.includes(myIdentifier),
+        );
+
+        if (existingRoom) {
+          setCurrentRoomId(existingRoom.id);
+          setIsOpen(true);
+          return existingRoom.id;
+        }
+
+        const isCompany = user.role === 'COMPANY';
+
+        const newRoomData = {
+          participants: [myIdentifier, targetUserId],
+          companyName: isCompany ? user.name || '기업' : targetName,
+          applicantName: isCompany ? targetName : user.name || '지원자',
+          lastMessage: '대화를 시작해보세요!',
+          lastUpdatedAt: Timestamp.now(),
+          lastSenderId: 'SYSTEM',
+          unreadCount: 0,
+          senderType: 'general',
+          logoUrl: targetProfileImg || '',
+        };
+
+        const docRef = await addDoc(collection(db, 'rooms'), newRoomData);
+
+        setCurrentRoomId(docRef.id);
+        setIsOpen(true);
+        return docRef.id;
+      } catch (error) {
+        console.error('Failed to start chat:', error);
+        return null;
+      }
+    },
+    [user, myIdentifier, rooms],
+  );
 
   const sendMessage = useCallback(
     async (
@@ -146,13 +185,10 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const sendSystemNotification = useCallback(
     async (targetCid: string | number, messageText: string, linkJobId?: number) => {
       if (!targetCid) return;
-
       try {
         const strCid = String(targetCid).trim();
         const companyIdentifier = `COMPANY_${strCid}`;
-
         const roomId = `system_${companyIdentifier}`;
-
         const roomRef = doc(db, 'rooms', roomId);
 
         await setDoc(
@@ -167,7 +203,8 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             unreadCount: increment(1),
             senderType: 'system',
             isReadOnly: true,
-            logoUrl: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png',
+            // ✅ [수정] 외부 링크 대신 로컬 이미지 변수 사용
+            logoUrl: SystemIcon,
           },
           { merge: true },
         );
@@ -180,8 +217,6 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           type: 'system',
           jobPostingId: linkJobId || null,
         });
-
-        console.log(`[System Notification] Sent to ${companyIdentifier}`);
       } catch (error) {
         console.error('Failed to send system notification:', error);
       }
@@ -214,7 +249,7 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sendMessage,
         acceptInterview: async () => {},
         declineInterview: async () => {},
-        startNewChat: async () => null,
+        startNewChat,
         sendSystemNotification,
       }}
     >
