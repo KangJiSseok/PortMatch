@@ -45,6 +45,9 @@ public class Portfolio {
     @Column(name = "file_size", nullable = false)
     private Long fileSize;
 
+    @Column(name = "is_main", nullable = false)
+    private Boolean isMain;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -67,5 +70,10 @@ public class Portfolio {
         this.originalFilename = originalFilename;
         this.contentType = contentType;
         this.fileSize = fileSize;
+        this.isMain = false;
+    }
+
+    public void markMain(boolean isMain) {
+        this.isMain = isMain;
     }
 }
