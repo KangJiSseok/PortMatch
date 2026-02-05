@@ -26,4 +26,6 @@ public interface JobApplicationService {
             Long applicationId,
             JobApplicationStatusUpdateRequest request
     );
+
+    boolean hasApplied(Long userId, Long jobPostingId);
 }

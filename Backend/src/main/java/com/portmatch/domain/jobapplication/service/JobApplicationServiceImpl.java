@@ -223,4 +223,14 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         }
         return jobPosting;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasApplied(Long userId, Long jobPostingId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+        jobPostingRepository.findById(jobPostingId)
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+        return jobApplicationRepository.existsByUser_IdAndJobPosting_Id(userId, jobPostingId);
+    }
 }

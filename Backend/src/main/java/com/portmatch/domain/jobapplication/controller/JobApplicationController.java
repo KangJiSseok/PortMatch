@@ -95,4 +95,15 @@ public class JobApplicationController {
                 jobApplicationService.updateApplicationStatusForCompany(userId, jobPostingId, applicationId, request)
         );
     }
+
+    @Operation(summary = "족축 지원 상태 확인", description = "지원자가 해당 공고에 지원했는지 여부를 확인합니다.")
+    @GetMapping("/{id}/application/exists")
+    public BaseApiResponse<Boolean> hasApplied(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long jobPostingId
+    ) {
+        Long userId = principal.getUser().getId();
+        return BaseApiResponse.ok(jobApplicationService.hasApplied(userId, jobPostingId));
+    }
+
 }
