@@ -162,7 +162,6 @@ deploy:
 
       if echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/"; then
       SERVICES="$SERVICES portfolio-analysis celery-worker"
-      NEED_MINERU=true
       fi
 
       if echo "$CHANGED_FILES" | grep -q "docker-compose.prod.yml"; then
@@ -249,12 +248,6 @@ deploy:
     - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
     
     - |
-      if [ "$NEED_MINERU" = true ]; then
-        echo "🚀 MinerU API를 확인하고 재시작합니다..."
-        docker stop mineru-api || true
-        docker rm mineru-api || true
-        docker run -d --name mineru-api --gpus all --restart always --network deploy_default -p 18000:8000 mineru:latest mineru-api --host 0.0.0.0 --port 8000
-      fi
 
       if [ -n "$SERVICES" ]; then
         echo "📦 배포할 서비스:$SERVICES"
