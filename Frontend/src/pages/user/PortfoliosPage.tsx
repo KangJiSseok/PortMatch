@@ -90,7 +90,7 @@ const STAGES = [
 
 function PortfoliosPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // URL 파라미터에서 step과 portfolioId 파생 (뒤로가기 시 자동 반영)
   const urlStep = (searchParams.get('step') as 'upload' | 'result') || 'upload';
