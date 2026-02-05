@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useNavigate, useBlocker } from 'react-router-dom';
+import { useParams, useNavigate, useBlocker, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -255,6 +255,7 @@ function ResumeDetailPage() {
     applicationId: string;
   }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { startNewChat } = useMessenger();
 
   const [user, setUser] = useState<UserData | null>(null);
@@ -479,6 +480,9 @@ function ResumeDetailPage() {
     [mapApiToResume],
   );
 
+  const companyResumeFromState = (location.state as { companyResume?: ApiResumeResponse } | null)
+    ?.companyResume;
+
   useEffect(() => {
     if (!isUserLoading) {
       fetchResumes(user);
@@ -494,10 +498,19 @@ function ResumeDetailPage() {
     if (jobId && applicationId) {
       fetchApplicationResume(jobId, applicationId);
     } else if (resumeId && resumeId !== 'me') {
-      setIsDetailLoading(true);
-      fetchResumeDetail(resumeId, user).finally(() => {
+      const isCompanyUser = user?.role === 'COMPANY';
+      const stateResumeId = companyResumeFromState?.id;
+
+      if (isCompanyUser && companyResumeFromState && String(stateResumeId) === String(resumeId)) {
+        const mappedResume = mapApiToResume(companyResumeFromState, user, true);
+        setAllResumes({ [mappedResume.id]: mappedResume });
         setIsDetailLoading(false);
-      });
+      } else {
+        setIsDetailLoading(true);
+        fetchResumeDetail(resumeId, user).finally(() => {
+          setIsDetailLoading(false);
+        });
+      }
     } else {
       setIsDetailLoading(false);
     }
@@ -509,6 +522,8 @@ function ResumeDetailPage() {
     isUserLoading,
     fetchResumeDetail,
     fetchApplicationResume,
+    companyResumeFromState,
+    mapApiToResume,
   ]);
 
   const targetId =
