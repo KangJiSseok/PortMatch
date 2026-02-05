@@ -69,12 +69,16 @@ build:
       
       # Portfolio-Analysis
       if echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/"; then
-        echo "🔨 [3/7] Portfolio-Analysis 빌드 중..."
-        docker build -f Portfolio-Analysis/Dockerfile -t "$PORTFOLIO_IMAGE:$IMAGE_TAG" -t "$PORTFOLIO_IMAGE:latest" Portfolio-Analysis
+        echo "🔨 Portfolio-Analysis 빌드 중..."
+        docker build -f Portfolio-Analysis/Dockerfile -t "$PORTFOLIO_IMAGE:$IMAGE_TAG" Portfolio-Analysis
         docker push "$PORTFOLIO_IMAGE:$IMAGE_TAG"
-        docker push "$PORTFOLIO_IMAGE:latest"
-      else
-        echo "⏭️  [3/7] Portfolio-Analysis - 변경 없음"
+        
+        # ⭐ [절대적 격리 1] dev 브랜치일 때만 latest 태그 갱신
+        if [ "$CI_COMMIT_BRANCH" == "dev" ]; then
+          docker tag "$PORTFOLIO_IMAGE:$IMAGE_TAG" "$PORTFOLIO_IMAGE:latest"
+          docker push "$PORTFOLIO_IMAGE:latest"
+          echo "✅ dev 브랜치: latest 태그 갱신 완료"
+        fi
       fi
       
       # Frontend
@@ -161,15 +165,25 @@ deploy:
       # .gitlab-ci.yml에서 Worker 재시작 로직 추가
 
       if echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/"; then
-      SERVICES="$SERVICES portfolio-analysis celery-worker"
+        if [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis" ]; then
+          echo "🧪 테스트 브랜치: 테스트 서버만 배포 목록에 추가 (운영 서버 제외)"
+          SERVICES="$SERVICES portfolio-analysis-test celery-worker-test"
+        elif [ "$CI_COMMIT_BRANCH" == "dev" ]; then
+          echo "🚀 운영 브랜치: 모든 서버 업데이트"
+          SERVICES="$SERVICES portfolio-analysis portfolio-analysis-test celery-worker-test"
+        fi
       fi
 
       if echo "$CHANGED_FILES" | grep -q "docker-compose.prod.yml"; then
-        echo "⚙️ 설정 파일 변경: Redis & Worker 재시작"
-        SERVICES="$SERVICES redis celery-worker"
+        echo "⚙️ 설정 파일 변경 감지"
+        if [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis" ]; then
+           SERVICES="$SERVICES redis portfolio-analysis-test celery-worker-test"
+        else
+           SERVICES="$SERVICES redis portfolio-analysis portfolio-analysis-test celery-worker-test"
+        fi
       fi
 
-      echo "🔍 변경 감지된 서비스:$SERVICES"
+      echo "🔍 최종 배포 대상 서비스: $SERVICES"
 
     # ---------- 배포 디렉토리 ----------
     - mkdir -p /home/gitlab-runner/deploy

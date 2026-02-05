@@ -55,21 +55,35 @@ services:
     networks:
       - portmatch-network
     restart: always
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
     env_file:
       - .env.prod
     ports:
       - "8103:8000"
     depends_on:
       - db
+
+  portfolio-analysis-test:
+    image: ${PORTFOLIO_IMAGE:-kangjiseok/portmatch-portfolio-analysis:latest}
+    container_name: portmatch-portfolio-analysis-test  
+    networks:
+      - portmatch-network
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - USE_CELERY=true  
+    env_file:
+      - .env.prod
+    ports:
+      - "8107:8000" 
+    depends_on:
+      - db
       - redis
 
-  celery-worker:
+  celery-worker-test:
     image: ${PORTFOLIO_IMAGE:-kangjiseok/portmatch-portfolio-analysis:latest}
-    container_name: portmatch-celery-worker
+    container_name: portmatch-celery-worker-test
     networks:                
       - portmatch-network
     restart: always

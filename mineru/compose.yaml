@@ -5,13 +5,13 @@ services:
     restart: always
     profiles: ["openai-server"]
     ports:
-      - 30000:30000
+      - 30001:30001
     environment:
       MINERU_MODEL_SOURCE: local
     entrypoint: mineru-openai-server
     command:
       --host 0.0.0.0
-      --port 30000
+      --port 30001
       # --data-parallel-size 2  # If using multiple GPUs, increase throughput using vllm's multi-GPU parallel mode
       # --gpu-memory-utilization 0.5  # If running on a single GPU and encountering VRAM shortage, reduce the KV cache size by this parameter, if VRAM issues persist, try lowering it further to `0.4` or below.
     ulimits:
@@ -19,7 +19,7 @@ services:
       stack: 67108864
     ipc: host
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:30000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:30001/health || exit 1"]
     deploy:
       resources:
         reservations:
@@ -34,13 +34,13 @@ services:
     restart: always
     profiles: ["api"]
     ports:
-      - 18000:8000
+      - 18001:8001
     environment:
       MINERU_MODEL_SOURCE: local
     entrypoint: mineru-api
     command:
       --host 0.0.0.0
-      --port 8000
+      --port 8001
       # parameters for vllm-engine
       # --data-parallel-size 2  # If using multiple GPUs, increase throughput using vllm's multi-GPU parallel mode
       # --gpu-memory-utilization 0.5  # If running on a single GPU and encountering VRAM shortage, reduce the KV cache size by this parameter, if VRAM issues persist, try lowering it further to `0.4` or below.
@@ -62,13 +62,13 @@ services:
     restart: always
     profiles: ["gradio"]
     ports:
-      - 7860:7860
+      - 7861:7861
     environment:
       MINERU_MODEL_SOURCE: local
     entrypoint: mineru-gradio
     command:
       --server-name 0.0.0.0
-      --server-port 7860
+      --server-port 7861
       # --enable-api false  # If you want to disable the API, set this to false
       # --max-convert-pages 20  # If you want to limit the number of pages for conversion, set this to a specific number
       # parameters for vllm-engine

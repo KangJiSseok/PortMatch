@@ -10,6 +10,7 @@ async def parse_pdf(request: Request):
     """
     PDF 파싱 요청 (비동기 Task로 처리)
     """
+
     raw_body = await request.body()
     if not raw_body:
         raise HTTPException(status_code=400, detail="s3_url is required")
@@ -38,6 +39,7 @@ async def parse_pdf_v2(request: Request):
     """
     PDF 파싱 v2 요청 (피드백 생성, 비동기 Task로 처리)
     """
+
     raw_body = await request.body()
     if not raw_body:
         raise HTTPException(status_code=400, detail="s3_url is required")
