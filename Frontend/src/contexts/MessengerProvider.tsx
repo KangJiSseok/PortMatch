@@ -10,6 +10,7 @@ import {
   doc,
   increment,
   onSnapshot,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -91,15 +92,22 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const toggleMessenger = useCallback(() => setIsOpen((prev) => !prev), []);
 
   const startNewChat = useCallback(
-    async (applicantId: string, applicantName: string, logoUrl?: string) => {
-      if (!user || user.role !== 'COMPANY') return;
+    async (
+      applicantId: string,
+      applicantName: string,
+      logoUrl?: string,
+    ): Promise<string | null> => {
+      if (!user || user.role !== 'COMPANY') return null;
 
       try {
         const currentUserId = String(user.userId);
         const existingRoom = rooms.find((r) => r.participants.includes(applicantId));
 
+        let targetRoomId = '';
+
         if (existingRoom) {
-          setCurrentRoomId(existingRoom.id);
+          targetRoomId = existingRoom.id;
+          setCurrentRoomId(targetRoomId);
         } else {
           const newRoomData = {
             participants: [currentUserId, applicantId],
@@ -116,36 +124,52 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           };
 
           const docRef = await addDoc(collection(db, 'rooms'), newRoomData);
-          setCurrentRoomId(docRef.id);
+          targetRoomId = docRef.id;
+          setCurrentRoomId(targetRoomId);
         }
         setIsOpen(true);
+
+        return targetRoomId;
       } catch (error) {
         console.error(error);
+        return null;
       }
     },
     [user, rooms],
   );
 
   const sendMessage = useCallback(
-    async (text: string, type: 'text' | 'interview' = 'text', interviewId?: string) => {
-      if (!currentRoomId || !user || !text.trim()) return;
+    async (
+      text: string,
+      type: 'text' | 'interview' | 'system' = 'text',
+      targetRoomId?: string,
+      additionalData?: {
+        interviewId?: string;
+        jobPostingId?: number;
+        jobPostingTitle?: string;
+      },
+    ) => {
+      const roomIdToSend = targetRoomId || currentRoomId;
+
+      if (!roomIdToSend) return;
 
       try {
-        const currentUserId = String(user.userId);
+        const currentUserId = user ? String(user.userId) : 'SYSTEM';
+        const currentUserName = user ? user.name : 'Giterra 알리미';
 
-        await addDoc(collection(db, `rooms/${currentRoomId}/messages`), {
+        await addDoc(collection(db, `rooms/${roomIdToSend}/messages`), {
           text,
           senderId: currentUserId,
-          senderName: user.name,
+          senderName: currentUserName,
           createdAt: Timestamp.now(),
           type,
-          ...(interviewId && { interviewId }),
+          ...additionalData,
         });
 
-        await updateDoc(doc(db, 'rooms', currentRoomId), {
+        await updateDoc(doc(db, 'rooms', roomIdToSend), {
           lastMessage: text,
           lastUpdatedAt: Timestamp.now(),
-          lastSenderId: String(user.userId),
+          lastSenderId: currentUserId,
           unreadCount: increment(1),
         });
       } catch (error) {
@@ -153,6 +177,62 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     },
     [currentRoomId, user],
+  );
+
+  const getOrCreateSystemRoom = useCallback(async (targetUserId: string) => {
+    try {
+      const q = query(
+        collection(db, 'rooms'),
+        where('participants', 'array-contains', targetUserId),
+      );
+      const snapshot = await getDocs(q);
+
+      const systemRoom = snapshot.docs.find((doc) => doc.data().participants.includes('SYSTEM'));
+
+      if (systemRoom) {
+        return systemRoom.id;
+      }
+
+      const newRoomData = {
+        participants: [targetUserId, 'SYSTEM'],
+        applicantId: targetUserId,
+        applicantName: '사용자',
+        companyId: 'SYSTEM',
+        companyName: 'Giterra 알리미',
+        lastMessage: '새로운 알림이 도착했습니다.',
+        lastUpdatedAt: Timestamp.now(),
+        lastSenderId: 'SYSTEM',
+        unreadCount: 1,
+        senderType: 'system',
+        logoUrl: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png',
+        isReadOnly: true,
+      };
+
+      const docRef = await addDoc(collection(db, 'rooms'), newRoomData);
+      return docRef.id;
+    } catch (error) {
+      console.error('시스템 방 생성 실패:', error);
+      return null;
+    }
+  }, []);
+
+  const sendSystemNotification = useCallback(
+    async (targetUserId: string, messageText: string, linkJobId?: number) => {
+      try {
+        const roomId = await getOrCreateSystemRoom(targetUserId);
+        if (!roomId) return;
+
+        await sendMessage(
+          messageText,
+          'system',
+          roomId,
+          linkJobId ? { jobPostingId: linkJobId } : undefined,
+        );
+      } catch (error) {
+        console.error('알림 전송 실패:', error);
+      }
+    },
+    [getOrCreateSystemRoom, sendMessage],
   );
 
   const acceptInterview = useCallback(
@@ -230,6 +310,7 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         acceptInterview,
         declineInterview,
         startNewChat,
+        sendSystemNotification,
       }}
     >
       {children}

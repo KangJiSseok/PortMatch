@@ -6,11 +6,13 @@ export interface Message {
   senderId: string;
   senderName: string;
   createdAt: Timestamp | null;
-  type: 'text' | 'interview';
+  type: 'text' | 'interview' | 'system';
   status?: 'sending' | 'error' | 'success';
   interviewId?: string;
   isAccepted?: boolean;
   isDeclined?: boolean;
+  jobPostingId?: number;
+  jobPostingTitle?: string;
 }
 
 export interface ChatRoom {
@@ -25,7 +27,8 @@ export interface ChatRoom {
   unreadCount: number;
   lastSenderId: string;
   logoUrl: string;
-  senderType: 'company' | 'user';
+  senderType: 'company' | 'user' | 'system';
+  isReadOnly?: boolean;
 }
 
 export interface MessengerContextType {
@@ -37,8 +40,30 @@ export interface MessengerContextType {
   totalUnreadCount: number;
   toggleMessenger: () => void;
   setCurrentRoomId: (id: string | null) => void;
-  sendMessage: (text: string, type?: 'text' | 'interview', interviewId?: string) => Promise<void>;
+
+  sendMessage: (
+    text: string,
+    type?: 'text' | 'interview' | 'system',
+    targetRoomId?: string,
+    additionalData?: {
+      interviewId?: string;
+      jobPostingId?: number;
+      jobPostingTitle?: string;
+    },
+  ) => Promise<void>;
+
   acceptInterview: (messageId: string, interviewId: string, companyName: string) => Promise<void>;
   declineInterview: (messageId: string, interviewId: string, companyName: string) => Promise<void>;
-  startNewChat: (applicantId: string, applicantName: string, logoUrl?: string) => Promise<void>;
+
+  startNewChat: (
+    applicantId: string,
+    applicantName: string,
+    logoUrl?: string,
+  ) => Promise<string | null>;
+
+  sendSystemNotification: (
+    targetUserId: string,
+    messageText: string,
+    linkJobId?: number,
+  ) => Promise<void>;
 }
