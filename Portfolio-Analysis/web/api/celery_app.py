@@ -1,4 +1,4 @@
-from web.celery_app import celery_app
+from celery import Celery
 import os
 from dotenv import load_dotenv
 
