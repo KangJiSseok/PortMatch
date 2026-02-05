@@ -4,10 +4,12 @@ import type { ApiEnvelope, RecommendJobPostingsData } from '@/types/recommendJob
 
 export async function fetchRecommendedJobPostings(
   portfolioId: number | string,
+  limit?: number,
 ): Promise<RecommendJobPostingsData> {
   try {
     const res = await axiosInstance.get<ApiEnvelope<RecommendJobPostingsData>>(
       `/job-postings/match/portfolio/${portfolioId}`,
+      limit ? { params: { limit } } : undefined,
     );
 
     if (!res.data?.status) {
