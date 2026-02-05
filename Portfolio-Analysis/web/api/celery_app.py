@@ -1,4 +1,5 @@
 from celery import Celery
+
 import os
 from dotenv import load_dotenv
 
@@ -28,5 +29,4 @@ celery_app.conf.update(
     task_track_started=True,
     task_time_limit=3600,
     # 브로커 연결 리트라이 관련 경고 해결용
-    broker_connection_retry_on_startup=True 
-)
+    broker_connection_retry_on_startup=True)
