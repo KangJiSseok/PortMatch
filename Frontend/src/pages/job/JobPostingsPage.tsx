@@ -822,9 +822,16 @@ function JobPostingsPage() {
                       </div>
 
                       <div className="min-w-0">
-                        <h3 className="text-midnight-ink text-[20px] font-black tracking-tight">
-                          {companySearchResult.corpName}
-                        </h3>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(`/companies/${companySearchResult.cid}/active-postings`)
+                        }
+                        className="text-midnight-ink hover:text-point-blue text-[20px] font-black tracking-tight transition-colors"
+                        title={companySearchResult.corpName}
+                      >
+                        {companySearchResult.corpName}
+                      </button>
                         <div className="text-slate-gray mt-1 flex flex-wrap gap-3 text-[12px] font-semibold">
                           {companySearchResult.busiSize && (
                             <span className="rounded-full bg-[#f0eee9]/70 px-3 py-1">
@@ -850,6 +857,17 @@ function JobPostingsPage() {
                             >
                               홈페이지
                             </a>
+                          )}
+                          {companySearchResult.cid && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(`/companies/${companySearchResult.cid}/active-postings`)
+                              }
+                              className="text-point-blue rounded-full bg-[#f0eee9]/70 px-3 py-1 text-[12px] font-black transition hover:bg-[#e6e1d6]"
+                            >
+                              진행 중 공고 보기
+                            </button>
                           )}
                         </div>
                       </div>
