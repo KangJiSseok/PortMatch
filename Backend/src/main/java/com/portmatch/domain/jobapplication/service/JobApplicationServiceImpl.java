@@ -53,10 +53,10 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         JobPostingEntity jobPosting = jobPostingRepository.findById(jobPostingId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
-        if (jobApplicationRepository.existsByUser_IdAndJobPosting_Id(user.getId(), jobPosting.getId())) {
-            log.info("Errorrrrrrrrrrr");
-            throw new BusinessException(ResponseCode.ALREADY_APPLIED);
-        }
+//        if (jobApplicationRepository.existsByUser_IdAndJobPosting_Id(user.getId(), jobPosting.getId())) {
+//            log.info("Errorrrrrrrrrrr");
+//            throw new BusinessException(ResponseCode.ALREADY_APPLIED);
+//        }
 
         log.info("create 전");
         JobApplication application = JobApplication.create(user, jobPosting, resume);
