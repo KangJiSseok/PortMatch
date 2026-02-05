@@ -30,6 +30,21 @@ type ResumeApiResponse = {
   data: ResumeItem[];
 };
 
+type MyApplicationItem = {
+  applicationId: number;
+  jobPostingId: number;
+  status: 'APPLIED' | 'PASS' | 'FAIL' | 'READ';
+  resumeId: number;
+  appliedAt: string;
+};
+
+type MyApplicationsApiResponse = {
+  status: boolean;
+  code: number;
+  message: string;
+  data: MyApplicationItem[];
+};
+
 function formatYmdDot(ymd?: string | null) {
   if (!ymd) return '-';
   return ymd.replaceAll('-', '.');
@@ -216,6 +231,27 @@ export default function JobApplyPage() {
     }
   }, []);
 
+  const fetchMyAppliedStatus = useCallback(async (postingId: number) => {
+    try {
+      const response = await fetch('/api/job-postings/applications/me', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) return false;
+
+      const json = (await response.json()) as MyApplicationsApiResponse;
+      if (!json.status || !Array.isArray(json.data)) return false;
+
+      return json.data.some((item) => Number(item.jobPostingId) === postingId);
+    } catch (err) {
+      console.warn(err);
+      return false;
+    }
+  }, []);
+
   const load = useCallback(async () => {
     if (!Number.isFinite(jobPostId)) {
       setStatus('notfound');
@@ -237,7 +273,9 @@ export default function JobApplyPage() {
       setStatus('success');
 
       const jp = res.jobPost as JobPostWithExtras;
-      setHasApplied(!!jp.applied);
+      const appliedFromDetail = !!jp.applied;
+      const appliedFromMyList = await fetchMyAppliedStatus(jobPostId);
+      setHasApplied(appliedFromDetail || appliedFromMyList);
 
       fetchResumes(false);
     } catch (err) {
@@ -245,7 +283,7 @@ export default function JobApplyPage() {
       setData(null);
       setErrorMessage(err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
     }
-  }, [jobPostId, fetchResumes]);
+  }, [jobPostId, fetchResumes, fetchMyAppliedStatus]);
 
   useEffect(() => {
     load();
@@ -279,7 +317,7 @@ export default function JobApplyPage() {
     if (isSubmitting) return;
 
     if (hasApplied) {
-      setToast('이미 지원 완료된 공고입니다.');
+      setToast('이미 지원한 공고입니다');
       return;
     }
 
@@ -303,28 +341,20 @@ export default function JobApplyPage() {
         throw new Error('지원에 실패했습니다.');
       }
 
-      // [핵심 수정] 알림 발송을 먼저 완수하고 성공 모달을 띄웁니다.
-      // 로그를 통해 실제 어떤 CID로 가는지 확인합니다.
       const rawCid = data?.company?.cid;
       const jobTitle = data?.jobPost?.title;
 
       if (rawCid) {
-        const finalCid = String(rawCid).trim(); // 공백 제거 및 확실한 문자열화
-        console.log(`[Apply] 알림 전송 시도 - CID: ${finalCid}, Job: ${jobTitle}`);
-
+        const finalCid = String(rawCid).trim();
         try {
           await sendSystemNotification(
             finalCid,
             `[지원 알림] 새로운 지원자가 [${jobTitle}] 공고에 지원했습니다.`,
             jobPostId,
           );
-          console.log('[Apply] 알림 전송 함수 실행 완료');
         } catch (notifyError) {
-          // 알림 전송 실패가 지원 전체의 실패는 아니므로 에러만 로그로 남깁니다.
-          console.error('[Apply] 알림 전송 중 오류:', notifyError);
+          console.error(notifyError);
         }
-      } else {
-        console.warn('[Apply] 알림 전송 스킵: 기업 CID가 없습니다.', data?.company);
       }
 
       setHasApplied(true);
@@ -608,16 +638,27 @@ export default function JobApplyPage() {
 
                 <div className="mt-8 space-y-3">
                   {hasApplied ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      className="w-full rounded-2xl border-red-100 font-bold text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                      onClick={cancel}
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? '처리 중...' : '지원 취소하기'}
-                    </Button>
+                    <div className="space-y-3">
+                      <Button
+                        type="button"
+                        variant="blue"
+                        size="lg"
+                        className="w-full cursor-not-allowed rounded-2xl bg-zinc-400 py-4 text-lg font-black opacity-50 shadow-none"
+                        disabled
+                      >
+                        이미 지원한 공고입니다
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="md"
+                        className="border-error text-error w-full rounded-2xl font-bold"
+                        onClick={cancel}
+                        disabled={isSubmitting}
+                      >
+                        지원 취소하기
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       type="button"

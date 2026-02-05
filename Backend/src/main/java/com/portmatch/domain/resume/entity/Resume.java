@@ -73,6 +73,9 @@ public class Resume extends BaseTimeEntity {
 
     public void markMain(boolean isMain) {
         this.isMain = isMain;
+        if (this.portfolio != null) {
+            this.portfolio.markMain(isMain);
+        }
     }
 
     public void setProfile(ResumeProfile profile) {
@@ -81,5 +84,8 @@ public class Resume extends BaseTimeEntity {
 
     public void setPortfolio(Portfolio portfolio) {
         this.portfolio = portfolio;
+        if (this.portfolio != null) {
+            this.portfolio.markMain(Boolean.TRUE.equals(this.isMain));
+        }
     }
 }

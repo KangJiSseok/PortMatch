@@ -3,6 +3,7 @@ package com.portmatch.domain.companyproject.recommendation.repository;
 public interface CompanyRecommendationRow {
     Long getCompanyId();
     String getCompanyName();
+    Long getJobPostingSize();
     Double getDistance();
     Long getPortfolioProjectId();
     Long getCompanyProjectId();

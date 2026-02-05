@@ -20,6 +20,7 @@ public class CompanyRecommendationService {
                 .map(r -> CompanyRecommendationResponse.of(
                         r.getCompanyId(),
                         r.getCompanyName(),
+                        nvl(r.getJobPostingSize(), 0L),
                         nvl(r.getDistance(), 999.0),
                         r.getPortfolioProjectId(),
                         r.getCompanyProjectId(),
@@ -35,6 +36,10 @@ public class CompanyRecommendationService {
     }
 
     private double nvl(Double value, double fallback) {
+        return value == null ? fallback : value;
+    }
+
+    private long nvl(Long value, long fallback) {
         return value == null ? fallback : value;
     }
 }

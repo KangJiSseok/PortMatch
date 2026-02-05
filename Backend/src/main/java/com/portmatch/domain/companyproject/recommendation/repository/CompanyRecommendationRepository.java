@@ -62,6 +62,12 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
         SELECT
             company_id AS companyId,
             companies.companies_name As companyName,
+            (
+                SELECT COUNT(*)
+                FROM job_postings jp
+                WHERE jp.cid = companies.cid
+                  AND jp.active = 1
+            ) AS jobPostingSize,
             distance,
             portfolio_project_id AS portfolioProjectId,
             company_project_id AS companyProjectId,

@@ -1,7 +1,7 @@
 // src/pages/MyPage.tsx
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bookmark, Building2, ChevronRight, User, CalendarDays, Bell } from 'lucide-react';
+import { Bookmark, Building2, ChevronRight, User, CalendarDays, FileText, FileCheck } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
 
@@ -18,10 +18,8 @@ import {
 
 import {
   type InterviewSessionView,
-  type NotificationItem,
   fetchMyInterviewViews,
   fetchMyUpcomingInterviewViews,
-  fetchMyNotifications,
 } from '../../api/myPage';
 import { useAuthStore } from '../../store/authStore';
 
@@ -33,6 +31,7 @@ import { fetchJobPostDetail } from '../../api/jobPost/detail';
 const ROUTES = {
   resume: '/resumes/me',
   interviewList: '/interviews',
+  myApplications: '/applications/me',
   profileEdit: '/profile/edit',
 } as const;
 
@@ -108,44 +107,6 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
   return { data, isLoading, isError, errorMessage, refetch: run };
 }
 
-function resolveNotificationRoute(n: NotificationItem): string | null {
-  const any = n as unknown as Partial<{
-    route: string;
-    path: string;
-    href: string;
-    url: string;
-    jobPostId: number | string;
-    postingId: number | string;
-    job_post_id: number | string;
-    interviewId: number | string;
-    interview_id: number | string;
-    type: string;
-    targetId: number | string;
-  }>;
-
-  const direct =
-    any.route ?? any.path ?? (typeof any.href === 'string' ? any.href : undefined) ?? any.url;
-
-  if (typeof direct === 'string' && direct.startsWith('/')) return direct;
-
-  const jobIdRaw =
-    any.jobPostId ??
-    any.postingId ??
-    any.job_post_id ??
-    (any.type === 'JOB_POST' ? any.targetId : undefined);
-
-  const jobId = typeof jobIdRaw === 'string' ? Number(jobIdRaw) : jobIdRaw;
-  if (typeof jobId === 'number' && Number.isFinite(jobId)) return `/job-posts/${jobId}`;
-
-  const ivRaw =
-    any.interviewId ?? any.interview_id ?? (any.type === 'INTERVIEW' ? any.targetId : undefined);
-
-  const ivId = typeof ivRaw === 'string' ? Number(ivRaw) : ivRaw;
-  if (typeof ivId === 'number' && Number.isFinite(ivId)) return `/interviews/${ivId}/lobby`;
-
-  return null;
-}
-
 function normalizeText(s: string) {
   return s.trim().toLowerCase();
 }
@@ -213,7 +174,6 @@ async function toCompanyScrapViews(rows: CompanyScrapRowApi[]): Promise<CompanyS
 export default function MyPage() {
   const navigate = useNavigate();
 
-  const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [isScrapOpen, setIsScrapOpen] = useState(false);
   const [isCompanyScrapOpen, setIsCompanyScrapOpen] = useState(false);
 
@@ -233,63 +193,6 @@ export default function MyPage() {
     const rows = await fetchMyCompanyScrapRowsForMe();
     return toCompanyScrapViews(rows);
   }, []);
-  const notiQuery = useQueryLike<NotificationItem[]>(() => fetchMyNotifications(), []);
-
-  // 알림 처리
-  type NotiPatch = { read?: boolean; deleted?: boolean };
-  const [notiPatchById, setNotiPatchById] = useState<Record<number, NotiPatch>>({});
-
-  const notiItems = useMemo(() => {
-    const base = notiQuery.data ?? [];
-    return base
-      .filter((n) => !notiPatchById[n.id]?.deleted)
-      .map((n) => {
-        const patch = notiPatchById[n.id];
-        if (!patch || patch.read === undefined) return n;
-        return { ...n, read: patch.read };
-      });
-  }, [notiQuery.data, notiPatchById]);
-
-  const unreadCount = notiItems.filter((n) => !n.read).length;
-
-  const handleNotiDelete = (id: number) => {
-    setNotiPatchById((prev) => ({ ...prev, [id]: { ...prev[id], deleted: true } }));
-  };
-
-  const handleNotiClick = (n: NotificationItem) => {
-    setNotiPatchById((prev) => ({ ...prev, [n.id]: { ...prev[n.id], read: true } }));
-
-    const route = resolveNotificationRoute(n);
-    if (route) {
-      setIsNotiOpen(false);
-      navigate(route);
-    }
-  };
-
-  const hasNoti = notiItems.length > 0;
-  const hasUnread = unreadCount > 0;
-
-  const handleNotiReadAll = () => {
-    if (!hasNoti || !hasUnread) return;
-
-    setNotiPatchById((prev) => {
-      const next = { ...prev };
-      for (const n of notiItems) next[n.id] = { ...next[n.id], read: true };
-      return next;
-    });
-  };
-
-  const handleNotiDeleteAll = () => {
-    if (!hasNoti) return;
-    const ok = window.confirm('알림을 모두 삭제할까요?');
-    if (!ok) return;
-
-    setNotiPatchById((prev) => {
-      const next = { ...prev };
-      for (const n of notiItems) next[n.id] = { ...next[n.id], deleted: true };
-      return next;
-    });
-  };
 
   // Date.now()
   const [nowMs, setNowMs] = useState<number>(0);
@@ -484,87 +387,99 @@ export default function MyPage() {
             <Button
               variant="outline"
               size="md"
-              className="hover:border-point-blue/50 hover:bg-point-blue/5 hover:text-point-blue flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 p-0 text-zinc-400 transition"
-              onClick={() => {
-                if (notiQuery.isError) notiQuery.refetch();
-                setIsNotiOpen(true);
-              }}
-            >
-              <div className="relative">
-                <Bell className="h-6 w-6" />
-                {unreadCount > 0 && (
-                  <span className="bg-point-blue absolute top-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white" />
-                )}
-              </div>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="md"
               className="hover:border-point-blue/50 hover:bg-point-blue/5 hover:text-point-blue flex h-12 items-center gap-2 rounded-full border border-zinc-200 px-6 text-base font-bold text-zinc-600 transition"
               onClick={() => navigate(ROUTES.profileEdit)}
             >
               <User className="h-5 w-5" />
-              <span>프로필</span>
+              <span>프로필 수정</span>
             </Button>
           </div>
         </header>
 
         {/* 바로가기 섹션 */}
         <section className="space-y-6">
-          <div className="flex items-end justify-between px-1 pb-2">
-            <div>
-              <h2 className="text-2xl font-black tracking-tight text-zinc-800">바로가기</h2>
-            </div>
-          </div>
-
-          {/* 카드 그리드 */}
-          <div className="grid grid-cols-4 gap-5">
-            {/* 1. 이력서 */}
-            <UnifiedHubCard
-              icon={<User className="h-5 w-5" />}
-              title="내 이력서"
-              subtitle="지금 바로 관리하기"
+          {/* 카드 그리드 - 고정 높이 240px로 정갈하게 유지 */}
+          <div className="grid h-[240px] grid-cols-4 grid-rows-2 gap-5">
+            
+            {/* 1. 내 이력서 - 신뢰감 있는 차콜 톤 */}
+            <div 
+              className="group relative col-span-1 row-span-2 flex cursor-pointer flex-col items-center justify-center gap-5 rounded-[32px] border border-zinc-100 bg-white p-6 transition-all duration-300 hover:border-zinc-200 hover:shadow-xl hover:-translate-y-1.5"
               onClick={() => navigate(ROUTES.resume)}
-            />
+            >
+              <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-zinc-100 transition-colors group-hover:bg-zinc-200/70">
+                <FileText className="h-10 w-10 text-zinc-700 transition-transform duration-300 group-hover:scale-110" />
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-black text-midnight-ink">내 이력서</p>
+                <p className="mt-1.5 text-sm font-bold text-zinc-500">지금 바로 관리하기</p>
+              </div>
+              <ChevronRight className="absolute bottom-7 right-7 h-5 w-5 text-zinc-300 transition-all duration-300 group-hover:translate-x-1.5 group-hover:text-zinc-500" />
+            </div>
 
-            {/* 2. 면접 */}
-            <UnifiedHubCard
-              icon={<CalendarDays className="h-5 w-5 text-blue-500" />}
-              title={interviewCardContent.title}
-              subtitle={interviewCardContent.subtitle || undefined}
+            {/* 2. 내 지원 목록 - 생동감 있는 에메랄드 톤 */}
+            <div 
+              className="group relative col-span-1 row-span-2 flex cursor-pointer flex-col items-center justify-center gap-5 rounded-[32px] border border-zinc-100 bg-white p-6 transition-all duration-300 hover:border-zinc-200 hover:shadow-xl hover:-translate-y-1.5"
+              onClick={() => navigate(ROUTES.myApplications)}
+            >
+              <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-emerald-50 transition-colors group-hover:bg-emerald-100/80">
+                <FileCheck className="h-10 w-10 text-emerald-500 transition-transform duration-300 group-hover:scale-110" />
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-black text-midnight-ink">내 지원 목록</p>
+                <p className="mt-1.5 text-sm font-bold text-zinc-500">지원한 공고 확인</p>
+              </div>
+              <ChevronRight className="absolute bottom-7 right-7 h-5 w-5 text-zinc-300 transition-all duration-300 group-hover:translate-x-1.5 group-hover:text-emerald-500" />
+            </div>
+
+            {/* 3. 면접 일정 - 스마트한 블루 톤 */}
+            <div 
+              className="group relative col-span-1 row-span-2 flex cursor-pointer flex-col items-center justify-center gap-5 rounded-[32px] border border-zinc-100 bg-white p-6 transition-all duration-300 hover:border-zinc-200 hover:shadow-xl hover:-translate-y-1.5"
               onClick={() => navigate(ROUTES.interviewList)}
-            />
+            >
+              <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-blue-50 transition-colors group-hover:bg-blue-100/80">
+                <CalendarDays className="h-10 w-10 text-blue-500 transition-transform duration-300 group-hover:scale-110" />
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-black text-midnight-ink">{interviewCardContent.title}</p>
+                <p className="mt-1.5 text-sm font-bold text-zinc-500">{interviewCardContent.subtitle || "예정된 면접이 없습니다"}</p>
+              </div>
+              <ChevronRight className="absolute bottom-7 right-7 h-5 w-5 text-zinc-300 transition-all duration-300 group-hover:translate-x-1.5 group-hover:text-blue-500" />
+            </div>
 
-            {/* 3. 관심 회사 */}
-            <UnifiedHubCard
-              icon={<Building2 className="h-5 w-5 text-rose-500" />}
-              title="관심 회사"
-              rightElement={
-                <p className="text-midnight-ink text-2xl leading-none font-black">
-                  {companyScrapCountText}
-                </p>
-              }
+            {/* 4. 관심 회사 - 부드러운 로즈 톤 */}
+            <div 
+              className="group flex col-span-1 row-span-1 cursor-pointer items-center justify-between rounded-[28px] border border-zinc-100 bg-white px-8 transition-all duration-300 hover:border-zinc-200 hover:shadow-lg"
               onClick={() => {
                 if (companyScrapQuery.isError) companyScrapQuery.refetch();
                 setIsCompanyScrapOpen(true);
               }}
-            />
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 transition-colors group-hover:bg-rose-100/70">
+                  <Building2 className="h-6 w-6 text-rose-400" />
+                </div>
+                <p className="text-lg font-bold text-midnight-ink">관심 회사</p>
+              </div>
+              <p className="tabular-nums text-3xl font-black text-midnight-ink transition-transform group-hover:scale-110">{companyScrapCountText}</p>
+            </div>
 
-            {/* 4. 관심 공고 */}
-            <UnifiedHubCard
-              icon={<Bookmark className="h-5 w-5 text-violet-500" />}
-              title="관심 공고"
-              rightElement={
-                <p className="text-midnight-ink text-2xl leading-none font-black">
-                  {scrapCountText}
-                </p>
-              }
+            {/* 5. 관심 공고 - 세련된 바이올렛 톤 */}
+            <div 
+              className="group flex col-span-1 row-span-1 cursor-pointer items-center justify-between rounded-[28px] border border-zinc-100 bg-white px-8 transition-all duration-300 hover:border-zinc-200 hover:shadow-lg"
               onClick={() => {
                 if (scrapQuery.isError) scrapQuery.refetch();
                 setIsScrapOpen(true);
               }}
-            />
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 transition-colors group-hover:bg-violet-100/70">
+                  <Bookmark className="h-6 w-6 text-violet-400" />
+                </div>
+                <p className="text-lg font-bold text-midnight-ink">관심 공고</p>
+              </div>
+              <p className="tabular-nums text-3xl font-black text-midnight-ink transition-transform group-hover:scale-110">{scrapCountText}</p>
+            </div>
+
           </div>
         </section>
 
@@ -687,116 +602,6 @@ export default function MyPage() {
           </div>
         </section>
       </div>
-
-      {/* 알림 모달 */}
-      <NotificationModal open={isNotiOpen} onClose={() => setIsNotiOpen(false)} title="알림">
-        {notiQuery.isLoading ? (
-          <div className="space-y-3 py-5">
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-          </div>
-        ) : notiQuery.isError ? (
-          <div className="rounded-xl border border-zinc-100 bg-white p-4 py-5">
-            <p className="text-midnight-ink text-sm font-black">알림을 불러오지 못했어요</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">
-              {notiQuery.errorMessage ?? '잠시 후 다시 시도해주세요'}
-            </p>
-            <div className="mt-4 flex justify-end">
-              <Button variant="dark" size="sm" onClick={notiQuery.refetch}>
-                다시 시도
-              </Button>
-            </div>
-          </div>
-        ) : (notiItems ?? []).length === 0 ? (
-          <div className="bg-cloud-dancer/25 rounded-xl p-6 py-5 text-center">
-            <p className="text-midnight-ink text-sm font-black">알림이 없어요</p>
-          </div>
-        ) : (
-          <div className="space-y-4 py-5">
-            {/* 상단 옵션 */}
-            <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
-              <div className="flex items-end justify-between gap-3">
-                <p className="text-xs font-semibold text-zinc-500">
-                  총 {notiItems.length}개 · 미읽음 {unreadCount}개
-                </p>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={hasUnread ? 'dark' : 'outline'}
-                    className="rounded-xl"
-                    disabled={!hasUnread}
-                    onClick={handleNotiReadAll}
-                  >
-                    전체 읽음
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl"
-                    disabled={!hasNoti}
-                    onClick={handleNotiDeleteAll}
-                  >
-                    전체 삭제
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* 리스트 */}
-            <div className="space-y-3">
-              {notiItems.map((n) => {
-                const route = resolveNotificationRoute(n);
-                return (
-                  <div
-                    key={n.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleNotiClick(n)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') handleNotiClick(n);
-                    }}
-                    className="cursor-pointer rounded-xl border border-zinc-100 bg-white p-4 transition hover:bg-zinc-50"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
-                        <p className="mt-2 text-xs font-semibold text-zinc-500">
-                          {formatDateTime(n.createdAt)}
-                        </p>
-                        {route ? (
-                          <p className="mt-1 text-[11px] font-semibold text-zinc-400">
-                            클릭하면 관련 페이지로 이동해요
-                          </p>
-                        ) : null}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {!n.read && (
-                          <span className="bg-point-blue mt-1 h-2 w-2 shrink-0 rounded-full" />
-                        )}
-                        <Button
-                          type="button"
-                          variant="close"
-                          size="sm"
-                          aria-label="delete notification"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleNotiDelete(n.id);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </NotificationModal>
 
       {/* 스크랩 모달 */}
       <NotificationModal
@@ -999,60 +804,6 @@ export default function MyPage() {
           </div>
         )}
       </NotificationModal>
-    </div>
-  );
-}
-
-/* =========================
- * Manage Card Parts
- * ========================= */
-
-function UnifiedHubCard({
-  icon,
-  title,
-  subtitle,
-  rightElement,
-  onClick,
-  className,
-}: {
-  icon: ReactNode;
-  title: string;
-  subtitle?: string;
-  rightElement?: ReactNode;
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onClick();
-      }}
-      className={[
-        'group relative flex cursor-pointer items-center justify-between overflow-hidden rounded-3xl border border-zinc-100 bg-white px-5 py-5 shadow-sm transition',
-        'hover:ring-midnight-ink/20 hover:-translate-y-0.5 hover:shadow-md hover:ring-2',
-        'focus:ring-midnight-ink/30 focus:ring-2 focus:outline-none',
-        className ?? '',
-      ].join(' ')}
-    >
-      <div className="flex min-w-0 flex-1 items-center gap-3 pr-2">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-zinc-50 text-zinc-500 transition group-hover:scale-110 group-hover:bg-zinc-100">
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-midnight-ink truncate text-sm font-black tracking-tight">{title}</p>
-          {subtitle && (
-            <p className="mt-0.5 truncate text-xs font-semibold text-zinc-400">{subtitle}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2 text-zinc-300">
-        {rightElement}
-        <ChevronRight className="h-4 w-4 transition group-hover:text-zinc-500" />
-      </div>
     </div>
   );
 }
