@@ -162,6 +162,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: portmatch-redis
+    networks:
+      - portmatch-network
     restart: always
     ports:
       - "8379:6379"  # 중요: 로컬 컴퓨터가 접속하려면 포트 포워딩이 필요해!
