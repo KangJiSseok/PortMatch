@@ -809,60 +809,6 @@ export default function MyPage() {
 }
 
 /* =========================
- * Manage Card Parts
- * ========================= */
-
-function UnifiedHubCard({
-  icon,
-  title,
-  subtitle,
-  rightElement,
-  onClick,
-  className,
-}: {
-  icon: ReactNode;
-  title: string;
-  subtitle?: string;
-  rightElement?: ReactNode;
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onClick();
-      }}
-      className={[
-        'group relative flex cursor-pointer items-center justify-between overflow-hidden rounded-3xl border border-zinc-100 bg-white px-5 py-5 shadow-sm transition',
-        'hover:ring-midnight-ink/20 hover:-translate-y-0.5 hover:shadow-md hover:ring-2',
-        'focus:ring-midnight-ink/30 focus:ring-2 focus:outline-none',
-        className ?? '',
-      ].join(' ')}
-    >
-      <div className="flex min-w-0 flex-1 items-center gap-3 pr-2">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-zinc-50 text-zinc-500 transition group-hover:scale-110 group-hover:bg-zinc-100">
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-midnight-ink truncate text-sm font-black tracking-tight">{title}</p>
-          {subtitle && (
-            <p className="mt-0.5 truncate text-xs font-semibold text-zinc-400">{subtitle}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2 text-zinc-300">
-        {rightElement}
-        <ChevronRight className="h-4 w-4 transition group-hover:text-zinc-500" />
-      </div>
-    </div>
-  );
-}
-
-/* =========================
  * Modal
  * ========================= */
 
