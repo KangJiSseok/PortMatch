@@ -142,6 +142,7 @@ networks:
   portmatch-network:
     name: portmatch-shared-network
     driver: bridge
+    external: true
 
 volumes:
   postgres-data:
