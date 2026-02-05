@@ -8,6 +8,9 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+  threads:
+    virtual:
+      enabled: true
 
   sql:
     init:
