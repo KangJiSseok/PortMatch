@@ -50,7 +50,6 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
                 ) AS rn
             FROM portfolios pf
             JOIN users u ON u.id = pf.user_id
-            WHERE pf.is_main = true
             LEFT JOIN LATERAL (
                 SELECT
                     tech_text,
@@ -86,6 +85,7 @@ public interface PortfolioUserTagRecommendationRepository extends Repository<Por
                 WHERE portfolio_id = pf.id
                 LIMIT 1
             ) unified ON true
+            WHERE pf.is_main = true
         ) t
         WHERE (:excludeUserId IS NULL OR t.user_id <> :excludeUserId)
           AND t.rn = 1
