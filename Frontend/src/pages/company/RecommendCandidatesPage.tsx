@@ -684,9 +684,8 @@ export default function RecommendCandidatesPage() {
   // 검색 폼
   const [queryInput, setQueryInput] = useState('');
   const [requestQuery, setRequestQuery] = useState('');
-  const DEFAULT_LIMIT = 30;
-  const [limitEnabled, setLimitEnabled] = useState(true);
-  const [limit, setLimit] = useState(DEFAULT_LIMIT);
+  const DEFAULT_LIMIT = 10;
+  const [limitInput, setLimitInput] = useState(String(DEFAULT_LIMIT));
   const [stackInput, setStackInput] = useState('');
   const [selectedStacks, setSelectedStacks] = useState<StackItem[]>([]);
   const [duplicateStackError, setDuplicateStackError] = useState(false);
@@ -703,9 +702,12 @@ export default function RecommendCandidatesPage() {
   });
 
   // API 호출 (query가 비면 enabled=false)
+  const parsedLimit = Number(limitInput);
+  const resolvedLimit =
+    Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : DEFAULT_LIMIT;
   const { response, cards, isLoading, isFetching, error, refetch } = useRecommendCandidates({
     query: requestQuery,
-    limit: limitEnabled ? limit : undefined,
+    limit: resolvedLimit,
   });
 
   const { data: stackSearchResults } = useQuery({
@@ -751,11 +753,22 @@ export default function RecommendCandidatesPage() {
       setRequestQuery('');
       return;
     }
-    if (nextQuery === requestQuery) {
+    const nextLimit = Number(limitInput);
+    if (!Number.isFinite(nextLimit) || nextLimit < 1) {
+      alert('1 이상의 수만 입력 가능합니다.');
+      return;
+    }
+    const techList = selectedStacks.map((s) => s.stackName).filter(Boolean);
+    const techPrompt =
+      techList.length > 0
+        ? `\n\n[기술 스택 입력]\n- 이 항목은 검색 문장과 별도로 입력된 기술 스택입니다.\n- 기술 스택 목록: ${techList.join(', ')}`
+        : '';
+    const finalQuery = `${nextQuery}${techPrompt}`;
+    if (finalQuery === requestQuery) {
       refetch();
       return;
     }
-    setRequestQuery(nextQuery);
+    setRequestQuery(finalQuery);
   };
 
   const handleResumeView = async (candidate: CandidateCardModel) => {
@@ -932,48 +945,29 @@ export default function RecommendCandidatesPage() {
                 </div>
 
                 <div>
-                  <div className="mb-2 text-[12px] font-black text-gray-700">추천 인원 제한 (선택)
+                  <div className="mb-2 text-[12px] font-black text-gray-700">
+                    추천 인원 제한
                     <span className="mt-1 block text-[12px] font-semibold text-gray-400">
-                      미입력시 모든 인원이 점수에 따라 추천됩니다.
+                      추천인을 최소 1명 이상 입력해주세요.
                     </span>
                   </div>
                   <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-3">
                     <SlidersHorizontal className="h-4 w-4 text-gray-400" />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLimitEnabled((prev) => {
-                          const next = !prev;
-                          if (next && (!Number.isFinite(limit) || limit <= 0)) {
-                            setLimit(DEFAULT_LIMIT);
-                          }
-                          return next;
-                        })
-                      }
-                      className={`w-[44px] shrink-0 rounded-lg px-2 py-1 text-center text-[11px] font-black ${
-                        limitEnabled ? 'bg-[#5563C1] text-white' : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
-                      {limitEnabled ? 'ON' : 'OFF'}
-                    </button>
                     <span className="w-[40px] shrink-0 text-center text-[12px] font-black text-gray-500">
                       LIMIT
                     </span>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       max={50}
-                      value={limit}
+                      value={limitInput}
                       onChange={(e) => {
-                        const raw = e.target.value;
-                        const next = raw === '' ? 0 : Number(raw);
-                        setLimit(next);
+                        setLimitInput(e.target.value);
                       }}
-                      placeholder="-"
-                      className={`w-[60px] shrink-0 rounded-lg border border-gray-100 bg-[#fcfcfc] px-2 py-1 text-center text-[13px] font-black text-gray-800 outline-none placeholder:text-gray-400 ${
-                        limitEnabled ? '' : 'pointer-events-none opacity-60'
-                      }`}
+                      placeholder="10"
+                      className="w-[70px] shrink-0 rounded-lg border border-gray-100 bg-[#fcfcfc] px-2 py-1 text-center text-[13px] font-black text-gray-800 outline-none placeholder:text-gray-400"
                     />
+                    <span className="text-[12px] font-bold text-gray-500">명</span>
                   </div>
                 </div>
               </div>
