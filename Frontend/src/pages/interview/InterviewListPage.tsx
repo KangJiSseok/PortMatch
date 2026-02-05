@@ -1,4 +1,4 @@
-// src/pages/InterviewListPage.tsx
+﻿// src/pages/InterviewListPage.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,15 +22,8 @@ function formatDateTime(iso: string) {
 const ROUTES = {
   list: '/interviews',
   lobby: (id: number) => `/interviews/${id}/lobby`,
-  // ✅ 여기 앞에 "/" 빠져있었음
-  test: (id: number) => `/interviews/test/${id}/lobby`,
   mypage: '/mypage',
 } as const;
-
-// ✅ 고정 세션 테스트용 (임의 값)
-const DUMMY_SESSION = 'ses_dummy_test_001';
-// ✅ 라우트 파라미터용 더미 interview_id
-const DUMMY_INTERVIEW_ID = 0;
 
 export default function InterviewListPage() {
   const navigate = useNavigate();
@@ -65,28 +58,12 @@ export default function InterviewListPage() {
 
   const isUpcoming = tab === 'UPCOMING';
 
-  // ✅ 테스트 로비로 이동 (TestInterviewLobbyPage.tsx)
-  const goTestLobby = () => {
-    navigate(ROUTES.test(DUMMY_INTERVIEW_ID), {
-      state: {
-        sessionId: DUMMY_SESSION,
-        initialMicOn: false,
-        initialCamOn: false,
-
-        // (선택) 테스트 화면 더 예쁘게 보이게 꽂아주고 싶으면:
-        companyName: 'TEST',
-        postingTitle: 'INTERVIEW SESSION',
-        scheduledAt: new Date().toISOString(),
-      },
-    });
-  };
-
   return (
     <div className="bg-pure-white text-midnight-ink min-h-screen min-w-350 pt-32 pb-32">
       <div className="mx-auto w-5xl px-6">
-        {/* ✅ 헤더(큰 타이틀) */}
+        {/* 헤더(큰 타이틀) */}
         <header className="border-point-blue mb-12 border-l-4 pl-6">
-          <div className="flex items-start justify-between gap-6">
+          <div className="flex items-start gap-6">
             <div className="min-w-0">
               <h1 className="text-midnight-ink text-4xl font-black tracking-tighter whitespace-nowrap uppercase">
                 Interview
@@ -95,23 +72,10 @@ export default function InterviewListPage() {
                 예정/완료 면접을 한 번에 확인하고 바로 입장하세요.
               </p>
             </div>
-
-            {/* ✅ 테스트 로비 바로 입장 버튼 */}
-            <div className="shrink-0">
-              <Button
-                type="button"
-                variant="blue"
-                size="lg"
-                className="rounded-2xl px-8 whitespace-nowrap shadow-lg"
-                onClick={goTestLobby}
-              >
-                테스트 로비 입장 (캠/마이크 OFF)
-              </Button>
-            </div>
           </div>
         </header>
 
-        {/* ✅ 섹션 타이틀 + 탭 */}
+        {/* 섹션 타이틀 + 탭 */}
         <section className="space-y-6">
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-3">
@@ -124,7 +88,7 @@ export default function InterviewListPage() {
               </span>
             </div>
 
-            {/* ✅ 탭 버튼 */}
+            {/* 탭 버튼 */}
             <div className="flex gap-3">
               <Button
                 type="button"

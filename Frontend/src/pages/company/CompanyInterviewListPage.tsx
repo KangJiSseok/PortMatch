@@ -31,18 +31,8 @@ const ROUTES = {
   list: '/interviews',
   lobby: (id: number) => `/interviews/${id}/lobby`,
   schedule: (jobPostId: number, applicationId: number) => `/company/jobs/${jobPostId}/applicants/${applicationId}/schedule`,
-  // ✅ 테스트 로비 라우트 추가 (앞에 "/" 필수)
-  test: (id: number) => `/interviews/test/${id}/lobby`,
+  interviewTemplate: '/support/interview-template',
 } as const;
-
-// ✅ 실명 느낌 없이: “지원자 01~”
-function pickApplicantName(interviewId: number) {
-  const n = (Math.abs(interviewId) % 99) + 1;
-  return `지원자 ${String(n).padStart(2, '0')}`;
-}
-
-// ✅ 테스트 고정 세션(InterviewPage랑 동일하게 맞추기)
-const DUMMY_SESSION = 'ses_dummy_test_001';
 
 export default function CorporateInterviewListPage() {
   const navigate = useNavigate();
@@ -81,22 +71,6 @@ export default function CorporateInterviewListPage() {
 
   const isUpcoming = tab === 'UPCOMING';
 
-  // ✅ 테스트 로비로 이동 (TestInterviewLobbyPage.tsx 라우트로!)
-  const goTestLobby = () => {
-    navigate(ROUTES.test(0), {
-      state: {
-        sessionId: DUMMY_SESSION,
-        initialMicOn: false,
-        initialCamOn: false,
-
-        // (선택) 테스트 화면에 텍스트 채워 넣기
-        companyName: 'TEST',
-        postingTitle: 'INTERVIEW MANAGEMENT TEST',
-        scheduledAt: new Date().toISOString(),
-      },
-    });
-  };
-
   const goSchedule = (s: CorporateView) => {
     const jobPostId = s.job_post_id;
     const applicationId = s.application_id;
@@ -107,9 +81,7 @@ export default function CorporateInterviewListPage() {
       return;
     }
 
-    const applicantName = s.applicantName?.trim()
-      ? s.applicantName
-      : pickApplicantName(s.interview_id);
+    const applicantName = s.applicantName?.trim() ? s.applicantName : '미확인 지원자';
 
     navigate(ROUTES.schedule(jobPostId, applicationId), {
       state: {
@@ -143,16 +115,16 @@ export default function CorporateInterviewListPage() {
               </p>
             </div>
 
-            {/* ✅ 테스트 로비 입장 버튼 */}
+            {/* 면접 템플릿 이동 버튼 */}
             <div className="shrink-0">
               <Button
                 type="button"
                 variant="blue"
                 size="lg"
                 className="rounded-2xl px-8 shadow-xl"
-                onClick={goTestLobby}
+                onClick={() => navigate(ROUTES.interviewTemplate)}
               >
-                테스트 로비 입장
+                면접 템플릿 이동
               </Button>
             </div>
           </div>
@@ -241,7 +213,7 @@ export default function CorporateInterviewListPage() {
                 items.map((s) => {
                   const applicantName = s.applicantName?.trim()
                     ? s.applicantName
-                    : pickApplicantName(s.interview_id);
+                    : '미확인 지원자';
 
                   return (
                     <div
