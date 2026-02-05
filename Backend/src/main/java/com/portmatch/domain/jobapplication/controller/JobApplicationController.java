@@ -96,6 +96,18 @@ public class JobApplicationController {
         );
     }
 
+    @Operation(summary = "이력서 열람 처리(기업)", description = "기업이 지원자의 이력서 열람 상태를 true로 변경합니다.")
+    @PatchMapping("/{id}/applications/{applicationId}/resume-viewed")
+    public BaseApiResponse<Void> markResumeViewedForCompany(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "공고 ID", example = "1") @PathVariable("id") Long jobPostingId,
+            @Parameter(description = "지원 ID", example = "10") @PathVariable("applicationId") Long applicationId
+    ) {
+        Long userId = principal.getUser().getId();
+        jobApplicationService.markResumeViewedForCompany(userId, jobPostingId, applicationId);
+        return BaseApiResponse.ok(null);
+    }
+
     @Operation(summary = "족축 지원 상태 확인", description = "지원자가 해당 공고에 지원했는지 여부를 확인합니다. status가 true면 지원한 상태")
     @GetMapping("/{id}/application/exists")
     public BaseApiResponse<Boolean> hasApplied(

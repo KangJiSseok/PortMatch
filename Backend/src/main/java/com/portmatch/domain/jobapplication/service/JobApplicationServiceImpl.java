@@ -111,9 +111,6 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         JobApplication application = jobApplicationRepository
                 .findByIdAndJobPosting_Id(applicationId, jobPosting.getId())
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
-        if (!application.isResumeViewed()) {
-            application.markResumeViewed();
-        }
         ResumeResponse resumeSnapshot = resumeSnapshotService.toResumeResponse(
                 resumeSnapshotService.getOrCreateSnapshotPayload(application)
         );
@@ -146,6 +143,19 @@ public class JobApplicationServiceImpl implements JobApplicationService {
                 resumeSnapshotService.getOrCreateSnapshotPayload(application)
         );
         return toDetailResponse(application, resumeSnapshot);
+    }
+
+    @Override
+    @Transactional
+    public void markResumeViewedForCompany(Long userId, Long jobPostingId, Long applicationId) {
+        JobPostingEntity jobPosting = getOwnedJobPosting(userId, jobPostingId);
+        JobApplication application = jobApplicationRepository
+                .findByIdAndJobPosting_Id(applicationId, jobPosting.getId())
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+
+        if (!application.isResumeViewed()) {
+            application.markResumeViewed();
+        }
     }
 
     private JobApplicationResponse toResponse(JobApplication application) {

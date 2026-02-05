@@ -27,5 +27,11 @@ public interface JobApplicationService {
             JobApplicationStatusUpdateRequest request
     );
 
+    void markResumeViewedForCompany(
+            Long userId,
+            Long jobPostingId,
+            Long applicationId
+    );
+
     boolean hasApplied(Long userId, Long jobPostingId);
 }
