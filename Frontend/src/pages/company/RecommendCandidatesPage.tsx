@@ -768,7 +768,9 @@ export default function RecommendCandidatesPage() {
       if (!resume?.id) {
         throw new Error('empty resume');
       }
-      navigate(`/resumes/${resume.id}`);
+      navigate(`/resumes/${resume.id}`, {
+        state: { companyResume: resume, companyUserId: userId },
+      });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : '이력서 조회에 실패했습니다.';
