@@ -28,6 +28,7 @@ import PortfoliosPage from './pages/user/PortfoliosPage';
 import ResumeDetailPage from './pages/user/ResumeDetailPage';
 import RecommendCompanyPage from './pages/user/RecommendCompanyPage';
 import RecommendJobPostingsPage from './pages/user/RecommendJobPostingsPage';
+import MyApplicationPage from './pages/user/MyApplicationPage';
 
 import JobPostingsPage from './pages/job/JobPostingsPage';
 import CompanyJobManagementPage from './pages/job/CompanyJobManagementPage';
@@ -165,6 +166,14 @@ const router = createBrowserRouter([
         element: (
           <AuthGuard mode="AUTHENTICATED">
             <MypageGate />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: '/applications/me',
+        element: (
+          <AuthGuard mode="AUTHENTICATED">
+            <MyApplicationPage />
           </AuthGuard>
         ),
       },

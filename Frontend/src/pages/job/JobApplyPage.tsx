@@ -9,7 +9,7 @@ type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
 type ApiResult = Awaited<ReturnType<typeof fetchJobPostDetail>>;
 type JobPostDetailData = NonNullable<ApiResult>;
 
-// API 데이터 타입 확장
+// API 데이터에 대한 확장 인터페이스
 type JobPostWithExtras = JobPostDetailData['jobPost'] & {
   active?: number;
   applied?: boolean; // 백엔드에서 지원 여부를 보내준다고 가정
@@ -27,6 +27,21 @@ type ResumeApiResponse = {
   code: number;
   message: string;
   data: ResumeItem[];
+};
+
+type MyApplicationItem = {
+  applicationId: number;
+  jobPostingId: number;
+  status: 'APPLIED' | 'PASS' | 'FAIL' | 'READ';
+  resumeId: number;
+  appliedAt: string;
+};
+
+type MyApplicationsApiResponse = {
+  status: boolean;
+  code: number;
+  message: string;
+  data: MyApplicationItem[];
 };
 
 function formatYmdDot(ymd?: string | null) {
@@ -172,7 +187,7 @@ export default function JobApplyPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // [추가] 지원 여부 상태 (초기값 false)
+  // 지원 여부 상태 (초기값 false)
   const [hasApplied, setHasApplied] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -215,6 +230,27 @@ export default function JobApplyPage() {
     }
   }, []);
 
+  const fetchMyAppliedStatus = useCallback(async (postingId: number) => {
+    try {
+      const response = await fetch('/api/job-postings/applications/me', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) return false;
+
+      const json = (await response.json()) as MyApplicationsApiResponse;
+      if (!json.status || !Array.isArray(json.data)) return false;
+
+      return json.data.some((item) => Number(item.jobPostingId) === postingId);
+    } catch (err) {
+      console.warn(err);
+      return false;
+    }
+  }, []);
+
   const load = useCallback(async () => {
     if (!Number.isFinite(jobPostId)) {
       setStatus('notfound');
@@ -235,9 +271,11 @@ export default function JobApplyPage() {
       setData(res);
       setStatus('success');
 
-      // [추가] 지원 여부 초기화 (백엔드 데이터 기반)
+      // 지원 여부 초기화 (공고 상세 + 내 지원목록 기반)
       const jp = res.jobPost as JobPostWithExtras;
-      setHasApplied(!!jp.applied);
+      const appliedFromDetail = !!jp.applied;
+      const appliedFromMyList = await fetchMyAppliedStatus(jobPostId);
+      setHasApplied(appliedFromDetail || appliedFromMyList);
 
       fetchResumes(false);
     } catch (err) {
@@ -245,7 +283,7 @@ export default function JobApplyPage() {
       setData(null);
       setErrorMessage(err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
     }
-  }, [jobPostId, fetchResumes]);
+  }, [jobPostId, fetchResumes, fetchMyAppliedStatus]);
 
   useEffect(() => {
     load();
@@ -257,7 +295,6 @@ export default function JobApplyPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // [수정] canApply 로직: 텍스트 의존성 제거 및 상시채용/마감 정확히 판별
   const canApply = useMemo(() => {
     if (!data?.jobPost) return false;
 
@@ -273,14 +310,12 @@ export default function JobApplyPage() {
     // 3. 상시채용(deadline 없음)이면 지원 가능
     if (!jp.deadline) return true;
 
-    // 4. 마감일 체크 (오늘 날짜와 비교)
+    // 4. 마감일 체크
     const end = new Date(`${jp.deadline}T23:59:59`);
     const now = new Date();
 
-    // 날짜 형식이 잘못된 경우 -> 상시채용으로 처리
     if (isNaN(end.getTime())) return true;
 
-    // 현재 시간이 마감 시간을 지났으면 지원 불가
     return now <= end;
   }, [data]);
 
@@ -289,7 +324,7 @@ export default function JobApplyPage() {
     if (isSubmitting) return;
 
     if (hasApplied) {
-      setToast('이미 지원 완료된 공고입니다.');
+      setToast('이미 지원한 공고입니다');
       return;
     }
 
@@ -322,38 +357,6 @@ export default function JobApplyPage() {
     } catch (error) {
       const msg =
         error instanceof Error ? error.message : '지원에 실패했어요. 잠시 후 다시 시도해주세요.';
-      setToast(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // [추가] 지원 취소 함수 (DELETE 요청)
-  const cancel = async () => {
-    if (!Number.isFinite(jobPostId)) return;
-    if (isSubmitting) return;
-
-    if (!confirm('정말 지원을 취소하시겠습니까?')) return;
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch(`/api/job-postings/${jobPostId}/apply`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('지원 취소에 실패했습니다.');
-      }
-
-      setHasApplied(false);
-      setToast('지원이 정상적으로 취소되었습니다.');
-    } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : '취소에 실패했어요. 잠시 후 다시 시도해주세요.';
       setToast(msg);
     } finally {
       setIsSubmitting(false);
@@ -598,17 +601,15 @@ export default function JobApplyPage() {
                 </div>
 
                 <div className="mt-8 space-y-3">
-                  {/* 상태에 따라 지원 또는 취소 버튼 표시 */}
                   {hasApplied ? (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="blue"
                       size="lg"
-                      className="w-full rounded-2xl border-red-100 font-bold text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                      onClick={cancel}
-                      disabled={isSubmitting}
+                      className="w-full cursor-not-allowed rounded-2xl bg-zinc-400 py-4 text-lg font-black opacity-50 shadow-none"
+                      disabled
                     >
-                      {isSubmitting ? '처리 중...' : '지원 취소하기'}
+                      이미 지원한 공고입니다
                     </Button>
                   ) : (
                     <Button

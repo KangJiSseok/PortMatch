@@ -1,7 +1,7 @@
 // src/pages/MyPage.tsx
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bookmark, Building2, ChevronRight, User, CalendarDays, FileText } from 'lucide-react';
+import { Bookmark, Building2, ChevronRight, User, CalendarDays, FileText, FileCheck } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
 
@@ -31,6 +31,7 @@ import { fetchJobPostDetail } from '../../api/jobPost/detail';
 const ROUTES = {
   resume: '/resumes/me',
   interviewList: '/interviews',
+  myApplications: '/applications/me',
   profileEdit: '/profile/edit',
 } as const;
 
@@ -390,66 +391,95 @@ export default function MyPage() {
               onClick={() => navigate(ROUTES.profileEdit)}
             >
               <User className="h-5 w-5" />
-              <span>프로필</span>
+              <span>프로필 수정</span>
             </Button>
           </div>
         </header>
 
         {/* 바로가기 섹션 */}
         <section className="space-y-6">
-          <div className="flex items-end justify-between px-1 pb-2">
-            <div>
-              <h2 className="text-2xl font-black tracking-tight text-zinc-800">바로가기</h2>
-            </div>
-          </div>
-
-          {/* 카드 그리드 */}
-          <div className="grid grid-cols-4 gap-5">
-            {/* 1. 이력서 */}
-            <UnifiedHubCard
-              icon={<FileText className="h-5 w-5 text-black" />}
-              title="내 이력서"
-              subtitle="지금 바로 관리하기"
+          {/* 카드 그리드 - 고정 높이 240px로 정갈하게 유지 */}
+          <div className="grid h-[240px] grid-cols-4 grid-rows-2 gap-5">
+            
+            {/* 1. 내 이력서 - 신뢰감 있는 차콜 톤 */}
+            <div 
+              className="group relative col-span-1 row-span-2 flex cursor-pointer flex-col items-center justify-center gap-5 rounded-[32px] border border-zinc-100 bg-white p-6 transition-all duration-300 hover:border-zinc-200 hover:shadow-xl hover:-translate-y-1.5"
               onClick={() => navigate(ROUTES.resume)}
-            />
+            >
+              <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-zinc-100 transition-colors group-hover:bg-zinc-200/70">
+                <FileText className="h-10 w-10 text-zinc-700 transition-transform duration-300 group-hover:scale-110" />
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-black text-midnight-ink">내 이력서</p>
+                <p className="mt-1.5 text-sm font-bold text-zinc-500">지금 바로 관리하기</p>
+              </div>
+              <ChevronRight className="absolute bottom-7 right-7 h-5 w-5 text-zinc-300 transition-all duration-300 group-hover:translate-x-1.5 group-hover:text-zinc-500" />
+            </div>
 
-            {/* 2. 면접 */}
-            <UnifiedHubCard
-              icon={<CalendarDays className="h-5 w-5 text-blue-500" />}
-              title={interviewCardContent.title}
-              subtitle={interviewCardContent.subtitle || undefined}
+            {/* 2. 내 지원 목록 - 생동감 있는 에메랄드 톤 */}
+            <div 
+              className="group relative col-span-1 row-span-2 flex cursor-pointer flex-col items-center justify-center gap-5 rounded-[32px] border border-zinc-100 bg-white p-6 transition-all duration-300 hover:border-zinc-200 hover:shadow-xl hover:-translate-y-1.5"
+              onClick={() => navigate(ROUTES.myApplications)}
+            >
+              <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-emerald-50 transition-colors group-hover:bg-emerald-100/80">
+                <FileCheck className="h-10 w-10 text-emerald-500 transition-transform duration-300 group-hover:scale-110" />
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-black text-midnight-ink">내 지원 목록</p>
+                <p className="mt-1.5 text-sm font-bold text-zinc-500">지원한 공고 확인</p>
+              </div>
+              <ChevronRight className="absolute bottom-7 right-7 h-5 w-5 text-zinc-300 transition-all duration-300 group-hover:translate-x-1.5 group-hover:text-emerald-500" />
+            </div>
+
+            {/* 3. 면접 일정 - 스마트한 블루 톤 */}
+            <div 
+              className="group relative col-span-1 row-span-2 flex cursor-pointer flex-col items-center justify-center gap-5 rounded-[32px] border border-zinc-100 bg-white p-6 transition-all duration-300 hover:border-zinc-200 hover:shadow-xl hover:-translate-y-1.5"
               onClick={() => navigate(ROUTES.interviewList)}
-            />
+            >
+              <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-blue-50 transition-colors group-hover:bg-blue-100/80">
+                <CalendarDays className="h-10 w-10 text-blue-500 transition-transform duration-300 group-hover:scale-110" />
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-black text-midnight-ink">{interviewCardContent.title}</p>
+                <p className="mt-1.5 text-sm font-bold text-zinc-500">{interviewCardContent.subtitle || "예정된 면접이 없습니다"}</p>
+              </div>
+              <ChevronRight className="absolute bottom-7 right-7 h-5 w-5 text-zinc-300 transition-all duration-300 group-hover:translate-x-1.5 group-hover:text-blue-500" />
+            </div>
 
-            {/* 3. 관심 회사 */}
-            <UnifiedHubCard
-              icon={<Building2 className="h-5 w-5 text-rose-500" />}
-              title="관심 회사"
-              rightElement={
-                <p className="text-midnight-ink text-2xl leading-none font-black">
-                  {companyScrapCountText}
-                </p>
-              }
+            {/* 4. 관심 회사 - 부드러운 로즈 톤 */}
+            <div 
+              className="group flex col-span-1 row-span-1 cursor-pointer items-center justify-between rounded-[28px] border border-zinc-100 bg-white px-8 transition-all duration-300 hover:border-zinc-200 hover:shadow-lg"
               onClick={() => {
                 if (companyScrapQuery.isError) companyScrapQuery.refetch();
                 setIsCompanyScrapOpen(true);
               }}
-            />
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 transition-colors group-hover:bg-rose-100/70">
+                  <Building2 className="h-6 w-6 text-rose-400" />
+                </div>
+                <p className="text-lg font-bold text-midnight-ink">관심 회사</p>
+              </div>
+              <p className="tabular-nums text-3xl font-black text-midnight-ink transition-transform group-hover:scale-110">{companyScrapCountText}</p>
+            </div>
 
-            {/* 4. 관심 공고 */}
-            <UnifiedHubCard
-              icon={<Bookmark className="h-5 w-5 text-violet-500" />}
-              title="관심 공고"
-              rightElement={
-                <p className="text-midnight-ink text-2xl leading-none font-black">
-                  {scrapCountText}
-                </p>
-              }
+            {/* 5. 관심 공고 - 세련된 바이올렛 톤 */}
+            <div 
+              className="group flex col-span-1 row-span-1 cursor-pointer items-center justify-between rounded-[28px] border border-zinc-100 bg-white px-8 transition-all duration-300 hover:border-zinc-200 hover:shadow-lg"
               onClick={() => {
                 if (scrapQuery.isError) scrapQuery.refetch();
                 setIsScrapOpen(true);
               }}
-            />
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 transition-colors group-hover:bg-violet-100/70">
+                  <Bookmark className="h-6 w-6 text-violet-400" />
+                </div>
+                <p className="text-lg font-bold text-midnight-ink">관심 공고</p>
+              </div>
+              <p className="tabular-nums text-3xl font-black text-midnight-ink transition-transform group-hover:scale-110">{scrapCountText}</p>
+            </div>
+
           </div>
         </section>
 
