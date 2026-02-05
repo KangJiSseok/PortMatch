@@ -299,7 +299,7 @@ const JobPostFormPage = () => {
         detail: JSON.stringify(detailObject),
         startDate: new Date().toISOString().split('T')[0],
         endDate: formData.deadline || '9999-12-31',
-        active: 0,
+        active: 1,
         vcnt: 0,
         jobType: 0,
         stackIds: stackIdsToSend,

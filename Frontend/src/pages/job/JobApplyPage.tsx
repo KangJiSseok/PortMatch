@@ -9,9 +9,10 @@ type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
 type ApiResult = Awaited<ReturnType<typeof fetchJobPostDetail>>;
 type JobPostDetailData = NonNullable<ApiResult>;
 
-// API 데이터 타입 확장 (active 필드 사용을 위해)
+// API 데이터 타입 확장
 type JobPostWithExtras = JobPostDetailData['jobPost'] & {
   active?: number;
+  applied?: boolean; // 백엔드에서 지원 여부를 보내준다고 가정
 };
 
 type ResumeItem = {
@@ -33,12 +34,10 @@ function formatYmdDot(ymd?: string | null) {
   return ymd.replaceAll('-', '.');
 }
 
-// [수정] JobPostDetailPage의 로직을 그대로 적용
 function calculateDDay(deadline?: string | null, active?: number) {
   if (active === 0) return '마감';
   if (!deadline) return '상시채용';
 
-  // 시간까지 포함하여 정확한 비교 (마감일 23:59:59 기준)
   const end = new Date(`${deadline}T23:59:59`);
   if (isNaN(end.getTime())) return '상시채용';
 
@@ -46,16 +45,13 @@ function calculateDDay(deadline?: string | null, active?: number) {
   const diffMs = end.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-  if (Number.isNaN(diffDays)) return '상시채용';
-
   if (diffDays < 0) return '마감';
   if (diffDays === 0) return 'D-DAY';
   return `D-${diffDays}`;
 }
 
-// [추가] D-Day 텍스트 색상 결정 함수
 function ddayClass(dday: string) {
-  if (dday === 'D-DAY' || dday === '마감') return 'text-error'; // text-red-500 계열
+  if (dday === 'D-DAY' || dday === '마감') return 'text-error';
   if (dday === '상시채용') return 'text-point-blue';
 
   const m = dday.match(/^D-(\d+)$/);
@@ -175,6 +171,8 @@ export default function JobApplyPage() {
   const [doneModalOpen, setDoneModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // [추가] 지원 여부 상태 (초기값 false)
   const [hasApplied, setHasApplied] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -237,6 +235,10 @@ export default function JobApplyPage() {
       setData(res);
       setStatus('success');
 
+      // [추가] 지원 여부 초기화 (백엔드 데이터 기반)
+      const jp = res.jobPost as JobPostWithExtras;
+      setHasApplied(!!jp.applied);
+
       fetchResumes(false);
     } catch (err) {
       setStatus('error');
@@ -255,22 +257,41 @@ export default function JobApplyPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // [수정] canApply 계산에 calculateDDay 로직 적용
+  // [수정] canApply 로직: 텍스트 의존성 제거 및 상시채용/마감 정확히 판별
   const canApply = useMemo(() => {
     if (!data?.jobPost) return false;
 
-    const jobPost = data.jobPost as JobPostWithExtras;
-    const st = (jobPost.status ?? 'OPEN').toUpperCase();
-    const d = calculateDDay(jobPost.deadline, jobPost.active);
+    const jp = data.jobPost as JobPostWithExtras;
+    const status = (jp.status ?? 'OPEN').toUpperCase();
 
-    if (st !== 'OPEN') return false;
-    if (d === '마감') return false;
-    return true;
+    // 1. 공고 상태가 OPEN이 아니면 지원 불가
+    if (status !== 'OPEN') return false;
+
+    // 2. active가 0(비활성)이면 지원 불가
+    if (jp.active === 0) return false;
+
+    // 3. 상시채용(deadline 없음)이면 지원 가능
+    if (!jp.deadline) return true;
+
+    // 4. 마감일 체크 (오늘 날짜와 비교)
+    const end = new Date(`${jp.deadline}T23:59:59`);
+    const now = new Date();
+
+    // 날짜 형식이 잘못된 경우 -> 상시채용으로 처리
+    if (isNaN(end.getTime())) return true;
+
+    // 현재 시간이 마감 시간을 지났으면 지원 불가
+    return now <= end;
   }, [data]);
 
   const submit = async () => {
     if (!Number.isFinite(jobPostId)) return;
     if (isSubmitting) return;
+
+    if (hasApplied) {
+      setToast('이미 지원 완료된 공고입니다.');
+      return;
+    }
 
     if (!selectedResumeId) {
       setToast('이력서를 먼저 선택해줘!');
@@ -307,6 +328,7 @@ export default function JobApplyPage() {
     }
   };
 
+  // [추가] 지원 취소 함수 (DELETE 요청)
   const cancel = async () => {
     if (!Number.isFinite(jobPostId)) return;
     if (isSubmitting) return;
@@ -328,7 +350,7 @@ export default function JobApplyPage() {
       }
 
       setHasApplied(false);
-      setToast('지원이 취소되었습니다.');
+      setToast('지원이 정상적으로 취소되었습니다.');
     } catch (error) {
       const msg =
         error instanceof Error ? error.message : '취소에 실패했어요. 잠시 후 다시 시도해주세요.';
@@ -366,7 +388,6 @@ export default function JobApplyPage() {
 
   const { jobPost, company } = data;
   const jp = jobPost as JobPostWithExtras;
-  // [수정] D-Day 계산 및 텍스트 표시
   const dday = calculateDDay(jp.deadline, jp.active);
   const ddayColorClass = ddayClass(dday);
 
@@ -417,7 +438,6 @@ export default function JobApplyPage() {
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
-                {/* [수정] D-Day 텍스트 및 마감일 표시 로직 개선 */}
                 <span className={`${ddayColorClass} text-2xl font-black`}>{dday}</span>
                 <span className="text-silver-mist text-sm font-bold">
                   {dday === '상시채용'
@@ -560,15 +580,31 @@ export default function JobApplyPage() {
                       {canApply ? '지원 가능' : '불가 (마감/상태 확인)'}
                     </p>
                   </div>
+
+                  <div
+                    className={`rounded-3xl p-6 transition-colors ${
+                      hasApplied ? 'bg-blue-50' : 'bg-zinc-50'
+                    }`}
+                  >
+                    <p className="text-xs font-black text-zinc-400">내 지원 상태</p>
+                    <p
+                      className={`mt-2 text-lg font-black ${
+                        hasApplied ? 'text-blue-600' : 'text-zinc-400'
+                      }`}
+                    >
+                      {hasApplied ? '지원 완료 (Applied)' : '미지원'}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="mt-8 space-y-3">
+                  {/* 상태에 따라 지원 또는 취소 버튼 표시 */}
                   {hasApplied ? (
                     <Button
                       type="button"
                       variant="outline"
                       size="lg"
-                      className="w-full rounded-2xl border-red-100 text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                      className="w-full rounded-2xl border-red-100 font-bold text-red-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                       onClick={cancel}
                       disabled={isSubmitting}
                     >
@@ -579,7 +615,9 @@ export default function JobApplyPage() {
                       type="button"
                       variant="blue"
                       size="lg"
-                      className="w-full rounded-2xl py-4 text-lg font-black shadow-lg shadow-blue-500/20"
+                      className={`w-full rounded-2xl py-4 text-lg font-black shadow-lg shadow-blue-500/20 ${
+                        !canApply ? 'cursor-not-allowed bg-zinc-400 opacity-50 shadow-none' : ''
+                      }`}
                       onClick={submit}
                       disabled={!selectedResumeId || !canApply || isSubmitting}
                     >
@@ -587,7 +625,7 @@ export default function JobApplyPage() {
                     </Button>
                   )}
 
-                  {!canApply && (
+                  {!canApply && !hasApplied && (
                     <p className="text-center text-xs font-medium text-zinc-400">
                       공고 상태 또는 마감일로 인해 제출이 제한됩니다.
                     </p>
@@ -618,7 +656,7 @@ export default function JobApplyPage() {
           description="성공적으로 지원서가 접수되었습니다."
           onClose={() => {
             setDoneModalOpen(false);
-            if (data?.jobPost) navigate(`/job-posts/${data.jobPost.id}`);
+            navigate(-1);
           }}
           actions={
             <>
@@ -629,7 +667,7 @@ export default function JobApplyPage() {
                 className="rounded-xl border-zinc-200 font-bold"
                 onClick={() => {
                   setDoneModalOpen(false);
-                  if (data?.jobPost) navigate(`/job-posts/${data.jobPost.id}`);
+                  navigate(-1);
                 }}
               >
                 공고로 돌아가기
@@ -641,7 +679,7 @@ export default function JobApplyPage() {
                 className="rounded-xl font-bold shadow-lg"
                 onClick={() => {
                   setDoneModalOpen(false);
-                  navigate('/mypage');
+                  navigate('/mypage', { replace: true });
                 }}
               >
                 마이페이지 확인

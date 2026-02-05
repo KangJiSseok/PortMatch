@@ -65,13 +65,19 @@ interface CompanyBackendData {
 const DEFAULT_LOGO =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20' fill='%239ca3af'%3ENo Logo%3C/text%3E%3C/svg%3E";
 
-const calculateDDay = (endDate: string): string => {
+const calculateDDay = (endDate: string | null): string => {
+  if (!endDate || endDate === '상시채용' || endDate === 'null') return '상시채용';
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const target = new Date(endDate);
   target.setHours(0, 0, 0, 0);
+
+  if (isNaN(target.getTime())) return '상시채용';
+
   const diffTime = target.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
   if (diffDays === 0) return '오늘 마감';
   if (diffDays < 0) return '마감됨';
   return `D-${diffDays}`;
