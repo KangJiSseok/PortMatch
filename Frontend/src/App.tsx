@@ -31,6 +31,7 @@ import RecommendJobPostingsPage from './pages/user/RecommendJobPostingsPage';
 import MyApplicationPage from './pages/user/MyApplicationPage';
 
 import JobPostingsPage from './pages/job/JobPostingsPage';
+import CompanyActivePostingsPage from './pages/job/CompanyActivePostingsPage';
 import CompanyJobManagementPage from './pages/job/CompanyJobManagementPage';
 import JobPostDetailPage from './pages/job/JobPostDetailPage';
 import JobPostFormPage from './pages/job/JobPostFormPage';
@@ -261,6 +262,10 @@ const router = createBrowserRouter([
       {
         path: 'job-postings',
         element: <JobPostingsPage />,
+      },
+      {
+        path: 'companies/:cid/active-postings',
+        element: <CompanyActivePostingsPage />,
       },
       {
         path: 'job-posts/:id',

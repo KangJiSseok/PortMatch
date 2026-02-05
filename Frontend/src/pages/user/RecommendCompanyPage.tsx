@@ -468,9 +468,7 @@ function CompanyCard({
 
   const goToPostings = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    navigate(
-      `/job-postings?cid=${company.companyId}&companyName=${encodeURIComponent(company.name)}`,
-    );
+    navigate(`/companies/${company.companyId}/active-postings`);
   };
 
   return (
