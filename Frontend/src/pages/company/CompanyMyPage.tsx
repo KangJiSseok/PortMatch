@@ -17,6 +17,9 @@ import { fetchCompanyInterviewEvents } from '../../api/interview';
 const ROUTES = {
   jobPostManage: '/company/jobs',
   interviewManage: '/interviews',
+  interviewLobby: (id: number) => `/interviews/${id}/lobby`,
+  interviewSchedule: (jobPostId: number, applicationId: number) =>
+    `/company/jobs/${jobPostId}/applicants/${applicationId}/schedule`,
   resumeView: (applicantId: number) => `/resume/${applicantId}`,
   jobPostDetail: (jobPostId: number) => `/job-posts/${jobPostId}`,
   companyEdit: '/company/profile',
@@ -56,6 +59,8 @@ type InterviewEvent = {
   applicantId: number;
   candidateName: string;
   position?: string;
+  jobPostId?: number;
+  applicationId?: number;
 };
 
 interface JobPostApiItem {
@@ -214,6 +219,8 @@ async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
     applicantId: row.applicantId,
     candidateName: row.candidateName,
     position: row.position,
+    jobPostId: row.jobPostId,
+    applicationId: row.applicationId,
   }));
 }
 
@@ -299,12 +306,15 @@ export default function CompanyMyPage() {
 
     return filtered.slice(0, 3).map((e) => ({
       key: e.id,
+      interviewId: e.id,
+      jobPostId: e.jobPostId,
+      applicationId: e.applicationId,
       applicantId: e.applicantId,
       candidateName: e.candidateName,
       stageTitle: e.title,
       subtitle: e.position ? e.position : displayCompanyName,
       meta: formatDateTime(e.scheduledAt),
-      onClick: () => navigate(ROUTES.interviewManage),
+      onClick: () => navigate(ROUTES.interviewLobby(e.id)),
     }));
   }, [interviewQuery.data, interviewFilter, navigate, displayCompanyName]);
 
@@ -555,11 +565,41 @@ export default function CompanyMyPage() {
                         <div className="mt-3 flex justify-end gap-2">
                           <Button
                             type="button"
+                            variant="light"
+                            size="sm"
+                            onClick={() => navigate(ROUTES.interviewLobby(e.id))}
+                          >
+                            로비
+                          </Button>
+                          <Button
+                            type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => navigate(ROUTES.resumeView(e.applicantId))}
                           >
                             이력서 보기
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="dark"
+                            size="sm"
+                            onClick={() => {
+                              if (!e.jobPostId || !e.applicationId) {
+                                alert('지원서 정보가 없어 일정 수정이 불가합니다.');
+                                return;
+                              }
+                              navigate(ROUTES.interviewSchedule(e.jobPostId, e.applicationId), {
+                                state: {
+                                  scheduleId: e.id,
+                                  applicantName: e.candidateName,
+                                  postingTitle: e.position ?? '',
+                                  companyName: displayCompanyName,
+                                  scheduledAt: e.scheduledAt,
+                                },
+                              });
+                            }}
+                          >
+                            일정 수정
                           </Button>
                         </div>
                       </div>

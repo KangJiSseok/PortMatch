@@ -19,6 +19,7 @@ interface ApiResponse<T> {
 
 export interface CompanyApplicationView {
   applicationId: number;
+  userId: number; // Added userId
   applicantName: string;
   resumeId: string;
   postingTitle: string;
@@ -29,6 +30,8 @@ export interface CompanyApplicationView {
   experienceYears: number;
   isScrapped: boolean;
 }
+
+// ... (lines 33-46 omitted)
 
 const mapStatusToKorean = (status: string): string => {
   switch (status) {
@@ -56,6 +59,7 @@ export const fetchCompanyApplications = async (
 
   return list.map((item) => ({
     applicationId: item.applicationId,
+    userId: item.userId, // Map userId
     applicantName: item.userName,
     resumeId: String(item.resumeId),
     postingTitle: '공고 제목',

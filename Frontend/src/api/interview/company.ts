@@ -60,6 +60,7 @@ export type CompanyInterviewEvent = {
   position?: string;
   status?: string;
   jobPostId?: number;
+  applicationId?: number;
   companyName?: string;
 };
 
@@ -130,7 +131,7 @@ function toInterviewListStatus(apiStatus: ApiStatusLike, scheduledAt: string): I
   return 'UPCOMING';
 }
 
-function toInterviewSessionViewFromApi(row: InterviewCompanyApiRow): InterviewSessionView | null {
+export function toInterviewSessionViewFromApi(row: InterviewCompanyApiRow): InterviewSessionView | null {
   const interviewId = typeof row.id === 'number' ? row.id : Number(row.id);
   if (!Number.isFinite(interviewId)) return null;
 
@@ -146,12 +147,15 @@ function toInterviewSessionViewFromApi(row: InterviewCompanyApiRow): InterviewSe
   const postingTitle = pickString(jobPosting?.title) ?? `Interview #${interviewId}`;
   const companyName = pickCompanyName(jobPosting) ?? '-';
   const applicantName = pickString(row.user?.name) ?? undefined;
+  const applicantUserIdRaw = row.userId ?? row.user?.userId;
+  const applicantUserId = Number.isFinite(Number(applicantUserIdRaw))
+    ? Number(applicantUserIdRaw)
+    : undefined;
 
-  const applicationIdRaw =
-    row.applicationId ?? row.application_id ?? row.jobPostingId ?? row.job_posting_id ?? interviewId;
+  const applicationIdRaw = row.applicationId ?? row.application_id;
   const applicationId = Number.isFinite(Number(applicationIdRaw))
     ? Number(applicationIdRaw)
-    : interviewId;
+    : Number.NaN;
 
   const roomId = pickString(row.roomId) ?? pickString(row.room_id) ?? `room_${interviewId}`;
 
@@ -164,6 +168,7 @@ function toInterviewSessionViewFromApi(row: InterviewCompanyApiRow): InterviewSe
     postingTitle,
     companyName,
     applicantName,
+    applicantUserId,
     status: toInterviewListStatus(row.status, scheduledAt),
   };
 }
@@ -186,6 +191,11 @@ function toCompanyInterviewEvent(row: InterviewCompanyApiRow): CompanyInterviewE
     : interviewId;
   const candidateName = pickString(row.user?.name) ?? '지원자';
 
+  const applicationIdRaw = row.applicationId ?? row.application_id;
+  const applicationId = Number.isFinite(Number(applicationIdRaw))
+    ? Number(applicationIdRaw)
+    : undefined;
+
   return {
     id: interviewId,
     title: (row.status ?? '').toString().trim() || 'INTERVIEW',
@@ -200,6 +210,7 @@ function toCompanyInterviewEvent(row: InterviewCompanyApiRow): CompanyInterviewE
         : typeof row.job_posting_id === 'number'
           ? row.job_posting_id
           : jobPosting?.id,
+    applicationId,
     companyName,
   };
 }
@@ -216,6 +227,17 @@ export async function fetchInterviewRowsByCompanyId(
     return normalizeInterviewRows(res.data);
   } catch (err) {
     throw normalizeError(err, 'Failed to fetch company interview schedules.');
+  }
+}
+
+export async function fetchInterviewRowsByJobPostId(
+  jobPostId: number,
+): Promise<InterviewCompanyApiRow[]> {
+  try {
+    const res = await axiosInstance.get(`/interviews/posting/${jobPostId}`);
+    return normalizeInterviewRows(res.data);
+  } catch (err) {
+    throw normalizeError(err, 'Failed to fetch job interview schedules.');
   }
 }
 
@@ -265,4 +287,11 @@ export async function fetchCompanyInterviewEvents(): Promise<CompanyInterviewEve
     .map((row) => toCompanyInterviewEvent(row))
     .filter((it): it is CompanyInterviewEvent => Boolean(it))
     .sort(sortByScheduledAt);
+}
+
+export async function fetchCompanyInterviewRowById(
+  interviewId: number,
+): Promise<InterviewCompanyApiRow | null> {
+  const rows = await fetchInterviewRowsForCompany();
+  return rows.find((row) => row.id === interviewId) ?? null;
 }

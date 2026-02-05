@@ -15,7 +15,12 @@ import {
 } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
-import { fetchMyInterviewViewById, type InterviewSessionView } from '../../api/myPage';
+import {
+  fetchCompanyInterviewViewById,
+  fetchMyInterviewViewById,
+  type InterviewSessionView,
+  createInterviewRoom,
+} from '../../api/interview';
 
 // --- Helpers ---
 function formatDateTime(iso: string) {
@@ -101,6 +106,8 @@ export default function InterviewLobbyPage() {
   const [status, setStatus] = useState<PageStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('세션 정보를 불러오지 못했어요.');
   const [session, setSession] = useState<InterviewSessionView | null>(null);
+  const [roomId, setRoomId] = useState<string>('');
+  const [roomLoading, setRoomLoading] = useState<boolean>(false);
 
   // Media State
   const [micOn, setMicOn] = useState<boolean>(navState.initialMicOn ?? false);
@@ -141,6 +148,21 @@ export default function InterviewLobbyPage() {
     };
   }, []);
 
+  const ensureRoom = useCallback(async () => {
+    if (!Number.isFinite(interviewId) || interviewId <= 0) return;
+    if (roomId) return;
+    setRoomLoading(true);
+    try {
+      const createdRoomId = await createInterviewRoom(interviewId);
+      setRoomId(createdRoomId);
+    } catch (err) {
+      setRoomId('');
+      showToast(err instanceof Error ? err.message : '면접방 생성에 실패했습니다.');
+    } finally {
+      setRoomLoading(false);
+    }
+  }, [interviewId, roomId, showToast]);
+
   // --- Load Session ---
   const load = useCallback(async () => {
     if (!Number.isFinite(interviewId) || interviewId <= 0) {
@@ -153,7 +175,9 @@ export default function InterviewLobbyPage() {
     setErrorMessage('세션 정보를 불러오지 못했어요.');
 
     try {
-      const data = await fetchMyInterviewViewById(interviewId);
+      const data = isCorporate
+        ? await fetchCompanyInterviewViewById(interviewId)
+        : await fetchMyInterviewViewById(interviewId);
       if (!data) {
         setSession(null);
         setStatus('notfound');
@@ -173,20 +197,30 @@ export default function InterviewLobbyPage() {
     return cleanup;
   }, [load]);
 
+  useEffect(() => {
+    if (status !== 'success' || !session) return;
+    void ensureRoom();
+  }, [ensureRoom, session, status]);
+
   // --- Navigation & Actions ---
   const goList = useCallback(() => navigate(ROUTES.list), [navigate]);
 
   const goRoom = useCallback(() => {
     if (!session) return;
+    const targetRoomId = roomId || navState.sessionId || session.room_id;
+    if (!targetRoomId) {
+      showToast('면접방 정보를 불러오지 못했어요.');
+      return;
+    }
     navigate(ROUTES.room(session.interview_id), {
       state: {
         micOn,
         camOn,
-        sessionId: navState.sessionId ?? session.room_id,
+        sessionId: targetRoomId,
         title: session.postingTitle, // 면접 제목 전달
       },
     });
-  }, [camOn, micOn, navigate, navState.sessionId, session]);
+  }, [camOn, micOn, navigate, navState.sessionId, roomId, session, showToast]);
 
   const inviteLink = useMemo(() => {
     if (!session) return '';
@@ -621,8 +655,13 @@ export default function InterviewLobbyPage() {
               size="lg"
               className="w-full rounded-2xl py-4 text-base shadow-lg shadow-blue-500/20"
               onClick={goRoom}
+              disabled={roomLoading}
             >
-              {isCorporate ? '면접 시작하기' : '면접 입장하기'}
+              {roomLoading
+                ? '면접방 준비 중...'
+                : isCorporate
+                  ? '면접 시작하기'
+                  : '면접 입장하기'}
             </Button>
           </div>
         </section>

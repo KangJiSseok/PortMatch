@@ -14,6 +14,11 @@ import {
   fetchInterviewQuestionMemo,
   updateInterviewQuestionMemo,
 } from '../../api/interview/InterviewTemplates';
+import {
+  fetchInterviewPartnerPeer,
+  registerInterviewPeer,
+  type InterviewRoomRole,
+} from '../../api/interview/room';
 
 // --- Types ---
 
@@ -60,12 +65,13 @@ export default function InterviewPage() {
   // Role 가져오기
   const { user } = useAuthStore();
   const isCorporate = user?.role === 'COMPANY';
+  const roomId = navState.sessionId?.trim() ?? '';
+  const myRole: InterviewRoomRole = isCorporate ? 'INTERVIEWER' : 'APPLICANT';
 
   // -- State --
   const [status, setStatus] = useState<ConnectStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const remotePeerIdInput = navState.sessionId ?? '';
   const interviewTitle = navState.title ?? '포트매치 기술 면접'; // 면접 이름 (기본값)
 
   const [micOn, setMicOn] = useState<boolean>(navState.micOn ?? true);
@@ -89,6 +95,7 @@ export default function InterviewPage() {
 
   const [toast, setToast] = useState<string>('');
   const toastTimerRef = useRef<number | null>(null);
+  const pollTimerRef = useRef<number | null>(null);
 
   // --- Templates & Memos State ---
   const [templates, setTemplates] = useState<InterviewTemplateSummary[]>([]);
@@ -231,10 +238,9 @@ export default function InterviewPage() {
   }, [camOn, getLocalStream]);
 
   // --- Connect Logic ---
-  const connect = useCallback(async () => {
-    const remoteId = remotePeerIdInput.trim();
-    if (!remoteId) {
-      showToast('상대방 ID 정보가 없습니다.');
+  const connect = useCallback(async (silent = false) => {
+    if (!roomId) {
+      if (!silent) showToast('면접방 정보가 없습니다.');
       return;
     }
     if (!peerRef.current || !peerReady) return;
@@ -245,6 +251,14 @@ export default function InterviewPage() {
     setErrorMessage('');
 
     try {
+      const partnerId = await fetchInterviewPartnerPeer(roomId, myRole);
+      const remoteId = partnerId?.trim() ?? '';
+      if (!remoteId) {
+        if (!silent) showToast('상대방이 아직 입장하지 않았습니다.');
+        setStatus('idle');
+        return;
+      }
+
       const stream = await getLocalStream();
       stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
       stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
@@ -279,8 +293,9 @@ export default function InterviewPage() {
     cleanupSession,
     getLocalStream,
     micOn,
+    myRole,
     peerReady,
-    remotePeerIdInput,
+    roomId,
     showToast,
     status,
   ]);
@@ -290,7 +305,16 @@ export default function InterviewPage() {
     const peer = createPeer();
     peerRef.current = peer;
 
-    peer.on('open', () => setPeerReady(true));
+    peer.on('open', async (id) => {
+      setPeerReady(true);
+      if (!roomId) return;
+      try {
+        await registerInterviewPeer(roomId, myRole, id);
+      } catch (err) {
+        setStatus('error');
+        setErrorMessage(toHumanError(err));
+      }
+    });
 
     peer.on('call', async (call) => {
       try {
@@ -335,19 +359,35 @@ export default function InterviewPage() {
       peer.destroy();
       stopStreamTracks(localStreamRef.current);
     };
-  }, [camOn, getLocalStream, micOn, showToast]);
+  }, [camOn, getLocalStream, micOn, myRole, roomId, showToast]);
 
   useEffect(() => {
-    if (!navState.sessionId) return;
+    if (!roomId) return;
     if (!peerReady) return;
     if (status !== 'idle') return;
     if (autoConnectRef.current) return;
-    if (!remotePeerIdInput.trim()) return;
-
     autoConnectRef.current = true;
-    const cleanup = defer(() => void connect());
+    const cleanup = defer(() => void connect(true));
     return cleanup;
-  }, [connect, navState.sessionId, peerReady, remotePeerIdInput, status]);
+  }, [connect, peerReady, roomId, status]);
+
+  useEffect(() => {
+    if (!roomId || !peerReady) return;
+    if (pollTimerRef.current) return;
+
+    pollTimerRef.current = window.setInterval(() => {
+      if (status !== 'idle') return;
+      if (!roomId) return;
+      void connect(true);
+    }, 3000);
+
+    return () => {
+      if (pollTimerRef.current) {
+        window.clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, [connect, peerReady, roomId, status]);
 
   useEffect(() => {
     const el = templateListRef.current;

@@ -15,6 +15,7 @@ export type InterviewSessionView = {
   companyName: string;
 
   applicantName?: string;
+  applicantUserId?: number;
 
   status: InterviewListStatus;
 };

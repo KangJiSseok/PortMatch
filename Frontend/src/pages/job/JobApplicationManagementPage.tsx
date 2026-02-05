@@ -22,7 +22,10 @@ import {
   fetchCompanyApplications,
   type CompanyApplicationView,
 } from '../../api/company/applications';
-import { getExtraInterviewViews } from '../../api/myPage';
+import {
+  fetchInterviewRowsByJobPostId,
+  type InterviewCompanyApiRow,
+} from '../../api/interview';
 import { fetchJobPostDetail } from '../../api/jobPost/detail';
 import { useMessenger } from '../../hooks/useMessenger';
 
@@ -146,7 +149,7 @@ function formatYmdDot(iso: string) {
 const JobApplicationManagementPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { startNewChat } = useMessenger(); // [추가] 훅 사용
+  const { startNewChat } = useMessenger();
 
   const jobPostId = Number(id);
   const safeJobPostId = Number.isFinite(jobPostId) && jobPostId > 0 ? jobPostId : 0;
@@ -155,23 +158,22 @@ const JobApplicationManagementPage = () => {
   const [applications, setApplications] = useState<CompanyApplicationView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  
+  // Map<userId, interviewRow>
+  const [interviewMap, setInterviewMap] = useState<Map<number, InterviewCompanyApiRow>>(new Map());
 
-  const [selectedApplication, setSelectedApplication] = useState<ApplicationDetailData | null>(
-    null,
-  );
+  const [selectedApplication, setSelectedApplication] = useState<ApplicationDetailData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [jobPostTitle, setJobPostTitle] = useState<string>('');
   const [companyName, setCompanyName] = useState<string>('');
 
-  // [추가] 채팅방 연결 핸들러
   const handleContactApplicant = async (
     userId: number | string,
     name: string,
     profileImg?: string,
   ) => {
     try {
-      // 채팅방 생성 및 열기 (모달보다 Z-Index가 높은 메신저가 뜸)
       await startNewChat(String(userId), name, profileImg);
     } catch (err) {
       console.error('Failed to start chat:', err);
@@ -192,12 +194,25 @@ const JobApplicationManagementPage = () => {
       setError('');
 
       try {
-        const [data, detail] = await Promise.all([
+        const [data, detail, interviews] = await Promise.all([
           fetchCompanyApplications(safeJobPostId),
           fetchJobPostDetail(safeJobPostId).catch(() => null),
+          fetchInterviewRowsByJobPostId(safeJobPostId).catch(() => []),
         ]);
+        
         if (cancelled) return;
         setApplications(data);
+        
+        // Build map for existing interviews
+        const newMap = new Map<number, InterviewCompanyApiRow>();
+        if (interviews && interviews.length > 0) {
+           interviews.forEach(iv => {
+               const uid = iv.userId ?? iv.user?.userId;
+               if (uid) newMap.set(Number(uid), iv);
+           });
+        }
+        setInterviewMap(newMap);
+
         if (detail) {
           if (detail.jobPost?.title) setJobPostTitle(detail.jobPost.title);
 
@@ -244,15 +259,6 @@ const JobApplicationManagementPage = () => {
         return list;
     }
   }, [applications, sortBy]);
-
-  const interviewByApplicationId = useMemo(() => {
-    const map = new Map<number, true>();
-    const extras = getExtraInterviewViews();
-    extras.forEach((it) => {
-      map.set(it.application_id, true);
-    });
-    return map;
-  }, []);
 
   const markAsRead = async (applicationId: number) => {
     try {
@@ -301,10 +307,13 @@ const JobApplicationManagementPage = () => {
     setSelectedApplication(null);
   };
 
-  const goSchedule = (app: CompanyApplicationView) => {
+  const goSchedule = (app: CompanyApplicationView, existingScheduleId?: number) => {
+    const applicantUserId = app.userId;
     navigate(`/company/jobs/${safeJobPostId}/applicants/${app.applicationId}/schedule`, {
       state: {
+        scheduleId: existingScheduleId, // Pass the detected schedule ID
         applicantName: app.applicantName,
+        applicantUserId,
         resumeId: app.resumeId,
         postingTitle: jobPostTitle.trim() || app.postingTitle,
         companyName: companyName.trim() || app.companyName,
@@ -372,13 +381,13 @@ const JobApplicationManagementPage = () => {
               </select>
             )}
           </div>
-
           <div className="min-h-100">
             {!loading && !error && sortedApplications.length > 0 ? (
               <div className="border-silver-mist bg-pure-white overflow-hidden rounded-4xl border shadow-xl shadow-gray-200/50">
                 <div className="divide-cloud-dancer divide-y">
                   {sortedApplications.map((app) => {
-                    const hasInterview = interviewByApplicationId.has(app.applicationId);
+                    const existingInterview = interviewMap.get(app.userId);
+                    const hasInterview = !!existingInterview; // Check real backend map
 
                     return (
                       <div
@@ -438,10 +447,7 @@ const JobApplicationManagementPage = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleContactApplicant(
-                                (app as CompanyApplicationView & { userId: number }).userId || 0,
-                                app.applicantName,
-                              );
+                              handleContactApplicant(app.userId || 0, app.applicantName);
                             }}
                             className="hover:text-point-blue flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-blue-50"
                             title="1:1 메시지 보내기"
@@ -469,7 +475,7 @@ const JobApplicationManagementPage = () => {
                               className="w-40 rounded-xl whitespace-nowrap"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                goSchedule(app);
+                                goSchedule(app, existingInterview?.id);
                               }}
                             >
                               일정 수정
