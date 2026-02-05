@@ -18,7 +18,9 @@ const ROUTES = {
   interviewManage: '/interviews',
   resumeView: (applicantId: number) => `/resume/${applicantId}`,
   jobPostDetail: (jobPostId: number) => `/job-posts/${jobPostId}`,
-  companyEdit: '/company/profile',
+  // ✅ 수정됨: 회사 ID를 받아 수정 페이지로 이동
+  companyEdit: (companyId: string) => `/companies/${companyId}/edit`,
+  companyDetail: (companyId: string) => `/companies/${companyId}`,
 } as const;
 
 type QueryState<T> = {
@@ -93,7 +95,9 @@ function daysUntil(iso: string) {
 }
 
 function ddayLabel(deadlineAt?: string) {
-  if (!deadlineAt) return null;
+  if (!deadlineAt || deadlineAt === '상시채용') {
+    return { text: '상시채용', tone: 'always' as const, left: 999 };
+  }
   const left = daysUntil(deadlineAt);
   if (left < 0) return { text: '마감', tone: 'closed' as const, left };
   if (left === 0) return { text: 'D-DAY', tone: 'urgent' as const, left };
@@ -133,7 +137,6 @@ function formatScheduleHint(startIso: string) {
   return null;
 }
 
-/** ✅ React Query 느낌 미니 훅 */
 function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -194,14 +197,26 @@ async function fetchCompanyJobPosts(cid?: string): Promise<JobPostView[]> {
     throw new Error(result.message || '공고 목록을 불러오지 못했습니다.');
   }
 
-  return result.data.map((item: JobPostApiItem) => ({
-    id: item.id,
-    postingTitle: item.title,
-    position: item.detail.length > 20 ? item.detail.substring(0, 20) + '...' : item.detail,
-    createdAt: item.startDate,
-    deadlineAt: item.endDate,
-    companyName: item.company?.corpName,
-  }));
+  return result.data.map((item: JobPostApiItem) => {
+    let detailText = item.detail;
+    try {
+      const parsed = JSON.parse(item.detail);
+      if (parsed && typeof parsed === 'object' && parsed.requirement_text) {
+        detailText = parsed.requirement_text;
+      }
+    } catch {
+      detailText = item.detail;
+    }
+
+    return {
+      id: item.id,
+      postingTitle: item.title,
+      position: detailText.length > 20 ? detailText.substring(0, 20) + '...' : detailText,
+      createdAt: item.startDate,
+      deadlineAt: item.endDate,
+      companyName: item.company?.corpName,
+    };
+  });
 }
 
 async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
@@ -276,8 +291,8 @@ export default function CompanyMyPage() {
 
     const sorted = [...list].sort((a, b) => {
       if (jobPostSort === 'latest') return a.createdAt > b.createdAt ? -1 : 1;
-      const aHas = !!a.deadlineAt;
-      const bHas = !!b.deadlineAt;
+      const aHas = !!a.deadlineAt && a.deadlineAt !== '상시채용';
+      const bHas = !!b.deadlineAt && b.deadlineAt !== '상시채용';
       if (aHas && bHas) return a.deadlineAt! < b.deadlineAt! ? -1 : 1;
       if (aHas && !bHas) return -1;
       if (!aHas && bHas) return 1;
@@ -290,9 +305,10 @@ export default function CompanyMyPage() {
         key: p.id,
         title: p.postingTitle,
         subtitle: p.position,
-        meta: p.deadlineAt
-          ? `마감 ${formatDateTime(p.deadlineAt)}`
-          : `등록 ${formatDateTime(p.createdAt)}`,
+        meta:
+          p.deadlineAt && p.deadlineAt !== '상시채용'
+            ? `마감 ${formatDateTime(p.deadlineAt)}`
+            : `등록 ${formatDateTime(p.createdAt)}`,
         badge: dday ? (
           <span
             className={[
@@ -301,7 +317,9 @@ export default function CompanyMyPage() {
                 ? 'bg-red-50 text-red-600'
                 : dday.tone === 'closed'
                   ? 'bg-zinc-100 text-zinc-500'
-                  : 'bg-zinc-100 text-zinc-600',
+                  : dday.tone === 'always'
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'bg-zinc-100 text-zinc-600',
             ].join(' ')}
           >
             {dday.tone === 'urgent' ? `마감임박 ${dday.text}` : dday.text}
@@ -376,12 +394,16 @@ export default function CompanyMyPage() {
         <header className="overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
           <div className="relative p-10">
             <div className="absolute inset-0 bg-linear-to-r from-zinc-50 via-zinc-50/70 to-transparent" />
-            <div className="relative flex flex-nowrap items-start justify-between gap-5">
+            {/* ✅ items-start -> items-center로 변경하여 수직 중앙 정렬 */}
+            <div className="relative flex flex-nowrap items-center justify-between gap-5">
               <div>
                 <p className="text-xs font-black tracking-[0.3em] text-zinc-400 uppercase">
                   CORPORATE DASHBOARD
                 </p>
-                <h1 className="mt-2 text-4xl font-black tracking-wide">
+                <h1
+                  className="mt-2 cursor-pointer text-4xl font-black tracking-wide transition-colors hover:text-blue-600/80"
+                  onClick={() => myCid && navigate(ROUTES.companyDetail(myCid))}
+                >
                   {profileQuery.isLoading ? '불러오는 중…' : displayCompanyName}
                 </h1>
                 <p className="mt-3 text-sm font-semibold text-zinc-500">
@@ -393,8 +415,9 @@ export default function CompanyMyPage() {
                 <Button
                   variant="blue"
                   size="md"
-                  className="rounded-2xl shadow-md"
-                  onClick={() => navigate(ROUTES.companyEdit)}
+                  className="h-12 rounded-2xl px-6 text-[15px] shadow-md transition-transform active:scale-95"
+                  // ✅ 회사 ID를 포함한 URL로 이동
+                  onClick={() => myCid && navigate(ROUTES.companyEdit(myCid))}
                 >
                   정보 수정
                 </Button>
