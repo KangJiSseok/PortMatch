@@ -239,7 +239,6 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
   const isSystemRoom = room?.senderType === 'system';
   const logoSrc = isSystemRoom ? SystemIcon : room?.logoUrl;
 
-  // ✅ [수정 핵심] 내 ID를 정확하게 계산 (기업이면 COMPANY_ 접두사 포함)
   const myIdentifier =
     isCompany && user?.cid ? `COMPANY_${String(user.cid)}` : String(user?.userId);
 
@@ -247,7 +246,6 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ... (useEffect: fetchMyJobs 등 기존 로직 유지) ...
   useEffect(() => {
     if (isCompany) {
       const fetchMyJobs = async () => {
@@ -294,7 +292,6 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     setInput('');
   };
 
-  // ... (handleInterviewConfirm, handleAccept, handleDecline 등 함수들 유지) ...
   const handleInterviewConfirm = async (
     dateTime: string,
     note: string,
