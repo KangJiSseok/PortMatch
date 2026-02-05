@@ -1,7 +1,7 @@
 // src/pages/MyPage.tsx
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bookmark, Building2, ChevronRight, User, CalendarDays, Bell } from 'lucide-react';
+import { Bookmark, Building2, ChevronRight, User, CalendarDays, FileText } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
 
@@ -18,10 +18,8 @@ import {
 
 import {
   type InterviewSessionView,
-  type NotificationItem,
   fetchMyInterviewViews,
   fetchMyUpcomingInterviewViews,
-  fetchMyNotifications,
 } from '../../api/myPage';
 import { useAuthStore } from '../../store/authStore';
 
@@ -108,44 +106,6 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
   return { data, isLoading, isError, errorMessage, refetch: run };
 }
 
-function resolveNotificationRoute(n: NotificationItem): string | null {
-  const any = n as unknown as Partial<{
-    route: string;
-    path: string;
-    href: string;
-    url: string;
-    jobPostId: number | string;
-    postingId: number | string;
-    job_post_id: number | string;
-    interviewId: number | string;
-    interview_id: number | string;
-    type: string;
-    targetId: number | string;
-  }>;
-
-  const direct =
-    any.route ?? any.path ?? (typeof any.href === 'string' ? any.href : undefined) ?? any.url;
-
-  if (typeof direct === 'string' && direct.startsWith('/')) return direct;
-
-  const jobIdRaw =
-    any.jobPostId ??
-    any.postingId ??
-    any.job_post_id ??
-    (any.type === 'JOB_POST' ? any.targetId : undefined);
-
-  const jobId = typeof jobIdRaw === 'string' ? Number(jobIdRaw) : jobIdRaw;
-  if (typeof jobId === 'number' && Number.isFinite(jobId)) return `/job-posts/${jobId}`;
-
-  const ivRaw =
-    any.interviewId ?? any.interview_id ?? (any.type === 'INTERVIEW' ? any.targetId : undefined);
-
-  const ivId = typeof ivRaw === 'string' ? Number(ivRaw) : ivRaw;
-  if (typeof ivId === 'number' && Number.isFinite(ivId)) return `/interviews/${ivId}/lobby`;
-
-  return null;
-}
-
 function normalizeText(s: string) {
   return s.trim().toLowerCase();
 }
@@ -213,7 +173,6 @@ async function toCompanyScrapViews(rows: CompanyScrapRowApi[]): Promise<CompanyS
 export default function MyPage() {
   const navigate = useNavigate();
 
-  const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [isScrapOpen, setIsScrapOpen] = useState(false);
   const [isCompanyScrapOpen, setIsCompanyScrapOpen] = useState(false);
 
@@ -233,63 +192,6 @@ export default function MyPage() {
     const rows = await fetchMyCompanyScrapRowsForMe();
     return toCompanyScrapViews(rows);
   }, []);
-  const notiQuery = useQueryLike<NotificationItem[]>(() => fetchMyNotifications(), []);
-
-  // 알림 처리
-  type NotiPatch = { read?: boolean; deleted?: boolean };
-  const [notiPatchById, setNotiPatchById] = useState<Record<number, NotiPatch>>({});
-
-  const notiItems = useMemo(() => {
-    const base = notiQuery.data ?? [];
-    return base
-      .filter((n) => !notiPatchById[n.id]?.deleted)
-      .map((n) => {
-        const patch = notiPatchById[n.id];
-        if (!patch || patch.read === undefined) return n;
-        return { ...n, read: patch.read };
-      });
-  }, [notiQuery.data, notiPatchById]);
-
-  const unreadCount = notiItems.filter((n) => !n.read).length;
-
-  const handleNotiDelete = (id: number) => {
-    setNotiPatchById((prev) => ({ ...prev, [id]: { ...prev[id], deleted: true } }));
-  };
-
-  const handleNotiClick = (n: NotificationItem) => {
-    setNotiPatchById((prev) => ({ ...prev, [n.id]: { ...prev[n.id], read: true } }));
-
-    const route = resolveNotificationRoute(n);
-    if (route) {
-      setIsNotiOpen(false);
-      navigate(route);
-    }
-  };
-
-  const hasNoti = notiItems.length > 0;
-  const hasUnread = unreadCount > 0;
-
-  const handleNotiReadAll = () => {
-    if (!hasNoti || !hasUnread) return;
-
-    setNotiPatchById((prev) => {
-      const next = { ...prev };
-      for (const n of notiItems) next[n.id] = { ...next[n.id], read: true };
-      return next;
-    });
-  };
-
-  const handleNotiDeleteAll = () => {
-    if (!hasNoti) return;
-    const ok = window.confirm('알림을 모두 삭제할까요?');
-    if (!ok) return;
-
-    setNotiPatchById((prev) => {
-      const next = { ...prev };
-      for (const n of notiItems) next[n.id] = { ...next[n.id], deleted: true };
-      return next;
-    });
-  };
 
   // Date.now()
   const [nowMs, setNowMs] = useState<number>(0);
@@ -484,23 +386,6 @@ export default function MyPage() {
             <Button
               variant="outline"
               size="md"
-              className="hover:border-point-blue/50 hover:bg-point-blue/5 hover:text-point-blue flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 p-0 text-zinc-400 transition"
-              onClick={() => {
-                if (notiQuery.isError) notiQuery.refetch();
-                setIsNotiOpen(true);
-              }}
-            >
-              <div className="relative">
-                <Bell className="h-6 w-6" />
-                {unreadCount > 0 && (
-                  <span className="bg-point-blue absolute top-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white" />
-                )}
-              </div>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="md"
               className="hover:border-point-blue/50 hover:bg-point-blue/5 hover:text-point-blue flex h-12 items-center gap-2 rounded-full border border-zinc-200 px-6 text-base font-bold text-zinc-600 transition"
               onClick={() => navigate(ROUTES.profileEdit)}
             >
@@ -522,7 +407,7 @@ export default function MyPage() {
           <div className="grid grid-cols-4 gap-5">
             {/* 1. 이력서 */}
             <UnifiedHubCard
-              icon={<User className="h-5 w-5" />}
+              icon={<FileText className="h-5 w-5 text-black" />}
               title="내 이력서"
               subtitle="지금 바로 관리하기"
               onClick={() => navigate(ROUTES.resume)}
@@ -687,116 +572,6 @@ export default function MyPage() {
           </div>
         </section>
       </div>
-
-      {/* 알림 모달 */}
-      <NotificationModal open={isNotiOpen} onClose={() => setIsNotiOpen(false)} title="알림">
-        {notiQuery.isLoading ? (
-          <div className="space-y-3 py-5">
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-          </div>
-        ) : notiQuery.isError ? (
-          <div className="rounded-xl border border-zinc-100 bg-white p-4 py-5">
-            <p className="text-midnight-ink text-sm font-black">알림을 불러오지 못했어요</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">
-              {notiQuery.errorMessage ?? '잠시 후 다시 시도해주세요'}
-            </p>
-            <div className="mt-4 flex justify-end">
-              <Button variant="dark" size="sm" onClick={notiQuery.refetch}>
-                다시 시도
-              </Button>
-            </div>
-          </div>
-        ) : (notiItems ?? []).length === 0 ? (
-          <div className="bg-cloud-dancer/25 rounded-xl p-6 py-5 text-center">
-            <p className="text-midnight-ink text-sm font-black">알림이 없어요</p>
-          </div>
-        ) : (
-          <div className="space-y-4 py-5">
-            {/* 상단 옵션 */}
-            <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
-              <div className="flex items-end justify-between gap-3">
-                <p className="text-xs font-semibold text-zinc-500">
-                  총 {notiItems.length}개 · 미읽음 {unreadCount}개
-                </p>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={hasUnread ? 'dark' : 'outline'}
-                    className="rounded-xl"
-                    disabled={!hasUnread}
-                    onClick={handleNotiReadAll}
-                  >
-                    전체 읽음
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl"
-                    disabled={!hasNoti}
-                    onClick={handleNotiDeleteAll}
-                  >
-                    전체 삭제
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* 리스트 */}
-            <div className="space-y-3">
-              {notiItems.map((n) => {
-                const route = resolveNotificationRoute(n);
-                return (
-                  <div
-                    key={n.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleNotiClick(n)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') handleNotiClick(n);
-                    }}
-                    className="cursor-pointer rounded-xl border border-zinc-100 bg-white p-4 transition hover:bg-zinc-50"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-midnight-ink text-sm font-semibold">{n.message}</p>
-                        <p className="mt-2 text-xs font-semibold text-zinc-500">
-                          {formatDateTime(n.createdAt)}
-                        </p>
-                        {route ? (
-                          <p className="mt-1 text-[11px] font-semibold text-zinc-400">
-                            클릭하면 관련 페이지로 이동해요
-                          </p>
-                        ) : null}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {!n.read && (
-                          <span className="bg-point-blue mt-1 h-2 w-2 shrink-0 rounded-full" />
-                        )}
-                        <Button
-                          type="button"
-                          variant="close"
-                          size="sm"
-                          aria-label="delete notification"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleNotiDelete(n.id);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </NotificationModal>
 
       {/* 스크랩 모달 */}
       <NotificationModal
