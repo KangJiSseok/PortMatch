@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,9 @@ public interface JobPostingRepository extends JpaRepository<JobPostingEntity, Lo
     List<JobPostingEntity> findAllByOrderByIdDesc(Pageable pageable);
 
     List<JobPostingEntity> findByCompanyCidAndActive(String cid, Integer active);
+
+    @Query("SELECT j.title FROM JobPostingEntity j WHERE j.company.cid = :cid ORDER BY j.id DESC")
+    List<String> findTop3TitlesByCid(@Param("cid") String cid, Pageable pageable);
 
     @Modifying
     @Transactional
