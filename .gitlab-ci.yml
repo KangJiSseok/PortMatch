@@ -23,7 +23,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
+    - if: '$CI_COMMIT_BRANCH == "be-feat/applicant-jobapplication"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -125,7 +125,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
+    - if: '$CI_COMMIT_BRANCH == "be-feat/applicant-jobapplication"'
 
   script:
     - set -e
