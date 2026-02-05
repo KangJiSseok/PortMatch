@@ -4,15 +4,16 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import Button from '../../components/Button/Button';
 import { fetchJobPostDetail } from '../../api/applyJobPost';
+import { useMessenger } from '../../hooks/useMessenger';
 
 type PageStatus = 'loading' | 'error' | 'notfound' | 'success';
 type ApiResult = Awaited<ReturnType<typeof fetchJobPostDetail>>;
 type JobPostDetailData = NonNullable<ApiResult>;
 
-// API 데이터에 대한 확장 인터페이스
 type JobPostWithExtras = JobPostDetailData['jobPost'] & {
   active?: number;
-  applied?: boolean; // 백엔드에서 지원 여부를 보내준다고 가정
+  applied?: boolean;
+  userId?: number;
 };
 
 type ResumeItem = {
@@ -173,6 +174,7 @@ function Modal({
 export default function JobApplyPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { sendSystemNotification } = useMessenger();
 
   const jobPostId = Number(id);
 
@@ -187,7 +189,6 @@ export default function JobApplyPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 지원 여부 상태 (초기값 false)
   const [hasApplied, setHasApplied] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -271,7 +272,6 @@ export default function JobApplyPage() {
       setData(res);
       setStatus('success');
 
-      // 지원 여부 초기화 (공고 상세 + 내 지원목록 기반)
       const jp = res.jobPost as JobPostWithExtras;
       const appliedFromDetail = !!jp.applied;
       const appliedFromMyList = await fetchMyAppliedStatus(jobPostId);
@@ -301,21 +301,14 @@ export default function JobApplyPage() {
     const jp = data.jobPost as JobPostWithExtras;
     const status = (jp.status ?? 'OPEN').toUpperCase();
 
-    // 1. 공고 상태가 OPEN이 아니면 지원 불가
     if (status !== 'OPEN') return false;
-
-    // 2. active가 0(비활성)이면 지원 불가
     if (jp.active === 0) return false;
-
-    // 3. 상시채용(deadline 없음)이면 지원 가능
     if (!jp.deadline) return true;
 
-    // 4. 마감일 체크
     const end = new Date(`${jp.deadline}T23:59:59`);
     const now = new Date();
 
     if (isNaN(end.getTime())) return true;
-
     return now <= end;
   }, [data]);
 
@@ -329,11 +322,7 @@ export default function JobApplyPage() {
     }
 
     if (!selectedResumeId) {
-      setToast('이력서를 먼저 선택해줘!');
-      return;
-    }
-    if (!canApply) {
-      setToast('현재 공고 상태/마감일 때문에 지원할 수 없어요.');
+      setToast('이력서를 선택해주세요!');
       return;
     }
 
@@ -352,11 +341,58 @@ export default function JobApplyPage() {
         throw new Error('지원에 실패했습니다.');
       }
 
+      const rawCid = data?.company?.cid;
+      const jobTitle = data?.jobPost?.title;
+
+      if (rawCid) {
+        const finalCid = String(rawCid).trim();
+        try {
+          await sendSystemNotification(
+            finalCid,
+            `[지원 알림] 새로운 지원자가 [${jobTitle}] 공고에 지원했습니다.`,
+            jobPostId,
+          );
+        } catch (notifyError) {
+          console.error(notifyError);
+        }
+      }
+
       setHasApplied(true);
       setDoneModalOpen(true);
     } catch (error) {
+      const msg = error instanceof Error ? error.message : '지원에 실패했습니다.';
+      setToast(msg);
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const cancel = async () => {
+    if (!Number.isFinite(jobPostId)) return;
+    if (isSubmitting) return;
+
+    if (!confirm('정말 지원을 취소하시겠습니까?')) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/job-postings/${jobPostId}/apply`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('지원 취소에 실패했습니다.');
+      }
+
+      setHasApplied(false);
+      setToast('지원이 정상적으로 취소되었습니다.');
+    } catch (error) {
       const msg =
-        error instanceof Error ? error.message : '지원에 실패했어요. 잠시 후 다시 시도해주세요.';
+        error instanceof Error ? error.message : '취소에 실패했어요. 잠시 후 다시 시도해주세요.';
       setToast(msg);
     } finally {
       setIsSubmitting(false);
@@ -602,15 +638,27 @@ export default function JobApplyPage() {
 
                 <div className="mt-8 space-y-3">
                   {hasApplied ? (
-                    <Button
-                      type="button"
-                      variant="blue"
-                      size="lg"
-                      className="w-full cursor-not-allowed rounded-2xl bg-zinc-400 py-4 text-lg font-black opacity-50 shadow-none"
-                      disabled
-                    >
-                      이미 지원한 공고입니다
-                    </Button>
+                    <div className="space-y-3">
+                      <Button
+                        type="button"
+                        variant="blue"
+                        size="lg"
+                        className="w-full cursor-not-allowed rounded-2xl bg-zinc-400 py-4 text-lg font-black opacity-50 shadow-none"
+                        disabled
+                      >
+                        이미 지원한 공고입니다
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="md"
+                        className="border-error text-error w-full rounded-2xl font-bold"
+                        onClick={cancel}
+                        disabled={isSubmitting}
+                      >
+                        지원 취소하기
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       type="button"
