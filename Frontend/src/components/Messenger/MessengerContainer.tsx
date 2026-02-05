@@ -21,6 +21,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getRelativeTime } from '../../utils/date';
 import InterviewModal from './InterviewModal';
 import type { ChatRoom, Message } from '../../types/messenger';
+import SystemIcon from '../../assets/images/system/alarm.png';
 
 interface JobPostingItem {
   id: number;
@@ -31,27 +32,30 @@ interface JobPostingItem {
 const CompanyLogo = ({ room }: { room: ChatRoom }) => {
   const { user } = useAuth();
   const [imgError, setImgError] = useState(false);
+
   const isOpponentCompany = user?.role !== 'COMPANY' && room.companyName;
+  const isSystem = room.senderType === 'system';
+  const logoSrc = isSystem ? SystemIcon : room.logoUrl;
 
   return (
     <div className="relative shrink-0">
-      <div className="border-soft-pebble bg-soft-pebble/20 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border">
-        {room.logoUrl && !imgError ? (
+      <div className="border-soft-pebble bg-soft-pebble/20 flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border">
+        {logoSrc && !imgError ? (
           <img
-            src={room.logoUrl}
+            src={logoSrc}
             alt="profile"
             className="h-full w-full object-cover"
             onError={() => setImgError(true)}
           />
         ) : (
           <div className="text-silver-mist">
-            {isOpponentCompany ? <Building2 size={24} /> : <User size={24} />}
+            {isOpponentCompany ? <Building2 size={20} /> : <User size={20} />}
           </div>
         )}
       </div>
 
-      {!room.logoUrl && isOpponentCompany && (
-        <div className="bg-point-blue text-pure-white ring-pure-white absolute -right-1 -bottom-1 flex h-5 items-center justify-center rounded-md px-1 text-[8px] font-black uppercase ring-2">
+      {!logoSrc && isOpponentCompany && (
+        <div className="bg-point-blue text-pure-white ring-pure-white absolute -right-1 -bottom-1 flex h-4 items-center justify-center rounded-md px-1 text-[8px] font-black uppercase ring-2">
           Corp
         </div>
       )}
@@ -232,6 +236,12 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
   const room = rooms.find((r: ChatRoom) => r.id === roomId);
   const isCompany = user?.role === 'COMPANY';
 
+  const isSystemRoom = room?.senderType === 'system';
+  const logoSrc = isSystemRoom ? SystemIcon : room?.logoUrl;
+
+  const myIdentifier =
+    isCompany && user?.cid ? `COMPANY_${String(user.cid)}` : String(user?.userId);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -242,12 +252,10 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
         try {
           const meRes = await fetch('/api/auth/me');
           const meJson = await meRes.json();
-
           if (meJson.status && meJson.data?.cid) {
             const cid = meJson.data.cid;
             const jobRes = await fetch(`/api/job-postings/company/${cid}`);
             const jobJson = await jobRes.json();
-
             if (jobJson.status && Array.isArray(jobJson.data)) {
               setMyJobPostings(
                 jobJson.data.map((job: JobPostingItem) => ({
@@ -290,7 +298,6 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     selectedJob: { id: number; title: string },
   ) => {
     const companyName = room?.companyName || '기업';
-
     const interviewText = `[면접 제안]\n\n기업명: ${companyName}\n공고명: ${selectedJob.title}\n\n일시: ${dateTime}\n안내: ${note || '없음'}\n\n위 일정으로 면접을 제안합니다. 확인 부탁드립니다.`;
 
     await sendMessage(interviewText, 'interview', undefined, {
@@ -298,7 +305,6 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
       jobPostingId: selectedJob.id,
       jobPostingTitle: selectedJob.title,
     });
-
     setIsInterviewModalOpen(false);
     setTargetJobInfo(null);
   };
@@ -306,7 +312,6 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
   const handleAccept = async (msg: Message) => {
     if (msg.isAccepted || msg.isDeclined || isProcessing) return;
     if (!window.confirm('이 면접 제안을 수락하시겠습니까?')) return;
-
     setIsProcessing(true);
     try {
       await acceptInterview(msg.id, msg.interviewId || 'pending', room.companyName || '기업');
@@ -320,7 +325,6 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
   const handleDecline = async (msg: Message) => {
     if (msg.isAccepted || msg.isDeclined || isProcessing) return;
     if (!window.confirm('이 면접 제안을 거절하시겠습니까?')) return;
-
     setIsProcessing(true);
     try {
       await declineInterview(msg.id, msg.interviewId || 'pending', room.companyName || '기업');
@@ -353,21 +357,19 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-gray-50">
-              {room.logoUrl ? (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-gray-50">
+              {logoSrc ? (
                 <img
-                  src={room.logoUrl}
+                  src={logoSrc}
                   alt={opponentName}
                   className="h-full w-full object-cover"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = '';
-                    (e.currentTarget as HTMLImageElement).parentElement!.innerHTML =
-                      '<svg ... icon />';
                   }}
                 />
               ) : (
                 <div className="text-silver-mist">
-                  {isCompany ? <User size={20} /> : <Building2 size={20} />}
+                  {isCompany ? <User size={18} /> : <Building2 size={18} />}
                 </div>
               )}
             </div>
@@ -377,24 +379,23 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
                 <span className="text-midnight-ink text-sm leading-none font-black tracking-tight">
                   {opponentName || '이름 없음'}
                 </span>
-                {!room.logoUrl && room.companyName && !isCompany && (
+                {!logoSrc && room.companyName && !isCompany && (
                   <span className="bg-point-blue/10 text-point-blue rounded px-1.5 py-0.5 text-[9px] leading-none font-black uppercase">
                     Corp
                   </span>
                 )}
               </div>
               <span className="text-silver-mist mt-0.5 text-[10px] font-medium">
-                {isCompany ? '지원자' : '기업 담당자'}
+                {isSystemRoom ? '시스템 알림' : isCompany ? '지원자' : '기업 담당자'}
               </span>
             </div>
           </div>
         </div>
-        {/* [수정] ... (MoreHorizontal) 버튼 제거 완료 */}
       </div>
 
       <div className="bg-pure-white flex-1 space-y-6 overflow-y-auto p-5 pb-18">
         {messages.map((msg: Message) => {
-          const isMe = msg.senderId === String(user?.userId);
+          const isMe = msg.senderId === myIdentifier;
           const isInterview = msg.type === 'interview';
 
           return (
@@ -463,7 +464,7 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
                       className={`mt-3 border-t pt-3 ${isMe ? 'border-pure-white/20' : 'border-black/5'}`}
                     >
                       <button
-                        onClick={() => navigate(`/job-postings/${msg.jobPostingId}`)}
+                        onClick={() => navigate(`/job-posts/${msg.jobPostingId}`)}
                         className={`flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold transition-colors ${
                           isMe
                             ? 'bg-white/20 text-white hover:bg-white/30'
@@ -502,47 +503,56 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="bg-pure-white border-soft-pebble border-t p-5">
-        <form
-          onSubmit={handleSend}
-          className="border-soft-pebble focus-within:ring-point-blue bg-soft-pebble/5 flex flex-col gap-2 rounded-xl border p-3 transition-all focus-within:ring-2"
-        >
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="text-midnight-ink placeholder:text-silver-mist h-20 w-full resize-none border-none bg-transparent text-xs leading-relaxed font-bold outline-none placeholder:whitespace-pre-wrap"
-            placeholder={'회신할 내용을 입력하세요...\n(Enter: 전송 / Shift+Enter: 줄바꿈)'}
-          />
-          <div className="flex items-center justify-between">
-            {isCompany && (
-              <button
-                type="button"
-                onClick={() => {
-                  setTargetJobInfo(null);
-                  setIsInterviewModalOpen(true);
-                }}
-                className="text-point-blue flex items-center gap-1.5 text-[11px] font-black transition-opacity hover:opacity-80"
-              >
-                <Calendar size={14} /> 면접 제안
-              </button>
-            )}
-            <div className="flex flex-1 justify-end">
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all ${
-                  input.trim()
-                    ? 'bg-point-blue text-pure-white shadow-md'
-                    : 'bg-soft-pebble text-silver-mist'
-                }`}
-              >
-                쪽지 보내기 <Send size={14} />
-              </button>
+      {!isSystemRoom ? (
+        <div className="bg-pure-white border-soft-pebble border-t p-5">
+          <form
+            onSubmit={handleSend}
+            className="border-soft-pebble focus-within:ring-point-blue bg-soft-pebble/5 flex flex-col gap-2 rounded-xl border p-3 transition-all focus-within:ring-2"
+          >
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="text-midnight-ink placeholder:text-silver-mist h-20 w-full resize-none border-none bg-transparent text-xs leading-relaxed font-bold outline-none placeholder:whitespace-pre-wrap"
+              placeholder={'회신할 내용을 입력하세요...\n(Enter: 전송 / Shift+Enter: 줄바꿈)'}
+            />
+            <div className="flex items-center justify-between">
+              {isCompany && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetJobInfo(null);
+                    setIsInterviewModalOpen(true);
+                  }}
+                  className="text-point-blue flex items-center gap-1.5 text-[11px] font-black transition-opacity hover:opacity-80"
+                >
+                  <Calendar size={14} /> 면접 제안
+                </button>
+              )}
+              <div className="flex flex-1 justify-end">
+                <button
+                  type="submit"
+                  disabled={!input.trim()}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all ${
+                    input.trim()
+                      ? 'bg-point-blue text-pure-white shadow-md'
+                      : 'bg-soft-pebble text-silver-mist'
+                  }`}
+                >
+                  쪽지 보내기 <Send size={14} />
+                </button>
+              </div>
             </div>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      ) : (
+        <div className="border-soft-pebble border-t bg-gray-50 p-6 text-center">
+          <span className="text-silver-mist flex items-center justify-center gap-2 text-xs font-bold">
+            <Lock size={14} />
+            발신 전용 알림 센터입니다.
+          </span>
+        </div>
+      )}
 
       <InterviewModal
         key={isInterviewModalOpen ? 'open' : 'closed'}
