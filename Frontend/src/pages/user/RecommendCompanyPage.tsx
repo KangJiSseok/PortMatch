@@ -51,6 +51,7 @@ type Section =
 type Company = {
   id: number;
   companyId: number;
+  cid?: string;
   portfolioProjectId: number;
   companyProjectId: number;
   name: string;
@@ -468,7 +469,8 @@ function CompanyCard({
 
   const goToPostings = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    navigate(`/companies/${company.companyId}/active-postings`);
+    const targetCid = company.cid ?? String(company.companyId);
+    navigate(`/companies/${targetCid}/active-postings`);
   };
 
   return (
@@ -1241,7 +1243,7 @@ export default function RecommendCompanyPage() {
   >({});
   const [explanationLoadingId, setExplanationLoadingId] = useState<number | null>(null);
   const [explanationError, setExplanationError] = useState<string | null>(null);
-  const [openingsCountMap, setOpeningsCountMap] = useState<Record<number, number>>({});
+  const [openingsCountMap, setOpeningsCountMap] = useState<Record<string, number>>({});
 
   // ✅ 8개(4*2) 페이지네이션
   const PAGE_SIZE = 8;
@@ -1316,10 +1318,12 @@ export default function RecommendCompanyPage() {
           const weights = similaritiesToWeights(simByFactor);
           const topFactors = pickTopFactors(weights, 2);
           const matchScore = toScore(item.similarity ?? 0);
+          const cid = item.cid ?? String(item.companyId ?? '');
 
           return {
             id: idx + 1,
             companyId: item.companyId,
+            cid,
             portfolioProjectId: item.portfolioProjectId,
             companyProjectId: item.companyProjectId,
             name: item.companyName,
@@ -1357,17 +1361,19 @@ export default function RecommendCompanyPage() {
     () =>
       companies.map((company) => ({
         ...company,
-        openingsCount: openingsCountMap[company.companyId] ?? company.openingsCount ?? 0,
+        openingsCount: openingsCountMap[company.cid ?? String(company.companyId)] ?? company.openingsCount ?? 0,
       })),
     [companies, openingsCountMap],
   );
 
   useEffect(() => {
     if (companies.length === 0) return;
-    const uniqueIds = Array.from(new Set(companies.map((c) => c.companyId)));
+    const uniqueIds = Array.from(
+      new Set(companies.map((c) => c.cid ?? String(c.companyId))),
+    );
     const missing = uniqueIds.filter((id) => {
       if (openingsCountMap[id] !== undefined) return false;
-      const company = companies.find((c) => c.companyId === id);
+      const company = companies.find((c) => (c.cid ?? String(c.companyId)) === id);
       return !company || company.openingsCount === 0;
     });
     if (missing.length === 0) return;
