@@ -21,7 +21,7 @@ def _build_prompt() -> "ChatPromptTemplate":
         "- If the candidate describes market expansion, partnerships, or general business strategy rather than a project,\n"
         "  mark is_valid=false.\n"
         "- project_statement must be a single Korean sentence.\n"
-        "- domain은 프로젝트 도메인을 짧은 라벨로 작성하세요 (예: 의료, 헬스케어, 교육, 보안, 핀테크, 커머스 등). "
+        "- domain must be a short label for the project domain written in Korean (예: 의료, 헬스케어, 교육, 보안, 핀테크, 커머스 등). "
         "Use an empty string if unknown.\n"
         "- problem must be a single Korean sentence describing a real-world issue, limitation, or goal.\n"
         "- problem should focus on the situation or need, not on technical implementation details.\n"
