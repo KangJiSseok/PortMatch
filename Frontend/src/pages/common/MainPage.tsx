@@ -12,17 +12,15 @@ import {
   Wallet,
   Pen,
   Search,
-  User as UserIcon,
-  Briefcase,
-  MapPin,
-  PlusCircle,
   FileDiff,
+  FileDown,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import EmptyState from '../../components/states/EmptyState';
 import heroBg from '../../assets/images/main/HERO_BG.avif';
 import { useAuthStore } from '@/store/authStore';
 import type { JobPostingDto } from '@/types/backendJobPosting';
+import { portfolioApi } from '@/api/portfolioApi';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop';
@@ -36,117 +34,52 @@ interface QuickMenu {
   link?: string;
 }
 
-interface CandidateDto {
+interface RecommendationItem {
+  userId: number;
+  userName: string;
+  portfolioId: number;
+  portfolioName: string;
+  similarity: number;
+}
+
+interface HistoryItem {
   id: number;
-  name: string;
-  title: string;
-  skills: string[];
-  experience: string;
-  location: string;
-  matchRate: number;
+  query: string;
+  createdAt: string;
+  recommendations: RecommendationItem[];
 }
 
-interface RecentSearchDto {
-  keyword: string;
-  date: string;
-  results: CandidateDto[];
+interface SearchHistoryResponse {
+  status: boolean;
+  code: number;
+  message: string;
+  data: {
+    histories: HistoryItem[];
+  };
 }
 
-interface CompanyJobRecommendation {
-  id: number;
-  title: string;
-  newCount: number;
-}
-
-// 더미 데이터: 5개 꽉 채운 케이스 추가
-const DUMMY_RECENT_SEARCHES: RecentSearchDto[] = [
-  {
-    keyword: '프론트엔드 개발자',
-    date: '2026.02.04',
-    results: [
-      {
-        id: 101,
-        name: '김철수',
-        title: '5년차 React 전문가',
-        skills: ['React', 'TS'],
-        experience: '5년',
-        location: '강남구',
-        matchRate: 98,
-      },
-      {
-        id: 102,
-        name: '이영희',
-        title: 'UX 중시 프론트엔드',
-        skills: ['Vue.js', 'Nuxt'],
-        experience: '3년',
-        location: '판교',
-        matchRate: 92,
-      },
-      {
-        id: 103,
-        name: '박지성',
-        title: '풀스택 지향',
-        skills: ['React', 'Node'],
-        experience: '신입',
-        location: '마포구',
-        matchRate: 85,
-      },
-      {
-        id: 104,
-        name: '최민수',
-        title: '퍼포먼스 최적화',
-        skills: ['Next.js', 'Perf'],
-        experience: '7년',
-        location: '서초구',
-        matchRate: 82,
-      },
-      {
-        id: 105,
-        name: '정수정',
-        title: '인터랙티브 웹',
-        skills: ['Three.js', 'WebGL'],
-        experience: '4년',
-        location: '성수동',
-        matchRate: 79,
-      },
-    ],
-  },
-  {
-    keyword: 'UX/UI 디자이너',
-    date: '2026.02.03',
-    results: [
-      {
-        id: 201,
-        name: '최유리',
-        title: '데이터 기반 프로덕트 디자이너',
-        skills: ['Figma', 'Sketch'],
-        experience: '4년',
-        location: '성동구',
-        matchRate: 95,
-      },
-      {
-        id: 202,
-        name: '장기석',
-        title: '모바일 앱 디자인 전문',
-        skills: ['Adobe XD', 'PS'],
-        experience: '2년',
-        location: '서초구',
-        matchRate: 88,
-      },
-    ],
-  },
+const RECOMMENDED_QUERIES = [
+  '핀테크 보안 전문가',
+  '대용량 트래픽 처리 백엔드',
+  'React Native 앱 배포 경험',
+  '3년차 이상 퍼포먼스 마케터',
+  'SaaS B2B 영업 경력',
+  'AWS 클라우드 아키텍트',
+  '데이터 시각화 대시보드 경험',
+  '초기 스타트업 리드 개발자',
+  'Figma 능숙한 UI 디자이너',
+  '글로벌 서비스 기획 경험',
+  'Java Spring Boot 숙련자',
+  '헬스케어 데이터 분석가',
+  '유니티 3D 게임 클라이언트',
+  '블록체인 스마트 컨트랙트',
+  '영상 편집 및 모션 그래픽',
+  'HR 인사 관리 5년차',
+  '검색 엔진 최적화(SEO) 전문가',
+  '자연어 처리(NLP) AI 모델링',
+  'e-커머스 플랫폼 기획',
+  'MSA 마이크로서비스 전환 경험',
 ];
-
-const DUMMY_MY_JOB_RECOMMENDATIONS: CompanyJobRecommendation[] = [
-  { id: 1, title: '2026 상반기 프론트엔드 채용', newCount: 12 },
-  { id: 2, title: '백엔드(Java) 경력직 모집', newCount: 5 },
-  { id: 3, title: '서비스 기획자 채용', newCount: 8 },
-  { id: 4, title: '마케팅 인턴 모집', newCount: 2 },
-];
-
-// 테스트를 위해 빈 배열로 바꾸면 Empty State를 확인할 수 있습니다.
-// const DUMMY_RECENT_SEARCHES: RecentSearchDto[] = [];
-// const DUMMY_MY_JOB_RECOMMENDATIONS: CompanyJobRecommendation[] = [];
 
 const USER_QUICK_MENUS: QuickMenu[] = [
   { id: 1, title: '스피치 타이머', icon: Timer, link: '/support/speech-timer' },
@@ -171,96 +104,54 @@ function MainPage() {
   const { isLoggedIn, user } = useAuthStore();
 
   const [trendIndex, setTrendIndex] = useState(0);
-  const [companyTrendIndex, setCompanyTrendIndex] = useState(0);
+  const [companyTrendIndex] = useState(0);
+
   const [hotPosts, setHotPosts] = useState<JobPostingDto[]>([]);
   const [isHotLoading, setIsHotLoading] = useState(true);
-
   const [recentPosts, setRecentPosts] = useState<JobPostingDto[]>([]);
   const [isRecentLoading, setIsRecentLoading] = useState(true);
+  const [recentSearches, setRecentSearches] = useState<HistoryItem[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+
+  const [shuffledQueries, setShuffledQueries] = useState<string[]>([]);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}.${month}.${day}`;
+  };
 
   const calculateDDay = (endDate: string | null | undefined): string => {
     if (!endDate) return '상시채용';
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const target = new Date(endDate);
-
     if (isNaN(target.getTime())) return '상시채용';
-
     target.setHours(0, 0, 0, 0);
-
     const diffTime = target.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
     if (Number.isNaN(diffDays)) return '상시채용';
     if (diffDays === 0) return '오늘 마감';
     if (diffDays < 0) return '마감됨';
     return `D-${diffDays}`;
   };
 
-  useEffect(() => {
-    const fetchHotPosts = async () => {
-      try {
-        const response = await fetch('/api/job-postings/hot');
-        const json = await response.json();
-        if (json.status && json.data) {
-          setHotPosts(json.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch hot posts', error);
-      } finally {
-        setIsHotLoading(false);
-      }
-    };
+  const handleReSearch = (query: string) => {
+    navigate(`/company/recommend/candidates?q=${encodeURIComponent(query)}`);
+  };
 
-    if (user?.role !== 'COMPANY') {
-      fetchHotPosts();
-    } else {
-      setIsHotLoading(false);
+  const handlePdfView = async (portfolioId: number) => {
+    try {
+      const { url } = await portfolioApi.getPresignedUrl(portfolioId);
+      if (!url) throw new Error('empty url');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error(err);
+      alert('PDF 조회에 실패했습니다.');
     }
-  }, [user?.role]);
-
-  const trendPosts = useMemo(() => {
-    const chunks: JobPostingDto[][] = [];
-    const trendSource = hotPosts.slice(0, 9);
-    for (let i = 0; i < trendSource.length; i += 3) {
-      chunks.push(trendSource.slice(i, i + 3));
-    }
-    return chunks;
-  }, [hotPosts]);
-
-  const companyTrendChunks = useMemo(() => {
-    const chunks: CompanyJobRecommendation[][] = [];
-    // 추천 데이터가 있을 때만 청크 생성
-    if (DUMMY_MY_JOB_RECOMMENDATIONS.length > 0) {
-      for (let i = 0; i < DUMMY_MY_JOB_RECOMMENDATIONS.length; i += 3) {
-        chunks.push(DUMMY_MY_JOB_RECOMMENDATIONS.slice(i, i + 3));
-      }
-    }
-    return chunks;
-  }, []);
-
-  useEffect(() => {
-    const fetchRecentPosts = async () => {
-      try {
-        const response = await fetch('/api/job-postings/latest?page=0&size=10');
-        const json = await response.json();
-        if (json.status && json.data) {
-          setRecentPosts(json.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch recent posts', error);
-      } finally {
-        setIsRecentLoading(false);
-      }
-    };
-
-    if (user?.role !== 'COMPANY') {
-      fetchRecentPosts();
-    } else {
-      setIsRecentLoading(false);
-    }
-  }, [user?.role]);
+  };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     e.currentTarget.src = FALLBACK_IMAGE;
@@ -268,6 +159,7 @@ function MainPage() {
   const handleLogoError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     e.currentTarget.src = FALLBACK_LOGO;
   };
+
   const goToCompanyDetail = (e: React.MouseEvent, cid: string) => {
     e.stopPropagation();
     navigate(`/companies/${cid}`);
@@ -285,7 +177,86 @@ function MainPage() {
     }
   };
 
+  useEffect(() => {
+    if (user?.role === 'COMPANY') {
+      const shuffled = [...RECOMMENDED_QUERIES].sort(() => 0.5 - Math.random());
+      setShuffledQueries(shuffled);
+    }
+  }, [user?.role]);
+
+  useEffect(() => {
+    const fetchHotPosts = async () => {
+      try {
+        const response = await fetch('/api/job-postings/hot');
+        const json = await response.json();
+        if (json.status && json.data) setHotPosts(json.data);
+      } catch (error) {
+        console.error('Failed to fetch hot posts', error);
+      } finally {
+        setIsHotLoading(false);
+      }
+    };
+
+    const fetchRecentPosts = async () => {
+      try {
+        const response = await fetch('/api/job-postings/latest?page=0&size=10');
+        const json = await response.json();
+        if (json.status && json.data) setRecentPosts(json.data);
+      } catch (error) {
+        console.error('Failed to fetch recent posts', error);
+      } finally {
+        setIsRecentLoading(false);
+      }
+    };
+
+    if (user?.role !== 'COMPANY') {
+      fetchHotPosts();
+      fetchRecentPosts();
+    } else {
+      setIsHotLoading(false);
+      setIsRecentLoading(false);
+    }
+  }, [user?.role]);
+
+  useEffect(() => {
+    const fetchSearchHistory = async () => {
+      setIsSearchLoading(true);
+      try {
+        const response = await fetch('/api/portfolios/recommendations/users/history');
+        const json: SearchHistoryResponse = await response.json();
+        if (json.status && json.data && json.data.histories) {
+          setRecentSearches(json.data.histories);
+        }
+      } catch (error) {
+        console.error('Failed to fetch search history', error);
+      } finally {
+        setIsSearchLoading(false);
+      }
+    };
+
+    if (user?.role === 'COMPANY') {
+      fetchSearchHistory();
+    }
+  }, [user?.role]);
+  const trendPosts = useMemo(() => {
+    const chunks: JobPostingDto[][] = [];
+    const trendSource = hotPosts.slice(0, 9);
+    for (let i = 0; i < trendSource.length; i += 3) {
+      chunks.push(trendSource.slice(i, i + 3));
+    }
+    return chunks;
+  }, [hotPosts]);
+
+  const companyQueryChunks = useMemo(() => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < shuffledQueries.length; i += 3) {
+      chunks.push(shuffledQueries.slice(i, i + 3));
+    }
+    return chunks;
+  }, [shuffledQueries]);
+
   const quickMenus = user?.role === 'COMPANY' ? COMPANY_QUICK_MENUS : USER_QUICK_MENUS;
+
   const heroContent = (() => {
     if (!isLoggedIn)
       return {
@@ -323,6 +294,7 @@ function MainPage() {
   return (
     <div className="text-midnight-ink min-h-screen min-w-max bg-white">
       <div className="mx-auto w-350 px-6 pt-24 pb-20">
+        {/* HERO SECTION */}
         <section className="mb-10 flex gap-6">
           <div className="relative flex h-55 flex-1 overflow-hidden rounded-4xl border border-zinc-100 bg-zinc-50 shadow-sm">
             <div className="absolute inset-0 z-0">
@@ -354,18 +326,11 @@ function MainPage() {
           <div className="h-55 w-100 rounded-4xl border border-zinc-100 bg-white px-6 py-4 shadow-sm">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-black tracking-[0.2em] text-zinc-400 uppercase">
-                {user?.role === 'COMPANY' ? 'Matched Candidates' : 'Trend Pick'}
+                {user?.role === 'COMPANY' ? 'Recommended Keywords' : 'Trend Pick'}
               </h3>
               <div className="flex gap-2">
                 {user?.role === 'COMPANY'
-                  ? companyTrendChunks.length > 0 &&
-                    companyTrendChunks.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setCompanyTrendIndex(i)}
-                        className={`h-2.5 w-2.5 rounded-full transition-all ${i === companyTrendIndex ? 'bg-midnight-ink' : 'bg-zinc-200'}`}
-                      />
-                    ))
+                  ? null
                   : isHotLoading
                     ? [1, 2, 3].map((i) => (
                         <div key={i} className="h-2.5 w-2.5 rounded-full bg-zinc-100" />
@@ -381,7 +346,7 @@ function MainPage() {
             </div>
             <div className="h-38">
               {user?.role === 'COMPANY' ? (
-                companyTrendChunks.length > 0 ? (
+                companyQueryChunks.length > 0 ? (
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={companyTrendIndex}
@@ -391,19 +356,17 @@ function MainPage() {
                       transition={{ duration: 0.2 }}
                       className="space-y-2"
                     >
-                      {companyTrendChunks[companyTrendIndex]?.map((item) => (
+                      {companyQueryChunks[companyTrendIndex]?.map((query, idx) => (
                         <div
-                          key={item.id}
+                          key={idx}
                           className="group flex cursor-pointer items-center justify-between rounded-xl border border-zinc-50 bg-zinc-50/30 p-3 transition-all hover:bg-white hover:shadow-sm"
-                          onClick={() => navigate('/company/recommend/candidates')}
+                          onClick={() => handleReSearch(query)}
                         >
                           <p className="text-midnight-ink flex-1 truncate text-sm font-bold">
-                            {item.title}
+                            {query}
                           </p>
                           <div className="flex items-center gap-1">
-                            <span className="text-point-blue text-sm font-black">
-                              {item.newCount}명
-                            </span>
+                            <Search size={14} className="text-point-blue" />
                           </div>
                         </div>
                       ))}
@@ -411,15 +374,8 @@ function MainPage() {
                   </AnimatePresence>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center space-y-3 rounded-xl bg-zinc-50/30">
-                    <p className="text-sm font-bold text-zinc-400">등록된 공고가 없습니다.</p>
-                    <Button
-                      variant="blue"
-                      className="flex items-center gap-1 rounded-lg px-4 py-2 text-xs font-bold"
-                      onClick={() => navigate('/job-postings/new')}
-                    >
-                      <PlusCircle size={14} />
-                      공고 등록하기
-                    </Button>
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-zinc-100" />
+                    <div className="h-4 w-1/2 animate-pulse rounded bg-zinc-100" />
                   </div>
                 )
               ) : isHotLoading ? (
@@ -432,7 +388,6 @@ function MainPage() {
                   ))}
                 </div>
               ) : (
-                // 일반 회원 데이터 표시
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={trendIndex}
@@ -466,6 +421,7 @@ function MainPage() {
           </div>
         </section>
 
+        {/* QUICK MENU */}
         <section className="mb-12 grid grid-cols-6 gap-4">
           {quickMenus.map((menu) => (
             <div
@@ -481,6 +437,7 @@ function MainPage() {
           ))}
         </section>
 
+        {/* NOTICE */}
         <section className="mb-10">
           <div className="mb-8 flex items-center gap-2 rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
             <span className="bg-midnight-ink rounded px-2 py-1 text-[10px] font-black text-white">
@@ -498,6 +455,7 @@ function MainPage() {
             </button>
           </div>
 
+          {/* MAIN LIST SECTION */}
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-2xl font-black tracking-tighter">
               {user?.role === 'COMPANY' ? '최근 검색된 추천 인재' : '최근 채용 공고'}
@@ -523,88 +481,81 @@ function MainPage() {
 
           {user?.role === 'COMPANY' ? (
             <div className="space-y-12">
-              {DUMMY_RECENT_SEARCHES.length > 0 ? (
-                DUMMY_RECENT_SEARCHES.map((search, searchIndex) => (
-                  <div key={searchIndex} className="animate-fade-in-up">
+              {isSearchLoading ? (
+                <div className="flex h-60 items-center justify-center">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-zinc-200 border-t-blue-600"></div>
+                </div>
+              ) : recentSearches.length > 0 ? (
+                recentSearches.slice(0, 2).map((history) => (
+                  <div key={history.id} className="animate-fade-in-up">
                     <div className="mb-4 flex items-center gap-3">
                       <div className="bg-point-blue/10 flex h-8 w-8 items-center justify-center rounded-full">
                         <Search size={16} className="text-point-blue" />
                       </div>
                       <span className="text-midnight-ink text-lg font-black">
-                        '{search.keyword}'
+                        '{history.query}'
                       </span>
-                      <span className="text-xs font-medium text-zinc-400">{search.date} 검색</span>
+                      <span className="text-xs font-medium text-zinc-400">
+                        {formatDate(history.createdAt)} 검색
+                      </span>
+                      {/* 재검색 버튼 */}
+                      <button
+                        onClick={() => handleReSearch(history.query)}
+                        className="group flex items-center gap-1 rounded-full bg-zinc-100 px-4 py-2 text-xs font-bold text-zinc-600 transition-all hover:bg-blue-100 hover:text-blue-600"
+                      >
+                        <Search size={12} />
+                        재검색
+                      </button>
                     </div>
+
                     {/* 카드 리스트: 5개 제한, 그리드 */}
                     <div className="grid grid-cols-5 gap-6">
-                      {search.results.length > 0 ? (
-                        search.results.slice(0, 5).map((candidate) => (
+                      {history.recommendations && history.recommendations.length > 0 ? (
+                        history.recommendations.slice(0, 5).map((candidate) => (
                           <motion.div
-                            key={candidate.id}
-                            whileHover={{ y: -5 }}
-                            className="group flex cursor-pointer flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm transition-all hover:shadow-xl"
-                            onClick={() => navigate(`/candidates/${candidate.id}`)}
+                            key={candidate.userId}
+                            className="flex flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm"
                           >
-                            {/* 높이 축소를 위한 패딩/마진 조정 */}
-                            <div className="p-4 pb-0">
-                              <div className="bg-point-blue/5 flex h-12 w-12 items-center justify-center rounded-xl">
-                                <UserIcon size={24} className="text-point-blue/60" />
-                              </div>
-                            </div>
-                            <div className="flex flex-1 flex-col p-4 pt-3">
-                              <div className="mb-2 space-y-0.5">
-                                <p className="truncate text-base font-black text-zinc-800">
-                                  {candidate.name}
+                            <div className="flex flex-1 flex-col p-6 pt-6">
+                              <div className="mb-4 space-y-1">
+                                <p className="truncate text-lg font-black text-zinc-800">
+                                  {candidate.userName}
                                 </p>
-                                <h3 className="text-midnight-ink group-hover:text-point-blue line-clamp-1 text-xs font-bold transition-colors">
-                                  {candidate.title}
+                                <h3 className="text-midnight-ink line-clamp-2 text-sm leading-relaxed font-bold">
+                                  {candidate.portfolioName}
                                 </h3>
                               </div>
-                              <div className="mb-3 flex flex-wrap gap-1">
-                                {candidate.skills.slice(0, 2).map((skill, i) => (
-                                  <span
-                                    key={i}
-                                    className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-bold text-zinc-500"
-                                  >
-                                    {skill}
-                                  </span>
-                                ))}
-                                {candidate.skills.length > 2 && (
-                                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-bold text-zinc-500">
-                                    +{candidate.skills.length - 2}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mt-auto flex items-center justify-between border-t border-zinc-50 pt-3">
-                                <div className="flex items-center gap-1 text-zinc-400">
-                                  <Briefcase size={10} />
-                                  <span className="text-[10px] font-bold">
-                                    {candidate.experience}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1 text-zinc-400">
-                                  <MapPin size={10} />
-                                  <span className="text-[10px] font-bold">
-                                    {candidate.location}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="mt-2">
+
+                              <div className="mt-auto border-t border-zinc-50 pt-5">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-bold text-zinc-400">
-                                    적합도
-                                  </span>
-                                  <span className="text-point-blue text-xs font-black">
-                                    {candidate.matchRate}%
+                                  <span className="text-xs font-bold text-zinc-400">적합도</span>
+                                  <span className="text-point-blue text-lg font-black">
+                                    {Math.floor(candidate.similarity * 100)}점
                                   </span>
                                 </div>
-                                <div className="mt-1 h-1 w-full rounded-full bg-zinc-100">
+                                <div className="mt-1 h-1.5 w-full rounded-full bg-zinc-100">
                                   <div
-                                    className="bg-point-blue h-1 rounded-full"
-                                    style={{ width: `${candidate.matchRate}%` }}
+                                    className="bg-point-blue h-1.5 rounded-full"
+                                    style={{
+                                      width: `${Math.min(100, Math.floor(candidate.similarity * 100))}%`,
+                                    }}
                                   />
                                 </div>
                               </div>
+                            </div>
+
+                            <div className="mt-auto bg-zinc-50 px-6 py-4">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePdfView(candidate.portfolioId);
+                                }}
+                                className="group/btn relative flex w-full items-center justify-center gap-1 overflow-hidden rounded-lg bg-zinc-700 py-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-zinc-600"
+                              >
+                                <FileDown size={14} />
+                                포트폴리오 조회 (PDF)
+                              </button>
                             </div>
                           </motion.div>
                         ))
@@ -620,7 +571,6 @@ function MainPage() {
                   </div>
                 ))
               ) : (
-                // 기업: 최근 검색 기록이 없을 때 (Empty State)
                 <div className="flex h-60 flex-col items-center justify-center rounded-3xl border border-zinc-100 bg-zinc-50">
                   <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-200">
                     <Search size={32} className="text-zinc-400" />
@@ -632,7 +582,7 @@ function MainPage() {
                   <Button
                     variant="blue"
                     className="rounded-xl px-6 py-3 font-bold"
-                    onClick={() => navigate('/search')}
+                    onClick={() => navigate('/company/recommend/candidates')}
                   >
                     인재 검색하러 가기
                   </Button>
@@ -640,7 +590,6 @@ function MainPage() {
               )}
             </div>
           ) : (
-            // 일반 회원 리스트 (기존 유지)
             <div className="grid min-h-80 grid-cols-5 gap-6">
               {isRecentLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
