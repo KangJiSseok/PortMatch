@@ -83,5 +83,34 @@ services:
       - mineru-api
     command: ["bash", "-lc", "pip install -r requirements.txt && uvicorn web.api.app:app --host 0.0.0.0 --port 8002"]
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "8050:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "8051:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=port
+      - GF_SECURITY_ADMIN_PASSWORD=match
+    volumes:
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
 volumes:
   postgres-data:
+  prometheus-data:
+  grafana-data:

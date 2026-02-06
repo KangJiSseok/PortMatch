@@ -68,7 +68,9 @@ public class SecurityConfig {
                                 // ✅ Swagger / OpenAPI 허용 (springdoc 기본 경로)
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+
+                                "/actuator/**"
                         ).permitAll()
 
                         .requestMatchers("/api/auth/me").authenticated()
