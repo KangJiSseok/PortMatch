@@ -3,7 +3,7 @@ import { isAxiosError } from 'axios';
 import axiosInstance from '@/api/axiosInstance';
 import { getMyInfo } from '@/api/auth';
 import type { ApiEnvelope } from '@/api/myPage/types';
-import type { InterviewListStatus, InterviewSessionView } from './list';
+import type { InterviewListStatus, InterviewSessionView, InterviewStatusValue } from './list';
 import type { InterviewUserApi, JobPostingApi } from './user';
 
 export type InterviewCompanyApiRow = {
@@ -86,20 +86,24 @@ function pickCompanyName(jobPosting: JobPostingApi | null | undefined): string |
   );
 }
 
-function toInterviewListStatus(apiStatus: ApiStatusLike, scheduledAt: string): InterviewListStatus {
+function normalizeInterviewStatus(apiStatus: ApiStatusLike): InterviewStatusValue | null {
   const normalized = (apiStatus ?? '').toString().trim().toUpperCase();
+  if (!normalized) return null;
   if (
-    normalized.includes('DONE') ||
-    normalized.includes('COMPLETED') ||
-    normalized.includes('FINISHED') ||
-    normalized.includes('CANCEL')
+    normalized === 'PENDING' ||
+    normalized === 'CONFIRMED' ||
+    normalized === 'COMPLETED' ||
+    normalized === 'CANCELED'
   ) {
-    return 'DONE';
+    return normalized;
   }
+  return 'UNKNOWN';
+}
 
-  const t = new Date(scheduledAt).getTime();
-  if (Number.isFinite(t) && t < Date.now()) return 'DONE';
-
+function toInterviewListStatus(apiStatus: ApiStatusLike): InterviewListStatus {
+  const status = normalizeInterviewStatus(apiStatus);
+  if (status === 'COMPLETED' || status === 'CANCELED') return 'DONE';
+  if (status === 'PENDING' || status === 'CONFIRMED') return 'UPCOMING';
   return 'UPCOMING';
 }
 
@@ -141,7 +145,8 @@ export function toInterviewSessionViewFromApi(row: InterviewCompanyApiRow): Inte
     companyName,
     applicantName,
     applicantUserId,
-    status: toInterviewListStatus(row.status, scheduledAt),
+    status: toInterviewListStatus(row.status),
+    interviewStatus: normalizeInterviewStatus(row.status) ?? 'UNKNOWN',
   };
 }
 
@@ -239,10 +244,8 @@ export async function fetchCompanyUpcomingInterviewViews(
   limit = 3,
 ): Promise<InterviewSessionView[]> {
   const views = await fetchCompanyInterviewViews();
-  const nowMs = Date.now();
   return views
     .filter((v) => v.status === 'UPCOMING')
-    .filter((v) => new Date(v.scheduledAt).getTime() >= nowMs)
     .slice(0, limit);
 }
 

@@ -19,6 +19,21 @@ function formatDateTime(iso: string) {
   return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
 }
 
+function getInterviewStatusLabel(status?: string) {
+  switch ((status ?? '').toUpperCase()) {
+    case 'PENDING':
+      return '면접 일정 조율중';
+    case 'CONFIRMED':
+      return '면접 확정';
+    case 'COMPLETED':
+      return '면접 종료';
+    case 'CANCELED':
+      return '면접 취소';
+    default:
+      return '상태 미정';
+  }
+}
+
 const ROUTES = {
   list: '/interviews',
   lobby: (id: number) => `/interviews/${id}/lobby`,
@@ -160,15 +175,8 @@ export default function InterviewListPage() {
                     {/* LEFT */}
                     <div className="min-w-0">
                       <div className="mb-4 flex items-center gap-3">
-                        <span
-                          className={[
-                            'shrink-0 rounded-full px-4 py-1 text-xs font-black tracking-tight',
-                            isUpcoming
-                              ? 'bg-emerald-50 text-emerald-600'
-                              : 'bg-cloud-dancer text-slate-gray',
-                          ].join(' ')}
-                        >
-                          {isUpcoming ? '예정' : '완료'}
+                        <span className="rounded-full bg-zinc-100 px-4 py-1 text-xs font-black text-zinc-700">
+                          {getInterviewStatusLabel(s.interviewStatus)}
                         </span>
 
                         <span className="text-slate-gray text-sm font-black tracking-widest whitespace-nowrap uppercase">
