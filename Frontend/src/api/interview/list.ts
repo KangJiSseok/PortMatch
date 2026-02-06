@@ -4,6 +4,13 @@ import { fetchInterviewRowsForMe, type InterviewApiRow } from './user';
 
 export type InterviewListStatus = 'UPCOMING' | 'DONE';
 
+export type InterviewStatusValue =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'COMPLETED'
+  | 'CANCELED'
+  | 'UNKNOWN';
+
 export type InterviewSessionView = {
   interview_id: number;
   application_id: number;
@@ -18,6 +25,7 @@ export type InterviewSessionView = {
   applicantUserId?: number;
 
   status: InterviewListStatus;
+  interviewStatus?: InterviewStatusValue;
 };
 
 type ApiStatusLike = string | null | undefined;
@@ -54,20 +62,24 @@ function pickCompanyName(jobPosting: InterviewApiRow['jobPosting']): string | nu
   );
 }
 
-function toInterviewListStatus(apiStatus: ApiStatusLike, scheduledAt: string): InterviewListStatus {
+function normalizeInterviewStatus(apiStatus: ApiStatusLike): InterviewStatusValue | null {
   const normalized = (apiStatus ?? '').toString().trim().toUpperCase();
+  if (!normalized) return null;
   if (
-    normalized.includes('DONE') ||
-    normalized.includes('COMPLETED') ||
-    normalized.includes('FINISHED') ||
-    normalized.includes('CANCEL')
+    normalized === 'PENDING' ||
+    normalized === 'CONFIRMED' ||
+    normalized === 'COMPLETED' ||
+    normalized === 'CANCELED'
   ) {
-    return 'DONE';
+    return normalized;
   }
+  return 'UNKNOWN';
+}
 
-  const t = new Date(scheduledAt).getTime();
-  if (Number.isFinite(t) && t < Date.now()) return 'DONE';
-
+function toInterviewListStatus(apiStatus: ApiStatusLike): InterviewListStatus {
+  const status = normalizeInterviewStatus(apiStatus);
+  if (status === 'COMPLETED' || status === 'CANCELED') return 'DONE';
+  if (status === 'PENDING' || status === 'CONFIRMED') return 'UPCOMING';
   return 'UPCOMING';
 }
 
@@ -105,7 +117,8 @@ function toInterviewSessionViewFromApi(row: InterviewApiRow): InterviewSessionVi
     postingTitle,
     companyName,
     applicantName,
-    status: toInterviewListStatus(row.status, scheduledAt),
+    status: toInterviewListStatus(row.status),
+    interviewStatus: normalizeInterviewStatus(row.status) ?? 'UNKNOWN',
   };
 }
 
@@ -129,10 +142,8 @@ export async function fetchMyUpcomingInterviewViews(
   limit = 2,
 ): Promise<InterviewSessionView[]> {
   const views = await buildInterviewViewsFromApi();
-  const nowMs = Date.now();
   return views
     .filter((v) => v.status === 'UPCOMING')
-    .filter((v) => new Date(v.scheduledAt).getTime() >= nowMs)
     .slice(0, limit);
 }
 
