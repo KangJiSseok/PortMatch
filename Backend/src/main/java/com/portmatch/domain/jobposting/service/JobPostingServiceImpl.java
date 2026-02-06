@@ -4,6 +4,7 @@ import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.domain.companies.service.CompaniesService;
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
+import com.portmatch.domain.jobposting.embedding.service.JobPostingEmbeddingService;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.domain.jobposting.entity.PostingStackEntity;
 import com.portmatch.domain.jobposting.entity.TechStackEntity;
@@ -31,6 +32,7 @@ public class JobPostingServiceImpl implements JobPostingService {
     private final PostingStackRepository postingStackRepository;
     private final CompaniesService companiesService;
     private final ScrapRepository scrapRepository;
+    private final JobPostingEmbeddingService jobPostingEmbeddingService;
 
     @Override
     @Transactional
@@ -98,6 +100,9 @@ public class JobPostingServiceImpl implements JobPostingService {
                 postingStackRepository.save(psEntity);
             }
         }
+
+        // 4. 공고 파싱 + 임베딩 생성 및 저장
+        jobPostingEmbeddingService.embedAndSave(jobPosting);
     }
 
     @Override
