@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Info, FileText, ChevronDown, Briefcase, X } from 'lucide-react';
@@ -635,25 +635,49 @@ const PAGE_SIZE = 8;
 export default function RecommendJobPostingsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // URL 파라미터에서 값 읽기 (뒤로가기 시 자동 반영)
   const portfolioIdParam = searchParams.get('portfolioId');
   const portfolioId =
     portfolioIdParam && Number.isFinite(Number(portfolioIdParam)) ? Number(portfolioIdParam) : null;
 
-  const [page, setPage] = useState(1);
-  const [prevCardsLength, setPrevCardsLength] = useState(0);
+  // limit과 page를 URL 파라미터에서 직접 파생 (뒤로가기 시 자동 반영)
+  const urlLimitParam = searchParams.get('limit');
+  const urlPageParam = searchParams.get('page');
+  const limit = (() => {
+    const parsed = Number(urlLimitParam);
+    return Number.isFinite(parsed) && parsed >= 1 ? parsed : 10;
+  })();
+  const page = (() => {
+    const parsed = Number(urlPageParam);
+    return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
+  })();
+
+  const prevCardsLengthRef = useRef(0);
   const [detailTarget, setDetailTarget] = useState<JobPostingCardModel | null>(null);
 
-  const { cards, isLoading, isFetching, error } = useRecommendJobPostings(portfolioId);
+  // URL 파라미터 업데이트 함수
+  const updateUrlParams = useCallback((newLimit: number, newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('limit', String(newLimit));
+    params.set('page', String(newPage));
+    navigate({ search: `?${params.toString()}` }, { replace: false });
+  }, [navigate, searchParams]);
+
+  const { cards, isLoading, isFetching, error } = useRecommendJobPostings(portfolioId, limit);
 
   const displayCards = cards;
 
-  // React 권장 패턴: 렌더링 중 상태 조정 (useEffect 대신)
-  if (cards.length !== prevCardsLength) {
-    setPrevCardsLength(cards.length);
-    if (prevCardsLength !== 0) {
-      setPage(1);
+  // cards 길이가 변경되면 페이지를 1로 리셋
+  useEffect(() => {
+    if (cards.length !== prevCardsLengthRef.current) {
+      const hadCards = prevCardsLengthRef.current !== 0;
+      prevCardsLengthRef.current = cards.length;
+      if (hadCards && page !== 1) {
+        updateUrlParams(limit, 1);
+      }
     }
-  }
+  }, [cards.length, page, limit, updateUrlParams]);
 
   const totalPages = Math.max(1, Math.ceil(displayCards.length / PAGE_SIZE));
   const safePage = Math.min(Math.max(1, page), totalPages);
@@ -682,6 +706,33 @@ export default function RecommendJobPostingsPage() {
         </header>
 
         <EvaluationCriteria />
+
+        <div className="mb-6 pl-6">
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm">
+            <div>
+              <h4 className="text-[14px] font-black text-[#1a1a1a]">추천 공고 개수</h4>
+              <p className="mt-1 text-[12px] font-medium text-gray-500">
+                요청할 추천 공고 수를 지정하세요.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={limit}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (!Number.isFinite(next)) return;
+                  const clamped = Math.min(50, Math.max(1, Math.floor(next)));
+                  updateUrlParams(clamped, page);
+                }}
+                className="h-10 w-20 rounded-xl border border-gray-200 bg-white px-3 text-right text-[13px] font-black text-gray-700 outline-none transition focus:border-black/20 focus:ring-2 focus:ring-black/10"
+              />
+              <span className="text-[12px] font-bold text-gray-500">개</span>
+            </div>
+          </div>
+        </div>
 
         {/* <div className="mb-8 pl-6">
           <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -739,7 +790,7 @@ export default function RecommendJobPostingsPage() {
             <button
               type="button"
               className={pagerBtn}
-              onClick={() => setPage(Math.max(1, safePage - 1))}
+              onClick={() => updateUrlParams(limit, Math.max(1, safePage - 1))}
               aria-label="prev"
             >
               ‹
@@ -752,7 +803,7 @@ export default function RecommendJobPostingsPage() {
             <button
               type="button"
               className={pagerBtn}
-              onClick={() => setPage(Math.min(totalPages, safePage + 1))}
+              onClick={() => updateUrlParams(limit, Math.min(totalPages, safePage + 1))}
               aria-label="next"
             >
               ›

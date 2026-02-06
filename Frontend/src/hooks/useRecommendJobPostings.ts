@@ -52,12 +52,18 @@ function mapToCardModel(item: RecommendJobPostingMatch, index: number): JobPosti
   };
 }
 
-export function useRecommendJobPostings(portfolioId: number | string | null | undefined) {
-  const queryKey = useMemo(() => ['recommendJobPostings', portfolioId] as const, [portfolioId]);
+export function useRecommendJobPostings(
+  portfolioId: number | string | null | undefined,
+  limit?: number,
+) {
+  const queryKey = useMemo(
+    () => ['recommendJobPostings', portfolioId, limit] as const,
+    [portfolioId, limit],
+  );
 
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchRecommendedJobPostings(portfolioId as number | string),
+    queryFn: () => fetchRecommendedJobPostings(portfolioId as number | string, limit),
     enabled: portfolioId !== null && portfolioId !== undefined && String(portfolioId).length > 0,
     staleTime: 30_000,
     retry: 1,

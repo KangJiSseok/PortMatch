@@ -47,8 +47,10 @@ export type ViewState = 'ok' | 'loading' | 'empty' | 'error';
  */
 export interface CompanyRecommendationResponse {
   companyId: number;
+  cid?: string;
   companyName: string;
   similarity: number;
+  jobPostingSize?: number;
   portfolioProjectId: number;
   companyProjectId: number;
   portfolioContent: string;
