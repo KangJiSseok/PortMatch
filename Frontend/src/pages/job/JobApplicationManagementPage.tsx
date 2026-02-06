@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -37,11 +37,10 @@ interface CompanyApplicationViewExtended extends CompanyApplicationView {
   };
 }
 
-// ✅ [추가] 면접 데이터 인터페이스 정의 (API 응답 기준)
 interface InterviewData {
   id: number;
   time: string;
-  status: string;
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELED';
   userId: number;
   jobPostingId: number;
   user: {
@@ -188,7 +187,7 @@ const ConfirmModal = ({ config, onClose }: { config: ModalConfig; onClose: () =>
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+        className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
         onClick={onClose}
       >
         <motion.div
@@ -265,7 +264,6 @@ const JobApplicationManagementPage = () => {
 
   const [sortBy, setSortBy] = useState<'최신순' | '경력순' | '이름순'>('최신순');
   const [applications, setApplications] = useState<CompanyApplicationViewExtended[]>([]);
-  // ✅ [추가] 해당 공고에 잡혀있는 면접 목록 상태
   const [existingInterviews, setExistingInterviews] = useState<InterviewData[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -308,6 +306,19 @@ const JobApplicationManagementPage = () => {
     }
   };
 
+  const fetchInterviews = useCallback(async () => {
+    if (safeJobPostId === 0) return;
+    try {
+      const res = await fetch(`/api/interviews/posting/${safeJobPostId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setExistingInterviews(Array.isArray(json) ? json : []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch interviews', error);
+    }
+  }, [safeJobPostId]);
+
   useEffect(() => {
     const fetchMyCorpInfo = async () => {
       try {
@@ -342,28 +353,17 @@ const JobApplicationManagementPage = () => {
       setError('');
 
       try {
-        // ✅ [수정] 지원자 목록, 공고 상세, 그리고 '면접 리스트'를 동시에 가져옵니다.
-        const [data, detail, interviewsRes] = await Promise.all([
+        const [data, detail] = await Promise.all([
           fetchCompanyApplications(safeJobPostId),
           fetchJobPostDetail(safeJobPostId).catch(() => null),
-          fetch(`/api/interviews/posting/${safeJobPostId}`)
-            .then((res) => (res.ok ? res.json() : []))
-            .catch(() => []),
         ]);
+
+        await fetchInterviews();
 
         if (cancelled) return;
 
         const initialApps = data as CompanyApplicationViewExtended[];
         setApplications(initialApps);
-
-        // ✅ 면접 리스트 상태 저장
-        if (Array.isArray(interviewsRes)) {
-          setExistingInterviews(interviewsRes);
-        } else {
-          // 백엔드 응답 형태가 { data: [...] } 일 수도 있으므로 방어 코드
-          // (제공해주신 응답 예시는 배열([]) 형태라 위 코드로 충분합니다)
-          setExistingInterviews([]);
-        }
 
         if (detail) {
           if (detail.jobPost?.title) setJobPostTitle(detail.jobPost.title);
@@ -409,17 +409,51 @@ const JobApplicationManagementPage = () => {
     };
 
     load();
+
+    const handleRefreshInterviews = () => {
+      fetchInterviews();
+    };
+
+    window.addEventListener('REFRESH_INTERVIEW_LIST', handleRefreshInterviews);
+
     return () => {
       cancelled = true;
+      window.removeEventListener('REFRESH_INTERVIEW_LIST', handleRefreshInterviews);
     };
-  }, [safeJobPostId]);
+  }, [safeJobPostId, fetchInterviews]);
 
-  // ✅ [추가] 특정 유저 ID가 면접 리스트에 있는지 확인하는 함수
-  const checkInterviewExists = (targetUserId: number) => {
-    return existingInterviews.some((interview) => interview.userId === targetUserId);
+  const getValidInterview = (targetUserId: number) => {
+    return existingInterviews.find(
+      (interview) =>
+        interview.userId === targetUserId &&
+        interview.status !== 'CANCELED' &&
+        interview.status !== 'COMPLETED',
+    );
   };
 
-  // 기존 status 기반 체크 함수 (보조용)
+  const checkInterviewExists = (targetUserId: number) => {
+    return !!getValidInterview(targetUserId);
+  };
+
+  const getInterviewStatusInfo = (targetUserId: number) => {
+    const interview = existingInterviews.find(
+      (i) => i.userId === targetUserId && i.status !== 'CANCELED',
+    );
+
+    if (!interview) return null;
+
+    switch (interview.status) {
+      case 'PENDING':
+        return { label: '면접 조율 중', colorClass: 'text-indigo-600 bg-indigo-50' };
+      case 'CONFIRMED':
+        return { label: '일정 확정', colorClass: 'text-green-600 bg-green-50' };
+      case 'COMPLETED':
+        return { label: '면접 완료', colorClass: 'text-slate-600 bg-slate-100' };
+      default:
+        return null;
+    }
+  };
+
   const hasStatusScheduled = (status?: string) => {
     if (!status) return false;
     const s = status.toUpperCase();
@@ -704,9 +738,8 @@ const JobApplicationManagementPage = () => {
                       ? 'bg-cloud-dancer text-slate-gray'
                       : 'text-point-blue bg-blue-50';
 
-                    // ✅ [수정] status 뿐만 아니라 실제 면접 리스트(existingInterviews)도 확인
-                    // 지원자의 ID를 추출 (app.userId가 없으면 resume.userId 사용)
                     const targetUserId = app.userId || app.resume?.userId || 0;
+                    const interviewInfo = getInterviewStatusInfo(targetUserId);
                     const isInterviewExist = checkInterviewExists(targetUserId);
 
                     const isScheduled = isInterviewExist || hasStatusScheduled(status);
@@ -805,9 +838,11 @@ const JobApplicationManagementPage = () => {
                                 면접 일정 잡기
                               </Button>
                             ) : (
-                              <div className="flex w-40 items-center justify-center gap-1 text-sm font-bold text-indigo-500">
+                              <div
+                                className={`flex h-10 w-40 shrink-0 items-center justify-center gap-1 rounded-xl text-sm font-bold ${interviewInfo?.colorClass || 'bg-indigo-50 text-indigo-600'}`}
+                              >
                                 <Calendar size={16} />
-                                <span>면접 예정됨</span>
+                                <span>{interviewInfo ? interviewInfo.label : '면접 예정됨'}</span>
                               </div>
                             ))}
                         </div>
@@ -855,13 +890,13 @@ const JobApplicationManagementPage = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={closeModal}
-              className="fixed inset-0 z-[400] bg-slate-900/70 backdrop-blur-md"
+              className="fixed inset-0 z-400 bg-slate-900/70 backdrop-blur-md"
             />
             <motion.div
               initial={{ opacity: 0, y: 50, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.95 }}
-              className="fixed inset-0 z-[500] flex items-center justify-center p-4 sm:p-6"
+              className="fixed inset-0 z-500 flex items-center justify-center p-4 sm:p-6"
               onClick={closeModal}
             >
               <div
@@ -1148,32 +1183,43 @@ const JobApplicationManagementPage = () => {
                     1:1 메시지
                   </Button>
 
-                  {/* ✅ [수정] 모달 하단 버튼 조건부 렌더링 - 면접 리스트 확인 */}
                   {selectedApplication.status !== 'REJECTED' &&
                     selectedApplication.status !== '불합격' &&
-                    (!checkInterviewExists(
-                      selectedApplication.userId || selectedApplication.resume.userId,
-                    ) && !hasStatusScheduled(selectedApplication.status) ? (
-                      <Button
-                        variant="blue"
-                        size="lg"
-                        className="rounded-xl font-black shadow-lg shadow-blue-600/20"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const app = applications.find(
-                            (a) => a.applicationId === selectedApplication.applicationId,
-                          );
-                          if (app) goSchedule(app);
-                        }}
-                      >
-                        면접 일정 잡기
-                      </Button>
-                    ) : (
-                      <div className="flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-50 px-6 font-bold text-indigo-600">
-                        <Calendar size={18} />
-                        <span>면접 예정됨</span>
-                      </div>
-                    ))}
+                    (() => {
+                      const targetUid =
+                        selectedApplication.userId || selectedApplication.resume.userId;
+                      const interviewInfo = getInterviewStatusInfo(targetUid);
+                      const isInterviewExist = checkInterviewExists(targetUid);
+                      const isStatusScheduled = hasStatusScheduled(selectedApplication.status);
+
+                      if (!isInterviewExist && !isStatusScheduled) {
+                        return (
+                          <Button
+                            variant="blue"
+                            size="lg"
+                            className="rounded-xl font-black shadow-lg shadow-blue-600/20"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const app = applications.find(
+                                (a) => a.applicationId === selectedApplication.applicationId,
+                              );
+                              if (app) goSchedule(app);
+                            }}
+                          >
+                            면접 일정 잡기
+                          </Button>
+                        );
+                      } else {
+                        return (
+                          <div
+                            className={`flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl px-6 font-bold ${interviewInfo?.colorClass || 'bg-indigo-50 text-indigo-600'}`}
+                          >
+                            <Calendar size={18} />
+                            <span>{interviewInfo ? interviewInfo.label : '면접 예정됨'}</span>
+                          </div>
+                        );
+                      }
+                    })()}
                 </div>
               </div>
             </motion.div>

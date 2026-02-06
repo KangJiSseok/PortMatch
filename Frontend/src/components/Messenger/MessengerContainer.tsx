@@ -33,6 +33,7 @@ interface ExtendedMessage extends Message {
   additionalInfo?: {
     interviewId?: number | string;
     jobPostingId?: number | string;
+    id?: number | string;
     [key: string]: unknown;
   };
 }
@@ -61,6 +62,11 @@ interface ExtendedMessengerContext {
     messageId: string,
     interviewId: string | number,
     companyName: string,
+  ) => Promise<void>;
+  sendSystemNotification: (
+    targetUserId: string | number,
+    messageText: string,
+    linkJobId?: number | string,
   ) => Promise<void>;
 }
 
@@ -228,8 +234,8 @@ const CompanyLogo = ({ room }: { room: ChatRoom }) => {
 // 3. 채팅 목록 컴포넌트
 // ==========================================
 const ChatList = () => {
-  // ✅ [수정] 훅 호출을 최상위 레벨로 이동 (반복문 밖으로)
-  const { rooms, setCurrentRoomId } = useMessenger() as unknown as ExtendedMessengerContext;
+  const { rooms, setCurrentRoomId, currentRoomId } =
+    useMessenger() as unknown as ExtendedMessengerContext;
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -325,12 +331,15 @@ const ChatList = () => {
         {rooms.map((room: ChatRoom) => {
           const opponentName = user?.role === 'COMPANY' ? room.applicantName : room.companyName;
           const isMyLastMessage = room.lastSenderId === String(user?.userId);
+          const isCurrentRoom = currentRoomId === room.id;
 
           return (
             <div
               key={room.id}
               onClick={() => setCurrentRoomId(room.id)}
-              className="hover:bg-soft-pebble/10 flex cursor-pointer items-start gap-4 p-5 transition-all active:scale-[0.98]"
+              className={`flex cursor-pointer items-start gap-4 p-5 transition-all active:scale-[0.98] ${
+                isCurrentRoom ? 'bg-soft-pebble/20' : 'hover:bg-soft-pebble/10'
+              }`}
             >
               <CompanyLogo room={room} />
               <div className="flex min-w-0 flex-1 flex-col">
@@ -345,7 +354,7 @@ const ChatList = () => {
                 <p className="text-slate-gray truncate text-xs leading-relaxed font-medium">
                   {room.lastMessage}
                 </p>
-                {room.unreadCount > 0 && !isMyLastMessage && (
+                {room.unreadCount > 0 && !isMyLastMessage && !isCurrentRoom && (
                   <div className="mt-2">
                     <span className="bg-point-blue inline-flex h-1.5 w-1.5 rounded-full" />
                   </div>
@@ -379,16 +388,21 @@ interface ChatRoomWindowProps {
 
 const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWindowProps) => {
   const navigate = useNavigate();
-  // ✅ [수정] 이중 캐스팅으로 타입 호환성 문제 해결
-  const { rooms, messages, setCurrentRoomId, sendMessage, acceptInterview, declineInterview } =
-    useMessenger() as unknown as ExtendedMessengerContext;
+  const {
+    rooms,
+    messages,
+    setCurrentRoomId,
+    sendMessage,
+    acceptInterview,
+    declineInterview,
+    sendSystemNotification,
+  } = useMessenger() as unknown as ExtendedMessengerContext;
   const { user } = useAuth();
   const [input, setInput] = useState('');
 
   const [targetJobInfo, setTargetJobInfo] = useState<{ id: number; title: string } | null>(null);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
 
-  // 로컬 상태 처리용 (즉각 UI 반영)
   const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
 
   const [modalConfig, setModalConfig] = useState<ModalConfig>({
@@ -421,6 +435,57 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // 면접 상태 동기화
+  useEffect(() => {
+    if (!messages || messages.length === 0 || isCompany) return;
+
+    const syncInterviewStatuses = async () => {
+      try {
+        const res = await fetch(`/api/interviews/user/${user?.userId}`);
+        if (!res.ok) return;
+
+        const myInterviews: InterviewResponse[] = await res.json();
+        const newProcessedIds = new Set<string>();
+
+        messages.forEach((msg) => {
+          if (msg.type !== 'interview') return;
+          if (processedIds.has(msg.id)) return;
+
+          const extMsg = msg as ExtendedMessage;
+          const msgIntId = Number(
+            extMsg.additionalInfo?.id || extMsg.additionalInfo?.interviewId || extMsg.interviewId,
+          );
+          const msgPostId = Number(extMsg.jobPostingId || extMsg.additionalInfo?.jobPostingId);
+
+          if (msgIntId > 0) {
+            const interview = myInterviews.find((i) => i.id === msgIntId);
+            if (interview && interview.status !== 'PENDING') {
+              newProcessedIds.add(msg.id);
+            }
+          } else if (msgPostId > 0) {
+            const interview = myInterviews.find((i) => i.jobPostingId === msgPostId);
+            if (interview && interview.status !== 'PENDING') {
+              newProcessedIds.add(msg.id);
+            }
+          }
+        });
+
+        if (newProcessedIds.size > 0) {
+          setProcessedIds((prev) => {
+            const next = new Set(prev);
+            newProcessedIds.forEach((id) => next.add(id));
+            return next;
+          });
+        }
+      } catch (e) {
+        console.error('면접 상태 동기화 실패', e);
+      }
+    };
+
+    syncInterviewStatuses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, isCompany, user?.userId]);
 
   useEffect(() => {
     if (isCompany) {
@@ -508,8 +573,10 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
 
       const createdInterviewId = json.id;
 
+      // 제안할 때도 시스템 알림과 유사하게 interviewId를 포함해서 전송
       await sendMessage(interviewText, 'interview', undefined, {
         interviewId: createdInterviewId,
+        id: createdInterviewId,
         jobPostingId: selectedJob.id,
         jobPostingTitle: selectedJob.title,
       });
@@ -523,19 +590,13 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     }
   };
 
-  // ✅ [Helper] 면접 ID 찾기 함수
   const fetchInterviewIdByPosting = async (jobPostingId: number): Promise<number | null> => {
     try {
       const res = await fetch(`/api/interviews/posting/${jobPostingId}`);
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
 
       const data: InterviewResponse[] = await res.json();
-
-      // 내(현재 유저)가 지원한, 그리고 PENDING 상태인 면접을 찾음
-      const myInterview = data.find(
-        (item) => item.userId === user?.userId && item.status === 'PENDING',
-      );
-
+      const myInterview = data.find((item) => item.userId === user?.userId);
       return myInterview ? myInterview.id : null;
     } catch (error) {
       console.error('면접 ID 조회 실패:', error);
@@ -543,17 +604,20 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     }
   };
 
-  // ✅ [수락] 로직
+  // ✅ [수락] 로직 (sendSystemNotification 사용)
   const executeAccept = async (msg: Message) => {
     if (msg.isAccepted || msg.isDeclined || processedIds.has(msg.id)) return;
     setIsProcessing(true);
 
     try {
-      // ✅ [수정] 타입 단언으로 any 제거
       const extMsg = msg as ExtendedMessage;
-      let interviewId = extMsg.interviewId || extMsg.additionalInfo?.interviewId;
 
-      if (!interviewId || interviewId === 'pending') {
+      const rawId =
+        extMsg.additionalInfo?.id || extMsg.additionalInfo?.interviewId || extMsg.interviewId;
+
+      let interviewId = Number(rawId);
+
+      if (isNaN(interviewId) || interviewId === 0) {
         const postingId = extMsg.jobPostingId || extMsg.additionalInfo?.jobPostingId;
         if (postingId) {
           const fetchedId = await fetchInterviewIdByPosting(Number(postingId));
@@ -561,21 +625,25 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
         }
       }
 
-      if (!interviewId || interviewId === 'pending') {
+      if (!interviewId || interviewId === 0) {
         throw new Error('유효한 면접 ID를 찾을 수 없습니다.');
       }
 
       const numericId = Number(interviewId);
 
-      // 2. 기존 정보 조회
-      const getRes = await fetch(`/api/interviews/${numericId}`);
-      if (!getRes.ok) throw new Error('면접 정보 조회 실패');
+      // 1. 상태 업데이트
+      const listRes = await fetch(`/api/interviews/user/${user?.userId}`);
+      if (!listRes.ok) throw new Error('면접 목록 조회 실패');
 
-      const interviewData: InterviewResponse = await getRes.json();
+      const allInterviews: InterviewResponse[] = await listRes.json();
+      const targetInterview = allInterviews.find((item) => item.id === numericId);
 
-      // 3. 상태 변경 (CONFIRMED) 후 PUT
+      if (!targetInterview) {
+        throw new Error('해당 면접 정보를 찾을 수 없습니다.');
+      }
+
       const updatePayload = {
-        ...interviewData,
+        ...targetInterview,
         status: 'CONFIRMED',
       };
 
@@ -587,16 +655,24 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
 
       if (!putRes.ok) throw new Error('면접 수락(상태 변경) 실패');
 
-      // 4. Firebase 업데이트
       await acceptInterview(msg.id, interviewId, room.companyName || '기업');
       setProcessedIds((prev) => new Set(prev).add(msg.id));
 
-      // 5. 자동 메시지
       const userName = user?.name || '지원자';
       const jobTitle = msg.jobPostingTitle || '채용 공고';
-      const acceptText = `[면접 수락 안내]\n안녕하세요, ${userName}입니다.\n\n제안 주신 [${jobTitle}] 면접 요청을 확인하였으며, 기쁜 마음으로 수락합니다.\n\n안내해주신 일정에 늦지 않게 참석하겠습니다.\n감사합니다.`;
 
-      await sendMessage(acceptText, 'text');
+      // ✅ 타겟 ID 결정 (내가 기업이면 -> 지원자, 내가 지원자면 -> 기업)
+      const targetId = isCompany ? room.applicantId : room.companyId;
+
+      if (targetId) {
+        const acceptText = `[면접 수락 안내]\n안녕하세요, ${userName}입니다.\n\n제안 주신 [${jobTitle}] 면접 요청을 확인하였으며, 기쁜 마음으로 수락합니다.\n\n안내해주신 일정에 늦지 않게 참석하겠습니다.\n감사합니다.`;
+
+        await sendSystemNotification(targetId, acceptText, numericId);
+      } else {
+        // Fallback
+        const acceptText = `[면접 수락 안내]\n안녕하세요, ${userName}입니다.\n\n제안 주신 [${jobTitle}] 면접 요청을 수락합니다.`;
+        await sendMessage(acceptText, 'text');
+      }
 
       showAlert('수락 완료', '면접 제안을 수락했습니다.\n안내 메시지가 전송되었습니다.', 'success');
     } catch (error: unknown) {
@@ -619,16 +695,20 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     });
   };
 
-  // ✅ [거절] 로직
+  // ✅ [거절] 로직 (sendSystemNotification 사용)
   const executeDecline = async (msg: Message) => {
     if (msg.isAccepted || msg.isDeclined || processedIds.has(msg.id)) return;
     setIsProcessing(true);
 
     try {
       const extMsg = msg as ExtendedMessage;
-      let interviewId = extMsg.interviewId || extMsg.additionalInfo?.interviewId;
 
-      if (!interviewId || interviewId === 'pending') {
+      const rawId =
+        extMsg.additionalInfo?.id || extMsg.additionalInfo?.interviewId || extMsg.interviewId;
+
+      let interviewId = Number(rawId);
+
+      if (isNaN(interviewId) || interviewId === 0) {
         const postingId = extMsg.jobPostingId || extMsg.additionalInfo?.jobPostingId;
         if (postingId) {
           const fetchedId = await fetchInterviewIdByPosting(Number(postingId));
@@ -636,14 +716,33 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
         }
       }
 
-      if (interviewId && interviewId !== 'pending') {
+      if (interviewId && interviewId !== 0) {
         const numericId = Number(interviewId);
-        const response = await fetch(`/api/interviews/${numericId}`, {
-          method: 'DELETE',
-        });
 
-        if (!response.ok && response.status !== 404) {
-          throw new Error(`면접 삭제 실패 (Status: ${response.status})`);
+        const listRes = await fetch(`/api/interviews/user/${user?.userId}`);
+
+        if (listRes.ok) {
+          const allInterviews: InterviewResponse[] = await listRes.json();
+          const targetInterview = allInterviews.find((item) => item.id === numericId);
+
+          if (targetInterview) {
+            const updatePayload = {
+              ...targetInterview,
+              status: 'CANCELED',
+            };
+
+            const putRes = await fetch(`/api/interviews/${numericId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updatePayload),
+            });
+
+            if (!putRes.ok) {
+              throw new Error(`면접 상태 변경 실패: ${putRes.status}`);
+            }
+          } else {
+            console.warn('거절할 면접 정보를 목록에서 찾을 수 없음');
+          }
         }
       }
 
@@ -652,9 +751,19 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
 
       const userName = user?.name || '지원자';
       const jobTitle = msg.jobPostingTitle || '채용 공고';
-      const declineText = `[면접 거절 안내]\n안녕하세요, ${userName}입니다.\n\n보내주신 [${jobTitle}] 면접 제안에 진심으로 감사드립니다.\n\n다만, 아쉽게도 개인적인 사정으로 인해 이번 면접에는 참석하기 어려울 것 같습니다.\n\n좋은 제안을 주셔서 감사드리며, 귀사의 무궁한 발전을 기원합니다.`;
 
-      await sendMessage(declineText, 'text');
+      // ✅ 타겟 ID 결정
+      const targetId = isCompany ? room.applicantId : room.companyId;
+
+      if (targetId) {
+        const declineText = `[면접 거절 안내]\n안녕하세요, ${userName}입니다.\n\n보내주신 [${jobTitle}] 면접 제안에 진심으로 감사드립니다.\n\n다만, 아쉽게도 개인적인 사정으로 인해 이번 면접에는 참석하기 어려울 것 같습니다.\n\n좋은 제안을 주셔서 감사드리며, 귀사의 무궁한 발전을 기원합니다.`;
+
+        await sendSystemNotification(targetId, declineText, interviewId);
+      } else {
+        // Fallback
+        const declineText = `[면접 거절 안내]\n안녕하세요, ${userName}입니다.\n\n아쉽지만 이번 면접 제안은 거절하게 되었습니다. 죄송합니다.`;
+        await sendMessage(declineText, 'text');
+      }
 
       showAlert('거절 완료', '면접 제안을 거절했습니다.\n안내 메시지가 전송되었습니다.', 'success');
     } catch (error: unknown) {
@@ -745,6 +854,17 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
           const isMe = msg.senderId === myIdentifier;
           const isInterview = msg.type === 'interview';
           const isProcessed = processedIds.has(msg.id) || msg.isAccepted || msg.isDeclined;
+
+          // ✅ 시스템 메시지(알림) 스타일링
+          if (msg.senderId === 'system' || msg.type === 'system') {
+            return (
+              <div key={msg.id} className="my-4 flex justify-center">
+                <div className="max-w-[80%] rounded-full border border-gray-200 bg-gray-100 px-4 py-2 text-center text-xs font-bold whitespace-pre-wrap text-slate-500 shadow-sm">
+                  {msg.text}
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
@@ -919,7 +1039,6 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
 // ==========================================
 const MessengerContainer = () => {
   const { user } = useAuth();
-  // ✅ [수정] 이중 캐스팅으로 타입 호환성 문제 해결
   const { isOpen, currentRoomId, totalUnreadCount, toggleMessenger, fetchRooms } =
     useMessenger() as unknown as ExtendedMessengerContext;
 
@@ -936,12 +1055,18 @@ const MessengerContainer = () => {
     return () => window.removeEventListener('OPEN_INTERVIEW_MODAL', handleOpenModal);
   }, []);
 
-  // 로그인 시 자동 갱신
+  // 로그인 시 fetchRooms 2회 호출 (토큰/상태 동기화 안정성 확보)
   useEffect(() => {
-    if (user && fetchRooms) {
-      fetchRooms();
+    if (user?.userId) {
+      if (fetchRooms) fetchRooms();
+
+      const timer = setTimeout(() => {
+        if (fetchRooms) fetchRooms();
+      }, 500);
+
+      return () => clearTimeout(timer);
     }
-  }, [user, fetchRooms]);
+  }, [user?.userId, fetchRooms]);
 
   return (
     <>
@@ -954,10 +1079,9 @@ const MessengerContainer = () => {
             transition={{ duration: 0.2 }}
             className="border-soft-pebble bg-pure-white fixed right-8 bottom-30 z-9999 flex h-150 w-95 flex-col overflow-hidden rounded-4xl border shadow-[0_20px_50px_rgba(26,26,26,0.15)]"
           >
-            {/* ✅ [수정] key 부여로 로그인 시 컴포넌트 리마운트(갱신) 유도 */}
             {currentRoomId ? (
               <ChatRoomWindow
-                key={user ? `room-${user.userId}` : 'room-guest'}
+                // ✅ key를 제거하여 불필요한 언마운트 방지
                 roomId={currentRoomId}
                 pendingJobInfo={pendingJobInfo}
                 onConsumeJobInfo={() => setPendingJobInfo(null)}
