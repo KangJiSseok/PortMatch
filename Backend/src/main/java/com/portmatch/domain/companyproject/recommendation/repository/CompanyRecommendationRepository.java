@@ -44,12 +44,12 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
             SELECT
                 spb.*,
                 (
-                    0.30 * spb.project_distance
-                    + 0.10 * spb.domain_distance
+                    0.25 * spb.project_distance
+                    + 0.15 * spb.domain_distance
                     + 0.25 * spb.problem_distance
-                    + 0.25 * spb.solution_distance
-                    + 0.03 * spb.tech_distance
-                    + 0.02 * spb.missing_field_count
+                    + 0.15 * spb.solution_distance
+                    + 0.1 * spb.tech_distance
+                    + 0.1 * spb.missing_field_count
                 ) AS distance
             FROM scored_pairs_base spb
         ),
