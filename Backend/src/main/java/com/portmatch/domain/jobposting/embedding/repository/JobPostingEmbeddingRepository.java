@@ -133,11 +133,11 @@ public interface JobPostingEmbeddingRepository extends JpaRepository<JobPostingE
                   + COALESCE(s.problem_similarity, 0) * :problemWeight
                   + COALESCE(s.architecture_similarity, 0) * :architectureWeight
                 ) AS similarity,
-                COALESCE(s.name_similarity, 0) * :nameWeight AS nameSimilarity,
-                COALESCE(s.domain_similarity, 0) * :domainWeight AS domainSimilarity,
-                COALESCE(s.tech_similarity, 0) * :techWeight AS techSimilarity,
-                COALESCE(s.problem_similarity, 0) * :problemWeight AS problemSimilarity,
-                COALESCE(s.architecture_similarity, 0) * :architectureWeight AS architectureSimilarity,
+                COALESCE(s.name_similarity, 0) AS nameSimilarity,
+                COALESCE(s.domain_similarity, 0) AS domainSimilarity,
+                COALESCE(s.tech_similarity, 0) AS techSimilarity,
+                COALESCE(s.problem_similarity, 0) AS problemSimilarity,
+                COALESCE(s.architecture_similarity, 0) AS architectureSimilarity,
                 s.portfolio_content AS portfolioContent
             FROM job_posting_embeddings jpe
             JOIN LATERAL (
