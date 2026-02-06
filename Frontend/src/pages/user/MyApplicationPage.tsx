@@ -78,6 +78,18 @@ export default function MyApplicationPage() {
   const [cancelingPostingId, setCancelingPostingId] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // --- 추가된 부분: 가로 스크롤 시 배경 끊김 방지를 위해 body 색상 강제 지정 ---
+  useEffect(() => {
+    const originalBg = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = '#FCFCFC';
+
+    // 컴포넌트 언마운트 시 원래 배경색으로 복구
+    return () => {
+      document.body.style.backgroundColor = originalBg;
+    };
+  }, []);
+  // -------------------------------------------------------------------
+
   const load = async () => {
     setIsLoading(true);
     setIsError(false);
@@ -151,8 +163,11 @@ export default function MyApplicationPage() {
   };
 
   return (
-    <div className="text-midnight-ink min-h-screen bg-[#FBFCFE] pt-32 pb-32">
-      <div className="mx-auto w-5xl px-6">
+    /* min-w-fit을 추가하여 가로 스크롤 시 내부의 1024px 너비를 배경색이 
+       끝까지 따라가도록 설정했습니다. 
+    */
+    <div className="text-midnight-ink relative min-h-screen min-w-fit bg-[#FCFCFC] pt-32 pb-32">
+      <div className="relative z-10 mx-auto w-5xl min-w-[1024px] px-6">
         <header className="border-point-blue mb-12 border-l-4 pl-6">
           <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">
             Application
@@ -192,7 +207,7 @@ export default function MyApplicationPage() {
 
           {!isLoading && isError && (
             <div className="rounded-[28px] border border-zinc-100 bg-white p-8 shadow-sm">
-              <p className="text-lg font-black text-midnight-ink">지원 목록을 불러오지 못했어요</p>
+              <p className="text-midnight-ink text-lg font-black">지원 목록을 불러오지 못했어요</p>
               <p className="mt-2 text-sm font-semibold text-zinc-500">{errorMessage}</p>
               <div className="mt-5">
                 <Button type="button" variant="dark" size="sm" onClick={load}>

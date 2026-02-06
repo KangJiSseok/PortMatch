@@ -533,13 +533,15 @@ export default function InterviewPage() {
   const showRightSide = isCorporate;
 
   return (
-    <div
-      className={`flex h-screen w-full items-center justify-center overflow-hidden bg-white px-4 pt-4 pb-4 ${
-        showRightSide ? 'gap-4' : ''
-      }`}
-    >
-      {/* --- LEFT SIDE: Main Interview Area --- */}
-      <section className="bg-midnight-ink relative flex h-full w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-black/5">
+    <div className="relative min-h-screen min-w-[1400px] bg-[#FCFCFC]">
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[#FCFCFC]" />
+      <div
+        className={`relative z-10 flex h-screen w-[1400px] items-center justify-center overflow-hidden px-4 pt-4 pb-4 ${
+          showRightSide ? 'gap-4' : ''
+        }`}
+      >
+        {/* --- LEFT SIDE: Main Interview Area --- */}
+      <section className="bg-midnight-ink relative flex h-full min-w-[900px] flex-1 flex-col items-center justify-center overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-black/5">
         {/* Top Header (Overlay) */}
         <header className="absolute top-0 right-0 left-0 z-10 flex items-center justify-between px-8 py-6">
           <div className="flex items-center gap-3">
@@ -684,7 +686,7 @@ export default function InterviewPage() {
 
       {/* --- RIGHT SIDE: Corporate Only --- */}
       {showRightSide && (
-        <aside className="bg-midnight-ink hidden h-full w-[420px] flex-col gap-4 rounded-[2rem] p-6 shadow-2xl ring-1 ring-black/5 xl:flex">
+        <aside className="bg-midnight-ink flex h-full w-[420px] flex-col gap-4 rounded-[2rem] p-6 shadow-2xl ring-1 ring-black/5">
           <section className="flex min-h-0 flex-[2] flex-col">
             <div className="mb-4 flex items-center gap-3">
               <div className="bg-slate-gray/30 flex h-10 w-10 items-center justify-center rounded-xl">
@@ -854,6 +856,7 @@ export default function InterviewPage() {
           </section>
         </aside>
       )}
+    </div>
     </div>
   );
 }

@@ -467,14 +467,14 @@ export default function InterviewLobbyPage() {
   const showPreview = camOn && !!mediaStream && mediaStream.getVideoTracks().length > 0;
 
   return (
-    // 배경색: InterviewPage와 통일 (bg-white)
-    <div className="bg-white text-midnight-ink relative flex min-h-screen w-full flex-col overflow-hidden pt-12 pb-10">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(40%_40%_at_20%_20%,rgba(59,130,246,0.08),transparent),radial-gradient(35%_35%_at_80%_30%,rgba(16,185,129,0.06),transparent)]" />
+    <div className="text-midnight-ink relative flex min-h-screen min-w-[1400px] w-full flex-col overflow-hidden bg-[#FCFCFC] pt-12 pb-10">
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[#FCFCFC]" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(40%_40%_at_20%_20%,rgba(59,130,246,0.08),transparent),radial-gradient(35%_35%_at_80%_30%,rgba(16,185,129,0.06),transparent)]" />
       <LobbyHeader onBack={goList} />
 
-      <main className="mx-auto flex w-full max-w-[1400px] flex-1 items-stretch justify-center gap-12 px-8 pt-8">
+      <main className="relative z-10 mx-auto flex w-[1400px] flex-1 items-stretch justify-center gap-12 px-8 pt-8">
         {/* --- LEFT: Preview Section (Dark Theme like Room) --- */}
-        <section className="relative flex-1" style={{ height: 'min(700px, 80vh)' }}>
+        <section className="relative min-w-[840px] flex-1" style={{ height: '600px' }}>
           <div className="bg-midnight-ink relative h-full w-full overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-black/5">
             {/* Camera View */}
             <div className="flex h-full w-full items-center justify-center">
@@ -559,7 +559,7 @@ export default function InterviewLobbyPage() {
         </section>
 
         {/* --- RIGHT: Controls & Info Section (Light Card) --- */}
-        <section className="flex w-[420px] flex-col gap-8" style={{ height: 'min(700px, 80vh)' }}>
+        <section className="flex w-[420px] flex-col gap-8" style={{ height: '600px' }}>
           <div className="flex h-full flex-col justify-between rounded-[2rem] bg-white p-10 shadow-xl ring-1 ring-zinc-100">
             {/* Session Info */}
             <div className="space-y-2">
@@ -674,7 +674,7 @@ export default function InterviewLobbyPage() {
 
 function NotFoundBox({ onBack }: { onBack: () => void }) {
   return (
-    <div className="bg-white flex h-screen w-full items-center justify-center">
+    <div className="bg-[#FCFCFC] flex h-screen w-full items-center justify-center">
       <div className="max-w-md rounded-[2rem] bg-white p-10 text-center shadow-xl ring-1 ring-zinc-100">
         <h2 className="text-xl font-black text-zinc-800">유효하지 않은 면접입니다</h2>
         <p className="mt-3 mb-6 text-sm leading-relaxed text-zinc-500">
@@ -706,7 +706,7 @@ function ErrorBox({
   onBack: () => void;
 }) {
   return (
-    <div className="bg-white flex h-screen w-full items-center justify-center">
+    <div className="bg-[#FCFCFC] flex h-screen w-full items-center justify-center">
       <div className="max-w-md rounded-[2rem] bg-white p-10 text-center shadow-xl ring-1 ring-zinc-100">
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-red-500">
           <AlertCircle className="h-8 w-8" />
@@ -740,7 +740,7 @@ function ErrorBox({
 
 function LobbySkeleton({ onBack }: { onBack: () => void }) {
   return (
-    <div className="bg-white flex min-h-screen w-full flex-col pt-20 pb-10">
+    <div className="bg-[#FCFCFC] flex min-h-screen w-full flex-col pt-20 pb-10">
       <LobbyHeader onBack={onBack} />
       <main className="mx-auto flex w-full max-w-[1280px] flex-1 items-center justify-center gap-8 px-6">
         <div className="aspect-video flex-1 animate-pulse rounded-[2rem] bg-zinc-200/50" />
