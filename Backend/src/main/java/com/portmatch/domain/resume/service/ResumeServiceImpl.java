@@ -209,13 +209,17 @@ public class ResumeServiceImpl implements ResumeService {
         Resume resume = getResumeOwned(userId, resumeId);
         List<Long> applicationIds = jobApplicationRepository.findIdsByResume_Id(resumeId);
         resumeSnapshotService.createSnapshotsIfAbsent(resume, applicationIds);
+        jobApplicationRepository.clearResumeByResumeId(resumeId);
         boolean wasMain = Boolean.TRUE.equals(resume.getIsMain());
         resumeRepository.delete(resume);
         if (wasMain) {
             resumeRepository.unsetMainForUser(userId);
             resumeRepository.findAllByUser_IdOrderByUpdatedAtDesc(userId).stream()
                     .findFirst()
-                    .ifPresent(item -> item.markMain(true));
+                    .ifPresent(item -> {
+                        item.markMain(true);
+                        resumeRepository.save(item);
+                    });
         }
     }
 
