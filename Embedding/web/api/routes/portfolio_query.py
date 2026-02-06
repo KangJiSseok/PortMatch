@@ -84,7 +84,7 @@ def _decompose_query(query: str, model: Optional[str]) -> dict:
     if not resolved_model:
         raise HTTPException(status_code=500, detail="OPENAI_MODEL is not set")
 
-    llm = ChatOpenAI(model=resolved_model)
+    llm = ChatOpenAI(model=resolved_model, temperature=1)
     parser = JsonOutputParser()
     chain = PROMPT | llm | parser
     result = chain.invoke({"query": query})

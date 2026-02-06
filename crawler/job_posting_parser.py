@@ -109,7 +109,7 @@ PROMPT = ChatPromptTemplate.from_messages(
 
 def build_job_posting_parser_chain():
     """LangChain 체인 생성"""
-    llm = ChatOpenAI(model=OPENAI_MODEL)
+    llm = ChatOpenAI(model=OPENAI_MODEL, temperature=1)
     parser = JsonOutputParser()
     chain = PROMPT | llm | parser
     return chain
