@@ -15,5 +15,12 @@ public class CompanyNameResponse {
     private String corpAddr;   // 기업 주소
     private String homePg;     // 홈페이지 주소
     private String logo;       //
-    private List<String> recentJobTitles;
+    private List<JobSummary> recentJob;
+
+    @Getter
+    @Builder
+    public static class JobSummary {
+        private Long id;       // 공고 ID
+        private String title;  // 공고 제목
+    }
 }
