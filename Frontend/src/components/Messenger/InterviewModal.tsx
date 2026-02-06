@@ -1,7 +1,9 @@
-import React, { useState } from 'react'; // useEffect 제거
-import { Calendar, Clock, X, Briefcase, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Calendar, FileText, Clock, AlertCircle } from 'lucide-react';
+import Button from '../Button/Button';
 
-interface JobPostingSimple {
+interface JobPosting {
   id: number;
   title: string;
 }
@@ -9,146 +11,234 @@ interface JobPostingSimple {
 interface InterviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (dateTime: string, note: string, selectedJob: JobPostingSimple) => void;
-  defaultJob?: JobPostingSimple | null;
-  jobPostings?: JobPostingSimple[];
+  onConfirm: (dateTime: string, note: string, selectedJob: JobPosting) => void;
+  defaultJob: JobPosting | null;
+  jobPostings: JobPosting[];
 }
+
+const AlertModal = ({
+  isOpen,
+  message,
+  onClose,
+}: {
+  isOpen: boolean;
+  message: string;
+  onClose: () => void;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-10000 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="w-full max-w-xs overflow-hidden rounded-2xl bg-white shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-6 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-500">
+              <AlertCircle size={24} />
+            </div>
+            <h3 className="text-lg font-black text-slate-900">알림</h3>
+            <p className="mt-2 text-sm font-medium whitespace-pre-wrap text-slate-500">{message}</p>
+          </div>
+          <div className="border-t border-slate-100 bg-slate-50 p-4">
+            <button
+              onClick={onClose}
+              className="w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-slate-800"
+            >
+              확인
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 const InterviewModal = ({
   isOpen,
   onClose,
   onConfirm,
   defaultJob,
-  jobPostings = [],
+  jobPostings,
 }: InterviewModalProps) => {
-  // [수정] useEffect 대신 초기값에서 바로 defaultJob 처리
-  // 부모에서 key를 변경해주면 이 컴포넌트는 새로 마운트되므로 초기값이 다시 설정됨
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [note, setNote] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<number | string>(defaultJob?.id || '');
 
-  if (!isOpen) return null;
+  const [date, setDate] = useState('');
+  const [note, setNote] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!date || !time) return;
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    message: '',
+  });
 
-    let finalJob: JobPostingSimple | undefined;
+  const getMinDateTime = () => {
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
 
-    if (defaultJob) {
-      finalJob = defaultJob;
-    } else {
-      finalJob = jobPostings.find((job) => String(job.id) === String(selectedJobId));
-    }
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
 
-    if (!finalJob) {
-      alert('면접을 진행할 채용 공고를 선택해주세요.');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const handleSubmit = () => {
+    // ✅ [수정] 공고 미선택 시 알림
+    if (!selectedJobId) {
+      setAlertConfig({
+        isOpen: true,
+        message: '관련 채용 공고를 선택해주세요.',
+      });
       return;
     }
 
-    onConfirm(`${date} ${time}`, note, finalJob);
-    onClose();
+    // ✅ [수정] 날짜 미선택 시 알림
+    if (!date) {
+      setAlertConfig({
+        isOpen: true,
+        message: '면접 일시를 선택해주세요.',
+      });
+      return;
+    }
+
+    const selectedDate = new Date(date);
+    const minDate = new Date();
+    minDate.setHours(minDate.getHours() + 1);
+
+    if (selectedDate < minDate) {
+      setAlertConfig({
+        isOpen: true,
+        message: '면접 시간은 현재 시간으로부터\n최소 1시간 이후여야 합니다.',
+      });
+      return;
+    }
+
+    const job = jobPostings.find((j) => j.id === Number(selectedJobId));
+    if (job) {
+      onConfirm(date, note, job);
+    }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="bg-midnight-ink/50 fixed inset-0 z-10000 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-pure-white animate-in fade-in zoom-in w-full max-w-sm overflow-hidden rounded-4xl shadow-2xl duration-200">
-        <div className="border-soft-pebble flex items-center justify-between border-b p-6">
-          <h3 className="text-midnight-ink text-lg font-black tracking-tighter">면접 일정 제안</h3>
-          <button
+    <>
+      <AlertModal
+        isOpen={alertConfig.isOpen}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+      />
+
+      <AnimatePresence>
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={onClose}
-            className="text-silver-mist hover:text-midnight-ink transition-colors"
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+          />
+
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl"
           >
-            <X size={24} />
-          </button>
-        </div>
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+              <h3 className="flex items-center gap-2 text-lg font-black text-slate-900">
+                <Calendar className="text-point-blue" size={20} />
+                면접 제안하기
+              </h3>
+              <button
+                onClick={onClose}
+                className="rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 p-6">
-          <div className="space-y-2">
-            <label className="text-midnight-ink flex items-center gap-2 text-xs font-black tracking-wider uppercase opacity-60">
-              <Briefcase size={14} /> 관련 채용 공고
-            </label>
-
-            {defaultJob ? (
-              <div className="border-soft-pebble bg-point-blue/5 text-point-blue w-full rounded-xl border px-4 py-3 text-sm font-bold">
-                {defaultJob.title}
-              </div>
-            ) : (
-              <div className="relative">
+            <div className="space-y-6 p-6">
+              <div className="space-y-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  <FileText size={14} /> 관련 채용 공고
+                </label>
                 <select
-                  required
                   value={selectedJobId}
                   onChange={(e) => setSelectedJobId(e.target.value)}
-                  className="border-soft-pebble bg-soft-pebble/10 text-midnight-ink focus:ring-point-blue w-full appearance-none rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2"
+                  className="focus:border-point-blue focus:ring-point-blue/10 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none focus:ring-2"
                 >
-                  <option value="" disabled>
-                    공고를 선택해주세요
-                  </option>
+                  <option value="">공고를 선택해주세요</option>
                   {jobPostings.map((job) => (
                     <option key={job.id} value={job.id}>
                       {job.title}
                     </option>
                   ))}
                 </select>
-                <ChevronDown
-                  className="text-silver-mist pointer-events-none absolute top-1/2 right-4 -translate-y-1/2"
-                  size={16}
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  <Clock size={14} /> 면접 일시
+                </label>
+                <input
+                  type="datetime-local"
+                  value={date}
+                  min={getMinDateTime()}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="focus:border-point-blue focus:ring-point-blue/10 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 transition-all outline-none focus:ring-2"
+                />
+                <p className="pl-1 text-[11px] font-medium text-slate-400">
+                  * 최소 1시간 이후의 시간부터 선택 가능합니다.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  추가 안내 사항 (선택)
+                </label>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="예: 일정 조정이 필요할 시 연락 바랍니다."
+                  className="focus:border-point-blue focus:ring-point-blue/10 h-24 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-all outline-none placeholder:text-slate-400 focus:ring-2"
                 />
               </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-midnight-ink flex items-center gap-2 text-xs font-black tracking-wider uppercase opacity-60">
-                <Calendar size={14} /> 날짜
-              </label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="border-soft-pebble bg-soft-pebble/10 text-midnight-ink focus:ring-point-blue w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2"
-              />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-midnight-ink flex items-center gap-2 text-xs font-black tracking-wider uppercase opacity-60">
-                <Clock size={14} /> 시간
-              </label>
-              <input
-                type="time"
-                required
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="border-soft-pebble bg-soft-pebble/10 text-midnight-ink focus:ring-point-blue w-full rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2"
-              />
+            <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50 px-6 py-4">
+              <Button variant="light" size="md" onClick={onClose} className="rounded-xl">
+                취소
+              </Button>
+              <Button
+                variant="blue"
+                size="md"
+                // ✅ [수정] disabled 속성 제거 (클릭하여 유효성 검사 실행)
+                onClick={handleSubmit}
+                className="rounded-xl shadow-lg shadow-blue-500/20"
+              >
+                제안 보내기
+              </Button>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-midnight-ink flex items-center gap-2 text-xs font-black tracking-wider uppercase opacity-60">
-              추가 안내사항
-            </label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="예: 일정 조정이 필요할 시 연락 바랍니다."
-              className="border-soft-pebble bg-soft-pebble/10 text-midnight-ink focus:ring-point-blue h-24 w-full resize-none rounded-xl border px-4 py-3 text-sm font-bold outline-none focus:ring-2"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={!date || !time || (!defaultJob && !selectedJobId)}
-            className="bg-point-blue text-pure-white disabled:bg-silver-mist w-full rounded-2xl py-4 text-sm font-black shadow-lg transition-transform hover:scale-[1.02] active:scale-95 disabled:scale-100"
-          >
-            제안 메시지 전송
-          </button>
-        </form>
-      </div>
-    </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    </>
   );
 };
 
