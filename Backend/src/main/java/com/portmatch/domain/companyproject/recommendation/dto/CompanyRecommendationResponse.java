@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record CompanyRecommendationResponse(
         Long companyId,
         String companyName,
+        String cid,
         @Schema(description = "해당 기업의 채용 중(active=1) 공고 수", example = "5")
         Long jobPostingSize,
         double distance,
@@ -22,6 +23,7 @@ public record CompanyRecommendationResponse(
     public static CompanyRecommendationResponse of(
             Long companyId,
             String companyName,
+            String cid,
             Long jobPostingSize,
             double distance,
             Long portfolioProjectId,
@@ -37,6 +39,7 @@ public record CompanyRecommendationResponse(
         return new CompanyRecommendationResponse(
                 companyId,
                 companyName,
+                cid,
                 jobPostingSize,
                 distance,
                 1.0 - distance,

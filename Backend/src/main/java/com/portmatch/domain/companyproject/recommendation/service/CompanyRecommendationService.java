@@ -20,6 +20,7 @@ public class CompanyRecommendationService {
                 .map(r -> CompanyRecommendationResponse.of(
                         r.getCompanyId(),
                         r.getCompanyName(),
+                        r.getCid(),
                         nvl(r.getJobPostingSize(), 0L),
                         nvl(r.getDistance(), 999.0),
                         r.getPortfolioProjectId(),
