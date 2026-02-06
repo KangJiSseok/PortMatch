@@ -22,8 +22,8 @@ public interface JobPostingRepository extends JpaRepository<JobPostingEntity, Lo
 
     List<JobPostingEntity> findByCompanyCidAndActive(String cid, Integer active);
 
-    @Query("SELECT j.title FROM JobPostingEntity j WHERE j.company.cid = :cid ORDER BY j.id DESC")
-    List<String> findTop3TitlesByCid(@Param("cid") String cid, Pageable pageable);
+    @Query("SELECT j.id, j.title FROM JobPostingEntity j WHERE j.company.cid = :cid ORDER BY j.id DESC")
+    List<Object[]> findTop3JobIdsAndTitlesByCid(@Param("cid") String cid, Pageable pageable);
 
     @Modifying
     @Transactional
