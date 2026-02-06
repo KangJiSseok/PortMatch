@@ -16,6 +16,8 @@ import {
   Calendar,
   MessageSquare,
   Ban,
+  AlertCircle,
+  Check,
 } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
@@ -32,6 +34,22 @@ interface CompanyApplicationViewExtended extends CompanyApplicationView {
   userName?: string;
   resume?: {
     userId: number;
+  };
+}
+
+// ✅ [추가] 면접 데이터 인터페이스 정의 (API 응답 기준)
+interface InterviewData {
+  id: number;
+  time: string;
+  status: string;
+  userId: number;
+  jobPostingId: number;
+  user: {
+    userId: number;
+    email: string;
+    name: string;
+    role: string;
+    cid: string;
   };
 }
 
@@ -58,7 +76,6 @@ const GRADUATION_STATUS_MAP: Record<string, string> = {
   DROPPED: '중퇴',
 };
 
-// ... (인터페이스들은 그대로 유지) ...
 interface Career {
   id: number;
   resumeId: number;
@@ -145,6 +162,14 @@ interface ApplicationDetailResponse {
   data: ApplicationDetailData;
 }
 
+interface ModalConfig {
+  isOpen: boolean;
+  type: 'confirm' | 'alert' | 'success';
+  title: string;
+  message: string;
+  onConfirm?: () => void;
+}
+
 function formatYmdDot(iso: string) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -153,6 +178,82 @@ function formatYmdDot(iso: string) {
   const dd = String(d.getDate()).padStart(2, '0');
   return `${yyyy}.${mm}.${dd}`;
 }
+
+const ConfirmModal = ({ config, onClose }: { config: ModalConfig; onClose: () => void }) => {
+  if (!config.isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-6 text-center">
+            <div
+              className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${
+                config.type === 'confirm'
+                  ? 'bg-red-100 text-red-600'
+                  : config.type === 'success'
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-blue-100 text-blue-600'
+              }`}
+            >
+              {config.type === 'confirm' ? (
+                <AlertCircle size={28} />
+              ) : config.type === 'success' ? (
+                <Check size={28} />
+              ) : (
+                <AlertCircle size={28} />
+              )}
+            </div>
+            <h3 className="text-lg font-black text-slate-900">{config.title}</h3>
+            <p className="mt-2 text-sm font-medium whitespace-pre-wrap text-slate-500">
+              {config.message}
+            </p>
+          </div>
+          <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4">
+            {config.type === 'confirm' ? (
+              <>
+                <button
+                  onClick={onClose}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => {
+                    if (config.onConfirm) config.onConfirm();
+                    onClose();
+                  }}
+                  className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white shadow-md shadow-red-500/20 transition-colors hover:bg-red-600"
+                >
+                  확인
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onClose}
+                className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white shadow-md shadow-blue-600/20 transition-colors hover:bg-blue-700"
+              >
+                확인
+              </button>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 const JobApplicationManagementPage = () => {
   const navigate = useNavigate();
@@ -164,6 +265,9 @@ const JobApplicationManagementPage = () => {
 
   const [sortBy, setSortBy] = useState<'최신순' | '경력순' | '이름순'>('최신순');
   const [applications, setApplications] = useState<CompanyApplicationViewExtended[]>([]);
+  // ✅ [추가] 해당 공고에 잡혀있는 면접 목록 상태
+  const [existingInterviews, setExistingInterviews] = useState<InterviewData[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
@@ -173,8 +277,23 @@ const JobApplicationManagementPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [jobPostTitle, setJobPostTitle] = useState<string>('');
-
   const [myCorpName, setMyCorpName] = useState<string>('');
+
+  const [modalConfig, setModalConfig] = useState<ModalConfig>({
+    isOpen: false,
+    type: 'alert',
+    title: '',
+    message: '',
+  });
+
+  const showAlert = (title: string, message: string, type: 'alert' | 'success' = 'alert') => {
+    setModalConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+    });
+  };
 
   const handleContactApplicant = async (
     userId: number | string,
@@ -185,7 +304,7 @@ const JobApplicationManagementPage = () => {
       await startNewChat(String(userId), name, profileImg);
     } catch (err) {
       console.error('Failed to start chat:', err);
-      alert('채팅방을 여는 데 실패했습니다.');
+      showAlert('오류', '채팅방을 여는 데 실패했습니다.');
     }
   };
 
@@ -223,15 +342,28 @@ const JobApplicationManagementPage = () => {
       setError('');
 
       try {
-        const [data, detail] = await Promise.all([
+        // ✅ [수정] 지원자 목록, 공고 상세, 그리고 '면접 리스트'를 동시에 가져옵니다.
+        const [data, detail, interviewsRes] = await Promise.all([
           fetchCompanyApplications(safeJobPostId),
           fetchJobPostDetail(safeJobPostId).catch(() => null),
+          fetch(`/api/interviews/posting/${safeJobPostId}`)
+            .then((res) => (res.ok ? res.json() : []))
+            .catch(() => []),
         ]);
 
         if (cancelled) return;
 
         const initialApps = data as CompanyApplicationViewExtended[];
         setApplications(initialApps);
+
+        // ✅ 면접 리스트 상태 저장
+        if (Array.isArray(interviewsRes)) {
+          setExistingInterviews(interviewsRes);
+        } else {
+          // 백엔드 응답 형태가 { data: [...] } 일 수도 있으므로 방어 코드
+          // (제공해주신 응답 예시는 배열([]) 형태라 위 코드로 충분합니다)
+          setExistingInterviews([]);
+        }
 
         if (detail) {
           if (detail.jobPost?.title) setJobPostTitle(detail.jobPost.title);
@@ -282,6 +414,18 @@ const JobApplicationManagementPage = () => {
     };
   }, [safeJobPostId]);
 
+  // ✅ [추가] 특정 유저 ID가 면접 리스트에 있는지 확인하는 함수
+  const checkInterviewExists = (targetUserId: number) => {
+    return existingInterviews.some((interview) => interview.userId === targetUserId);
+  };
+
+  // 기존 status 기반 체크 함수 (보조용)
+  const hasStatusScheduled = (status?: string) => {
+    if (!status) return false;
+    const s = status.toUpperCase();
+    return s === 'PENDING' || s === 'INTERVIEW' || s === 'INTERVIEW_SCHEDULED';
+  };
+
   const postingTitle =
     jobPostTitle.trim() ||
     (applications[0]?.postingTitle && applications[0].postingTitle !== '공고 제목'
@@ -322,7 +466,7 @@ const JobApplicationManagementPage = () => {
     }
   };
 
-  const handleRejectApplication = async () => {
+  const executeReject = async () => {
     if (!selectedApplication) return;
 
     const targetAppId = selectedApplication.applicationId;
@@ -335,18 +479,6 @@ const JobApplicationManagementPage = () => {
     const targetUserName =
       selectedApplication.userName || selectedApplication.resume?.profile?.name || '지원자';
     const targetProfileImg = selectedApplication.resume?.profile?.profileImageUrl;
-
-    if (!targetUserId || targetUserId === 0) {
-      alert('지원자의 ID 정보를 찾을 수 없어 메시지를 전송할 수 없습니다.');
-      return;
-    }
-
-    if (
-      !confirm(
-        `${targetUserName}님을 불합격 처리하시겠습니까?\n불합격 안내 메시지가 자동으로 전송됩니다.`,
-      )
-    )
-      return;
 
     try {
       const createdRoomId = await startNewChat(
@@ -385,12 +517,26 @@ const JobApplicationManagementPage = () => {
       );
       setSelectedApplication((prev) => (prev ? { ...prev, status: 'REJECTED' } : null));
 
-      alert('불합격 처리 및 안내 메시지가 전송되었습니다.');
       closeModal();
+      showAlert('처리 완료', '불합격 처리 및 안내 메시지가 전송되었습니다.', 'success');
     } catch (err) {
       console.error(err);
-      alert('처리 중 오류가 발생했습니다.');
+      showAlert('오류', '처리 중 오류가 발생했습니다.');
     }
+  };
+
+  const handleRejectClick = () => {
+    if (!selectedApplication) return;
+    const targetUserName =
+      selectedApplication.userName || selectedApplication.resume?.profile?.name || '지원자';
+
+    setModalConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: '불합격 처리',
+      message: `${targetUserName}님을 불합격 처리하시겠습니까?\n자동으로 불합격 안내 메시지가 전송됩니다.`,
+      onConfirm: executeReject,
+    });
   };
 
   const handleOpenResumeModal = async (applicationId: number) => {
@@ -427,7 +573,7 @@ const JobApplicationManagementPage = () => {
       );
     } catch (err) {
       console.error(err);
-      alert('이력서 정보를 불러올 수 없습니다.');
+      showAlert('오류', '이력서 정보를 불러올 수 없습니다.');
     } finally {
       setIsDetailLoading(false);
     }
@@ -447,7 +593,7 @@ const JobApplicationManagementPage = () => {
     const targetName = app.userName || app.applicantName || '지원자';
 
     if (!targetUserId || targetUserId === 0) {
-      alert('지원자 ID 오류로 채팅방을 열 수 없습니다.');
+      showAlert('오류', '지원자 ID 오류로 채팅방을 열 수 없습니다.');
       return;
     }
 
@@ -465,12 +611,17 @@ const JobApplicationManagementPage = () => {
       }, 300);
     } catch (error) {
       console.error('채팅방 열기 실패:', error);
-      alert('채팅방을 여는 데 실패했습니다.');
+      showAlert('오류', '채팅방을 여는 데 실패했습니다.');
     }
   };
 
   return (
     <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
+      <ConfirmModal
+        config={modalConfig}
+        onClose={() => setModalConfig((p) => ({ ...p, isOpen: false }))}
+      />
+
       <div className="mx-auto w-5xl px-6">
         <header className="border-point-blue mb-12 flex items-start justify-between border-l-4 pl-6">
           <div className="flex flex-col gap-1">
@@ -543,12 +694,22 @@ const JobApplicationManagementPage = () => {
                     } else if (status === 'ACCEPTED' || status === 'PASS' || status === '합격') {
                       statusBadgeLabel = '합격';
                       statusBadgeClass = 'bg-emerald-50 text-emerald-600';
+                    } else if (status === 'PENDING') {
+                      statusBadgeLabel = '면접 대기';
+                      statusBadgeClass = 'bg-indigo-50 text-indigo-600';
                     }
 
                     const viewedBadgeLabel = app.resumeViewed ? '열람' : '미열람';
                     const viewedBadgeClass = app.resumeViewed
                       ? 'bg-cloud-dancer text-slate-gray'
                       : 'text-point-blue bg-blue-50';
+
+                    // ✅ [수정] status 뿐만 아니라 실제 면접 리스트(existingInterviews)도 확인
+                    // 지원자의 ID를 추출 (app.userId가 없으면 resume.userId 사용)
+                    const targetUserId = app.userId || app.resume?.userId || 0;
+                    const isInterviewExist = checkInterviewExists(targetUserId);
+
+                    const isScheduled = isInterviewExist || hasStatusScheduled(status);
 
                     return (
                       <div
@@ -603,11 +764,11 @@ const JobApplicationManagementPage = () => {
                               if ((!chatUserId || chatUserId === 0) && app.resume) {
                                 chatUserId = app.resume.userId;
                               }
-                              e.stopPropagation(); // 💥 여기처럼 이벤트 전파를 막아야 합니다.
+                              e.stopPropagation();
                               if (chatUserId && chatUserId !== 0) {
                                 handleContactApplicant(chatUserId, displayName);
                               } else {
-                                alert('지원자 ID 정보를 찾을 수 없습니다.');
+                                showAlert('오류', '지원자 ID 정보를 찾을 수 없습니다.');
                               }
                             }}
                             className="hover:text-point-blue flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-blue-50"
@@ -617,31 +778,38 @@ const JobApplicationManagementPage = () => {
                           </button>
 
                           <Button
-                            variant="light"
+                            variant="outline"
                             size="md"
                             className="w-32 rounded-xl whitespace-nowrap"
                             disabled={isDetailLoading}
                             onClick={(e) => {
-                              e.stopPropagation(); // 💥 여기도 막아야 함
+                              e.stopPropagation();
                               handleOpenResumeModal(app.applicationId);
                             }}
                           >
                             {isDetailLoading ? '로딩 중...' : '이력서 보기'}
                           </Button>
 
-                          {status !== 'REJECTED' && status !== '불합격' && (
-                            <Button
-                              variant="blue"
-                              size="md"
-                              className="w-40 rounded-xl whitespace-nowrap"
-                              onClick={(e) => {
-                                e.stopPropagation(); // 💥 여기도 막아야 함
-                                goSchedule(app);
-                              }}
-                            >
-                              면접 일정 잡기
-                            </Button>
-                          )}
+                          {status !== 'REJECTED' &&
+                            status !== '불합격' &&
+                            (!isScheduled ? (
+                              <Button
+                                variant="blue"
+                                size="md"
+                                className="w-40 rounded-xl whitespace-nowrap"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  goSchedule(app);
+                                }}
+                              >
+                                면접 일정 잡기
+                              </Button>
+                            ) : (
+                              <div className="flex w-40 items-center justify-center gap-1 text-sm font-bold text-indigo-500">
+                                <Calendar size={16} />
+                                <span>면접 예정됨</span>
+                              </div>
+                            ))}
                         </div>
                       </div>
                     );
@@ -687,20 +855,18 @@ const JobApplicationManagementPage = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={closeModal}
-              // ✅ z-index 수정: z-400 -> z-[400]
               className="fixed inset-0 z-[400] bg-slate-900/70 backdrop-blur-md"
             />
             <motion.div
               initial={{ opacity: 0, y: 50, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.95 }}
-              // ✅ z-index 수정: z-500 -> z-[500]
               className="fixed inset-0 z-[500] flex items-center justify-center p-4 sm:p-6"
               onClick={closeModal}
             >
               <div
                 className="relative flex h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-slate-50 shadow-2xl"
-                onClick={(e) => e.stopPropagation()} // ✅ 내부 클릭 시 닫기 방지
+                onClick={(e) => e.stopPropagation()}
               >
                 <div className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/80 px-6 py-4 backdrop-blur-md sm:px-8">
                   <div className="flex items-center gap-3">
@@ -727,7 +893,6 @@ const JobApplicationManagementPage = () => {
                 </div>
 
                 <div className="flex-1 space-y-8 overflow-y-auto p-6 sm:p-8">
-                  {/* ... (이력서 내용 렌더링 부분은 수정 없음) ... */}
                   <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-100">
                     <div className="flex flex-col gap-8 lg:flex-row">
                       <div className="flex shrink-0 justify-center lg:block">
@@ -933,6 +1098,18 @@ const JobApplicationManagementPage = () => {
                 </div>
 
                 <div className="sticky bottom-0 z-20 flex justify-end gap-3 border-t border-slate-200 bg-white/90 px-6 py-4 backdrop-blur-md sm:px-8">
+                  <Button
+                    variant="light"
+                    size="lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeModal();
+                    }}
+                    className="min-w-24 rounded-xl font-bold"
+                  >
+                    닫기
+                  </Button>
+
                   {selectedApplication.status !== 'REJECTED' &&
                     selectedApplication.status !== '불합격' && (
                       <Button
@@ -940,8 +1117,8 @@ const JobApplicationManagementPage = () => {
                         size="lg"
                         className="flex items-center gap-2 rounded-xl border-red-200 font-bold text-red-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
                         onClick={(e) => {
-                          e.stopPropagation(); // ✅ 이벤트 전파 중단
-                          handleRejectApplication();
+                          e.stopPropagation();
+                          handleRejectClick();
                         }}
                       >
                         <Ban size={18} />
@@ -954,7 +1131,7 @@ const JobApplicationManagementPage = () => {
                     size="lg"
                     className="flex items-center gap-2 rounded-xl font-bold text-slate-600 hover:text-blue-600"
                     onClick={(e) => {
-                      e.stopPropagation(); // ✅ 이벤트 전파 중단
+                      e.stopPropagation();
                       let chatUserId = selectedApplication.userId;
                       if ((!chatUserId || chatUserId === 0) && selectedApplication.resume) {
                         chatUserId = selectedApplication.resume.userId;
@@ -971,14 +1148,18 @@ const JobApplicationManagementPage = () => {
                     1:1 메시지
                   </Button>
 
+                  {/* ✅ [수정] 모달 하단 버튼 조건부 렌더링 - 면접 리스트 확인 */}
                   {selectedApplication.status !== 'REJECTED' &&
-                    selectedApplication.status !== '불합격' && (
+                    selectedApplication.status !== '불합격' &&
+                    (!checkInterviewExists(
+                      selectedApplication.userId || selectedApplication.resume.userId,
+                    ) && !hasStatusScheduled(selectedApplication.status) ? (
                       <Button
                         variant="blue"
                         size="lg"
                         className="rounded-xl font-black shadow-lg shadow-blue-600/20"
                         onClick={(e) => {
-                          e.stopPropagation(); // ✅ 이벤트 전파 중단
+                          e.stopPropagation();
                           const app = applications.find(
                             (a) => a.applicationId === selectedApplication.applicationId,
                           );
@@ -987,7 +1168,12 @@ const JobApplicationManagementPage = () => {
                       >
                         면접 일정 잡기
                       </Button>
-                    )}
+                    ) : (
+                      <div className="flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-50 px-6 font-bold text-indigo-600">
+                        <Calendar size={18} />
+                        <span>면접 예정됨</span>
+                      </div>
+                    ))}
                 </div>
               </div>
             </motion.div>

@@ -15,6 +15,8 @@ import {
   Sparkles,
   Lock,
   LogIn,
+  AlertCircle,
+  Check,
 } from 'lucide-react';
 import { useMessenger } from '../../hooks/useMessenger';
 import { useAuth } from '../../hooks/useAuth';
@@ -23,16 +25,127 @@ import InterviewModal from './InterviewModal';
 import type { ChatRoom, Message } from '../../types/messenger';
 import SystemIcon from '../../assets/images/system/alarm.png';
 
+// ==========================================
+// 1. 타입 및 인터페이스 정의
+// ==========================================
+interface ModalConfig {
+  isOpen: boolean;
+  type: 'confirm' | 'confirm-success' | 'alert' | 'success';
+  title: string;
+  message: string;
+  onConfirm?: () => void;
+}
+
 interface JobPostingItem {
   id: number;
   title: string;
   [key: string]: unknown;
 }
 
+interface InterviewPayload {
+  id: number;
+  time: string;
+  status: string;
+  userId: number;
+  jobPostingId: number;
+  jobPosting: {
+    id: number;
+  };
+  user: {
+    userId: number;
+  };
+}
+
+// ==========================================
+// 2. 공용 컴포넌트 (모달, 로고)
+// ==========================================
+const ConfirmModal = ({ config, onClose }: { config: ModalConfig; onClose: () => void }) => {
+  if (!config.isOpen) return null;
+
+  const isRed = config.type === 'confirm';
+  const isGreen = config.type === 'success' || config.type === 'confirm-success';
+  // isBlue는 else로 처리
+
+  const Icon = isGreen ? Check : AlertCircle;
+
+  const colorClass = isRed
+    ? 'text-red-600 bg-red-100'
+    : isGreen
+      ? 'text-green-600 bg-green-100'
+      : 'text-blue-600 bg-blue-100';
+
+  const buttonColorClass = isRed
+    ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
+    : isGreen
+      ? 'bg-green-500 hover:bg-green-600 shadow-green-500/20'
+      : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20';
+
+  const isConfirmModal = config.type === 'confirm' || config.type === 'confirm-success';
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-10000 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-6 text-center">
+            <div
+              className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${colorClass}`}
+            >
+              <Icon size={28} />
+            </div>
+            <h3 className="text-lg font-black text-slate-900">{config.title}</h3>
+            <p className="mt-2 text-sm font-medium whitespace-pre-wrap text-slate-500">
+              {config.message}
+            </p>
+          </div>
+          <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4">
+            {isConfirmModal ? (
+              <>
+                <button
+                  onClick={onClose}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => {
+                    if (config.onConfirm) config.onConfirm();
+                    onClose();
+                  }}
+                  className={`flex-1 rounded-xl py-3 text-sm font-bold text-white shadow-md transition-colors ${buttonColorClass}`}
+                >
+                  확인
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onClose}
+                className={`flex-1 rounded-xl py-3 text-sm font-bold text-white shadow-md transition-colors ${buttonColorClass}`}
+              >
+                확인
+              </button>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 const CompanyLogo = ({ room }: { room: ChatRoom }) => {
   const { user } = useAuth();
   const [imgError, setImgError] = useState(false);
-
   const isOpponentCompany = user?.role !== 'COMPANY' && room.companyName;
   const isSystem = room.senderType === 'system';
   const logoSrc = isSystem ? SystemIcon : room.logoUrl;
@@ -53,7 +166,6 @@ const CompanyLogo = ({ room }: { room: ChatRoom }) => {
           </div>
         )}
       </div>
-
       {!logoSrc && isOpponentCompany && (
         <div className="bg-point-blue text-pure-white ring-pure-white absolute -right-1 -bottom-1 flex h-4 items-center justify-center rounded-md px-1 text-[8px] font-black uppercase ring-2">
           Corp
@@ -63,6 +175,9 @@ const CompanyLogo = ({ room }: { room: ChatRoom }) => {
   );
 };
 
+// ==========================================
+// 3. 채팅 목록 컴포넌트 (ChatList)
+// ==========================================
 const ChatList = () => {
   const { rooms, setCurrentRoomId, toggleMessenger } = useMessenger();
   const { user } = useAuth();
@@ -84,17 +199,14 @@ const ChatList = () => {
           <div className="bg-soft-pebble/30 mb-6 flex h-24 w-24 items-center justify-center rounded-full">
             <Lock size={36} className="text-silver-mist opacity-80" />
           </div>
-
           <h3 className="text-midnight-ink mb-2 text-lg font-black tracking-tight">
             로그인이 필요해요
           </h3>
-
           <p className="text-slate-gray mb-8 text-xs leading-relaxed font-medium whitespace-pre-wrap">
             쪽지함을 확인하려면
             <br />
             먼저 로그인을 진행해주세요.
           </p>
-
           <button
             onClick={() => handleNavigation('/login')}
             className="bg-point-blue text-pure-white hover:bg-point-blue/90 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-xs font-black shadow-lg shadow-blue-500/20 transition-all active:scale-95"
@@ -115,17 +227,14 @@ const ChatList = () => {
               <FileText size={36} className="text-silver-mist opacity-80" />
             )}
           </div>
-
           <h3 className="text-midnight-ink mb-2 text-lg font-black tracking-tight">
             아직 주고받은 쪽지가 없어요
           </h3>
-
           <p className="text-slate-gray mb-8 text-xs leading-relaxed font-medium whitespace-pre-wrap">
             {isCompany
               ? '새로운 공고를 등록해 지원자를 모집하거나\n인재 추천을 받아 딱 맞는 분을 찾아보세요!'
               : '매력적인 이력서로 기업의 제안을 받아보거나\n관심 있는 공고에 지원해 대화를 시작해보세요!'}
           </p>
-
           <div className="flex w-full flex-col gap-3">
             <button
               onClick={() => handleNavigation(isCompany ? '/company/jobs/new' : '/resumes/me')}
@@ -141,7 +250,6 @@ const ChatList = () => {
                 </>
               )}
             </button>
-
             <button
               onClick={() =>
                 handleNavigation(isCompany ? '/company/recommend/candidates' : '/job-postings')
@@ -206,12 +314,14 @@ const ChatList = () => {
       <div className="border-soft-pebble bg-pure-white sticky top-0 z-10 flex items-center justify-between border-b p-6">
         <h2 className="text-midnight-ink text-xl font-black tracking-tighter">쪽지함</h2>
       </div>
-
       <div className="flex-1 overflow-y-auto">{renderContent()}</div>
     </div>
   );
 };
 
+// ==========================================
+// 4. 채팅방 상세 컴포넌트 (ChatRoomWindow)
+// ==========================================
 interface ChatRoomWindowProps {
   roomId: string;
   pendingJobInfo: { id: number; title: string } | null;
@@ -228,19 +338,32 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
   const [targetJobInfo, setTargetJobInfo] = useState<{ id: number; title: string } | null>(null);
   const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false);
 
-  const [myJobPostings, setMyJobPostings] = useState<{ id: number; title: string }[]>([]);
+  const [modalConfig, setModalConfig] = useState<ModalConfig>({
+    isOpen: false,
+    type: 'alert',
+    title: '',
+    message: '',
+  });
 
+  const [myJobPostings, setMyJobPostings] = useState<{ id: number; title: string }[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const room = rooms.find((r: ChatRoom) => r.id === roomId);
   const isCompany = user?.role === 'COMPANY';
-
   const isSystemRoom = room?.senderType === 'system';
   const logoSrc = isSystemRoom ? SystemIcon : room?.logoUrl;
-
   const myIdentifier =
     isCompany && user?.cid ? `COMPANY_${String(user.cid)}` : String(user?.userId);
+
+  const showAlert = (title: string, message: string, type: 'alert' | 'success' = 'alert') => {
+    setModalConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+    });
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -297,42 +420,124 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     note: string,
     selectedJob: { id: number; title: string },
   ) => {
-    const companyName = room?.companyName || '기업';
-    const interviewText = `[면접 제안]\n\n기업명: ${companyName}\n공고명: ${selectedJob.title}\n\n일시: ${dateTime}\n안내: ${note || '없음'}\n\n위 일정으로 면접을 제안합니다. 확인 부탁드립니다.`;
+    const applicantIdentifier = room.participants.find((p) => !p.startsWith('COMPANY_'));
+    const applicantId = Number(applicantIdentifier);
 
-    await sendMessage(interviewText, 'interview', undefined, {
-      interviewId: 'pending',
-      jobPostingId: selectedJob.id,
-      jobPostingTitle: selectedJob.title,
-    });
-    setIsInterviewModalOpen(false);
-    setTargetJobInfo(null);
+    if (!applicantId || isNaN(applicantId)) {
+      showAlert('오류', '지원자 정보를 찾을 수 없어 면접 일정을 잡을 수 없습니다.');
+      return;
+    }
+
+    try {
+      const payload: InterviewPayload = {
+        id: 0,
+        time: new Date(dateTime).toISOString(),
+        status: 'PENDING',
+        userId: applicantId,
+        jobPostingId: selectedJob.id,
+        jobPosting: { id: selectedJob.id },
+        user: { userId: applicantId },
+      };
+
+      const response = await fetch('/api/interviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error(`API 요청 실패: ${response.status}`);
+
+      const json = await response.json();
+      console.log('면접 일정 생성 성공:', json);
+
+      const companyName = room?.companyName || '기업';
+      const interviewText = `[면접 제안]\n\n기업명: ${companyName}\n공고명: ${selectedJob.title}\n\n일시: ${dateTime}\n안내: ${note || '없음'}\n\n위 일정으로 면접을 제안합니다. 확인 부탁드립니다.`;
+      const createdInterviewId = json.id || 'pending';
+
+      await sendMessage(interviewText, 'interview', undefined, {
+        interviewId: createdInterviewId,
+        jobPostingId: selectedJob.id,
+        jobPostingTitle: selectedJob.title,
+      });
+
+      setIsInterviewModalOpen(false);
+      setTargetJobInfo(null);
+      showAlert('전송 완료', '면접 제안을 성공적으로 보냈습니다.', 'success');
+    } catch (error) {
+      console.error('면접 일정 잡기 실패:', error);
+      showAlert('전송 실패', '면접 일정을 잡는데 실패했습니다.\n잠시 후 다시 시도해주세요.');
+    }
   };
 
-  const handleAccept = async (msg: Message) => {
-    if (msg.isAccepted || msg.isDeclined || isProcessing) return;
-    if (!window.confirm('이 면접 제안을 수락하시겠습니까?')) return;
+  const executeAccept = async (msg: Message) => {
     setIsProcessing(true);
     try {
       await acceptInterview(msg.id, msg.interviewId || 'pending', room.companyName || '기업');
+
+      const userName = user?.name || '지원자';
+      const jobTitle = msg.jobPostingTitle || '채용 공고';
+
+      const acceptText = `[면접 수락 안내]\n안녕하세요, ${userName}입니다.\n\n제안 주신 [${jobTitle}] 면접 요청을 확인하였으며, 기쁜 마음으로 수락합니다.\n\n안내해주신 일정에 늦지 않게 참석하겠습니다.\n감사합니다.`;
+
+      await sendMessage(acceptText, 'text');
+
+      showAlert('수락 완료', '면접 제안을 수락했습니다.\n안내 메시지가 전송되었습니다.', 'success');
     } catch (error) {
       console.error(error);
+      showAlert('오류', '면접 수락 처리에 실패했습니다.');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleDecline = async (msg: Message) => {
+  const handleAcceptClick = (msg: Message) => {
     if (msg.isAccepted || msg.isDeclined || isProcessing) return;
-    if (!window.confirm('이 면접 제안을 거절하시겠습니까?')) return;
+    setModalConfig({
+      isOpen: true,
+      type: 'confirm-success',
+      title: '면접 수락',
+      message: '이 면접 제안을 수락하시겠습니까?',
+      onConfirm: () => executeAccept(msg),
+    });
+  };
+
+  const executeDecline = async (msg: Message) => {
     setIsProcessing(true);
     try {
+      if (msg.interviewId && msg.interviewId !== 'pending') {
+        const response = await fetch(`/api/interviews/${msg.interviewId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('면접 취소(삭제) 실패');
+      }
+
       await declineInterview(msg.id, msg.interviewId || 'pending', room.companyName || '기업');
+
+      const userName = user?.name || '지원자';
+      const jobTitle = msg.jobPostingTitle || '채용 공고';
+
+      const declineText = `[면접 거절 안내]\n안녕하세요, ${userName}입니다.\n\n보내주신 [${jobTitle}] 면접 제안에 진심으로 감사드립니다.\n\n다만, 아쉽게도 개인적인 사정으로 인해 이번 면접에는 참석하기 어려울 것 같습니다.\n\n좋은 제안을 주셔서 감사드리며, 귀사의 무궁한 발전을 기원합니다.`;
+
+      await sendMessage(declineText, 'text');
+
+      showAlert('거절 완료', '면접 제안을 거절했습니다.\n안내 메시지가 전송되었습니다.', 'success');
     } catch (error) {
       console.error(error);
+      showAlert('오류', '면접 거절 처리에 실패했습니다.');
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleDeclineClick = (msg: Message) => {
+    if (msg.isAccepted || msg.isDeclined || isProcessing) return;
+    setModalConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: '면접 거절',
+      message: '정말로 이 면접 제안을 거절하시겠습니까?\n거절 후에는 되돌릴 수 없습니다.',
+      onConfirm: () => executeDecline(msg),
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -347,6 +552,11 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
 
   return (
     <div className="bg-pure-white flex flex-1 flex-col overflow-hidden">
+      <ConfirmModal
+        config={modalConfig}
+        onClose={() => setModalConfig((p) => ({ ...p, isOpen: false }))}
+      />
+
       <div className="border-soft-pebble bg-pure-white sticky top-0 z-10 flex items-center justify-between border-b px-4 py-4">
         <div className="flex items-center gap-3">
           <button
@@ -480,16 +690,16 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
                   {isInterview && !isMe && !msg.isAccepted && !msg.isDeclined && (
                     <div className="mt-4 flex gap-2">
                       <button
-                        onClick={() => handleAccept(msg)}
+                        onClick={() => handleAcceptClick(msg)}
                         disabled={isProcessing}
-                        className="bg-point-blue text-pure-white flex-1 rounded-lg py-3 text-[11px] font-black shadow-md transition-all active:scale-95 disabled:opacity-50"
+                        className="bg-point-blue text-pure-white flex-1 rounded-lg py-3 text-[11px] font-black shadow-md transition-all hover:bg-blue-600 active:scale-95 disabled:opacity-50"
                       >
                         수락
                       </button>
                       <button
-                        onClick={() => handleDecline(msg)}
+                        onClick={() => handleDeclineClick(msg)}
                         disabled={isProcessing}
-                        className="bg-soft-pebble text-midnight-ink flex-1 rounded-lg py-3 text-[11px] font-black transition-all active:scale-95 disabled:opacity-50"
+                        className="bg-soft-pebble text-midnight-ink flex-1 rounded-lg py-3 text-[11px] font-black transition-all hover:bg-slate-200 active:scale-95 disabled:opacity-50"
                       >
                         거절
                       </button>
@@ -566,6 +776,9 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
   );
 };
 
+// ==========================================
+// 5. 메인 컨테이너 (MessengerContainer)
+// ==========================================
 const MessengerContainer = () => {
   const { isOpen, currentRoomId, totalUnreadCount, toggleMessenger } = useMessenger();
 
