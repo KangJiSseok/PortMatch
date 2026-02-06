@@ -721,7 +721,7 @@ function JobPostingsPage() {
     return '해당 기업 공고 조회';
   }, [cid, keyword, companyName]);
 
-  const recentTitles = useMemo(() => {
+  const recentTitles = useMemo<string[]>(() => {
     const raw = companySearchResult?.recentJobTitles;
     if (!raw) return [];
     if (Array.isArray(raw)) {
@@ -736,7 +736,7 @@ function JobPostingsPage() {
     return [];
   }, [companySearchResult]);
 
-  const recentJobs = useMemo(() => {
+  const recentJobs = useMemo<Array<{ id: number; title: string }>>(() => {
     const raw = companySearchResult?.recentJob;
     if (!Array.isArray(raw)) return [];
     return raw

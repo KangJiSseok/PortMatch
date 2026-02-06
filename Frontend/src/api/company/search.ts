@@ -9,7 +9,7 @@ export type CompanySearchResult = {
   corpAddr?: string;
   homePg?: string;
   logo?: string;
-  recentJobTitles?: string[];
+  recentJobTitles?: string[] | string;
   recentJob?: Array<{ id: number; title: string }>;
 };
 
