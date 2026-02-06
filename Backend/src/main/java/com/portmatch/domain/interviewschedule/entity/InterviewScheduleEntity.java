@@ -1,5 +1,6 @@
 package com.portmatch.domain.interviewschedule.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.interviewschedule.enums.InterviewStatus;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
@@ -28,6 +29,7 @@ public class InterviewScheduleEntity {
     @JoinColumn(name = "job_posting_id")
     private JobPostingEntity jobPosting;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Seoul")
     private LocalDateTime time;
 
     @Enumerated(EnumType.STRING)
