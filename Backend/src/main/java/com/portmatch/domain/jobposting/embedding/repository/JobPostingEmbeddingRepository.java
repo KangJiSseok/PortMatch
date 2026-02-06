@@ -2,6 +2,7 @@ package com.portmatch.domain.jobposting.embedding.repository;
 
 import com.portmatch.domain.jobposting.embedding.entity.JobPostingEmbedding;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,6 +17,71 @@ public interface JobPostingEmbeddingRepository extends JpaRepository<JobPostingE
 
     boolean existsByJobPostingId(Long jobPostingId);
     List<JobPostingEmbedding> findAllByJobPostingIdIn(List<Long> jobPostingIds);
+
+    @Modifying
+    @Query(value = """
+            INSERT INTO job_posting_embeddings (
+                job_posting_id, name, domain, problem, solution, tech,
+                architecture_experience, keywords, content, content_hash,
+                name_embedding, domain_embedding, problem_embedding, solution_embedding,
+                tech_embedding, architecture_embedding, keywords_embedding,
+                problem_missing, solution_missing, tech_missing, created_at, updated_at
+            ) VALUES (
+                :jobPostingId, :name, :domain, :problem, :solution, :tech,
+                :architectureExperience, :keywords, :content, :contentHash,
+                CAST(:nameEmbedding AS vector),
+                CAST(:domainEmbedding AS vector),
+                CAST(:problemEmbedding AS vector),
+                CAST(:solutionEmbedding AS vector),
+                CAST(:techEmbedding AS vector),
+                CAST(:architectureEmbedding AS vector),
+                CAST(:keywordsEmbedding AS vector),
+                :problemMissing, :solutionMissing, :techMissing, NOW(), NOW()
+            )
+            ON CONFLICT (job_posting_id) DO UPDATE SET
+                name = EXCLUDED.name,
+                domain = EXCLUDED.domain,
+                problem = EXCLUDED.problem,
+                solution = EXCLUDED.solution,
+                tech = EXCLUDED.tech,
+                architecture_experience = EXCLUDED.architecture_experience,
+                keywords = EXCLUDED.keywords,
+                content = EXCLUDED.content,
+                content_hash = EXCLUDED.content_hash,
+                name_embedding = EXCLUDED.name_embedding,
+                domain_embedding = EXCLUDED.domain_embedding,
+                problem_embedding = EXCLUDED.problem_embedding,
+                solution_embedding = EXCLUDED.solution_embedding,
+                tech_embedding = EXCLUDED.tech_embedding,
+                architecture_embedding = EXCLUDED.architecture_embedding,
+                keywords_embedding = EXCLUDED.keywords_embedding,
+                problem_missing = EXCLUDED.problem_missing,
+                solution_missing = EXCLUDED.solution_missing,
+                tech_missing = EXCLUDED.tech_missing,
+                updated_at = NOW()
+            """, nativeQuery = true)
+    void upsertByJobPostingId(
+            @Param("jobPostingId") Long jobPostingId,
+            @Param("name") String name,
+            @Param("domain") String domain,
+            @Param("problem") String problem,
+            @Param("solution") String solution,
+            @Param("tech") String tech,
+            @Param("architectureExperience") String architectureExperience,
+            @Param("keywords") String keywords,
+            @Param("content") String content,
+            @Param("contentHash") String contentHash,
+            @Param("nameEmbedding") String nameEmbedding,
+            @Param("domainEmbedding") String domainEmbedding,
+            @Param("problemEmbedding") String problemEmbedding,
+            @Param("solutionEmbedding") String solutionEmbedding,
+            @Param("techEmbedding") String techEmbedding,
+            @Param("architectureEmbedding") String architectureEmbedding,
+            @Param("keywordsEmbedding") String keywordsEmbedding,
+            @Param("problemMissing") boolean problemMissing,
+            @Param("solutionMissing") boolean solutionMissing,
+            @Param("techMissing") boolean techMissing
+    );
 
     /**
      * 임베딩이 있는 공고만 조회

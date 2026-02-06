@@ -58,6 +58,9 @@ portfolio-embedding:
   base-url: ${EMBEDDING_URL:http://localhost:8002}
   model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
 
+job-posting-embedding:
+  base-url: ${EMBEDDING_URL:http://localhost:8002}
+
 springdoc:
   override-with-generic-response: false
 

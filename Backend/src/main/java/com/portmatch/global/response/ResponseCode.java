@@ -58,6 +58,10 @@ public enum ResponseCode {
     COMPANY_EMBEDDING_SIZE_MISMATCH(false, 5022, "회사 임베딩 결과 사이즈 불일치"),
     EMBEDDING_VECTOR_EMPTY(false, 5023, "임베딩 벡터가 비어있습니다."),
     HASH_ALGORITHM_NOT_AVAILABLE(false, 5024, "해시 알고리즘을 사용할 수 없습니다."),
+    JOB_POSTING_EMBEDDING_BASE_URL_NOT_CONFIGURED(false, 5025, "채용공고 임베딩 URL 설정이 없습니다."),
+    JOB_POSTING_EMBEDDING_SERVICE_UNAVAILABLE(false, 5026, "채용공고 임베딩 서비스가 응답하지 않습니다."),
+    JOB_POSTING_EMBEDDING_EMPTY(false, 5027, "채용공고 임베딩 결과가 비어있습니다."),
+    JOB_POSTING_EMBEDDING_SIZE_MISMATCH(false, 5028, "채용공고 임베딩 결과 사이즈 불일치"),
 
     // openai
     OPENAI_BASE_URL_NOT_CONFIGURED(false, 5100, "OpenAI URL 설정이 없습니다."),
