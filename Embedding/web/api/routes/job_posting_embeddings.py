@@ -116,7 +116,8 @@ def _parse_job_posting(content: str, model: Optional[str]) -> dict:
     if not resolved_model:
         raise HTTPException(status_code=500, detail="OPENAI_MODEL is not set")
 
-    llm = ChatOpenAI(model=resolved_model, temperature=1)
+    temperature = float(os.getenv("OPENAI_TEMPERATURE", "0.2"))
+    llm = ChatOpenAI(model=resolved_model, temperature=temperature)
     parser = JsonOutputParser()
     chain = PROMPT | llm | parser
     result = chain.invoke({"content": content})
