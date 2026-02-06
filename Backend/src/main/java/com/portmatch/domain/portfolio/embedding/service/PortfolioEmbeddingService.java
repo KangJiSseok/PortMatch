@@ -155,6 +155,7 @@ public class PortfolioEmbeddingService {
                     p.getName(),
                     p.getDomain(),
                     p.getProblem(),
+                    p.getSolution(),
                     techs,
                     architectureExperiences
             );
@@ -450,6 +451,7 @@ public class PortfolioEmbeddingService {
             String projectName,
             String domain,
             String problem,
+            String solution,
             List<String> techs,
             List<String> architectureExperiences
     ) {
@@ -465,6 +467,7 @@ public class PortfolioEmbeddingService {
                 + "[프로젝트명] " + safe(projectName) + "\n"
                 + "[도메인] " + safe(domain) + "\n"
                 + "[문제] " + safe(problem) + "\n"
+                + "[해결] " + safe(solution) + "\n"
                 + "[기술] " + techStr + "\n"
                 + "[아키텍처] " + architectureStr;
     }
