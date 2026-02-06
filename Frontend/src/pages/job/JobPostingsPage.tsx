@@ -721,6 +721,30 @@ function JobPostingsPage() {
     return '해당 기업 공고 조회';
   }, [cid, keyword, companyName]);
 
+  const recentTitles = useMemo(() => {
+    const raw = companySearchResult?.recentJobTitles;
+    if (!raw) return [];
+    if (Array.isArray(raw)) {
+      return raw.filter((title): title is string => typeof title === 'string' && title.trim().length > 0);
+    }
+    if (typeof raw === 'string') {
+      return raw
+        .split(',')
+        .map((title) => title.trim())
+        .filter((title) => title.length > 0);
+    }
+    return [];
+  }, [companySearchResult]);
+
+  const recentJobs = useMemo(() => {
+    const raw = companySearchResult?.recentJob;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((job) => job && Number.isFinite(job.id) && typeof job.title === 'string')
+      .map((job) => ({ id: job.id, title: job.title.trim() }))
+      .filter((job) => job.title.length > 0);
+  }, [companySearchResult]);
+
   return (
     <div className="bg-pure-white min-h-screen overflow-x-hidden pt-32 pb-32">
       <div className="w-full">
@@ -873,28 +897,57 @@ function JobPostingsPage() {
                       </div>
                     </div>
 
-                    {companySearchResult.recentJobTitles?.length ? (
+                    <div>
                       <div>
                         <p className="text-slate-gray mb-2 text-[12px] font-bold opacity-70">
                           최근 채용 공고
                         </p>
-                        <div className="border-silver-mist/20 overflow-hidden rounded-2xl border">
-                          {companySearchResult.recentJobTitles.map((title, index) => (
-                            <div
-                              key={`${title}-${index}`}
-                              className={[
-                                'flex items-center justify-between gap-4 px-4 py-3 text-[13px] font-semibold text-[#1a1a1a]',
-                                'bg-white',
-                                index === 0 ? '' : 'border-silver-mist/20 border-t',
-                              ].join(' ')}
-                            >
-                              <span className="min-w-0 flex-1 truncate">{title}</span>
-                              <span className="text-slate-gray text-[11px] font-bold">채용</span>
-                            </div>
-                          ))}
-                        </div>
+                        {recentJobs.length > 0 ? (
+                          <div className="border-silver-mist/20 overflow-hidden rounded-2xl border">
+                            {recentJobs.map((job, index) => (
+                              <div
+                                key={`${job.id}-${index}`}
+                                className={[
+                                  'flex items-center justify-between gap-4 px-4 py-3 text-[13px] font-semibold text-[#1a1a1a]',
+                                  'bg-white',
+                                  index === 0 ? '' : 'border-silver-mist/20 border-t',
+                                ].join(' ')}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/job-posts/${job.id}`)}
+                                  className="min-w-0 flex-1 truncate text-left transition-colors hover:text-point-blue"
+                                  title={job.title}
+                                >
+                                  {job.title}
+                                </button>
+                                <span className="text-slate-gray text-[11px] font-bold">채용</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : recentTitles.length > 0 ? (
+                          <div className="border-silver-mist/20 overflow-hidden rounded-2xl border">
+                            {recentTitles.map((title, index) => (
+                              <div
+                                key={`${title}-${index}`}
+                                className={[
+                                  'flex items-center justify-between gap-4 px-4 py-3 text-[13px] font-semibold text-[#1a1a1a]',
+                                  'bg-white',
+                                  index === 0 ? '' : 'border-silver-mist/20 border-t',
+                                ].join(' ')}
+                              >
+                                <span className="min-w-0 flex-1 truncate">{title}</span>
+                                <span className="text-slate-gray text-[11px] font-bold">채용</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="border-silver-mist/20 rounded-2xl border bg-white px-4 py-3 text-[12px] font-semibold text-gray-400">
+                            최근 채용 공고 정보가 없습니다.
+                          </div>
+                        )}
                       </div>
-                    ) : null}
+                    </div>
                   </div>
 
                   <div className="border-silver-mist/30 flex items-center gap-4">
