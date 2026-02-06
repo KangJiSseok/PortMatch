@@ -7,7 +7,7 @@ scrape_configs:
     metrics_path: '/actuator/prometheus'
     scrape_interval: 10s
     static_configs:
-      - targets: ['host.docker.internal:8080'] # 백엔드 서비스명
+      - targets: ['backend:8080'] # backend container
         labels:
           application: 'portmatch'
-          environment: 'local'
+          environment: 'prod'

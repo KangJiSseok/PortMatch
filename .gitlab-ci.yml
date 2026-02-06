@@ -22,7 +22,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
+    - if: '$CI_COMMIT_BRANCH == "be-feat/prometheus-monitoring"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -54,7 +54,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "ai-feat/jobposting-embedding"'
+    - if: '$CI_COMMIT_BRANCH == "be-feat/prometheus-monitoring"'
 
   script:
     - set -e
@@ -65,6 +65,8 @@ deploy:
 
     # ---------- docker-compose 파일 복사 ----------
     - cp $CI_PROJECT_DIR/docker-compose.prod.yml ./docker-compose.prod.yml
+    - mkdir -p ./monitoring
+    - cp $CI_PROJECT_DIR/monitoring/prometheus.yml ./monitoring/prometheus.yml
 
     # ---------- .env.prod 생성 ----------
     - |
@@ -121,6 +123,10 @@ deploy:
       VITE_SERVICE_NAME=${VITE_SERVICE_NAME}
       VITE_OPENVIDU_PUBLIC_URL=${VITE_OPENVIDU_PUBLIC_URL}
 
+      # ---------- Grafana ----------
+      GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+
       # ---------- Crawler ----------
       CRAWL_LIMIT=${CRAWL_LIMIT}
       DB_HOST=${DB_HOST}
@@ -134,4 +140,3 @@ deploy:
     - docker compose -f docker-compose.prod.yml pull
     - docker compose -f docker-compose.prod.yml down
     - docker compose -f docker-compose.prod.yml up -d --remove-orphans
-
