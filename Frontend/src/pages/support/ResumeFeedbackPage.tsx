@@ -249,8 +249,9 @@ const ResumeFeedbackPage = () => {
   );
 
   return (
-    <div className="bg-pure-white min-h-screen pt-32 pb-32 select-none">
-      <div className="mx-auto w-6xl px-6">
+    <div className="relative min-h-screen min-w-[1024px] bg-[#FCFCFC] pt-32 pb-32 select-none">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[#FCFCFC]" />
+      <div className="relative z-10 mx-auto w-6xl px-6">
         <header className="border-point-blue mb-12 border-l-4 pl-6">
           <h1 className="text-midnight-ink text-4xl font-black tracking-tighter uppercase">
             Portfolio Editing
