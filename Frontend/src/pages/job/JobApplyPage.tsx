@@ -731,10 +731,10 @@ export default function JobApplyPage() {
                 className="rounded-xl font-bold shadow-lg"
                 onClick={() => {
                   setDoneModalOpen(false);
-                  navigate('/mypage', { replace: true });
+                  navigate('/applications/me', { replace: true });
                 }}
               >
-                마이페이지 확인
+                공고 지원 목록 확인하기
               </Button>
             </>
           }

@@ -84,6 +84,38 @@ const calculateDDay = (endDate: string | null): string => {
   return `D-${diffDays}`;
 };
 
+type JobDetailJson = {
+  career?: string;
+  education?: string;
+  employment_type?: string;
+  salary?: string;
+  work_location?: string;
+  work_days?: string;
+  work_hours?: string;
+  requirement_text?: string;
+};
+
+const formatJobDetail = (detail?: string | null): string => {
+  if (!detail) return '';
+  const trimmed = detail.trim();
+  if (!trimmed) return '';
+
+  const looksLikeJson =
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'));
+
+  if (looksLikeJson) {
+    try {
+      const parsed = JSON.parse(trimmed) as JobDetailJson;
+      if (parsed.requirement_text) return parsed.requirement_text;
+    } catch {
+      // Fallback to raw text below.
+    }
+  }
+
+  return trimmed.replace(/\s+/g, ' ');
+};
+
 function CompanyDetailsPage() {
   const { companyId: paramId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
@@ -551,7 +583,7 @@ function CompanyDetailsPage() {
                                 {job.title}
                               </h4>
                               <p className="text-slate-gray line-clamp-2 text-sm font-medium opacity-70">
-                                {job.detail}
+                                {formatJobDetail(job.detail)}
                               </p>
                             </div>
                             <div className="flex items-center justify-between border-t border-zinc-100 pt-6">
