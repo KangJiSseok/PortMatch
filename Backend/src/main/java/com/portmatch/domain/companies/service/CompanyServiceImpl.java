@@ -70,12 +70,21 @@ public class CompanyServiceImpl implements CompaniesService {
 
         return companies.stream()
                 .map(company -> {
-                    // PageRequest.of(0, 3)으로 딱 3개만 가져오라고 시키기!
-                    List<String> recentTitles = jobPostingRepository.findTop3TitlesByCid(
+                    // 1. 리포지토리에서 List<Object[]> 형태로 데이터를 가져옴
+                    List<Object[]> jobObjects = jobPostingRepository.findTop3JobIdsAndTitlesByCid(
                             company.getCid(),
                             PageRequest.of(0, 3)
                     );
 
+                    // 2. Object 배열에서 데이터를 꺼내 JobSummary 객체로 변환
+                    List<CompanyNameResponse.JobSummary> recentJobs = jobObjects.stream()
+                            .map(obj -> CompanyNameResponse.JobSummary.builder()
+                                    .id((Long) obj[0])     // 쿼리에서 SELECT j.id 가 첫 번째(0)
+                                    .title((String) obj[1]) // 쿼리에서 SELECT j.title 이 두 번째(1)
+                                    .build())
+                            .toList();
+
+                    // 3. 최종 DTO 조립
                     return CompanyNameResponse.builder()
                             .cid(company.getCid())
                             .corpName(company.getCompaniesName())
@@ -84,7 +93,7 @@ public class CompanyServiceImpl implements CompaniesService {
                             .corpAddr(company.getAddress())
                             .homePg(company.getHomepageUrl())
                             .logo(company.getLogo())
-                            .recentJobTitles(recentTitles) // 이미 List<String>이라 그대로 쏙!
+                            .recentJob(recentJobs) // DTO의 필드명에 맞춰서 넣어줘! (recentJobs 또는 recentJobTitles)
                             .build();
                 })
                 .toList();
