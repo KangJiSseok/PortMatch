@@ -10,6 +10,7 @@ export type CompanySearchResult = {
   homePg?: string;
   logo?: string;
   recentJobTitles?: string[];
+  recentJob?: Array<{ id: number; title: string }>;
 };
 
 type CompanySearchResponse =
