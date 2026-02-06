@@ -98,7 +98,6 @@ const InterviewModal = ({
   };
 
   const handleSubmit = () => {
-    // ✅ [수정] 공고 미선택 시 알림
     if (!selectedJobId) {
       setAlertConfig({
         isOpen: true,
@@ -107,7 +106,6 @@ const InterviewModal = ({
       return;
     }
 
-    // ✅ [수정] 날짜 미선택 시 알림
     if (!date) {
       setAlertConfig({
         isOpen: true,
@@ -228,7 +226,6 @@ const InterviewModal = ({
               <Button
                 variant="blue"
                 size="md"
-                // ✅ [수정] disabled 속성 제거 (클릭하여 유효성 검사 실행)
                 onClick={handleSubmit}
                 className="rounded-xl shadow-lg shadow-blue-500/20"
               >
