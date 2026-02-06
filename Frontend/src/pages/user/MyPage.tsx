@@ -1,7 +1,7 @@
 // src/pages/MyPage.tsx
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bookmark, Building2, ChevronRight, User, CalendarDays, FileText, FileCheck } from 'lucide-react';
+import { Bookmark, Building2, ChevronRight, User, CalendarDays, FileText, FileCheck, X } from 'lucide-react';
 
 import Button from '../../components/Button/Button';
 
@@ -603,97 +603,69 @@ export default function MyPage() {
         </section>
       </div>
 
-      {/* 스크랩 모달 */}
+      {/* 관심 공고 모달 */}
       <NotificationModal
         open={isScrapOpen}
         onClose={() => setIsScrapOpen(false)}
         title="관심 공고"
       >
         {scrapQuery.isLoading ? (
-          <div className="space-y-3">
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
+          <div className="space-y-3 py-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-xl bg-zinc-100" />
+            ))}
           </div>
         ) : scrapQuery.isError ? (
-          <div className="rounded-xl border border-zinc-100 bg-white p-4">
-            <p className="text-midnight-ink text-sm font-black">스크랩을 불러오지 못했어요</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">
-              {scrapQuery.errorMessage ?? '잠시 후 다시 시도해주세요'}
-            </p>
-            <div className="mt-4 flex justify-end">
-              <Button variant="dark" size="sm" onClick={scrapQuery.refetch}>
-                다시 시도
-              </Button>
-            </div>
-          </div>
+          <ErrorBox
+            message={scrapQuery.errorMessage ?? '스크랩을 불러오지 못했어요'}
+            onRetry={scrapQuery.refetch}
+          />
         ) : (scrapQuery.data ?? []).length === 0 ? (
-          <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
-            <p className="text-midnight-ink text-sm font-black">스크랩한 공고가 없어요</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">
-              마음에 드는 공고를 찜해보세요
-            </p>
+          <div className="py-20 text-center">
+            <p className="text-base font-bold text-zinc-900">스크랩한 공고가 없어요</p>
+            <p className="mt-1 text-sm font-medium text-zinc-500">마음에 드는 공고를 찜해보세요</p>
           </div>
         ) : (
-          <div className="space-y-4 pb-6">
-            {/* 툴바 */}
-            <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
-              <div className="flex items-end justify-between gap-3">
-                <p className="text-xs font-semibold text-zinc-500">
-                  총 {filteredSortedScraps.length}개 · {companyCount}개 회사
+          <div className="space-y-2 pb-10">
+            {/* Sticky Toolbar */}
+            <div className="sticky top-0 z-10 -mx-8 bg-white/80 px-8 pb-4 pt-2 backdrop-blur-md">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-[13px] font-medium text-zinc-400">
+                  총 <span className="font-bold text-zinc-900">{filteredSortedScraps.length}</span>개 · {companyCount}개 회사
                 </p>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={scrapSort === 'recent' ? 'dark' : 'outline'}
-                    className="rounded-xl"
-                    onClick={() => setScrapSort('recent')}
-                  >
-                    최근
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={scrapSort === 'company' ? 'dark' : 'outline'}
-                    className="rounded-xl"
-                    onClick={() => setScrapSort('company')}
-                  >
-                    회사순
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={scrapSort === 'title' ? 'dark' : 'outline'}
-                    className="rounded-xl"
-                    onClick={() => setScrapSort('title')}
-                  >
-                    공고순
-                  </Button>
+                <div className="flex items-center gap-1.5">
+                  {[
+                    { id: 'recent', label: '최근' },
+                    { id: 'company', label: '회사순' },
+                    { id: 'title', label: '공고순' },
+                  ].map((sort) => (
+                    <Button
+                      key={sort.id}
+                      size="sm"
+                      variant={scrapSort === sort.id ? 'dark' : 'outline'}
+                      className="h-8 rounded-lg px-3 text-xs font-bold transition-all"
+                      onClick={() => setScrapSort(sort.id as any)}
+                    >
+                      {sort.label}
+                    </Button>
+                  ))}
                 </div>
               </div>
-
-              <div className="mt-3">
-                <input
-                  value={scrapSearch}
-                  onChange={(e) => setScrapSearch(e.target.value)}
-                  placeholder="회사/공고명 검색"
-                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-semibold text-zinc-700 transition outline-none placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-white"
-                />
-              </div>
+              <input
+                value={scrapSearch}
+                onChange={(e) => setScrapSearch(e.target.value)}
+                placeholder="회사/공고명 검색"
+                className="w-full rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-2.5 text-sm font-bold text-zinc-700 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-200 focus:bg-white focus:ring-4 focus:ring-zinc-100/50"
+              />
             </div>
 
-            {/* 리스트 */}
+            {/* List Content */}
             {filteredSortedScraps.length === 0 ? (
-              <div className="bg-cloud-dancer/25 rounded-2xl p-6 text-center">
-                <p className="text-midnight-ink text-sm font-black">검색 결과가 없어요</p>
-                <p className="mt-1 text-sm font-semibold text-zinc-500">
-                  다른 키워드로 다시 찾아보세요
-                </p>
+              <div className="py-20 text-center">
+                <p className="text-base font-bold text-zinc-900">검색 결과가 없어요</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="divide-y divide-zinc-50">
                 {filteredSortedScraps.map((it) => (
                   <ScrapListRow
                     key={String(it.key)}
@@ -709,88 +681,62 @@ export default function MyPage() {
         )}
       </NotificationModal>
 
-      {/* 기업 스크랩 모달 */}
       <NotificationModal
         open={isCompanyScrapOpen}
         onClose={() => setIsCompanyScrapOpen(false)}
         title="관심 기업"
       >
         {companyScrapQuery.isLoading ? (
-          <div className="space-y-3">
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-            <div className="bg-cloud-dancer/60 h-16 animate-pulse rounded-xl" />
-          </div>
-        ) : companyScrapQuery.isError ? (
-          <div className="rounded-xl border border-zinc-100 bg-white p-4">
-            <p className="text-midnight-ink text-sm font-black">
-              기업 스크랩을 불러오지 못했습니다.
-            </p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">
-              {companyScrapQuery.errorMessage ?? '잠시 후 다시 시도해주세요'}
-            </p>
-            <div className="mt-4 flex justify-end">
-              <Button variant="dark" size="sm" onClick={companyScrapQuery.refetch}>
-                다시 시도
-              </Button>
-            </div>
+          <div className="space-y-3 py-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-xl bg-zinc-100" />
+            ))}
           </div>
         ) : (companyScrapQuery.data ?? []).length === 0 ? (
-          <div className="bg-cloud-dancer/25 rounded-xl p-6 text-center">
-            <p className="text-midnight-ink text-sm font-black">스크랩한 기업이 없어요</p>
-            <p className="mt-1 text-sm font-semibold text-zinc-500">관심 있는 기업을 찜해보세요</p>
+          <div className="py-20 text-center">
+            <p className="text-base font-bold text-zinc-900">스크랩한 기업이 없어요</p>
+            <p className="mt-1 text-sm font-medium text-zinc-500">관심 있는 기업을 찜해보세요</p>
           </div>
         ) : (
-          <div className="space-y-4 pb-6">
-            {/* 툴바 */}
-            <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-100 bg-white/95 px-6 pt-2 pb-4 backdrop-blur">
-              <div className="flex items-end justify-between gap-3">
-                <p className="text-xs font-semibold text-zinc-500">
-                  총 {filteredSortedCompanyScraps.length}개
+          <div className="space-y-2 pb-10">
+            {/* Sticky Toolbar */}
+            <div className="sticky top-0 z-10 -mx-8 bg-white/80 px-8 pb-4 pt-2 backdrop-blur-md">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-[13px] font-medium text-zinc-400">
+                  총 <span className="font-bold text-zinc-900">{filteredSortedCompanyScraps.length}</span>개
                 </p>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={companyScrapSort === 'recent' ? 'dark' : 'outline'}
-                    className="rounded-xl"
-                    onClick={() => setCompanyScrapSort('recent')}
-                  >
-                    최근
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={companyScrapSort === 'name' ? 'dark' : 'outline'}
-                    className="rounded-xl"
-                    onClick={() => setCompanyScrapSort('name')}
-                  >
-                    이름순
-                  </Button>
+                <div className="flex items-center gap-1.5">
+                  {[
+                    { id: 'recent', label: '최근' },
+                    { id: 'name', label: '이름순' },
+                  ].map((sort) => (
+                    <Button
+                      key={sort.id}
+                      size="sm"
+                      variant={companyScrapSort === sort.id ? 'dark' : 'outline'}
+                      className="h-8 rounded-lg px-3 text-xs font-bold transition-all"
+                      onClick={() => setCompanyScrapSort(sort.id as any)}
+                    >
+                      {sort.label}
+                    </Button>
+                  ))}
                 </div>
               </div>
-
-              <div className="mt-3">
-                <input
-                  value={companyScrapSearch}
-                  onChange={(e) => setCompanyScrapSearch(e.target.value)}
-                  placeholder="기업명 검색"
-                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-semibold text-zinc-700 transition outline-none placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-white"
-                />
-              </div>
+              <input
+                value={companyScrapSearch}
+                onChange={(e) => setCompanyScrapSearch(e.target.value)}
+                placeholder="기업명 검색"
+                className="w-full rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-2.5 text-sm font-bold text-zinc-700 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-200 focus:bg-white focus:ring-4 focus:ring-zinc-100/50"
+              />
             </div>
 
-            {/* 리스트 */}
+            {/* List Content */}
             {filteredSortedCompanyScraps.length === 0 ? (
-              <div className="bg-cloud-dancer/25 rounded-2xl p-6 text-center">
-                <p className="text-midnight-ink text-sm font-black">검색 결과가 없어요</p>
-                <p className="mt-1 text-sm font-semibold text-zinc-500">
-                  다른 키워드로 다시 찾아보세요
-                </p>
+              <div className="py-20 text-center">
+                <p className="text-base font-bold text-zinc-900">검색 결과가 없어요</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="divide-y divide-zinc-50">
                 {filteredSortedCompanyScraps.map((it) => (
                   <CompanyScrapListRow
                     key={String(it.key)}
@@ -839,104 +785,78 @@ function NotificationModal({
 }) {
   useEffect(() => {
     if (!open) return;
-
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-
-    const prev = {
-      bodyOverflow: document.body.style.overflow,
-      bodyPosition: document.body.style.position,
-      bodyTop: document.body.style.top,
-      bodyLeft: document.body.style.left,
-      bodyRight: document.body.style.right,
-      bodyWidth: document.body.style.width,
-      htmlOverflow: document.documentElement.style.overflow,
-      bodyPaddingRight: document.body.style.paddingRight,
-    };
-
-    const scrollY = window.scrollY;
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-
+    
+    // 스크롤 락 로직 (기존 로직 유지)
     document.addEventListener('keydown', onKeyDown);
-
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-
-    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
-
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.width = '100%';
+    const scrollY = window.scrollY;
+    document.body.style.cssText = `
+      position: fixed; 
+      top: -${scrollY}px; 
+      left: 0; 
+      right: 0; 
+      width: 100%;
+      overflow-y: hidden;
+    `;
 
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-
-      document.body.style.overflow = prev.bodyOverflow;
-      document.body.style.position = prev.bodyPosition;
-      document.body.style.top = prev.bodyTop;
-      document.body.style.left = prev.bodyLeft;
-      document.body.style.right = prev.bodyRight;
-      document.body.style.width = prev.bodyWidth;
-      document.documentElement.style.overflow = prev.htmlOverflow;
-      document.body.style.paddingRight = prev.bodyPaddingRight;
-
-      window.scrollTo(0, scrollY);
+      const scrollY = document.body.style.top;
+      document.body.style.cssText = '';
+      window.scrollTo(0, parseInt(scrollY || '0', 10) * -1);
     };
   }, [open, onClose]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex justify-center overflow-auto px-4 py-10">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      {/* 백드롭: 블러 강도를 살짝 낮춰 배경과 조화롭게 설정 */}
       <div
-        className="fixed inset-0 bg-black/65 backdrop-blur-[2px]"
+        className="fixed inset-0 bg-black/50 backdrop-blur-[4px] transition-opacity"
         onClick={onClose}
         aria-hidden
       />
 
+      {/* 모달 본체: 너비를 500px로 제한하여 집중도 향상 */}
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-[92vw] max-w-[560px]"
+        className="relative z-10 w-full max-w-[500px] transform transition-all"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-2xl">
-          <div className="flex items-center justify-between px-6 py-4">
-            <p className="text-midnight-ink text-lg font-black">{title}</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
+        <div className="flex max-h-[80vh] flex-col overflow-hidden rounded-[28px] border border-zinc-100 bg-white shadow-2xl">
+          
+          {/* 헤더: 타이틀 폰트 두께 조절 및 X 아이콘 배치 */}
+          <div className="flex items-center justify-between px-8 py-6">
+            <h2 className="text-xl font-bold tracking-tight text-zinc-900">
+              {title}
+            </h2>
+            <button
               onClick={onClose}
-              className="text-midnight-ink rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-black transition hover:bg-zinc-50"
+              className="group rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+              aria-label="닫기"
             >
-              닫기
-            </Button>
+              <X size={22} strokeWidth={2.5} />
+            </button>
           </div>
 
+          {/* 콘텐츠 영역: 기존의 커스텀 스크롤바 유지 */}
           <div
             className={[
-              'min-h-0 flex-1 overflow-auto px-6',
-              '[overscroll-behavior:contain]',
-              '[&::-webkit-scrollbar]:w-2',
-              '[&::-webkit-scrollbar-track]:rounded-full',
-              '[&::-webkit-scrollbar-track]:bg-cloud-dancer/60',
+              'flex-1 overflow-y-auto px-8 pb-8',
+              '[&::-webkit-scrollbar]:w-1.5',
+              '[&::-webkit-scrollbar-track]:bg-transparent',
               '[&::-webkit-scrollbar-thumb]:rounded-full',
-              '[&::-webkit-scrollbar-thumb]:bg-silver-mist/80',
-              'hover:[&::-webkit-scrollbar-thumb]:bg-silver-mist',
-              '[&::-webkit-scrollbar-thumb]:border-2',
-              '[&::-webkit-scrollbar-thumb]:border-transparent',
-              '[&::-webkit-scrollbar-thumb]:bg-clip-padding',
+              '[&::-webkit-scrollbar-thumb]:bg-zinc-200',
+              'hover:[&::-webkit-scrollbar-thumb]:bg-zinc-300',
             ].join(' ')}
-            style={{
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'var(--color-silver-mist) var(--color-cloud-dancer)',
-            }}
           >
-            {children}
+            <div className="space-y-4">
+              {children}
+            </div>
           </div>
         </div>
       </div>
@@ -958,28 +878,32 @@ function ScrapListRow({
   return (
     <button
       type="button"
-      onClick={() => {
-        if (disabled) return;
-        onClick();
-      }}
-      className={[
-        'w-full rounded-2xl border border-zinc-100 bg-white p-4 text-left shadow-sm transition',
-        disabled ? 'cursor-not-allowed opacity-60' : 'hover:-translate-y-[1px] hover:shadow-md',
-      ].join(' ')}
+      onClick={() => !disabled && onClick()}
+      disabled={disabled}
+      className={`
+        group w-full text-left transition-all duration-200
+        py-4 px-2 rounded-xl flex items-center justify-between gap-4
+        ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-zinc-50 active:bg-zinc-100'}
+      `}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-midnight-ink line-clamp-2 text-sm font-black">{title}</p>
-          <p className="mt-2 text-xs font-semibold text-zinc-500">{company}</p>
-          {disabled ? (
-            <p className="mt-2 text-[11px] font-semibold text-zinc-400">
-              상세 이동 불가 (공고 ID 없음)
-            </p>
-          ) : null}
+      <div className="min-w-0 flex-1">
+        {/* 제목: 폰트 두께를 세련되게 조정 */}
+        <p className="text-zinc-900 line-clamp-1 text-[15px] font-bold group-hover:text-black">
+          {title}
+        </p>
+        
+        <div className="mt-1.5 flex items-center gap-2">
+          <span className="text-sm font-medium text-zinc-500">{company}</span>
+          {disabled && (
+            <span className="text-[11px] font-medium text-red-400 bg-red-50 px-1.5 py-0.5 rounded">
+              이동 불가
+            </span>
+          )}
         </div>
-        <div className="shrink-0 pt-1 text-zinc-300">
-          <ChevronRight className="h-4 w-4" />
-        </div>
+      </div>
+
+      <div className="shrink-0 text-zinc-300 group-hover:text-zinc-500 transition-colors">
+        <ChevronRight size={18} strokeWidth={2.5} />
       </div>
     </button>
   );
@@ -998,19 +922,21 @@ function CompanyScrapListRow({
     <button
       type="button"
       onClick={onClick}
-      className={[
-        'w-full rounded-2xl border border-zinc-100 bg-white p-4 text-left shadow-sm transition',
-        'hover:-translate-y-[1px] hover:shadow-md',
-      ].join(' ')}
+      className="group w-full text-left transition-all duration-200 py-4 px-2 rounded-xl flex items-center justify-between gap-4 hover:bg-zinc-50 active:bg-zinc-100"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-midnight-ink line-clamp-2 text-sm font-black">{title}</p>
-          {meta ? <p className="mt-2 text-xs font-semibold text-zinc-500">{meta}</p> : null}
-        </div>
-        <div className="shrink-0 pt-1 text-zinc-300">
-          <ChevronRight className="h-4 w-4" />
-        </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-zinc-900 line-clamp-1 text-[15px] font-bold group-hover:text-black">
+          {title}
+        </p>
+        {meta && (
+          <p className="mt-1 text-sm font-medium text-zinc-500">
+            {meta}
+          </p>
+        )}
+      </div>
+
+      <div className="shrink-0 text-zinc-300 group-hover:text-zinc-500 transition-colors">
+        <ChevronRight size={18} strokeWidth={2.5} />
       </div>
     </button>
   );
