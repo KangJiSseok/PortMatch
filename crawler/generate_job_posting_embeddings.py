@@ -135,6 +135,10 @@ def process_job_postings():
             
             try:
                 # tech, architecture_experience, keywords는 JSON 문자열일 수 있음
+                tech_list = []
+                arch_list = []
+                kw_list = []
+
                 if isinstance(tech, str):
                     try:
                         tech_list = json.loads(tech)
@@ -142,6 +146,7 @@ def process_job_postings():
                     except:
                         tech_str = tech
                 elif isinstance(tech, list):
+                    tech_list = tech
                     tech_str = ", ".join(tech)
                 else:
                     tech_str = "정보 없음"
@@ -153,6 +158,7 @@ def process_job_postings():
                     except:
                         arch_str = architecture_experience
                 elif isinstance(architecture_experience, list):
+                    arch_list = architecture_experience
                     arch_str = "; ".join(architecture_experience)
                 else:
                     arch_str = "정보 없음"
@@ -164,6 +170,7 @@ def process_job_postings():
                     except:
                         kw_str = keywords
                 elif isinstance(keywords, list):
+                    kw_list = keywords
                     kw_str = ", ".join(keywords)
                 else:
                     kw_str = "정보 없음"
@@ -188,9 +195,9 @@ def process_job_postings():
                 # missing 플래그
                 problem_missing = not problem or problem.strip() == ""
                 solution_missing = not solution or solution.strip() == ""
-                tech_missing = tech_str == "정보 없음"
-                arch_missing = arch_str == "정보 없음"
-                keywords_missing = kw_str == "정보 없음"
+                tech_missing = len(tech_list) == 0
+                arch_missing = len(arch_list) == 0
+                keywords_missing = len(kw_list) == 0
                 
                 # DB에 저장 (upsert)
                 cur.execute("""
@@ -200,12 +207,12 @@ def process_job_postings():
                          name_embedding, domain_embedding, problem_embedding, 
                          solution_embedding, tech_embedding, architecture_embedding, 
                          keywords_embedding, problem_missing, solution_missing, 
-                         tech_missing, created_at, updated_at)
+                         tech_missing, architecture_missing, created_at, updated_at)
                     VALUES 
                         (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                          %s::vector, %s::vector, %s::vector, %s::vector, 
                          %s::vector, %s::vector, %s::vector,
-                         %s, %s, %s, NOW(), NOW())
+                         %s, %s, %s, %s, NOW(), NOW())
                     ON CONFLICT (job_posting_id) 
                     DO UPDATE SET
                         name = EXCLUDED.name,
@@ -227,12 +234,13 @@ def process_job_postings():
                         problem_missing = EXCLUDED.problem_missing,
                         solution_missing = EXCLUDED.solution_missing,
                         tech_missing = EXCLUDED.tech_missing,
+                        architecture_missing = EXCLUDED.architecture_missing,
                         updated_at = NOW()
                 """, (
                     job_posting_id, name, domain, problem, solution, 
-                    json.dumps(tech_list if isinstance(tech, (str, list)) else [], ensure_ascii=False),
-                    json.dumps(arch_list if isinstance(architecture_experience, (str, list)) else [], ensure_ascii=False),
-                    json.dumps(kw_list if isinstance(keywords, (str, list)) else [], ensure_ascii=False),
+                    json.dumps(tech_list, ensure_ascii=False),
+                    json.dumps(arch_list, ensure_ascii=False),
+                    json.dumps(kw_list, ensure_ascii=False),
                     content, content_hash,
                     to_vector_string(vectors[0]),  # name
                     to_vector_string(vectors[1]),  # domain
@@ -241,7 +249,7 @@ def process_job_postings():
                     to_vector_string(vectors[4]),  # tech
                     to_vector_string(vectors[5]),  # architecture
                     to_vector_string(vectors[6]),  # keywords
-                    problem_missing, solution_missing, tech_missing
+                    problem_missing, solution_missing, tech_missing, arch_missing
                 ))
                 
                 success_count += 1

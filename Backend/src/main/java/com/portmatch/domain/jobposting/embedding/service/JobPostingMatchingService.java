@@ -41,6 +41,9 @@ public class JobPostingMatchingService {
     private static final double TECH_WEIGHT = 0.15;
     private static final double PROBLEM_WEIGHT = 0.25;
     private static final double ARCHITECTURE_WEIGHT = 0.35;
+    private static final double ARCHITECTURE_MISSING_PENALTY = 0.2;
+    private static final double TECH_MISSING_PENALTY = 0.2;
+    private static final double PROBLEM_MISSING_PENALTY = 0.2;
 
     public JobPostingMatchingService(
             PortfolioRepository portfolioRepository,
@@ -76,6 +79,9 @@ public class JobPostingMatchingService {
                 TECH_WEIGHT,
                 PROBLEM_WEIGHT,
                 ARCHITECTURE_WEIGHT,
+                TECH_MISSING_PENALTY,
+                PROBLEM_MISSING_PENALTY,
+                ARCHITECTURE_MISSING_PENALTY,
                 candidateLimit
         );
 
@@ -96,6 +102,9 @@ public class JobPostingMatchingService {
                 TECH_WEIGHT,
                 PROBLEM_WEIGHT,
                 ARCHITECTURE_WEIGHT,
+                TECH_MISSING_PENALTY,
+                PROBLEM_MISSING_PENALTY,
+                ARCHITECTURE_MISSING_PENALTY,
                 limit
         );
 

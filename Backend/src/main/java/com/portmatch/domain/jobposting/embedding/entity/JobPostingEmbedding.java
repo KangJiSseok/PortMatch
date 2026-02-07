@@ -96,6 +96,9 @@ public class JobPostingEmbedding {
     @Column(name = "tech_missing", nullable = false)
     private boolean techMissing = false;
 
+    @Column(name = "architecture_missing", nullable = false)
+    private boolean architectureMissing = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -136,7 +139,8 @@ public class JobPostingEmbedding {
             String keywordsEmbedding,
             boolean problemMissing,
             boolean solutionMissing,
-            boolean techMissing
+            boolean techMissing,
+            boolean architectureMissing
     ) {
         this.nameEmbedding = nameEmbedding;
         this.domainEmbedding = domainEmbedding;
@@ -148,6 +152,7 @@ public class JobPostingEmbedding {
         this.problemMissing = problemMissing;
         this.solutionMissing = solutionMissing;
         this.techMissing = techMissing;
+        this.architectureMissing = architectureMissing;
     }
 
     @PrePersist

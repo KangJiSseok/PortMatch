@@ -108,7 +108,8 @@ public class JobPostingEmbeddingService {
                 keywordsVector,
                 resp.problemMissing(),
                 resp.solutionMissing(),
-                resp.techMissing()
+                resp.techMissing(),
+                resp.architectureMissing()
         );
     }
 
