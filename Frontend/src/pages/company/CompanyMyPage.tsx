@@ -75,6 +75,7 @@ type InterviewEvent = {
   position?: string;
   jobPostId?: number;
   applicationId?: number;
+  status?: string;
 };
 
 interface JobPostApiItem {
@@ -153,6 +154,20 @@ function formatScheduleHint(startIso: string) {
   if (dayDiff > 0) return `D-${dayDiff}`;
 
   return null;
+}
+
+function toInterviewListStatus(apiStatus?: string) {
+  const normalized = (apiStatus ?? '').toString().trim().toUpperCase();
+  if (!normalized) return 'UPCOMING';
+  if (
+    normalized.includes('DONE') ||
+    normalized.includes('COMPLETED') ||
+    normalized.includes('FINISHED') ||
+    normalized.includes('CANCEL')
+  ) {
+    return 'DONE';
+  }
+  return 'UPCOMING';
 }
 
 function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): QueryState<T> {
@@ -263,6 +278,7 @@ async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
     position: row.position,
     jobPostId: row.jobPostId,
     applicationId: row.applicationId,
+    status: row.status,
   }));
 }
 
@@ -343,11 +359,10 @@ export default function CompanyMyPage() {
 
   const interviewPreviewItems = useMemo(() => {
     const now = new Date();
-    const nowMs = now.getTime();
     const today = toYmd(now);
 
     const base = (interviewQuery.data ?? [])
-      .filter((e) => new Date(e.scheduledAt).getTime() >= nowMs)
+      .filter((e) => toInterviewListStatus(e.status) === 'UPCOMING')
       .sort((a, b) => (a.scheduledAt < b.scheduledAt ? -1 : 1));
 
     const filtered =
@@ -602,12 +617,21 @@ export default function CompanyMyPage() {
                   items={selectedEvents}
                   emptyText="이 날짜에는 면접 일정이 없어요."
                   renderItem={(e) => {
+                    const isDone = toInterviewListStatus(e.status) === 'DONE';
                     const hint = formatScheduleHint(e.scheduledAt);
                     return (
                       <div key={e.id} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
                         <p className="text-midnight-ink text-sm font-black">
                           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-black text-zinc-700">
                             {e.title}
+                          </span>
+                          <span
+                            className={[
+                              'ml-2 rounded-full px-2 py-0.5 text-[10px] font-black',
+                              isDone ? 'bg-zinc-100 text-zinc-500' : 'bg-emerald-50 text-emerald-600',
+                            ].join(' ')}
+                          >
+                            {isDone ? '종료' : '예정'}
                           </span>
                           <span className="ml-2">{e.candidateName}</span>
                         </p>
@@ -634,28 +658,6 @@ export default function CompanyMyPage() {
                             onClick={() => navigate(ROUTES.resumeView(e.applicantId))}
                           >
                             이력서 보기
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="dark"
-                            size="sm"
-                            onClick={() => {
-                              if (!e.jobPostId || !e.applicationId) {
-                                alert('지원서 정보가 없어 일정 수정이 불가합니다.');
-                                return;
-                              }
-                              navigate(ROUTES.interviewSchedule(e.jobPostId, e.applicationId), {
-                                state: {
-                                  scheduleId: e.id,
-                                  applicantName: e.candidateName,
-                                  postingTitle: e.position ?? '',
-                                  companyName: displayCompanyName,
-                                  scheduledAt: e.scheduledAt,
-                                },
-                              });
-                            }}
-                          >
-                            일정 수정
                           </Button>
                         </div>
                       </div>

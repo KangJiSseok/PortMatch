@@ -1,6 +1,6 @@
 ﻿// src/pages/interview/InterviewPage.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { MediaConnection } from 'peerjs';
 import { Camera, CameraOff, Mic, MicOff, PhoneOff, User, Loader2, FileText } from 'lucide-react';
 
@@ -14,6 +14,7 @@ import {
   fetchInterviewQuestionMemo,
   updateInterviewQuestionMemo,
 } from '../../api/interview/InterviewTemplates';
+import { updateInterviewSchedule } from '../../api/interview/update';
 import {
   fetchInterviewPartnerPeer,
   registerInterviewPeer,
@@ -60,6 +61,7 @@ function toHumanError(err: unknown): string {
 export default function InterviewPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams();
   const navState = (location.state ?? {}) as RoomNavState;
 
   // Role 가져오기
@@ -67,6 +69,7 @@ export default function InterviewPage() {
   const isCorporate = user?.role === 'COMPANY';
   const roomId = navState.sessionId?.trim() ?? '';
   const myRole: InterviewRoomRole = isCorporate ? 'INTERVIEWER' : 'APPLICANT';
+  const scheduleId = Number(id);
 
   // -- State --
   const [status, setStatus] = useState<ConnectStatus>('idle');
@@ -96,6 +99,9 @@ export default function InterviewPage() {
   const [toast, setToast] = useState<string>('');
   const toastTimerRef = useRef<number | null>(null);
   const pollTimerRef = useRef<number | null>(null);
+  const [showEndModal, setShowEndModal] = useState(false);
+  const [endLoading, setEndLoading] = useState(false);
+  const [endError, setEndError] = useState('');
 
   // --- Templates & Memos State ---
   const [templates, setTemplates] = useState<InterviewTemplateSummary[]>([]);
@@ -186,6 +192,25 @@ export default function InterviewPage() {
     cleanupSession();
     navigate(-1);
   }, [cleanupSession, navigate]);
+
+  const handleEndInterview = useCallback(async () => {
+    if (!isCorporate) return;
+    if (!Number.isFinite(scheduleId)) {
+      setEndError('면접 일정 ID를 확인할 수 없습니다.');
+      return;
+    }
+    setEndLoading(true);
+    setEndError('');
+    try {
+      await updateInterviewSchedule(scheduleId, { status: 'COMPLETED' });
+      cleanupSession();
+      navigate('/interviews');
+    } catch (err) {
+      setEndError(err instanceof Error ? err.message : '면접 종료에 실패했습니다.');
+    } finally {
+      setEndLoading(false);
+    }
+  }, [cleanupSession, isCorporate, navigate, scheduleId]);
 
   useEffect(() => {
     attachStreamToVideo(localVideoRef.current, localStream, true);
@@ -533,15 +558,15 @@ export default function InterviewPage() {
   const showRightSide = isCorporate;
 
   return (
-    <div className="relative min-h-screen min-w-[1400px] bg-[#FCFCFC]">
+    <div className="relative min-h-screen w-full bg-[#FCFCFC]">
       <div className="pointer-events-none absolute inset-0 z-0 bg-[#FCFCFC]" />
       <div
-        className={`relative z-10 flex h-screen w-[1400px] items-center justify-center overflow-hidden px-4 pt-4 pb-4 ${
+        className={`relative z-10 flex h-screen w-full items-center justify-center overflow-hidden px-4 pt-4 pb-4 ${
           showRightSide ? 'gap-4' : ''
         }`}
       >
         {/* --- LEFT SIDE: Main Interview Area --- */}
-      <section className="bg-midnight-ink relative flex h-full min-w-[900px] flex-1 flex-col items-center justify-center overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-black/5">
+      <section className="bg-midnight-ink relative flex h-full w-full flex-1 flex-col items-center justify-center overflow-hidden rounded-[2rem] shadow-2xl ring-1 ring-black/5">
         {/* Top Header (Overlay) */}
         <header className="absolute top-0 right-0 left-0 z-10 flex items-center justify-between px-8 py-6">
           <div className="flex items-center gap-3">
@@ -568,6 +593,15 @@ export default function InterviewPage() {
               {status}
             </span>
           </div>
+
+          {isCorporate && (
+            <button
+              onClick={() => setShowEndModal(true)}
+              className="text-error border-error/30 bg-white ring-error/20 flex h-10 items-center justify-center rounded-full px-4 text-xs font-bold shadow-sm ring-1 transition-all hover:bg-red-50"
+            >
+              면접 종료
+            </button>
+          )}
         </header>
 
         {/* Remote Video (Main) */}
@@ -686,7 +720,7 @@ export default function InterviewPage() {
 
       {/* --- RIGHT SIDE: Corporate Only --- */}
       {showRightSide && (
-        <aside className="bg-midnight-ink flex h-full w-[420px] flex-col gap-4 rounded-[2rem] p-6 shadow-2xl ring-1 ring-black/5">
+        <aside className="bg-midnight-ink hidden h-full w-[420px] flex-col gap-4 rounded-[2rem] p-6 shadow-2xl ring-1 ring-black/5 xl:flex">
           <section className="flex min-h-0 flex-[2] flex-col">
             <div className="mb-4 flex items-center gap-3">
               <div className="bg-slate-gray/30 flex h-10 w-10 items-center justify-center rounded-xl">
@@ -857,6 +891,38 @@ export default function InterviewPage() {
         </aside>
       )}
     </div>
+      {showEndModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl ring-1 ring-black/5">
+            <div className="bg-error/10 text-error mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full">
+              <PhoneOff className="h-6 w-6" />
+            </div>
+            <h3 className="text-midnight-ink text-xl font-black">면접을 종료할까요?</h3>
+            <p className="text-slate-gray mt-2 text-sm font-semibold">
+              종료하면 면접 상태가 완료로 변경됩니다.
+            </p>
+            {endError && <p className="text-error mt-3 text-xs font-bold">{endError}</p>}
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="flex-1 rounded-xl border border-zinc-200 px-4 py-2 text-sm font-bold text-zinc-600 hover:bg-zinc-50"
+                onClick={() => setShowEndModal(false)}
+                disabled={endLoading}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="bg-error flex-1 rounded-xl px-4 py-2 text-sm font-bold text-white shadow-lg shadow-red-500/20 hover:bg-red-600"
+                onClick={handleEndInterview}
+                disabled={endLoading}
+              >
+                {endLoading ? '종료 중...' : '면접 종료'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
