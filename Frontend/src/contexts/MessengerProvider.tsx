@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   collection,
   query,
@@ -13,37 +13,85 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthStore } from '../store/authStore';
 import { MessengerContext } from './MessengerContext';
 import type { Message, ChatRoom } from '../types/messenger';
 import SystemIcon from '../assets/images/system/alarm.png';
 
+interface ExtendedUser {
+  userId: number | string;
+  role: string;
+  cid?: number | string;
+  companyId?: number | string;
+  [key: string]: any;
+}
+
 export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
+  const safeUser = user as ExtendedUser | null;
+
   const [isOpen, setIsOpen] = useState(false);
-  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+
+  const [areRoomsLoading, setAreRoomsLoading] = useState<boolean>(!!user);
+  const [areMessagesLoading, setAreMessagesLoading] = useState<boolean>(false);
+
+  const [currentRoomId, _setCurrentRoomId] = useState<string | null>(null);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
 
-  const myIdentifier = useMemo(() => {
-    if (!user) return null;
-    return user.role === 'COMPANY' && user.cid
-      ? `COMPANY_${String(user.cid)}`
-      : String(user.userId);
-  }, [user]);
+  const unsubscribeRoomsRef = useRef<(() => void) | null>(null);
+  const unsubscribeMessagesRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    if (!user || !myIdentifier) {
-      const timer = setTimeout(() => setRooms([]), 0);
-      return () => clearTimeout(timer);
+  const setCurrentRoomId = useCallback((id: string | null) => {
+    if (id) {
+      setAreMessagesLoading(true);
+      setMessages([]);
+    }
+    _setCurrentRoomId(id);
+  }, []);
+
+  const myIdentifier = useMemo(() => {
+    if (!safeUser || !safeUser.userId) return null;
+
+    if (safeUser.role === 'COMPANY') {
+      if (safeUser.cid) {
+        return `COMPANY_${String(safeUser.cid)}`;
+      }
+      if (safeUser.companyId) {
+        return `COMPANY_${String(safeUser.companyId)}`;
+      }
+      return String(safeUser.userId);
     }
 
-    const currentUserId = String(user.userId);
-    const identifiers: string[] = [currentUserId];
+    return String(safeUser.userId);
+  }, [safeUser]);
 
-    if (user.role === 'COMPANY' && user.cid) {
-      const companyId = `COMPANY_${String(user.cid)}`;
-      identifiers.push(companyId);
+  useEffect(() => {
+    if (unsubscribeRoomsRef.current) {
+      unsubscribeRoomsRef.current();
+      unsubscribeRoomsRef.current = null;
+    }
+
+    if (safeUser && !myIdentifier) {
+      setAreRoomsLoading(false);
+      return;
+    }
+
+    if (!myIdentifier) {
+      setRooms([]);
+      setAreRoomsLoading(false);
+      return;
+    }
+
+    setAreRoomsLoading(true);
+
+    const identifiers: (string | number)[] = [myIdentifier];
+
+    if (safeUser?.userId) {
+      const uidStr = String(safeUser.userId);
+      const uidNum = Number(safeUser.userId);
+      if (!identifiers.includes(uidStr)) identifiers.push(uidStr);
+      if (!identifiers.includes(uidNum)) identifiers.push(uidNum);
     }
 
     const q = query(
@@ -57,45 +105,77 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         ...doc.data(),
       })) as ChatRoom[];
 
-      const userRole = user.role?.toUpperCase();
+      const userRole = safeUser?.role?.toUpperCase();
       const filteredRooms =
-        userRole === 'APPLICANT' ? roomData.filter((r) => r.senderType !== 'system') : roomData;
+        userRole === 'APPLICANT'
+          ? roomData.filter((r) => r.senderType !== 'system' || r.lastMessage)
+          : roomData;
 
-      setRooms(
-        filteredRooms.sort((a, b) => b.lastUpdatedAt.toMillis() - a.lastUpdatedAt.toMillis()),
-      );
+      const sortedRooms = filteredRooms.sort((a, b) => {
+        const tA = a.lastUpdatedAt?.toMillis() || 0;
+        const tB = b.lastUpdatedAt?.toMillis() || 0;
+        return tB - tA;
+      });
+
+      setRooms(sortedRooms);
+      setAreRoomsLoading(false);
+    }, (error) => {
+      console.error("[Messenger] Rooms fetch error:", error);
+      setAreRoomsLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [user, myIdentifier]);
+    unsubscribeRoomsRef.current = unsubscribe;
+
+    return () => {
+      if (unsubscribeRoomsRef.current) unsubscribeRoomsRef.current();
+    };
+  }, [myIdentifier, safeUser]);
 
   useEffect(() => {
-    if (!currentRoomId) {
-      const timer = setTimeout(() => setMessages([]), 0);
-      return () => clearTimeout(timer);
+    if (unsubscribeMessagesRef.current) {
+      unsubscribeMessagesRef.current();
+      unsubscribeMessagesRef.current = null;
     }
+
+    if (!currentRoomId) {
+      setMessages([]);
+      setAreMessagesLoading(false);
+      return;
+    }
+
+    setAreMessagesLoading(true);
+
     const q = query(collection(db, `rooms/${currentRoomId}/messages`), orderBy('createdAt', 'asc'));
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Message[];
+
       setMessages(data);
+      setAreMessagesLoading(false);
+    }, (error) => {
+      console.error("[Messenger] Messages fetch error:", error);
+      setAreMessagesLoading(false);
     });
-    return () => unsubscribe();
+
+    unsubscribeMessagesRef.current = unsubscribe;
+
+    return () => {
+      if (unsubscribeMessagesRef.current) unsubscribeMessagesRef.current();
+    };
   }, [currentRoomId]);
 
   useEffect(() => {
     const markAsRead = async () => {
-      if (!currentRoomId || !isOpen || !myIdentifier) return;
+      if (!currentRoomId || !isOpen || !myIdentifier || rooms.length === 0) return;
       const currentRoom = rooms.find((r) => r.id === currentRoomId);
       if (currentRoom && currentRoom.lastSenderId !== myIdentifier && currentRoom.unreadCount > 0) {
         try {
           const roomRef = doc(db, 'rooms', currentRoomId);
           await updateDoc(roomRef, { unreadCount: 0 });
-        } catch (error) {
-          console.error(error);
-        }
+        } catch (error) { console.error(error); }
       }
     };
     markAsRead();
@@ -103,154 +183,120 @@ export const MessengerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const toggleMessenger = useCallback(() => setIsOpen((prev) => !prev), []);
 
-  const startNewChat = useCallback(
-    async (targetUserId: string, targetName: string, targetProfileImg?: string) => {
-      if (!user || !myIdentifier) return null;
-
-      try {
-        const existingRoom = rooms.find(
-          (r) => r.participants.includes(targetUserId) && r.participants.includes(myIdentifier),
-        );
-
-        if (existingRoom) {
-          setCurrentRoomId(existingRoom.id);
-          setIsOpen(true);
-          return existingRoom.id;
-        }
-
-        const isCompany = user.role === 'COMPANY';
-
-        const newRoomData = {
-          participants: [myIdentifier, targetUserId],
-          companyName: isCompany ? user.name || '기업' : targetName,
-          applicantName: isCompany ? targetName : user.name || '지원자',
-          lastMessage: '대화를 시작해보세요!',
-          lastUpdatedAt: Timestamp.now(),
-          lastSenderId: 'SYSTEM',
-          unreadCount: 0,
-          senderType: 'general',
-          logoUrl: targetProfileImg || '',
-        };
-
-        const docRef = await addDoc(collection(db, 'rooms'), newRoomData);
-
-        setCurrentRoomId(docRef.id);
+  const startNewChat = useCallback(async (targetUserId: string, targetName: string, targetProfileImg?: string) => {
+    if (!safeUser || !myIdentifier) return null;
+    try {
+      const existingRoom = rooms.find(
+        (r) => r.participants.includes(targetUserId) && r.participants.includes(myIdentifier),
+      );
+      if (existingRoom) {
+        setCurrentRoomId(existingRoom.id);
         setIsOpen(true);
-        return docRef.id;
-      } catch (error) {
-        console.error('Failed to start chat:', error);
-        return null;
+        return existingRoom.id;
       }
-    },
-    [user, myIdentifier, rooms],
-  );
+      const isCompany = safeUser.role === 'COMPANY';
+      const newRoomData = {
+        participants: [myIdentifier, targetUserId],
+        companyName: isCompany ? safeUser.name || '기업' : targetName,
+        applicantName: isCompany ? targetName : safeUser.name || '지원자',
+        lastMessage: '대화를 시작해보세요!',
+        lastUpdatedAt: Timestamp.now(),
+        lastSenderId: 'SYSTEM',
+        unreadCount: 0,
+        senderType: 'general',
+        logoUrl: targetProfileImg || '',
+      };
+      const docRef = await addDoc(collection(db, 'rooms'), newRoomData);
+      setCurrentRoomId(docRef.id);
+      setIsOpen(true);
+      return docRef.id;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  }, [safeUser, myIdentifier, rooms]);
 
-  const sendMessage = useCallback(
-    async (
-      text: string,
-      type: 'text' | 'interview' | 'system' = 'text',
-      targetRoomId?: string,
-      additionalData?: { jobPostingId?: number; jobPostingTitle?: string },
-    ) => {
-      const roomIdToSend = targetRoomId || currentRoomId;
-      if (!roomIdToSend || !text.trim()) return;
-
-      try {
-        const isSystem = type === 'system';
-        const senderId = isSystem ? 'SYSTEM' : myIdentifier || 'UNKNOWN';
-        const senderName = isSystem ? 'Giterra 알리미' : user?.name || 'Unknown';
-
-        await addDoc(collection(db, `rooms/${roomIdToSend}/messages`), {
-          text,
-          senderId,
-          senderName,
-          createdAt: Timestamp.now(),
-          type,
-          ...additionalData,
-        });
-
-        await updateDoc(doc(db, 'rooms', roomIdToSend), {
-          lastMessage: text,
-          lastUpdatedAt: Timestamp.now(),
-          lastSenderId: senderId,
-          unreadCount: increment(1),
-        });
-      } catch (error) {
-        console.error(error);
+  const sendMessage = useCallback(async (text: string, type: 'text' | 'interview' | 'system' = 'text', targetRoomId?: string, additionalData?: any) => {
+    const roomIdToSend = targetRoomId || currentRoomId;
+    if (!roomIdToSend || !text.trim()) return;
+    try {
+      const isSystem = type === 'system';
+      const senderId = isSystem ? 'SYSTEM' : myIdentifier || 'UNKNOWN';
+      const senderName = isSystem ? 'PortMatch 알리미' : safeUser?.name || 'Unknown';
+      const payload: Record<string, any> = {
+        text, senderId, senderName, createdAt: Timestamp.now(), type,
+      };
+      if (additionalData) {
+        if (additionalData.jobPostingId !== undefined) payload.jobPostingId = additionalData.jobPostingId;
+        if (additionalData.jobPostingTitle !== undefined) payload.jobPostingTitle = additionalData.jobPostingTitle;
+        if (additionalData.interviewId !== undefined) payload.interviewId = additionalData.interviewId;
       }
-    },
-    [currentRoomId, user, myIdentifier],
-  );
+      await addDoc(collection(db, `rooms/${roomIdToSend}/messages`), payload);
+      await updateDoc(doc(db, 'rooms', roomIdToSend), {
+        lastMessage: text,
+        lastUpdatedAt: Timestamp.now(),
+        lastSenderId: senderId,
+        unreadCount: increment(1),
+      });
+    } catch (error) { console.error(error); }
+  }, [currentRoomId, safeUser, myIdentifier]);
 
-  const sendSystemNotification = useCallback(
-    async (targetCid: string | number, messageText: string, linkJobId?: number) => {
-      if (!targetCid) return;
-      try {
-        const strCid = String(targetCid).trim();
-        const companyIdentifier = `COMPANY_${strCid}`;
-        const roomId = `system_${companyIdentifier}`;
-        const roomRef = doc(db, 'rooms', roomId);
+  const sendSystemNotification = useCallback(async (targetId: string | number, messageText: string, linkJobId?: number, targetType: 'COMPANY' | 'USER' = 'COMPANY') => {
+    if (!targetId) return;
+    try {
+      const strId = String(targetId).trim();
+      const targetIdentifier = targetType === 'COMPANY' ? `COMPANY_${strId}` : strId;
+      const roomId = `system_${targetIdentifier}`;
+      const roomRef = doc(db, 'rooms', roomId);
+      await setDoc(roomRef, {
+        participants: [targetIdentifier, 'SYSTEM'],
+        companyName: 'PortMatch 알리미',
+        applicantName: '알림 센터',
+        lastMessage: messageText,
+        lastUpdatedAt: Timestamp.now(),
+        lastSenderId: 'SYSTEM',
+        unreadCount: increment(1),
+        senderType: 'system',
+        isReadOnly: true,
+        logoUrl: SystemIcon,
+      }, { merge: true });
+      const payload: any = {
+        text: messageText,
+        senderId: 'SYSTEM',
+        senderName: 'PortMatch 알리미',
+        createdAt: Timestamp.now(),
+        type: 'system',
+      };
+      if (linkJobId) payload.jobPostingId = linkJobId;
+      await addDoc(collection(db, `rooms/${roomId}/messages`), payload);
+    } catch (error) { console.error(error); }
+  }, []);
 
-        await setDoc(
-          roomRef,
-          {
-            participants: [companyIdentifier, 'SYSTEM'],
-            companyName: 'Giterra 알리미',
-            applicantName: '알림 센터',
-            lastMessage: messageText,
-            lastUpdatedAt: Timestamp.now(),
-            lastSenderId: 'SYSTEM',
-            unreadCount: increment(1),
-            senderType: 'system',
-            isReadOnly: true,
-            // ✅ [수정] 외부 링크 대신 로컬 이미지 변수 사용
-            logoUrl: SystemIcon,
-          },
-          { merge: true },
-        );
+  const acceptInterview = async (messageId: string) => {
+    if (!currentRoomId) return;
+    try { await updateDoc(doc(db, 'rooms', currentRoomId, 'messages', messageId), { isAccepted: true, isDeclined: false }); } catch (error) { console.error(error); }
+  };
 
-        await addDoc(collection(db, `rooms/${roomId}/messages`), {
-          text: messageText,
-          senderId: 'SYSTEM',
-          senderName: 'Giterra 알리미',
-          createdAt: Timestamp.now(),
-          type: 'system',
-          jobPostingId: linkJobId || null,
-        });
-      } catch (error) {
-        console.error('Failed to send system notification:', error);
+  const declineInterview = async (messageId: string) => {
+    if (!currentRoomId) return;
+    try { await updateDoc(doc(db, 'rooms', currentRoomId, 'messages', messageId), { isAccepted: false, isDeclined: true }); } catch (error) { console.error(error); }
+  };
+
+  const totalUnreadCount = useMemo(() =>
+    rooms.reduce((acc: number, r: ChatRoom) => {
+      if (myIdentifier && r.lastSenderId !== myIdentifier) {
+        return acc + (r.unreadCount || 0);
       }
-    },
-    [],
-  );
-
-  const totalUnreadCount = useMemo(
-    () =>
-      rooms.reduce((acc: number, r: ChatRoom) => {
-        if (myIdentifier && r.lastSenderId !== myIdentifier) {
-          return acc + (r.unreadCount || 0);
-        }
-        return acc;
-      }, 0),
-    [rooms, myIdentifier],
-  );
+      return acc;
+    }, 0), [rooms, myIdentifier]);
 
   return (
     <MessengerContext.Provider
       value={{
-        isOpen,
-        currentRoomId,
-        rooms,
-        messages,
-        setMessages,
-        totalUnreadCount,
-        toggleMessenger,
-        setCurrentRoomId,
-        sendMessage,
-        acceptInterview: async () => {},
-        declineInterview: async () => {},
-        startNewChat,
-        sendSystemNotification,
+        isOpen, currentRoomId, rooms, messages, setMessages, totalUnreadCount,
+        areRoomsLoading, areMessagesLoading,
+        toggleMessenger, setCurrentRoomId, sendMessage,
+        acceptInterview, declineInterview, startNewChat, sendSystemNotification,
       }}
     >
       {children}

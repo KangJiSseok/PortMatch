@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -14,7 +14,6 @@ import type { UserRole } from '../../types/auth';
 
 function LoginPage() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { mutate: loginMutate, isPending: isMutationLoading } = useLogin();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,9 +83,6 @@ function LoginPage() {
           rememberMe,
         },
         {
-          onSuccess: () => {
-            navigate('/main');
-          },
           onError: async (error: unknown) => {
             await firebaseAuth.signOut();
 

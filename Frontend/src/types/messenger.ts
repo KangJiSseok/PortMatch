@@ -38,6 +38,9 @@ export interface MessengerContextType {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   totalUnreadCount: number;
+  areRoomsLoading: boolean;
+  areMessagesLoading: boolean;
+
   toggleMessenger: () => void;
   setCurrentRoomId: (id: string | null) => void;
 
@@ -46,7 +49,7 @@ export interface MessengerContextType {
     type?: 'text' | 'interview' | 'system',
     targetRoomId?: string,
     additionalData?: {
-      interviewId?: string;
+      interviewId?: string | number;
       jobPostingId?: number;
       jobPostingTitle?: string;
     },
@@ -62,8 +65,9 @@ export interface MessengerContextType {
   ) => Promise<string | null>;
 
   sendSystemNotification: (
-    targetUserId: string,
+    targetUserId: string | number,
     messageText: string,
     linkJobId?: number,
+    targetType?: 'COMPANY' | 'USER',
   ) => Promise<void>;
 }

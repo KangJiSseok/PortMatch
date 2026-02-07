@@ -349,17 +349,17 @@ function IntroPage() {
                 {i === 2 && <Cpu size={40} className="mx-auto mb-6 text-purple-400" />}
                 {i === 3 && <Share2 size={40} className="mx-auto mb-6 text-emerald-400" />}
                 <h2 className="text-3xl font-bold text-white md:text-6xl">
-                  {i === 1 && '포트폴리오 속 잠재력을 데이터로'}
-                  {i === 2 && '조건을 넘어선 정밀 매칭'}
-                  {i === 3 && '양방향 채용의 새로운 기준'}
+                  {i === 1 && '포트폴리오 역량 추출'}
+                  {i === 2 && '프로젝트 기반 매칭'}
+                  {i === 3 && '양방향성 매칭 시스템'}
                 </h2>
                 <p className="mt-6 text-sm text-white/90 md:text-xl">
                   {i === 1 &&
-                    '포트폴리오 속 이미지와 텍스트를 분석하여\n단순 스펙이 아닌 실제 역량 프로필을 추출합니다.'}
+                    '이미지와 텍스트가 섞인 비정형 데이터를 벡터화하여\n포트폴리오의 잠재 역량을 추출합니다.'}
                   {i === 2 &&
-                    'AI 엔진이 도메인 관심사와 문제 해결 방식을 분석하여\n당신에게 최적화된 공고와 인재를 연결합니다.'}
+                    '단순 키워드 일치가 아닌, 프로젝트 수행 과정과\n문제 해결의 논리적 흐름을 분석해 매칭합니다.'}
                   {i === 3 &&
-                    '구직자에게는 맞춤형 큐레이션을,\n기업에게는 고도화된 인재 필터링을 제공합니다.'}
+                    '구직자의 역량과 기업의 니즈를 교차 검증하여\n한쪽이 아닌, 서로에게 가장 필요한 연결을 제공합니다.'}
                 </p>
               </div>
             </SectionWrapper>
@@ -379,7 +379,7 @@ function IntroPage() {
             <Panel
               type="COMPANY"
               title="Business"
-              desc="고도화된 필터링으로 팀에 가장 필요한 인재를 만나세요"
+              desc="고도화된 추천 기능으로 팀에 가장 필요한 인재를 만나세요"
               img={imgCompany}
               onClick={() => navigate('/login', { state: { userType: 'COMPANY' } })}
             />
