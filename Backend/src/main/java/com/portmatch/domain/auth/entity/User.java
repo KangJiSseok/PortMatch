@@ -1,11 +1,14 @@
 package com.portmatch.domain.auth.entity;
 
 import com.portmatch.domain.auth.enums.Role;
+import com.portmatch.domain.scrap.entity.CompanyScrapEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
@@ -52,4 +55,7 @@ public class User {
         this.email = email;
         this.role = role;
     }
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CompanyScrapEntity> companyScraps = new ArrayList<>();
 }

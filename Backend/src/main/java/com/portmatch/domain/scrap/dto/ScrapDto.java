@@ -24,8 +24,8 @@ public class ScrapDto {
     public static ScrapDto fromEntity(ScrapEntity scrap) {
         return ScrapDto.builder()
                 .id(scrap.getId())
-                .uid(scrap.getUid())
-                .pid(scrap.getPid())
+                .uid(scrap.getUser() != null ? scrap.getUser().getId() : null)
+                .pid(scrap.getJobPosting() != null ? scrap.getJobPosting().getId() : null)
                 .createdAt(scrap.getCreatedAt()) // 부모 클래스인 BaseTimeEntity의 필드
                 .build();
     }

@@ -1,16 +1,14 @@
 package com.portmatch.domain.scrap.entity;
 
+import com.portmatch.domain.auth.entity.User;
+import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(
-        name = "scraps",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"uid", "pid"}) // 중복 스크랩 방지
-        }
-)
+@Table(name = "scraps",
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "job_posting_id"})})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -21,9 +19,13 @@ public class ScrapEntity extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private Long uid;
+    // Long uid 대신 객체로!
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(nullable = false)
-    private Long pid; // Posting ID
+    // Long pid 대신 객체로!
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "job_posting_id", nullable = false)
+    private JobPostingEntity jobPosting;
 }

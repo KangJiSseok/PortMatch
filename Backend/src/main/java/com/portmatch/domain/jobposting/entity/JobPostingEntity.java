@@ -3,6 +3,7 @@ package com.portmatch.domain.jobposting.entity;
 import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.interviewschedule.entity.InterviewScheduleEntity;
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
+import com.portmatch.domain.scrap.entity.ScrapEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -65,4 +66,7 @@ public class JobPostingEntity {
         this.jobType = dto.getJobType();
         this.company = company;
     }
+
+    @OneToMany(mappedBy = "jobPosting", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ScrapEntity> scraps = new ArrayList<>();
 }
