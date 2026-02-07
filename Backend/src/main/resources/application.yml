@@ -89,14 +89,17 @@ management:
   metrics:
     tags:
       application: portmatch
-      environment: ${SPRING_PROFILES_ACTIVE:local}  # 추가 권장
+      environment: ${SPRING_PROFILES_ACTIVE:prod}  # 추가 권장
     enable:
       jvm: true
       process: true
       system: true
+      tomcat: true
       http.server.requests: true
       http.client.requests: true
       logback: true
+      hikaricp: true
+
     distribution:
       percentiles-histogram:
         http.client.requests: true
