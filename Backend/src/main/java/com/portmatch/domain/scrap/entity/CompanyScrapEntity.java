@@ -28,6 +28,6 @@ public class CompanyScrapEntity extends BaseTimeEntity {
     private User user; // User ID
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_cid", nullable = false)
+    @JoinColumn(name = "company_cid", referencedColumnName = "cid", nullable = false)
     private Company company; // Company ID (기업 ID)
 }

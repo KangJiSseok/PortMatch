@@ -1,11 +1,15 @@
 package com.portmatch.domain.companies.entity;
 
 import com.portmatch.domain.auth.entity.User;
+import com.portmatch.domain.scrap.entity.CompanyScrapEntity;
 import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -117,4 +121,7 @@ public class Company {
             this.cid = cid;
         }
     }
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CompanyScrapEntity> companyScraps = new ArrayList<>();
 }
