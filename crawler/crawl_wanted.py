@@ -96,7 +96,7 @@ def get_all_tech_stacks():
     params = {"tag_type_id": 518}
     
     try:
-        res = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        res = requests.get(url, headers=HEADERS, params=params, timeout=60)
         if res.status_code == 200:
             data = res.json()
             
@@ -149,7 +149,7 @@ def get_tech_stacks_from_jobs():
         
         try:
             print(f"  📊 {offset}~{offset+100} 공고 조회...", end=" ")
-            res = requests.get(url, headers=HEADERS, params=params, timeout=10)
+            res = requests.get(url, headers=HEADERS, params=params, timeout=60)
             
             if res.status_code == 200:
                 jobs = res.json().get('data', [])
@@ -187,7 +187,7 @@ def get_company_detail(company_id):
     """회사 상세 정보 가져오기"""
     url = f"https://www.wanted.co.kr/api/v4/companies/{company_id}"
     try:
-        res = requests.get(url, headers=HEADERS, timeout=5)
+        res = requests.get(url, headers=HEADERS, timeout=60)
         if res.status_code == 200:
             company = res.json().get('company', {})
             
@@ -226,7 +226,7 @@ def get_job_detail(job_id):
     """공고 상세 정보 가져오기"""
     url = f"https://www.wanted.co.kr/api/v4/jobs/{job_id}"
     try:
-        res = requests.get(url, headers=HEADERS, timeout=10)
+        res = requests.get(url, headers=HEADERS, timeout=60)
         if res.status_code == 200:
             job = res.json().get('job', {})
             company_data = job.get('company', {})
@@ -319,7 +319,7 @@ def main():
         print("=" * 60)
         
         list_url = f"https://www.wanted.co.kr/api/v4/jobs?tag_type_ids=518&country=kr&limit={CRAWL_LIMIT}&job_sort=job.latest_order"
-        response = requests.get(list_url, headers=HEADERS, timeout=10)
+        response = requests.get(list_url, headers=HEADERS, timeout=60)
         job_list_data = response.json().get('data', [])
         
         result["totalCount"] = len(job_list_data)
