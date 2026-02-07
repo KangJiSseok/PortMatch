@@ -13,7 +13,7 @@ type StackApiResponse = {
 
 type StackNameMap = Record<number, string>;
 
-const API_BASE_URL = 'http://i14d205.p.ssafy.io:8102';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 async function fetchStackName(stackId: number): Promise<{ id: number; name: string }> {
   const res = await fetch(`${API_BASE_URL}/api/stacks/${stackId}`, {
