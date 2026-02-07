@@ -36,7 +36,19 @@ build:
     - docker build -f Portfolio-Analysis/Dockerfile -t "$PORTFOLIO_IMAGE:$IMAGE_TAG" -t "$PORTFOLIO_IMAGE:latest" Portfolio-Analysis
     - docker push "$PORTFOLIO_IMAGE:$IMAGE_TAG"
     - docker push "$PORTFOLIO_IMAGE:latest"
-    - docker build -f Frontend/Dockerfile -t "$FRONTEND_IMAGE:$IMAGE_TAG" -t "$FRONTEND_IMAGE:latest" Frontend
+    - >
+      docker build -f Frontend/Dockerfile
+      --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL"
+      --build-arg VITE_SERVICE_NAME="$VITE_SERVICE_NAME"
+      --build-arg VITE_OPENVIDU_PUBLIC_URL="$VITE_OPENVIDU_PUBLIC_URL"
+      --build-arg VITE_FIREBASE_API_KEY="$VITE_FIREBASE_API_KEY"
+      --build-arg VITE_FIREBASE_AUTH_DOMAIN="$VITE_FIREBASE_AUTH_DOMAIN"
+      --build-arg VITE_FIREBASE_PROJECT_ID="$VITE_FIREBASE_PROJECT_ID"
+      --build-arg VITE_FIREBASE_STORAGE_BUCKET="$VITE_FIREBASE_STORAGE_BUCKET"
+      --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID="$VITE_FIREBASE_MESSAGING_SENDER_ID"
+      --build-arg VITE_FIREBASE_APP_ID="$VITE_FIREBASE_APP_ID"
+      --build-arg VITE_FIREBASE_MEASUREMENT_ID="$VITE_FIREBASE_MEASUREMENT_ID"
+      -t "$FRONTEND_IMAGE:$IMAGE_TAG" -t "$FRONTEND_IMAGE:latest" Frontend
     - docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
     - docker push "$FRONTEND_IMAGE:latest"
     - docker build -f Embedding/Dockerfile -t "$EMBEDDING_IMAGE:$IMAGE_TAG" -t "$EMBEDDING_IMAGE:latest" Embedding
