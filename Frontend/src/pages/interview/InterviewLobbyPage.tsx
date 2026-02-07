@@ -321,7 +321,6 @@ export default function InterviewLobbyPage() {
     const opId = ++micOpIdRef.current;
     const run = async () => {
       if (!alive.current) return;
-      console.log('[Lobby][Mic] toggle', { micOn });
       if (!micOn) {
         setMediaError('');
         const current = streamRef.current;
@@ -362,7 +361,7 @@ export default function InterviewLobbyPage() {
         }
         showToast('마이크 ON');
       } catch (e) {
-        setMediaError('???????? ??????????????.');
+        setMediaError('마이크 권한을 허용해주세요');
         setMicLevel(0);
         showToast('마이크 권한 요청 실패');
       }

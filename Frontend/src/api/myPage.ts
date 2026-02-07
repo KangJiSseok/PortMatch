@@ -311,8 +311,14 @@ function pickCompanyName(jobPosting: InterviewApiRow['jobPosting']): string | nu
   );
 }
 
-function toInterviewListStatus(apiStatus: ApiStatusLike, scheduledAt: string): InterviewListStatus {
+function normalizeInterviewStatus(apiStatus: ApiStatusLike): string | null {
   const normalized = (apiStatus ?? '').toString().trim().toUpperCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function toInterviewListStatus(apiStatus: ApiStatusLike): InterviewListStatus {
+  const normalized = normalizeInterviewStatus(apiStatus);
+  if (!normalized) return 'UPCOMING';
   if (
     normalized.includes('DONE') ||
     normalized.includes('COMPLETED') ||
@@ -321,10 +327,6 @@ function toInterviewListStatus(apiStatus: ApiStatusLike, scheduledAt: string): I
   ) {
     return 'DONE';
   }
-
-  const t = new Date(scheduledAt).getTime();
-  if (Number.isFinite(t) && t < Date.now()) return 'DONE';
-
   return 'UPCOMING';
 }
 
@@ -362,7 +364,7 @@ function toInterviewSessionViewFromApi(row: InterviewApiRow): InterviewSessionVi
     postingTitle,
     companyName,
     applicantName,
-    status: toInterviewListStatus(row.status, scheduledAt),
+    status: toInterviewListStatus(row.status),
   };
 }
 
@@ -623,10 +625,8 @@ export function buildAllInterviewViews(applicantId: number = CURRENT_APPLICANT_I
 }
 
 export function getMyUpcomingInterviewViews(limit = 2): InterviewSessionView[] {
-  const nowMs = Date.now();
   return buildAllInterviewViews()
     .filter((v) => v.status === 'UPCOMING')
-    .filter((v) => new Date(v.scheduledAt).getTime() >= nowMs)
     .slice(0, limit);
 }
 
@@ -726,10 +726,8 @@ export function fetchMyUpcomingInterviewViews(
 ): Promise<InterviewSessionView[]> {
   const run = async () => {
     const views = await fetchMyInterviewViews(options);
-    const nowMs = Date.now();
     return views
       .filter((v) => v.status === 'UPCOMING')
-      .filter((v) => new Date(v.scheduledAt).getTime() >= nowMs)
       .slice(0, limit);
   };
 

@@ -523,23 +523,23 @@ export default function MyPage() {
                     const JOIN_AFTER_HOURS = 2;
 
                     const isToday = toYmdFromIso(e.scheduledAt) === todayYmd;
+                    const isDone = e.status === 'DONE';
 
                     const joinable =
+                      !isDone &&
                       isToday &&
                       currentMs > 0 &&
                       currentMs >= startMs - JOIN_BEFORE_MIN * 60 * 1000 &&
                       currentMs <= startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
 
-                    const isPast =
-                      currentMs > 0 && currentMs > startMs + JOIN_AFTER_HOURS * 60 * 60 * 1000;
-
                     let btnText = '입장';
                     let helperText: string | null = null;
                     let disabled = false;
 
-                    if (isPast) {
+                    if (isDone) {
                       btnText = '종료';
                       disabled = true;
+                      helperText = '면접이 종료되었습니다.';
                     } else if (joinable) {
                       btnText = '입장';
                       helperText = '지금 입장 가능해요';
@@ -561,6 +561,14 @@ export default function MyPage() {
                           {/* 회사명 */}
                           <p className="text-sm font-bold text-zinc-600">
                             {e.companyName}
+                            <span
+                              className={[
+                                'ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black',
+                                isDone ? 'bg-zinc-100 text-zinc-500' : 'bg-emerald-50 text-emerald-600',
+                              ].join(' ')}
+                            >
+                              {isDone ? '종료' : '예정'}
+                            </span>
                           </p>
 
                           {/* 공고 제목 (2줄 말줄임) */}
