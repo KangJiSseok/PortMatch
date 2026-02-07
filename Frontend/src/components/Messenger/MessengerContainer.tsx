@@ -17,6 +17,7 @@ import {
   LogIn,
   AlertCircle,
   Check,
+  Loader2, // ✅ 로딩 아이콘 추가
 } from 'lucide-react';
 import { useMessenger } from '../../hooks/useMessenger';
 import { useAuth } from '../../hooks/useAuth';
@@ -38,12 +39,18 @@ interface ExtendedMessage extends Message {
   };
 }
 
+// ✅ Provider의 로딩 상태를 포함하도록 확장
 interface ExtendedMessengerContext {
   rooms: ChatRoom[];
   messages: Message[];
   currentRoomId: string | null;
   isOpen: boolean;
   totalUnreadCount: number;
+
+  // 👇 로딩 상태 (핵심)
+  areRoomsLoading: boolean;
+  areMessagesLoading: boolean;
+
   setCurrentRoomId: (id: string | null) => void;
   toggleMessenger: () => void;
   sendMessage: (
@@ -115,6 +122,15 @@ interface InterviewResponse {
 // ==========================================
 // 2. 공용 컴포넌트
 // ==========================================
+
+// ✅ [추가] 로딩 스피너 컴포넌트
+const LoadingSpinner = ({ text = "불러오는 중..." }: { text?: string }) => (
+  <div className="flex h-full w-full flex-col items-center justify-center p-10">
+    <Loader2 className="text-point-blue h-8 w-8 animate-spin" />
+    <p className="text-silver-mist mt-3 text-xs font-bold">{text}</p>
+  </div>
+);
+
 const ConfirmModal = ({ config, onClose }: { config: ModalConfig; onClose: () => void }) => {
   if (!config.isOpen) return null;
 
@@ -234,21 +250,21 @@ const CompanyLogo = ({ room }: { room: ChatRoom }) => {
 // 3. 채팅 목록 컴포넌트
 // ==========================================
 const ChatList = () => {
-  const { rooms, setCurrentRoomId, currentRoomId } =
+  // ✅ areRoomsLoading 추가
+  const { rooms, setCurrentRoomId, currentRoomId, areRoomsLoading } =
     useMessenger() as unknown as ExtendedMessengerContext;
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  const isLoggedIn = !!user;
-  const isEmpty = !rooms || rooms.length === 0;
-  const isCompany = user?.role === 'COMPANY';
 
   const handleNavigation = (path: string) => {
     navigate(path);
   };
 
+  const isCompany = user?.role === 'COMPANY';
+
   const renderContent = () => {
-    if (!isLoggedIn) {
+    // 1. 비로그인 처리
+    if (!user) {
       return (
         <div className="flex h-full flex-col items-center justify-center px-8 pb-10 text-center">
           <div className="bg-soft-pebble/30 mb-6 flex h-24 w-24 items-center justify-center rounded-full">
@@ -272,6 +288,13 @@ const ChatList = () => {
       );
     }
 
+    // 2. ✅ 로딩 중 처리 (빈 화면보다 먼저 체크!)
+    if (areRoomsLoading) {
+      return <LoadingSpinner text="대화방 불러오는 중..." />;
+    }
+
+    // 3. 빈 데이터 처리
+    const isEmpty = !rooms || rooms.length === 0;
     if (isEmpty) {
       return (
         <div className="flex h-full flex-col items-center justify-center px-8 pb-10 text-center">
@@ -326,6 +349,7 @@ const ChatList = () => {
       );
     }
 
+    // 4. 목록 렌더링
     return (
       <div className="divide-soft-pebble divide-y">
         {rooms.map((room: ChatRoom) => {
@@ -337,9 +361,8 @@ const ChatList = () => {
             <div
               key={room.id}
               onClick={() => setCurrentRoomId(room.id)}
-              className={`flex cursor-pointer items-start gap-4 p-5 transition-all active:scale-[0.98] ${
-                isCurrentRoom ? 'bg-soft-pebble/20' : 'hover:bg-soft-pebble/10'
-              }`}
+              className={`flex cursor-pointer items-start gap-4 p-5 transition-all active:scale-[0.98] ${isCurrentRoom ? 'bg-soft-pebble/20' : 'hover:bg-soft-pebble/10'
+                }`}
             >
               <CompanyLogo room={room} />
               <div className="flex min-w-0 flex-1 flex-col">
@@ -396,6 +419,7 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     acceptInterview,
     declineInterview,
     sendSystemNotification,
+    areMessagesLoading, // ✅ 메시지 로딩 상태
   } = useMessenger() as unknown as ExtendedMessengerContext;
   const { user } = useAuth();
   const [input, setInput] = useState('');
@@ -522,7 +546,11 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     }
   }, [pendingJobInfo, onConsumeJobInfo]);
 
-  if (!room) return null;
+  // ✅ [수정] 방이 없거나 로딩 중일 때 처리
+  if (!room) {
+    // 방 로딩이 덜 된 상태라면 아무것도 렌더링하지 않음 (ChatList로 돌아가거나 로딩 대기)
+    return null;
+  }
 
   const opponentName = isCompany ? room.applicantName : room.companyName;
 
@@ -850,125 +878,129 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
       </div>
 
       <div className="bg-pure-white flex-1 space-y-6 overflow-y-auto p-5 pb-18">
-        {messages.map((msg: Message) => {
-          const isMe = msg.senderId === myIdentifier;
-          const isInterview = msg.type === 'interview';
-          const isProcessed = processedIds.has(msg.id) || msg.isAccepted || msg.isDeclined;
 
-          // ✅ 시스템 메시지(알림) 스타일링
-          if (msg.senderId === 'system' || msg.type === 'system') {
-            return (
-              <div key={msg.id} className="my-4 flex justify-center">
-                <div className="max-w-[80%] rounded-full border border-gray-200 bg-gray-100 px-4 py-2 text-center text-xs font-bold whitespace-pre-wrap text-slate-500 shadow-sm">
-                  {msg.text}
-                </div>
-              </div>
-            );
-          }
+        {/* ✅ [수정] 메시지 로딩 스피너 (메시지가 없는데 로딩중일때만) */}
+        {areMessagesLoading && messages.length === 0 ? (
+          <LoadingSpinner text="메시지 불러오는 중..." />
+        ) : (
+          <>
+            {messages.map((msg: Message) => {
+              const isMe = msg.senderId === myIdentifier;
+              const isInterview = msg.type === 'interview';
+              const isProcessed = processedIds.has(msg.id) || msg.isAccepted || msg.isDeclined;
 
-          return (
-            <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-              <div className="group relative max-w-[85%]">
-                <div
-                  className={`rounded-2xl border p-4 shadow-sm transition-all ${
-                    msg.isAccepted
-                      ? 'border-point-blue/30 bg-point-blue/5'
-                      : msg.isDeclined
-                        ? 'border-gray-200 bg-gray-50 opacity-80'
-                        : isInterview
-                          ? 'bg-point-blue/5 border-point-blue/30 text-midnight-ink'
-                          : isMe
-                            ? 'bg-point-blue border-point-blue text-pure-white'
-                            : 'bg-pure-white border-soft-pebble text-midnight-ink'
-                  }`}
-                >
-                  {isInterview && (
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar
-                          size={12}
-                          className={msg.isDeclined ? 'text-slate-gray' : 'text-point-blue'}
-                        />
-                        <span
-                          className={`text-[10px] font-black uppercase ${
-                            msg.isDeclined ? 'text-slate-gray' : 'text-point-blue'
+              // ✅ 시스템 메시지(알림) 스타일링
+              if (msg.senderId === 'system' || msg.type === 'system') {
+                return (
+                  <div key={msg.id} className="my-4 flex justify-center">
+                    <div className="max-w-[80%] rounded-full border border-gray-200 bg-gray-100 px-4 py-2 text-center text-xs font-bold whitespace-pre-wrap text-slate-500 shadow-sm">
+                      {msg.text}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div className="group relative max-w-[85%]">
+                    <div
+                      className={`rounded-2xl border p-4 shadow-sm transition-all ${msg.isAccepted
+                          ? 'border-point-blue/30 bg-point-blue/5'
+                          : msg.isDeclined
+                            ? 'border-gray-200 bg-gray-50 opacity-80'
+                            : isInterview
+                              ? 'bg-point-blue/5 border-point-blue/30 text-midnight-ink'
+                              : isMe
+                                ? 'bg-point-blue border-point-blue text-pure-white'
+                                : 'bg-pure-white border-soft-pebble text-midnight-ink'
+                        }`}
+                    >
+                      {isInterview && (
+                        <div className="mb-2 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar
+                              size={12}
+                              className={msg.isDeclined ? 'text-slate-gray' : 'text-point-blue'}
+                            />
+                            <span
+                              className={`text-[10px] font-black uppercase ${msg.isDeclined ? 'text-slate-gray' : 'text-point-blue'
+                                }`}
+                            >
+                              {msg.isAccepted
+                                ? 'Accepted'
+                                : msg.isDeclined
+                                  ? 'Declined'
+                                  : 'Interview Request'}
+                            </span>
+                          </div>
+                          {msg.isAccepted && <CheckCircle2 size={14} className="text-point-blue" />}
+                          {msg.isDeclined && <XCircle size={14} className="text-slate-gray" />}
+                        </div>
+                      )}
+
+                      <div
+                        className={`mb-2 flex items-start justify-between border-b pb-2 ${isMe && !isInterview ? 'border-pure-white/20' : 'border-midnight-ink/10'
                           }`}
-                        >
-                          {msg.isAccepted
-                            ? 'Accepted'
-                            : msg.isDeclined
-                              ? 'Declined'
-                              : 'Interview Request'}
+                      >
+                        <span className="text-[9px] font-black tracking-widest uppercase opacity-70">
+                          {isMe ? 'Sent' : 'Received'}
+                        </span>
+                        <span className="text-[9px] font-bold opacity-70">
+                          {msg.createdAt
+                            ?.toDate()
+                            .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      {msg.isAccepted && <CheckCircle2 size={14} className="text-point-blue" />}
-                      {msg.isDeclined && <XCircle size={14} className="text-slate-gray" />}
-                    </div>
-                  )}
 
-                  <div
-                    className={`mb-2 flex items-start justify-between border-b pb-2 ${
-                      isMe && !isInterview ? 'border-pure-white/20' : 'border-midnight-ink/10'
-                    }`}
-                  >
-                    <span className="text-[9px] font-black tracking-widest uppercase opacity-70">
-                      {isMe ? 'Sent' : 'Received'}
-                    </span>
-                    <span className="text-[9px] font-bold opacity-70">
-                      {msg.createdAt
-                        ?.toDate()
-                        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                      <p
+                        className={`text-xs leading-relaxed font-medium whitespace-pre-wrap ${isInterview ? 'font-bold' : ''}`}
+                      >
+                        {msg.text}
+                      </p>
+
+                      {isInterview && msg.jobPostingId && !isCompany && (
+                        <div
+                          className={`mt-3 border-t pt-3 ${isMe ? 'border-pure-white/20' : 'border-black/5'}`}
+                        >
+                          <button
+                            onClick={() => navigate(`/job-posts/${msg.jobPostingId}`)}
+                            className={`flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold transition-colors ${isMe
+                                ? 'bg-white/20 text-white hover:bg-white/30'
+                                : 'bg-white/50 text-slate-700 hover:bg-white hover:text-blue-600'
+                              }`}
+                          >
+                            <FileText size={12} />
+                            공고 상세 보기
+                          </button>
+                        </div>
+                      )}
+
+                      {isInterview && !isMe && !isProcessed && (
+                        <div className="mt-4 flex gap-2">
+                          <button
+                            onClick={() => handleAcceptClick(msg)}
+                            disabled={isProcessing}
+                            className="bg-point-blue text-pure-white flex-1 rounded-lg py-3 text-[11px] font-black shadow-md transition-all hover:bg-blue-600 active:scale-95 disabled:opacity-50"
+                          >
+                            수락
+                          </button>
+                          <button
+                            onClick={() => handleDeclineClick(msg)}
+                            disabled={isProcessing}
+                            className="bg-soft-pebble text-midnight-ink flex-1 rounded-lg py-3 text-[11px] font-black transition-all hover:bg-slate-200 active:scale-95 disabled:opacity-50"
+                          >
+                            거절
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  <p
-                    className={`text-xs leading-relaxed font-medium whitespace-pre-wrap ${isInterview ? 'font-bold' : ''}`}
-                  >
-                    {msg.text}
-                  </p>
-
-                  {isInterview && msg.jobPostingId && !isCompany && (
-                    <div
-                      className={`mt-3 border-t pt-3 ${isMe ? 'border-pure-white/20' : 'border-black/5'}`}
-                    >
-                      <button
-                        onClick={() => navigate(`/job-posts/${msg.jobPostingId}`)}
-                        className={`flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold transition-colors ${
-                          isMe
-                            ? 'bg-white/20 text-white hover:bg-white/30'
-                            : 'bg-white/50 text-slate-700 hover:bg-white hover:text-blue-600'
-                        }`}
-                      >
-                        <FileText size={12} />
-                        공고 상세 보기
-                      </button>
-                    </div>
-                  )}
-
-                  {isInterview && !isMe && !isProcessed && (
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        onClick={() => handleAcceptClick(msg)}
-                        disabled={isProcessing}
-                        className="bg-point-blue text-pure-white flex-1 rounded-lg py-3 text-[11px] font-black shadow-md transition-all hover:bg-blue-600 active:scale-95 disabled:opacity-50"
-                      >
-                        수락
-                      </button>
-                      <button
-                        onClick={() => handleDeclineClick(msg)}
-                        disabled={isProcessing}
-                        className="bg-soft-pebble text-midnight-ink flex-1 rounded-lg py-3 text-[11px] font-black transition-all hover:bg-slate-200 active:scale-95 disabled:opacity-50"
-                      >
-                        거절
-                      </button>
-                    </div>
-                  )}
                 </div>
-              </div>
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </>
+        )}
       </div>
 
       {!isSystemRoom ? (
@@ -1001,11 +1033,10 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
                 <button
                   type="submit"
                   disabled={!input.trim()}
-                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all ${
-                    input.trim()
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all ${input.trim()
                       ? 'bg-point-blue text-pure-white shadow-md'
                       : 'bg-soft-pebble text-silver-mist'
-                  }`}
+                    }`}
                 >
                   쪽지 보내기 <Send size={14} />
                 </button>

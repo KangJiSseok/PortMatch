@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { login, logout, getMyInfo, signupApplicant, signupCompany } from '../api/auth';
+import { login, logout, signupApplicant, signupCompany } from '../api/auth';
 import { useAuthStore } from '../store/authStore';
 import type {
   LoginRequest,
@@ -15,9 +15,24 @@ export const useLogin = () => {
   const setAuth = useAuthStore((state) => state.setAuth);
 
   return useMutation({
-    mutationFn: (data: LoginRequest & { rememberMe: boolean }) => login(data),
-    onSuccess: (response, variables) => {
-      setAuth(response.data);
+    mutationFn: async (data: LoginRequest & { rememberMe: boolean }) => {
+      await login(data);
+
+      const meResponse = await fetch('/api/auth/me', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const meJson = await meResponse.json();
+
+      if (!meJson.status || !meJson.data) {
+        throw new Error('유저 정보를 불러오는데 실패했습니다.');
+      }
+
+      return meJson.data;
+    },
+    onSuccess: (userData, variables) => {
+      setAuth(userData);
 
       if (!variables.rememberMe) {
         const authData = localStorage.getItem('auth-storage');
@@ -29,6 +44,9 @@ export const useLogin = () => {
 
       navigate('/main');
     },
+    onError: (error) => {
+      console.error(error);
+    }
   });
 };
 
@@ -61,31 +79,38 @@ export const useSignup = () => {
 };
 
 export const useMyInfo = () => {
-  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const setAuth = useAuthStore((state) => state.setAuth);
-  const query = useQuery({
-    queryKey: ['myInfo'],
-    queryFn: getMyInfo,
-    enabled: isLoggedIn,
-    select: (response) => response.data,
-    staleTime: 1000 * 60 * 5,
-  });
+  const clearAuth = useAuthStore((state) => state.clearAuth);
 
   useEffect(() => {
-    if (query.data) {
-      setAuth(query.data);
-    }
-  }, [query.data, setAuth]);
+    const fetchMyInfo = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
 
-  return query;
+        if (response.ok) {
+          const json = await response.json();
+          if (json.status && json.data) {
+            setAuth(json.data);
+          }
+        } else {
+          if (response.status === 401) {
+            clearAuth();
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchMyInfo();
+  }, [setAuth, clearAuth]);
 };
 
 export const useAuth = () => {
   const user = useAuthStore((state) => state.user);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
-  return {
-    user,
-    isLoggedIn,
-  };
+  return { user, isLoggedIn };
 };

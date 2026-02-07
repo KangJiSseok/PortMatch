@@ -10,10 +10,6 @@ import {
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
-// ✅ [추가] Firebase 및 테스트용 imports
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from './lib/firebase'; // ⚠️ firebase 설정 파일 경로 확인 필요 (src/firebase.ts 가정)
-import { useMessenger } from './hooks/useMessenger';
 import SystemAlertScheduler from './components/Messenger/SystemAlertScheduler';
 
 import Navbar from './components/Navbar/Navbar';
@@ -63,23 +59,23 @@ import UnitConverterPage from './pages/support/UnitConverterPage';
 import NoticeManagementPage from './pages/admin/NoticeManagementPage';
 import NoticeFormPage from './pages/admin/NoticeFormPage';
 
-import { AuthGuard } from './routes/RouteGuard';
-import MypageGate from './routes/MyPageGate';
-import InterviewListGate from './routes/InterviewListGate';
-import { useAuthStore } from './store/authStore';
 import CompanyInterviewSchedulePage from './pages/company/CompanyInterviewSchedulePage';
 import TestInterviewLobbyPage from './pages/interview/TestInterviewLobbyPage';
 import TestInterviewPage from './pages/interview/TestInterviewPage';
 import ProfileEditPage from './pages/user/ProfileEditPage';
 
+import { AuthGuard } from './routes/RouteGuard';
+import MypageGate from './routes/MyPageGate';
+import InterviewListGate from './routes/InterviewListGate';
+
 import { MessengerProvider } from './contexts/MessengerProvider';
 import MessengerContainer from './components/Messenger/MessengerContainer';
 
 import { useMyInfo } from './hooks/useAuth';
+import { useAuthStore } from './store/authStore';
 
 const RootLayout = () => {
   const location = useLocation();
-  const { rooms } = useMessenger(); // ✅ 테스트 메시지 전송을 위해 채팅방 목록 가져오기
 
   useMyInfo();
 
@@ -89,35 +85,6 @@ const RootLayout = () => {
       once: false,
     });
   }, []);
-
-  // ✅ [테스트용] 시스템 메시지 강제 발송 함수
-  const handleTestSystemAlert = async () => {
-    if (!rooms || rooms.length === 0) {
-      alert(
-        '활성화된 채팅방이 없어 테스트 메시지를 보낼 수 없습니다.\n먼저 채용 공고에 지원하거나 채팅을 시작해주세요.',
-      );
-      return;
-    }
-
-    // 첫 번째 채팅방을 타겟으로 설정
-    const targetRoomId = rooms[0].id;
-    const opponentName = rooms[0].companyName || rooms[0].applicantName || '상대방';
-
-    try {
-      await addDoc(collection(db, 'chats', targetRoomId, 'messages'), {
-        text: `[테스트 알림] 🔔\n이것은 시스템 알림 테스트입니다.\n\n대상 채팅방: ${opponentName}\n전송 시각: ${new Date().toLocaleTimeString()}`,
-        senderId: 'system', // ✅ 시스템 ID로 설정
-        createdAt: serverTimestamp(),
-        type: 'text',
-        isRead: false,
-        systemType: 'alert',
-      });
-      alert(`[${opponentName}] 님과의 채팅방으로\n테스트 알림을 전송했습니다!`);
-    } catch (error) {
-      console.error('테스트 전송 실패:', error);
-      alert('메시지 전송에 실패했습니다.');
-    }
-  };
 
   const hideLayoutPages = ['/intro', '/login', '/signup'];
   const isInterviewPage = /^\/interviews\/[^/]+\/(lobby|room)$/.test(location.pathname);
@@ -132,8 +99,6 @@ const RootLayout = () => {
   return (
     <div className="flex min-h-screen flex-col">
       <ScrollRestoration />
-
-      {/* ✅ 앱 전역에서 동작하는 시스템 알림 스케줄러 (UI 없음) */}
       <SystemAlertScheduler />
 
       {!shouldHideLayout && <Navbar />}
@@ -144,16 +109,6 @@ const RootLayout = () => {
 
       {!shouldHideLayout && <Footer />}
       {!shouldHideLayout && <MessengerContainer />}
-
-      {/* ✅ [테스트용] 시스템 알림 발송 버튼 (개발 확인용, 좌측 하단 고정) */}
-      {!shouldHideLayout && (
-        <button
-          onClick={handleTestSystemAlert}
-          className="fixed bottom-6 left-6 z-50 flex items-center gap-2 rounded-full bg-slate-800 px-4 py-3 text-xs font-bold text-white shadow-xl transition-transform hover:scale-105 active:scale-95"
-        >
-          🔔 알림 테스트 보내기
-        </button>
-      )}
     </div>
   );
 };
@@ -165,7 +120,6 @@ const IndexRoute = () => {
 
 const ScheduleRedirect = () => {
   const [randomId] = useState(() => Math.random().toString(36).substring(2, 11));
-
   return <Navigate to={`/support/schedule/${randomId}`} replace />;
 };
 
@@ -174,14 +128,8 @@ const router = createBrowserRouter([
     path: '/',
     element: <RootLayout />,
     children: [
-      {
-        index: true,
-        element: <IndexRoute />,
-      },
-      {
-        path: 'intro',
-        element: <IntroPage />,
-      },
+      { index: true, element: <IndexRoute /> },
+      { path: 'intro', element: <IntroPage /> },
       {
         path: 'login',
         element: (
@@ -190,10 +138,7 @@ const router = createBrowserRouter([
           </AuthGuard>
         ),
       },
-      {
-        path: 'logout',
-        element: <LogoutPage />,
-      },
+      { path: 'logout', element: <LogoutPage /> },
       {
         path: 'signup',
         element: (
@@ -210,14 +155,8 @@ const router = createBrowserRouter([
           </AuthGuard>
         ),
       },
-      {
-        path: 'main',
-        element: <MainPage />,
-      },
-      {
-        path: 'notices',
-        element: <NoticePage />,
-      },
+      { path: 'main', element: <MainPage /> },
+      { path: 'notices', element: <NoticePage /> },
       {
         path: 'mypage',
         element: (
@@ -234,10 +173,7 @@ const router = createBrowserRouter([
           </AuthGuard>
         ),
       },
-      {
-        path: 'companies/:companyId',
-        element: <CompanyDetailsPage />,
-      },
+      { path: 'companies/:companyId', element: <CompanyDetailsPage /> },
       {
         path: 'companies/:companyId/edit',
         element: (
@@ -249,10 +185,7 @@ const router = createBrowserRouter([
       {
         path: 'resumes',
         children: [
-          {
-            index: true,
-            element: <Navigate to="me" replace />,
-          },
+          { index: true, element: <Navigate to="me" replace /> },
           {
             path: ':resumeId',
             element: (
@@ -311,18 +244,9 @@ const router = createBrowserRouter([
           </AuthGuard>
         ),
       },
-      {
-        path: 'job-postings',
-        element: <JobPostingsPage />,
-      },
-      {
-        path: 'companies/:cid/active-postings',
-        element: <CompanyActivePostingsPage />,
-      },
-      {
-        path: 'job-posts/:id',
-        element: <JobPostDetailPage />,
-      },
+      { path: 'job-postings', element: <JobPostingsPage /> },
+      { path: 'companies/:cid/active-postings', element: <CompanyActivePostingsPage /> },
+      { path: 'job-posts/:id', element: <JobPostDetailPage /> },
       {
         path: 'job-posts/:id/apply',
         element: (
@@ -331,14 +255,8 @@ const router = createBrowserRouter([
           </AuthGuard>
         ),
       },
-      {
-        path: 'interviews/test/:id/lobby',
-        element: <TestInterviewLobbyPage />,
-      },
-      {
-        path: '/interviews/test/room',
-        element: <TestInterviewPage />,
-      },
+      { path: 'interviews/test/:id/lobby', element: <TestInterviewLobbyPage /> },
+      { path: '/interviews/test/room', element: <TestInterviewPage /> },
       {
         path: 'company/jobs',
         element: (
@@ -406,10 +324,7 @@ const router = createBrowserRouter([
       {
         path: 'support',
         children: [
-          {
-            path: 'salary',
-            element: <SalaryCalculatorPage />,
-          },
+          { path: 'salary', element: <SalaryCalculatorPage /> },
           {
             path: 'employer-cost',
             element: (
@@ -418,14 +333,8 @@ const router = createBrowserRouter([
               </AuthGuard>
             ),
           },
-          {
-            path: 'schedule',
-            element: <ScheduleRedirect />,
-          },
-          {
-            path: 'schedule/:roomId',
-            element: <ScheduleManagementPage />,
-          },
+          { path: 'schedule', element: <ScheduleRedirect /> },
+          { path: 'schedule/:roomId', element: <ScheduleManagementPage /> },
           {
             path: 'interview-template',
             element: (
@@ -434,10 +343,7 @@ const router = createBrowserRouter([
               </AuthGuard>
             ),
           },
-          {
-            path: 'speech-timer',
-            element: <InterviewSpeechTimerPage />,
-          },
+          { path: 'speech-timer', element: <InterviewSpeechTimerPage /> },
           {
             path: 'sprint-capacity',
             element: (
@@ -446,10 +352,7 @@ const router = createBrowserRouter([
               </AuthGuard>
             ),
           },
-          {
-            path: 'unit-converter',
-            element: <UnitConverterPage />,
-          },
+          { path: 'unit-converter', element: <UnitConverterPage /> },
           {
             path: 'portfolio-feedback',
             element: (
@@ -497,10 +400,7 @@ const router = createBrowserRouter([
           },
         ],
       },
-      {
-        path: '*',
-        element: <Navigate to="/" replace />,
-      },
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
 ]);
