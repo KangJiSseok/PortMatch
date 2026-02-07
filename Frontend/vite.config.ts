@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   const envDir = path.resolve(__dirname, '..');
   const env = loadEnv(mode, envDir, '');
 
-  const apiTarget = env.VITE_API_BASE_URL || 'http://i14d205.p.ssafy.io';
+  const apiTarget = env.VITE_API_BASE_URL || 'https://i14d205.p.ssafy.io';
 
   return {
     envDir,
