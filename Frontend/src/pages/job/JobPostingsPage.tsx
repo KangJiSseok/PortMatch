@@ -4,6 +4,8 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 
 import Button from '@/components/Button/Button';
 import LoadingState from '@/components/states/LoadingState';
@@ -183,7 +185,7 @@ function CollapsibleSection({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="overflow-hidden"
+            className="overflow-visible"
           >
             <div className="border-silver-mist/20 bg-pure-white rounded-xl border p-3">{children}</div>
           </motion.div>
@@ -196,14 +198,25 @@ function CollapsibleSection({
 }
 
 // -------------------- FilterPanel --------------------
-type StackOption = { id: number; name: string };
+type StackItem = { stackId: number; stackName: string };
+
+type RawStackItem = {
+  stackId?: number;
+  id?: number;
+  stackName?: string;
+  name?: string;
+  stack_name?: string;
+};
+
+type StackNameMap = Record<number, string>;
 
 type FilterPanelProps = {
   activeFilterCount: number;
 
-  allStacks: StackOption[];
   selectedStackIds: number[];
-  onToggleStack: (stackId: number) => void;
+  stackNameMap: StackNameMap;
+  onAddStack: (stackId: number) => void;
+  onRemoveStack: (stackId: number) => void;
 
   deadlineFilter: DeadlineFilter;
   experienceFilter: ExperienceFilter;
@@ -214,9 +227,10 @@ type FilterPanelProps = {
 
 function FilterPanel({
   activeFilterCount,
-  allStacks,
   selectedStackIds,
-  onToggleStack,
+  stackNameMap,
+  onAddStack,
+  onRemoveStack,
   deadlineFilter,
   experienceFilter,
   onChangeDeadline,
@@ -226,6 +240,37 @@ function FilterPanel({
   const [openStacks, setOpenStacks] = useState(false);
   const [openDeadline, setOpenDeadline] = useState(false);
   const [openExperience, setOpenExperience] = useState(false);
+  const [stackInput, setStackInput] = useState('');
+  const [duplicateStackError, setDuplicateStackError] = useState(false);
+
+  const { data: stackSearchResults } = useQuery({
+    queryKey: ['stacks', stackInput],
+    queryFn: async () => {
+      if (!stackInput.trim()) return [];
+      const response = await axios.get(`/api/stacks/name/${stackInput}`);
+      const rawData = response.data.data || [];
+
+      return rawData
+        .map((item: RawStackItem) => ({
+          stackId: item.stackId || item.id || 0,
+          stackName: item.stackName || item.name || item.stack_name || '',
+        }))
+        .filter((item: StackItem) => item.stackId !== 0);
+    },
+    enabled: stackInput.length > 0,
+    staleTime: 1000 * 60,
+  });
+
+  const handleSelectStack = (stack: StackItem) => {
+    if (selectedStackIds.includes(stack.stackId)) {
+      setDuplicateStackError(true);
+      setTimeout(() => setDuplicateStackError(false), 1000);
+      setStackInput('');
+      return;
+    }
+    onAddStack(stack.stackId);
+    setStackInput('');
+  };
 
   const selectedStacksBadge =
     selectedStackIds.length > 0 ? (
@@ -251,35 +296,81 @@ function FilterPanel({
 
       <CollapsibleSection
         title="기술 스택"
-        subtitle="기술 스택을 선택하세요"
+        subtitle="기술 스택을 검색하세요"
         isOpen={openStacks}
         onToggle={() => setOpenStacks((v) => !v)}
         right={selectedStacksBadge}
       >
-        <div className="flex flex-wrap gap-2">
-          {allStacks.map((stack) => {
-            const active = selectedStackIds.includes(stack.id);
-            return (
-              <Button
-                key={stack.id}
-                variant={active ? 'dark' : 'outline'}
-                size="sm"
-                onClick={() => onToggleStack(stack.id)}
-                className={['!rounded-xl', active ? '!shadow-sm hover:!opacity-100' : ''].join(' ')}
-              >
-                {stack.name}
-              </Button>
-            );
-          })}
-          {allStacks.length === 0 && (
-            <p className="text-slate-gray text-xs font-bold opacity-70">스택 정보가 아직 없어요.</p>
-          )}
+        <div className="space-y-4">
+          <div className="relative">
+            <motion.input
+              animate={duplicateStackError ? { x: [-4, 4, -4, 4, 0] } : {}}
+              type="text"
+              value={stackInput}
+              onChange={(e) => setStackInput(e.target.value)}
+              placeholder="스택 검색 (예: React)"
+              className={`w-full rounded-2xl border px-5 py-3 text-[11px] font-bold transition-all outline-none placeholder:text-[11px] ${
+                duplicateStackError
+                  ? 'border-red-500 bg-red-50/30'
+                  : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
+              }`}
+            />
+
+            {stackInput && stackSearchResults && stackSearchResults.length > 0 && (
+              <div className="absolute top-full z-10 mt-2 w-full overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
+                {stackSearchResults.map((stack: StackItem) => (
+                  <button
+                    key={stack.stackId}
+                    onClick={() => handleSelectStack(stack)}
+                    className="w-full px-5 py-3 text-left text-[11px] font-bold text-slate-700 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                  >
+                    {stack.stackName}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <AnimatePresence>
+              {duplicateStackError && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute -bottom-6 left-2 text-xs font-black text-red-500"
+                >
+                  이미 추가된 기술 스택입니다.
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <AnimatePresence>
+              {selectedStackIds.map((stackId) => (
+                <motion.span
+                  key={stackId}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-[11px] font-black whitespace-nowrap text-blue-600"
+                >
+                  {stackNameMap[stackId] ?? `#${stackId}`}
+                  <button
+                    onClick={() => onRemoveStack(stackId)}
+                    className="text-blue-300 transition-colors hover:text-blue-600"
+                  >
+                    <CloseIcon />
+                  </button>
+                </motion.span>
+              ))}
+            </AnimatePresence>
+          </div>
         </div>
-      </CollapsibleSection>
+</CollapsibleSection>
 
       <CollapsibleSection
         title="마감 기한"
-        subtitle="공고 마감 타이밍으로 필터링해요."
+        subtitle="공고 마감 기한을 선택하세요."
         isOpen={openDeadline}
         onToggle={() => setOpenDeadline((v) => !v)}
       >
@@ -467,7 +558,6 @@ function JobPostingsPage() {
     return ids;
   }, [SERVER_JOBS]);
 
-  const stackNameMap = useStackNames(allStackIdsOnPage);
 
   const [postingStackMap, setPostingStackMap] = useState<Record<number, string[]>>({});
   const postingStackInFlight = useRef<Set<number>>(new Set());
@@ -492,6 +582,7 @@ function JobPostingsPage() {
       .map((v) => Number(v))
       .filter((n) => Number.isFinite(n)) ?? [];
 
+  const stackNameMap = useStackNames([...allStackIdsOnPage, ...selectedStackIds]);
   const deadlineFilter = (searchParams.get('deadline') as DeadlineFilter) ?? 'all';
   const experienceFilter = (searchParams.get('experience') as ExperienceFilter) ?? 'all';
 
@@ -499,15 +590,6 @@ function JobPostingsPage() {
   const PAGE_SIZE = 10;
 
   const listTopRef = useRef<HTMLDivElement | null>(null);
-
-  // ✅ 서버 데이터 기반으로 스택 옵션 만들기 (id -> stackName 표시)
-  const ALL_STACK_OPTIONS: StackOption[] = useMemo(() => {
-    const set = new Set<number>();
-    SERVER_JOBS.forEach((j) => (j.stackIds ?? []).forEach((id) => set.add(id)));
-    return Array.from(set)
-      .sort((a, b) => a - b)
-      .map((id) => ({ id, name: stackNameMap[id] ?? `#${id}` }));
-  }, [SERVER_JOBS, stackNameMap]);
 
   useEffect(() => {
     const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement | null;
@@ -580,11 +662,14 @@ function JobPostingsPage() {
 
   const changeSort = (nextSort: Sort) => setParams(buildParams({ nextSort, nextPage: 1 }));
 
-  const toggleStack = (stackId: number) => {
-    const next = selectedStackIds.includes(stackId)
-      ? selectedStackIds.filter((id) => id !== stackId)
-      : [...selectedStackIds, stackId];
+  const addStack = (stackId: number) => {
+    if (selectedStackIds.includes(stackId)) return;
+    const next = [...selectedStackIds, stackId];
+    setParams(buildParams({ nextStackIds: next, nextPage: 1 }));
+  };
 
+  const removeStack = (stackId: number) => {
+    const next = selectedStackIds.filter((id) => id !== stackId);
     setParams(buildParams({ nextStackIds: next, nextPage: 1 }));
   };
 
@@ -808,10 +893,11 @@ function JobPostingsPage() {
                 <FilterPanel
                   activeFilterCount={activeFilterCount}
                   selectedStackIds={selectedStackIds}
+                  stackNameMap={stackNameMap}
                   deadlineFilter={deadlineFilter}
                   experienceFilter={experienceFilter}
-                  allStacks={ALL_STACK_OPTIONS}
-                  onToggleStack={toggleStack}
+                  onAddStack={addStack}
+                  onRemoveStack={removeStack}
                   onChangeDeadline={changeDeadlineFilter}
                   onChangeExperience={changeExperienceFilter}
                   onClearAll={clearAllFilters}

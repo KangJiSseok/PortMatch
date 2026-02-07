@@ -159,13 +159,24 @@ function CompanyRadarChart({ weights, score }: { weights: Record<Factor, number>
         <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">match</span>
         <span className="text-[18px] font-black text-gray-900">{score}</span>
       </div>
-      <div className="h-[200px] w-full flex items-center justify-center">
-        <ResponsiveContainer width="100%" height="100%">
+      <div
+        className="h-[200px] w-full flex items-center justify-center outline-none focus:outline-none focus-within:outline-none"
+        tabIndex={-1}
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          className="outline-none focus:outline-none"
+          style={{ outline: 'none' }}
+        >
           <RadarChart
             data={data}
             outerRadius="70%"
             margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
             style={{ outline: 'none' }}
+            tabIndex={-1}
+            className="outline-none focus:outline-none"
           >
             <defs>
               <radialGradient id="companyRadarFillGradient" cx="50%" cy="50%" r="60%">
@@ -561,7 +572,7 @@ function CompanyCard({
                   <div key={f} className="text-[12px]">
                     <div className="mb-1.5 flex justify-between">
                       <span className="font-semibold text-gray-500">{FACTOR_LABEL[f]}</span>
-                      <span className="font-bold text-[#4a4a4a]">{company.weights[f]}%</span>
+                      <span className="font-bold text-[#4a4a4a]">{company.weights[f]}점</span>
                     </div>
 
                     <div className="h-2 w-full overflow-hidden rounded-full bg-black/5">
@@ -1410,6 +1421,40 @@ export default function RecommendCompanyPage() {
     };
   }, [companies, openingsCountMap]);
 
+  const REPORT_TIMEOUT_MS = 15000;
+  const REPORT_MAX_RETRIES = 1;
+
+  const withTimeout = async <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('TIMEOUT')), ms);
+      promise
+        .then((value) => {
+          clearTimeout(timer);
+          resolve(value);
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+    });
+
+  const fetchWithRetry = async <T,>(
+    fn: () => Promise<T>,
+    retries: number,
+    timeoutMs: number,
+  ): Promise<T> => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        return await withTimeout(fn(), timeoutMs);
+      } catch (err) {
+        lastError = err;
+        if (attempt === retries) break;
+      }
+    }
+    throw lastError;
+  };
+
   const handleOpenReason = async (company: Company) => {
     setReasonTarget(company);
     setExplanationError(null);
@@ -1429,11 +1474,16 @@ export default function RecommendCompanyPage() {
 
     try {
       setExplanationLoadingId(company.companyId);
-      const response = await fetchCompanyMatchExplanation({
-        companyId: company.companyId,
-        portfolioProjectId: company.portfolioProjectId,
-        companyProjectId: company.companyProjectId,
-      });
+      const response = await fetchWithRetry(
+        () =>
+          fetchCompanyMatchExplanation({
+            companyId: company.companyId,
+            portfolioProjectId: company.portfolioProjectId,
+            companyProjectId: company.companyProjectId,
+          }),
+        REPORT_MAX_RETRIES,
+        REPORT_TIMEOUT_MS,
+      );
 
       if (!response.success || !response.payload) {
         throw new Error(response.error || 'Failed to load explanation.');
@@ -1449,6 +1499,10 @@ export default function RecommendCompanyPage() {
         prev && prev.companyId === company.companyId ? { ...prev, ...mapped } : prev,
       );
     } catch (err) {
+      if (err instanceof Error && err.message === 'TIMEOUT') {
+        setExplanationError('분석 요청 시간이 오래 걸립니다. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
       setExplanationError(err instanceof Error ? err.message : 'Failed to load explanation.');
     } finally {
       setExplanationLoadingId(null);
