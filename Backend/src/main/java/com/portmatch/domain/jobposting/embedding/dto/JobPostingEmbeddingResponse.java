@@ -39,5 +39,7 @@ public record JobPostingEmbeddingResponse(
         @JsonProperty("solution_missing")
         boolean solutionMissing,
         @JsonProperty("tech_missing")
-        boolean techMissing
+        boolean techMissing,
+        @JsonProperty("architecture_missing")
+        boolean architectureMissing
 ) {}

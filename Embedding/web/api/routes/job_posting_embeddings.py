@@ -42,6 +42,7 @@ class JobPostingEmbeddingResponse(BaseModel):
     problem_missing: bool
     solution_missing: bool
     tech_missing: bool
+    architecture_missing: bool
 
 
 PROMPT = ChatPromptTemplate.from_messages(
@@ -195,4 +196,5 @@ def job_posting_embeddings(payload: JobPostingEmbeddingRequest) -> JobPostingEmb
         problem_missing=problem == "",
         solution_missing=solution == "",
         tech_missing=len(tech) == 0,
+        architecture_missing=len(architecture) == 0,
     )
