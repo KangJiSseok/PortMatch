@@ -1,4 +1,4 @@
-﻿// src/pages/interview/InterviewPage.tsx
+// src/pages/interview/InterviewPage.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { MediaConnection } from 'peerjs';
@@ -79,6 +79,8 @@ export default function InterviewPage() {
 
   const [micOn, setMicOn] = useState<boolean>(navState.micOn ?? true);
   const [camOn, setCamOn] = useState<boolean>(navState.camOn ?? true);
+  const micOnRef = useRef<boolean>(navState.micOn ?? true);
+  const camOnRef = useRef<boolean>(navState.camOn ?? true);
 
   // WebRTC Refs
   const peerRef = useRef<ReturnType<typeof createPeer> | null>(null);
@@ -233,6 +235,7 @@ export default function InterviewPage() {
     const stream = localStreamRef.current;
     if (!stream) return;
     stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
+    micOnRef.current = micOn;
   }, [micOn]);
 
   useEffect(() => {
@@ -240,6 +243,7 @@ export default function InterviewPage() {
     if (!camOn) {
       if (!stream) return;
       stream.getVideoTracks().forEach((t) => (t.enabled = false));
+      camOnRef.current = camOn;
       return;
     }
 
@@ -260,6 +264,7 @@ export default function InterviewPage() {
     }
 
     stream.getVideoTracks().forEach((t) => (t.enabled = true));
+    camOnRef.current = camOn;
   }, [camOn, getLocalStream]);
 
   // --- Connect Logic ---
@@ -285,8 +290,8 @@ export default function InterviewPage() {
       }
 
       const stream = await getLocalStream();
-      stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
-      stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
+      stream.getAudioTracks().forEach((t) => (t.enabled = micOnRef.current));
+      stream.getVideoTracks().forEach((t) => (t.enabled = camOnRef.current));
 
       const call = peerRef.current.call(remoteId, stream);
       if (!call) throw new Error('연결 요청 실패');
@@ -314,10 +319,8 @@ export default function InterviewPage() {
       setErrorMessage(toHumanError(err));
     }
   }, [
-    camOn,
     cleanupSession,
     getLocalStream,
-    micOn,
     myRole,
     peerReady,
     roomId,
@@ -348,8 +351,8 @@ export default function InterviewPage() {
         callRef.current = call;
 
         const stream = await getLocalStream();
-        stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
-        stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
+        stream.getAudioTracks().forEach((t) => (t.enabled = micOnRef.current));
+        stream.getVideoTracks().forEach((t) => (t.enabled = camOnRef.current));
 
         call.answer(stream);
 
@@ -384,7 +387,7 @@ export default function InterviewPage() {
       peer.destroy();
       stopStreamTracks(localStreamRef.current);
     };
-  }, [camOn, getLocalStream, micOn, myRole, roomId, showToast]);
+  }, [getLocalStream, myRole, roomId, showToast]);
 
   useEffect(() => {
     if (!roomId) return;
