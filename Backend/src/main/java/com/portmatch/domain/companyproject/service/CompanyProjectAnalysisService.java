@@ -7,12 +7,16 @@ import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisPayload;
 import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisRequest;
 import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisResponse;
 import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisResult;
+import com.portmatch.domain.companyproject.dto.CompanyProjectReplaceRequest;
+import com.portmatch.domain.companyproject.dto.CompanyProjectResponse;
 import com.portmatch.domain.companyproject.dto.ExplanationMatchPayload;
 import com.portmatch.domain.companyproject.dto.ExplanationMatchRequestItem;
 import com.portmatch.domain.companyproject.dto.ExplanationMatchResponse;
 import com.portmatch.domain.companyproject.dto.ExplanationMatchResponseItem;
 import com.portmatch.domain.companyproject.dto.ExplanationServiceProject;
 import com.portmatch.domain.companyproject.dto.ExplanationServiceRequest;
+import com.portmatch.domain.companyproject.embedding.repository.CompanyProjectEmbeddingRepository;
+import com.portmatch.domain.companyproject.embedding.service.CompanyProjectEmbeddingService;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysis;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysisProject;
 import com.portmatch.domain.companyproject.entity.CompanyProjectAnalysisProjectTech;
@@ -40,6 +44,8 @@ public class CompanyProjectAnalysisService {
     private final CompanyRepository companyRepository;
     private final CompanyProjectAnalysisRepository companyProjectAnalysisRepository;
     private final CompanyProjectAnalysisProjectRepository companyProjectAnalysisProjectRepository;
+    private final CompanyProjectEmbeddingRepository companyProjectEmbeddingRepository;
+    private final CompanyProjectEmbeddingService companyProjectEmbeddingService;
     private final PortfolioAnalysisProjectRepository portfolioAnalysisProjectRepository;
     private final ObjectMapper objectMapper;
 
@@ -49,6 +55,8 @@ public class CompanyProjectAnalysisService {
             CompanyRepository companyRepository,
             CompanyProjectAnalysisRepository companyProjectAnalysisRepository,
             CompanyProjectAnalysisProjectRepository companyProjectAnalysisProjectRepository,
+            CompanyProjectEmbeddingRepository companyProjectEmbeddingRepository,
+            CompanyProjectEmbeddingService companyProjectEmbeddingService,
             PortfolioAnalysisProjectRepository portfolioAnalysisProjectRepository,
             ObjectMapper objectMapper
     ) {
@@ -57,6 +65,8 @@ public class CompanyProjectAnalysisService {
         this.companyRepository = companyRepository;
         this.companyProjectAnalysisRepository = companyProjectAnalysisRepository;
         this.companyProjectAnalysisProjectRepository = companyProjectAnalysisProjectRepository;
+        this.companyProjectEmbeddingRepository = companyProjectEmbeddingRepository;
+        this.companyProjectEmbeddingService = companyProjectEmbeddingService;
         this.portfolioAnalysisProjectRepository = portfolioAnalysisProjectRepository;
         this.objectMapper = objectMapper;
     }
@@ -140,6 +150,54 @@ public class CompanyProjectAnalysisService {
         }
     }
 
+    public int replaceCompanyProjects(Company company, CompanyProjectReplaceRequest request) {
+        CompanyProjectAnalysis analysis = companyProjectAnalysisRepository.findByCompanyId(company.getId())
+                .orElseGet(() -> new CompanyProjectAnalysis(company));
+
+        List<CompanyProjectAnalysisProject> projects = buildProjects(analysis, request);
+        analysis.replaceProjects(projects);
+        CompanyProjectAnalysis saved = companyProjectAnalysisRepository.save(analysis);
+
+        companyProjectEmbeddingRepository.deleteByCompanyId(company.getId());
+
+        if (projects.isEmpty()) {
+            return 0;
+        }
+
+        return companyProjectEmbeddingService.embedAndSaveByAnalysisId(saved.getId());
+    }
+
+    public CompanyProjectResponse getProjectsByCompanyCid(String cid) {
+        Company company = companyRepository.findByCid(cid)
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+
+        CompanyProjectAnalysis analysis = companyProjectAnalysisRepository.findByCompanyIdWithProjects(company.getId())
+                .orElse(null);
+
+        if (analysis == null || analysis.getProjects() == null) {
+            return new CompanyProjectResponse(List.of());
+        }
+
+        analysis.getProjects().forEach(project -> project.getTechs().size());
+
+        List<CompanyProjectResponse.Project> projects = analysis.getProjects().stream()
+                .map(project -> new CompanyProjectResponse.Project(
+                        project.getName(),
+                        project.getDomain(),
+                        project.getProblem(),
+                        project.getSolution(),
+                        project.getTechs() == null
+                                ? List.of()
+                                : project.getTechs().stream()
+                                .map(CompanyProjectAnalysisProjectTech::getTech)
+                                .filter(tech -> tech != null && !tech.isBlank())
+                                .toList()
+                ))
+                .toList();
+
+        return new CompanyProjectResponse(projects);
+    }
+
     private void persistResult(Company company, Object body) {
         if (body == null) {
             throw new BusinessException(ResponseCode.COMPANY_PROJECT_ANALYSIS_EMPTY);
@@ -173,6 +231,34 @@ public class CompanyProjectAnalysisService {
                     );
                     if (project.tech() != null) {
                         project.tech().stream()
+                                .filter(tech -> tech != null && !tech.isBlank())
+                                .forEach(entity::addTech);
+                    }
+                    return entity;
+                })
+                .toList();
+    }
+
+    private List<CompanyProjectAnalysisProject> buildProjects(
+            CompanyProjectAnalysis analysis,
+            CompanyProjectReplaceRequest request
+    ) {
+        if (request == null || request.projects() == null) {
+            return List.of();
+        }
+
+        return request.projects().stream()
+                .filter(project -> project != null && project.name() != null && !project.name().isBlank())
+                .map(project -> {
+                    CompanyProjectAnalysisProject entity = new CompanyProjectAnalysisProject(
+                            analysis,
+                            project.name(),
+                            project.domain(),
+                            project.problem(),
+                            project.solution()
+                    );
+                    if (project.techs() != null) {
+                        project.techs().stream()
                                 .filter(tech -> tech != null && !tech.isBlank())
                                 .forEach(entity::addTech);
                     }
