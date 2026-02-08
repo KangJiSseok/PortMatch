@@ -93,7 +93,7 @@
 * `COMPANY_PROJECT_ANALYSIS_URL` - 회사/프로젝트 분석 서비스 URL (로컬 예: `http://inference:8001`)
 * `EMBEDDING_URL` - 임베딩 서비스 URL (로컬 예: `http://embedding:8002`)
 * `EXPLANATION_URL` - 설명 LLM 서비스 URL (로컬 예: `http://explanation-llm:8003`)
-* `MINERU_ENDPOINT` - MinerU 파일 파싱 엔드포인트 (로컬 예: `http://mineru-api:8000`)
+* `MINERU_ENDPOINT` - MinerU 파일 파싱 엔드포인트 (로컬 예: `http://mineru-api:8000/file_parse`)
 * **Observability**
 * `GF_SECURITY_ADMIN_USER` - Grafana 관리자 계정 (로컬 예: `port`)
 * `GF_SECURITY_ADMIN_PASSWORD` - Grafana 관리자 비밀번호 (로컬 예: `match`)
@@ -164,6 +164,7 @@ docker exec -i portmatch-db psql -U portmatch -d portmatch < DB/portmatch_data_o
 
 
 ## 6. 시연 시나리오
+
 1. 메인 화면 진입 및 서비스 소개
 ![1](image/1.png)
 2. 대시보드 진입
@@ -184,3 +185,64 @@ docker exec -i portmatch-db psql -U portmatch -d portmatch < DB/portmatch_data_o
 ![9](image/9.png)
 10. 상세 분석 결과
 ![10](image/10.png)
+
+### 개인
+---
+1. 공고 확인
+![1](image/11.png)
+2. 공고 지원(개인)
+![2](image/12.png)
+3. 공고 지원 완료(개인)
+![3](image/13.png)
+4. 면접 제안 확인(개인)
+![4](image/14.png)
+5. 면접 일정 확인(개인)
+![5](image/15.png)
+6. 면접 일정 확인(개인)
+![6](image/16.png)
+7. 면접 룸 로비
+![7](image/17.png)
+8. 면접 화면(개인)
+![8](image/18.png)
+
+### 기업
+--- 
+
+1. 공고 목록 확인(기업)
+![1](image/19.png)
+2. 공고 지원자 확인(기업)
+![2](image/20.png)
+3. 면접 일정(기업)
+![3](image/21.png)
+4. 면접 일정 보내기(기업)
+![4](image/22.png)
+5. 면접 제안(기업)
+![5](image/23.png)
+6. 요청 수락 확인(기업)
+![6](image/24.png)
+7. 면접 룸 로비
+![7](image/25.png)
+8. 면접 화면(기업)
+![8](image/26.png)
+9. 면접 종료(기업)
+![9](image/27.png)
+
+### 서비스
+1. 메인 화면
+![1](image/28.png)
+2. 전체 공고 조회
+![2](image/29.png)
+3. 스피치 타이머
+![3](image/30.png)
+4. 실수령액 계산기
+![4](image/31.png)
+5. 협업 일정 관리
+![5](image/32.png)
+6. 글로벌 단위변환기
+![6](image/33.png)
+7. 면접 예상 질문
+![7](image/34.png)
+8. 면접 예상 질문 작성 템플릿
+![8](image/35.png)
+9. 포트폴리오 첨삭
+![9](image/36.png)
