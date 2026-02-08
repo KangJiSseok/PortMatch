@@ -95,17 +95,12 @@ public class InterviewRoomService {
 
         for (InterviewRoomEntity room : targetRooms) {
             room.setStatus(RoomStatus.OPEN);
-            System.out.println("면접방 자동 오픈: " + room.getRoomId());
+            System.out.println("면접�??�동 ?�픈: " + room.getRoomId());
         }
 
         repository.saveAll(targetRooms);
     }
 
-    // 5. 오래된 방 정리
-    public void cleanupOldRooms() {
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(30);
-        repository.deleteByUpdatedAtBefore(cutoff);
-    }
 
     // 6. 수동 방 종료
     public void closeRoom(String roomId) {
