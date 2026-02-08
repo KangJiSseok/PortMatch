@@ -56,7 +56,7 @@ function localInputToApi(value: string) {
   const dd = String(d ?? 1).padStart(2, '0');
   const H = String(hh ?? 0).padStart(2, '0');
   const M = String(mi ?? 0).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}T${H}:${M}:00`;
+  return `${yyyy}-${mm}-${dd}T${H}:${M}:00+09:00`;
 }
 
 function nowLocalMinValue() {
