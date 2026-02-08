@@ -66,6 +66,16 @@ interface CompanyBackendData {
   projects?: ProjectItem[];
 }
 
+type CompanyProjectsResponse = {
+  projects: {
+    name: string;
+    domain?: string;
+    problem?: string;
+    solution?: string;
+    techs?: string[];
+  }[];
+};
+
 type FormErrors = Record<string, string | undefined>;
 
 const LIMITS = {
@@ -173,6 +183,21 @@ const CompanyEditForm = ({
       const response = await axios.put(`/api/companies/${companyId}`, formData, {
         withCredentials: true,
       });
+
+      const projectsPayload = {
+        projects: (formData.projects ?? []).map((project) => ({
+          name: project.name,
+          domain: project.domain,
+          problem: project.problem,
+          solution: project.solution,
+          techs: project.tech ?? [],
+        })),
+      };
+
+      await axios.put(`/api/companies/${companyId}/projects`, projectsPayload, {
+        withCredentials: true,
+      });
+
       return response.data;
     },
     onSuccess: () => {
@@ -913,8 +938,28 @@ const CompanyEditPage = () => {
   const { data: companyData, isLoading } = useQuery({
     queryKey: ['company', companyId],
     queryFn: async () => {
-      const response = await axios.get(`/api/companies/${companyId}`);
-      return response.data.data as CompanyBackendData;
+      const [companyRes, projectsRes] = await Promise.all([
+        axios.get(`/api/companies/${companyId}`),
+        axios.get(`/api/companies/${companyId}/projects`).catch(() => ({
+          data: { data: { projects: [] } },
+        })),
+      ]);
+
+      const company = companyRes.data.data as CompanyBackendData;
+      const projectsData = (projectsRes.data.data as CompanyProjectsResponse) ?? { projects: [] };
+
+      const mappedProjects: ProjectItem[] = (projectsData.projects ?? []).map((p) => ({
+        name: p.name ?? '',
+        domain: p.domain ?? '',
+        problem: p.problem ?? '',
+        solution: p.solution ?? '',
+        tech: p.techs ?? [],
+      }));
+
+      return {
+        ...company,
+        projects: mappedProjects,
+      } as CompanyBackendData;
     },
     enabled: !!companyId,
     staleTime: Infinity,
