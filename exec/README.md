@@ -231,7 +231,7 @@ docker exec -i portmatch-db psql -U portmatch -d portmatch < DB/portmatch_data_o
   </tr>
 </table>
 
-### 서비스
+### 공통
 <table>
   <tr>
     <td align="center"><img src="image/28.png" width="320"><br>1. 메인 화면</td>
