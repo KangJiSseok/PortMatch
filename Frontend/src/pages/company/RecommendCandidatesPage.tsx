@@ -145,7 +145,7 @@ function EvaluationCriteria() {
             <div>
               <h4 className="text-[15px] font-black text-[#1a1a1a]">인재 평가 지표</h4>
               <p className="mt-0.5 text-[12px] font-medium text-gray-500">
-                AI가 추천인을 선별하는 4가지 핵심 관점
+                AI가 추천 인재를 선별하는 4가지 핵심 관점
               </p>
             </div>
           </div>
@@ -968,11 +968,10 @@ export default function RecommendCandidatesPage() {
                     value={stackInput}
                     onChange={(e) => setStackInput(e.target.value)}
                     placeholder="기술 스택 검색 (예: React)"
-                    className={`w-full rounded-2xl border px-5 py-4 text-[14px] font-bold transition-all outline-none ${
-                      duplicateStackError
-                        ? 'border-red-500 bg-red-50/30'
-                        : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
-                    }`}
+                    className={`w-full rounded-2xl border px-5 py-4 text-[14px] font-bold transition-all outline-none ${duplicateStackError
+                      ? 'border-red-500 bg-red-50/30'
+                      : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
+                      }`}
                   />
 
                   {stackInput && stackSearchResults && stackSearchResults.length > 0 && (
@@ -1007,7 +1006,7 @@ export default function RecommendCandidatesPage() {
                   <div className="mb-2 text-[12px] font-black text-gray-700">
                     추천 인원 제한
                     <span className="mt-1 block text-[12px] font-semibold text-gray-400">
-                      추천인을 최소 1명 이상 입력해주세요.
+                      검색할 인원 수를 최소 1명 이상 입력해주세요.
                     </span>
                   </div>
                   <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-3">
