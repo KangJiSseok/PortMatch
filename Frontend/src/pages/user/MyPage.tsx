@@ -215,9 +215,12 @@ export default function MyPage() {
 
   // 이벤트 맵
   const interviewViews = interviewQuery.data ?? [];
+  const calendarViews = interviewViews.filter((v) =>
+    !((v.interviewStatus ?? "").toUpperCase().includes("CANCELED")),
+  );
   const interviewEventMap = useMemo(() => {
     const m = new Map<string, InterviewSessionView[]>();
-    for (const iv of interviewViews) {
+    for (const iv of calendarViews) {
       const ymd = toYmdFromIso(iv.scheduledAt);
       const list = m.get(ymd) ?? [];
       list.push(iv);
@@ -228,7 +231,7 @@ export default function MyPage() {
       m.set(k, list);
     }
     return m;
-  }, [interviewViews]);
+  }, [calendarViews]);
 
   const selectedInterviews = useMemo(
     () => interviewEventMap.get(selectedDate) ?? [],

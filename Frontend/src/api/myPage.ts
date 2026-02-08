@@ -275,6 +275,7 @@ export type InterviewSessionView = {
   applicantName?: string;
 
   status: InterviewListStatus;
+  interviewStatus?: string | null;
 };
 
 type ApiStatusLike = string | null | undefined;
@@ -365,6 +366,7 @@ function toInterviewSessionViewFromApi(row: InterviewApiRow): InterviewSessionVi
     companyName,
     applicantName,
     status: toInterviewListStatus(row.status),
+    interviewStatus: normalizeInterviewStatus(row.status),
   };
 }
 
@@ -394,7 +396,7 @@ function interviewStatusToListStatus(s: InterviewStatus): InterviewListStatus {
 }
 
 /* =====================================================================================
-   ✅ localStorage: 기업이 만든 면접 일정 (백엔드 없을 때)
+   ??localStorage: 湲곗뾽??留뚮뱺 硫댁젒 ?쇱젙 (諛깆뿏???놁쓣 ??
    ===================================================================================== */
 
 export type CreateExtraInterviewArgs = {
@@ -494,7 +496,7 @@ export function getExtraInterviewViewByApplicationId(
   return buildExtraInterviewViews().find((v) => v.application_id === applicationId);
 }
 
-/** ✅ 생성 */
+/** ???앹꽦 */
 export function createExtraInterviewView(args: CreateExtraInterviewArgs): InterviewSessionView {
   const interviewId = nextExtraId();
   const roomId =
@@ -522,7 +524,7 @@ export function createExtraInterviewView(args: CreateExtraInterviewArgs): Interv
   return toView(persisted);
 }
 
-/** ✅ 수정(면접ID 기준) */
+/** ???섏젙(硫댁젒ID 湲곗?) */
 export function updateExtraInterviewScheduledAt(interviewId: number, nextIso: string): boolean {
   const prev = readExtras();
   const idx = prev.findIndex((p) => p.interview_id === interviewId);
@@ -541,7 +543,7 @@ export function updateExtraInterviewScheduledAt(interviewId: number, nextIso: st
   return true;
 }
 
-/** ✅ 업서트(지원서ID 기준): 없으면 생성, 있으면 수정 */
+/** ???낆꽌??吏?먯꽌ID 湲곗?): ?놁쑝硫??앹꽦, ?덉쑝硫??섏젙 */
 export function upsertExtraInterviewView(args: CreateExtraInterviewArgs): InterviewSessionView {
   const prev = readExtras();
   const idx = prev.findIndex((p) => p.application_id === args.application_id);
@@ -674,15 +676,15 @@ export const PORTFOLIO_REPORT: PortfolioReport = {
   id: 55,
   filename: 'portfolio.pdf',
   analyzedAt: '2026-01-18T22:05:00',
-  highlights: ['React/TS 경험 강조', '프로젝트 성과 수치화 추천', 'CS 질문 대비 필요'],
+  highlights: ['React/TS 寃쏀뿕 媛뺤“', '?꾨줈?앺듃 ?깃낵 ?섏튂??異붿쿇', 'CS 吏덈Ц ?鍮??꾩슂'],
 };
 
 export const NOTIFICATIONS: NotificationItem[] = [
-  { id: 1, message: '내일 면접 일정이 있어요.', createdAt: '2026-01-20T09:00:00', read: false },
-  { id: 2, message: '이력서 완성도가 높아졌어요.', createdAt: '2026-01-19T12:10:00', read: true },
+  { id: 1, message: '?댁씪 硫댁젒 ?쇱젙???덉뼱??', createdAt: '2026-01-20T09:00:00', read: false },
+  { id: 2, message: '?대젰???꾩꽦?꾧? ?믪븘議뚯뼱??', createdAt: '2026-01-19T12:10:00', read: true },
   {
     id: 3,
-    message: '포트폴리오 분석 리포트가 생성됐어요.',
+    message: '?ы듃?대━??遺꾩꽍 由ы룷?멸? ?앹꽦?먯뼱??',
     createdAt: '2026-01-18T22:06:00',
     read: true,
   },
@@ -697,14 +699,14 @@ function sleep(ms: number) {
 async function mockFetch<T>(value: T, options?: FetchOptions): Promise<T> {
   const delay = options?.delayMs ?? 300;
   await sleep(delay);
-  if (options?.shouldFail) throw new Error('네트워크 오류가 발생했어요. 다시 시도해 주세요.');
+  if (options?.shouldFail) throw new Error('?ㅽ듃?뚰겕 ?ㅻ쪟媛 諛쒖깮?덉뼱?? ?ㅼ떆 ?쒕룄??二쇱꽭??');
   return value;
 }
 
 export function fetchMyInterviewViews(options?: FetchOptions): Promise<InterviewSessionView[]> {
   if (options?.shouldFail) {
     return Promise.reject(
-      new Error('?ㅽ듃?뚰겕 ?ㅻ쪟媛 諛쒖깮?덉뼱?? ?ㅼ떆 ?쒕료??二쇱꽭??'),
+      new Error('??쎈뱜??곌쾿 ??살첒揶쎛 獄쏆뮇源??됰선?? ??쇰뻻 ??뺣즺??雅뚯눘苑??'),
     );
   }
 
