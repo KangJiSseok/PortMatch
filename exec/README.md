@@ -165,84 +165,84 @@ docker exec -i portmatch-db psql -U portmatch -d portmatch < DB/portmatch_data_o
 
 ## 6. 시연 시나리오
 
-1. 메인 화면 진입 및 서비스 소개
-![1](image/1.png)
-2. 대시보드 진입
-![2](image/2.png)
-3. 포트폴리오 분석하기
-![3](image/3.png)
-4. 포트폴리오 분석 시작
-![4](image/4.png)
-5. 분석 결과 조회
-![5](image/5.png)
-6. 추천 기업 확인하기
-![6](image/6.png)
-7. 합격 전략 리포트 1
-![7](image/7.png)
-8. 합격 전략 리포트 2
-![8](image/8.png)
-9. 추천 공고 확인하기
-![9](image/9.png)
-10. 상세 분석 결과
-![10](image/10.png)
+<table>
+  <tr>
+    <td align="center"><img src="image/1.png" width="320"><br>1. 메인 화면 진입 및 서비스 소개</td>
+    <td align="center"><img src="image/2.png" width="320"><br>2. 대시보드 진입</td>
+    <td align="center"><img src="image/3.png" width="320"><br>3. 포트폴리오 분석하기</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="image/4.png" width="320"><br>4. 포트폴리오 분석 시작</td>
+    <td align="center"><img src="image/5.png" width="320"><br>5. 분석 결과 조회</td>
+    <td align="center"><img src="image/6.png" width="320"><br>6. 추천 기업 확인하기</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="image/7.png" width="320"><br>7. 합격 전략 리포트 1</td>
+    <td align="center"><img src="image/8.png" width="320"><br>8. 합격 전략 리포트 2</td>
+    <td align="center"><img src="image/9.png" width="320"><br>9. 추천 공고 확인하기</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="image/10.png" width="320"><br>10. 상세 분석 결과</td>
+    <td align="center"></td>
+    <td align="center"></td>
+  </tr>
+</table>
 
 ### 개인
 ---
-1. 공고 확인
-![1](image/11.png)
-2. 공고 지원(개인)
-![2](image/12.png)
-3. 공고 지원 완료(개인)
-![3](image/13.png)
-4. 면접 제안 확인(개인)
-![4](image/14.png)
-5. 면접 일정 확인(개인)
-![5](image/15.png)
-6. 면접 일정 확인(개인)
-![6](image/16.png)
-7. 면접 룸 로비
-![7](image/17.png)
-8. 면접 화면(개인)
-![8](image/18.png)
+<table>
+  <tr>
+    <td align="center"><img src="image/11.png" width="320"><br>1. 공고 확인</td>
+    <td align="center"><img src="image/12.png" width="320"><br>2. 공고 지원(개인)</td>
+    <td align="center"><img src="image/13.png" width="320"><br>3. 공고 지원 완료(개인)</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="image/14.png" width="320"><br>4. 면접 제안 확인(개인)</td>
+    <td align="center"><img src="image/15.png" width="320"><br>5. 면접 일정 확인(개인)</td>
+    <td align="center"><img src="image/16.png" width="320"><br>6. 면접 일정 확인(개인)</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="image/17.png" width="320"><br>7. 면접 룸 로비</td>
+    <td align="center"><img src="image/18.png" width="320"><br>8. 면접 화면(개인)</td>
+    <td align="center"></td>
+  </tr>
+</table>
 
 ### 기업
 --- 
-
-1. 공고 목록 확인(기업)
-![1](image/19.png)
-2. 공고 지원자 확인(기업)
-![2](image/20.png)
-3. 면접 일정(기업)
-![3](image/21.png)
-4. 면접 일정 보내기(기업)
-![4](image/22.png)
-5. 면접 제안(기업)
-![5](image/23.png)
-6. 요청 수락 확인(기업)
-![6](image/24.png)
-7. 면접 룸 로비
-![7](image/25.png)
-8. 면접 화면(기업)
-![8](image/26.png)
-9. 면접 종료(기업)
-![9](image/27.png)
+<table>
+  <tr>
+    <td align="center"><img src="image/19.png" width="320"><br>1. 공고 목록 확인(기업)</td>
+    <td align="center"><img src="image/20.png" width="320"><br>2. 공고 지원자 확인(기업)</td>
+    <td align="center"><img src="image/21.png" width="320"><br>3. 면접 일정(기업)</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="image/22.png" width="320"><br>4. 면접 일정 보내기(기업)</td>
+    <td align="center"><img src="image/23.png" width="320"><br>5. 면접 제안(기업)</td>
+    <td align="center"><img src="image/24.png" width="320"><br>6. 요청 수락 확인(기업)</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="image/25.png" width="320"><br>7. 면접 룸 로비</td>
+    <td align="center"><img src="image/26.png" width="320"><br>8. 면접 화면(기업)</td>
+    <td align="center"><img src="image/27.png" width="320"><br>9. 면접 종료(기업)</td>
+  </tr>
+</table>
 
 ### 서비스
-1. 메인 화면
-![1](image/28.png)
-2. 전체 공고 조회
-![2](image/29.png)
-3. 스피치 타이머
-![3](image/30.png)
-4. 실수령액 계산기
-![4](image/31.png)
-5. 협업 일정 관리
-![5](image/32.png)
-6. 글로벌 단위변환기
-![6](image/33.png)
-7. 면접 예상 질문
-![7](image/34.png)
-8. 면접 예상 질문 작성 템플릿
-![8](image/35.png)
-9. 포트폴리오 첨삭
-![9](image/36.png)
+<table>
+  <tr>
+    <td align="center"><img src="image/28.png" width="320"><br>1. 메인 화면</td>
+    <td align="center"><img src="image/29.png" width="320"><br>2. 전체 공고 조회</td>
+    <td align="center"><img src="image/30.png" width="320"><br>3. 스피치 타이머</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="image/31.png" width="320"><br>4. 실수령액 계산기</td>
+    <td align="center"><img src="image/32.png" width="320"><br>5. 협업 일정 관리</td>
+    <td align="center"><img src="image/33.png" width="320"><br>6. 글로벌 단위변환기</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="image/34.png" width="320"><br>7. 면접 예상 질문</td>
+    <td align="center"><img src="image/35.png" width="320"><br>8. 면접 예상 질문 작성 템플릿</td>
+    <td align="center"><img src="image/36.png" width="320"><br>9. 포트폴리오 첨삭</td>
+  </tr>
+</table>
