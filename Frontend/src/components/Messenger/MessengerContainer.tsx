@@ -393,7 +393,7 @@ const ChatList = () => {
   return (
     <div className="bg-pure-white flex h-full flex-col overflow-hidden">
       <div className="border-soft-pebble bg-pure-white sticky top-0 z-10 flex items-center justify-between border-b p-6">
-        <h2 className="text-midnight-ink text-xl font-black tracking-tighter">쪽지함</h2>
+        <h2 className="text-midnight-ink text-xl font-black tracking-tighter">채팅 목록</h2>
       </div>
       <div className="flex-1 overflow-y-auto">{renderContent()}</div>
     </div>
@@ -577,7 +577,7 @@ const ChatRoomWindow = ({ roomId, pendingJobInfo, onConsumeJobInfo }: ChatRoomWi
     try {
       const payload: InterviewPayload = {
         id: 0,
-        time: new Date(dateTime).toISOString(),
+        time: `${dateTime}:00`,
         status: 'PENDING',
         userId: applicantId,
         jobPostingId: selectedJob.id,
