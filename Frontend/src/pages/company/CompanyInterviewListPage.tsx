@@ -21,8 +21,7 @@ function formatDateTime(iso: string) {
   return `${yyyy}.${mm}.${dd} ${hh}:${mi}`;
 }
 
-
-// ???�재 ?�각(�??�위) -> datetime-local min �?
+// 현재 시각(분 단위) -> datetime-local min 값 (추후 일정 변경 모달에서 사용 가능)
 
 type CorporateView = InterviewSessionView & {
   applicantName?: string;
@@ -41,15 +40,15 @@ export default function CorporateInterviewListPage() {
   const [items, setItems] = useState<CorporateView[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string>('면접 목록??불러?��? 못했?�요.');
+  const [errorMessage, setErrorMessage] = useState<string>('면접 목록을 불러오지 못했어요.');
   const [cancelingId, setCancelingId] = useState<number | null>(null);
 
-  // ???�정 모달 ?�태
+  // 일정 변경 모달 상태 (추후 추가 가능)
 
   const load = async () => {
     setIsLoading(true);
     setIsError(false);
-    setErrorMessage('면접 목록??불러?��? 못했?�요.');
+    setErrorMessage('면접 목록을 불러오지 못했어요.');
 
     try {
       const data = (await fetchCompanyInterviewViewsByStatus(tab)) as CorporateView[];
@@ -57,7 +56,7 @@ export default function CorporateInterviewListPage() {
     } catch (err) {
       setItems([]);
       setIsError(true);
-      setErrorMessage(err instanceof Error ? err.message : '?????�는 ?�류가 발생?�어??');
+      setErrorMessage(err instanceof Error ? err.message : '알 수 없는 오류가 발생했어요.');
     } finally {
       setIsLoading(false);
     }
@@ -68,14 +67,13 @@ export default function CorporateInterviewListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  // ??모달 ?�릴 ?? ?�크�??�금 + ESC ?�기 + min 최신 ?��?
+  // 모달 열릴 때 스크롤 잠금 + ESC 닫기 + min 최신값 (추후 추가 가능)
 
   const isUpcoming = tab === 'UPCOMING';
 
-
   const handleCancel = async (s: CorporateView) => {
     if (cancelingId !== null) return;
-    const ok = window.confirm('?�당 면접??취소?�시겠습?�까?');
+    const ok = window.confirm('해당 면접을 취소하시겠습니까?');
     if (!ok) return;
 
     setCancelingId(s.interview_id);
@@ -83,17 +81,17 @@ export default function CorporateInterviewListPage() {
       await updateInterviewSchedule(s.interview_id, { status: 'CANCELED' });
       await load();
     } catch (err) {
-      alert(err instanceof Error ? err.message : '면접 취소???�패?�습?�다.');
+      alert(err instanceof Error ? err.message : '면접 취소에 실패했습니다.');
     } finally {
       setCancelingId(null);
     }
   };
 
   return (
-    // ??가�??�크�?고정?? CompanyJobManagementPage ??그�?�?
+    // 가로 스크롤 고정: CompanyJobManagementPage 스타일과 동일
     <div className="bg-pure-white min-h-screen min-w-350 pt-32 pb-32">
       <div className="mx-auto w-5xl px-6">
-        {/* ???�더(?�쪽 ?��? ?�인 + ???�?��?) */}
+        {/* 헤더(왼쪽 라인 + 설명) */}
         <header className="border-point-blue mb-12 border-l-4 pl-6">
           <div className="flex items-end justify-between gap-6">
             <div className="min-w-0">
@@ -105,11 +103,11 @@ export default function CorporateInterviewListPage() {
                 Interview Management
               </motion.h1>
               <p className="text-slate-gray mt-2 text-lg font-bold whitespace-nowrap italic opacity-40">
-                면접 ?�정??관리하�?바로 ?�장/?�정까�? 처리?�세??
+                면접 일정을 관리하고 바로 입장/취소까지 처리하세요.
               </p>
             </div>
 
-            {/* 면접 ?�플�??�동 버튼 */}
+            {/* 면접 템플릿 이동 버튼 */}
             <div className="shrink-0">
               <Button
                 type="button"
@@ -118,7 +116,7 @@ export default function CorporateInterviewListPage() {
                 className="rounded-2xl px-8 shadow-xl"
                 onClick={() => navigate(ROUTES.interviewTemplate)}
               >
-                면접 ?�플�??�동
+                면접 템플릿 이동
               </Button>
             </div>
           </div>
@@ -129,7 +127,7 @@ export default function CorporateInterviewListPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
         >
-          {/* ???�션 ?�?��? + ??*/}
+          {/* 섹션 타이틀 + 탭 */}
           <div className="mb-10 flex items-center justify-between gap-6">
             <div className="flex items-center gap-3">
               <div className="bg-point-blue h-6 w-1.5 rounded-full" />
@@ -150,7 +148,7 @@ export default function CorporateInterviewListPage() {
                 className="rounded-2xl border-2 px-8 text-base font-black"
                 onClick={() => setTab('UPCOMING')}
               >
-                ?�정
+                예정
               </Button>
               <Button
                 type="button"
@@ -160,19 +158,19 @@ export default function CorporateInterviewListPage() {
                 className="rounded-2xl border-2 px-8 text-base font-black"
                 onClick={() => setTab('DONE')}
               >
-                ?�료
+                완료
               </Button>
             </div>
           </div>
 
-          {/* ??로딩 */}
+          {/* 로딩 */}
           {isLoading && <ListSkeleton />}
 
-          {/* ???�러 */}
+          {/* 에러 */}
           {!isLoading && isError && (
             <div className="border-silver-mist bg-pure-white rounded-[40px] border p-10 shadow-sm">
               <p className="text-midnight-ink text-2xl font-black tracking-tight">
-                ?�이?��? 불러?��? 못했?�요
+                면접 목록을 불러오지 못했어요
               </p>
               <p className="text-slate-gray mt-3 text-base leading-relaxed font-bold opacity-60">
                 {errorMessage}
@@ -184,30 +182,28 @@ export default function CorporateInterviewListPage() {
                   className="rounded-2xl px-8 shadow-xl"
                   onClick={() => void load()}
                 >
-                  ?�시 ?�도
+                  다시 시도
                 </Button>
               </div>
             </div>
           )}
 
-          {/* ???�공 */}
+          {/* 성공 */}
           {!isLoading && !isError && (
             <div className="grid gap-6">
               {items.length === 0 ? (
                 <div className="border-silver-mist bg-pure-white rounded-[40px] border-2 border-dashed py-32 text-center">
-                  <div className="mb-4 text-6xl opacity-20">?��</div>
+                  <div className="mb-4 text-6xl opacity-20">🗒️</div>
                   <p className="text-soft-pebble text-xl font-black italic">
-                    {isUpcoming ? '?�정??면접???�습?�다.' : '?�료??면접???�습?�다.'}
+                    {isUpcoming ? '예정된 면접이 없습니다.' : '완료된 면접이 없습니다.'}
                   </p>
                   <p className="text-slate-gray mt-3 text-base font-bold opacity-40">
-                    ?�정???�성?�면 ?�기???�동?�로 ?��??�요.
+                    면접이 생성되면 여기에 자동으로 표시돼요.
                   </p>
                 </div>
               ) : (
                 items.map((s) => {
-                  const applicantName = s.applicantName?.trim()
-                    ? s.applicantName
-                    : '미확??지?�자';
+                  const applicantName = s.applicantName?.trim() ? s.applicantName : '미확인 지원자';
 
                   return (
                     <div
@@ -225,7 +221,7 @@ export default function CorporateInterviewListPage() {
                                 : 'bg-cloud-dancer text-slate-gray',
                             ].join(' ')}
                           >
-                            {isUpcoming ? '?�정' : '?�료'}
+                            {isUpcoming ? '예정' : '완료'}
                           </span>
 
                           <span className="text-slate-gray text-sm font-black tracking-widest whitespace-nowrap uppercase">
@@ -234,7 +230,7 @@ export default function CorporateInterviewListPage() {
                         </div>
 
                         <h3 className="text-midnight-ink mt-4 truncate text-2xl font-black tracking-tight">
-                          지?�자: {applicantName}
+                          지원자: {applicantName}
                         </h3>
 
                         <div className="mt-4 flex items-center gap-3">
@@ -273,7 +269,7 @@ export default function CorporateInterviewListPage() {
                               className="rounded-2xl px-10 shadow-xl"
                               onClick={() => navigate(ROUTES.lobby(s.interview_id))}
                             >
-                              {'\uB85C\uBE44 \uC785\uC7A5'}
+                              로비 입장
                             </Button>
                           </>
                         ) : (
@@ -284,7 +280,7 @@ export default function CorporateInterviewListPage() {
                             className="rounded-2xl px-10"
                             onClick={() => navigate(ROUTES.list)}
                           >
-                            ?�인
+                            확인
                           </Button>
                         )}
                       </div>

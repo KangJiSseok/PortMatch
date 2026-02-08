@@ -44,7 +44,6 @@ type UserProfileData = {
   managerName?: string;
 };
 
-// ✅ 추가: 기업 상세 정보 타입 정의
 interface CompanyDetailData {
   cid: string;
   corpName: string;
@@ -126,33 +125,24 @@ function ddayLabel(deadlineAt?: string) {
 function formatScheduleHint(startIso: string) {
   const now = new Date();
   const start = new Date(startIso);
-
   const nowMs = now.getTime();
   const startMs = start.getTime();
-
   if (startMs <= nowMs) return null;
-
   const todayYmd = toYmd(now);
   const startYmd = toYmd(start);
-
   const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const start0 = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
   const dayDiff = Math.round((start0 - today0) / (24 * 60 * 60 * 1000));
-
   if (startYmd === todayYmd) {
     const diffMin = Math.ceil((startMs - nowMs) / (60 * 1000));
     if (diffMin <= 0) return null;
-
     const h = Math.floor(diffMin / 60);
     const m = diffMin % 60;
-
     if (h <= 0) return `${m}분 전`;
     if (m === 0) return `${h}시간 전`;
     return `${h}시간 ${m}분 전`;
   }
-
   if (dayDiff > 0) return `D-${dayDiff}`;
-
   return null;
 }
 
@@ -180,7 +170,6 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
     setIsLoading(true);
     setIsError(false);
     setErrorMessage(undefined);
-
     try {
       const res = await fetcher();
       setData(res);
@@ -195,7 +184,6 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
 
   useEffect(() => {
     void run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return { data, isLoading, isError, errorMessage, refetch: run };
@@ -204,11 +192,9 @@ function useQueryLike<T>(fetcher: () => Promise<T>, deps: unknown[] = []): Query
 async function fetchMyProfile(): Promise<UserProfileData> {
   const response = await axios.get('/api/auth/me');
   const result = response.data;
-
   if (!result.status) {
     throw new Error(result.message || '사용자 정보를 불러오지 못했습니다.');
   }
-
   const { data } = result;
   return {
     userId: data.userId,
@@ -221,30 +207,23 @@ async function fetchMyProfile(): Promise<UserProfileData> {
   };
 }
 
-// ✅ 추가: 기업 상세 정보 조회 API 함수
 async function fetchCompanyDetail(cid?: string): Promise<CompanyDetailData | null> {
   if (!cid) return null;
-
   const response = await axios.get(`/api/companies/${cid}`);
   const result = response.data;
-
   if (!result.status) {
     throw new Error(result.message || '기업 정보를 불러오지 못했습니다.');
   }
-
   return result.data;
 }
 
 async function fetchCompanyJobPosts(cid?: string): Promise<JobPostView[]> {
   if (!cid) return [];
-
   const response = await axios.get(`/api/job-postings/company/${cid}`);
   const result = response.data;
-
   if (!result.status) {
     throw new Error(result.message || '공고 목록을 불러오지 못했습니다.');
   }
-
   return result.data.map((item: JobPostApiItem) => {
     let detailText = item.detail;
     try {
@@ -255,7 +234,6 @@ async function fetchCompanyJobPosts(cid?: string): Promise<JobPostView[]> {
     } catch {
       detailText = item.detail;
     }
-
     return {
       id: item.id,
       postingTitle: item.title,
@@ -282,13 +260,11 @@ async function fetchCompanyInterviews(): Promise<InterviewEvent[]> {
   }));
 }
 
-
 export default function CompanyMyPage() {
   const navigate = useNavigate();
   const profileQuery = useQueryLike(fetchMyProfile, []);
   const myCid = profileQuery.data?.cid;
 
-  // ✅ 추가: CID를 기반으로 기업 상세 정보 직접 조회
   const companyQuery = useQueryLike(() => fetchCompanyDetail(myCid), [myCid]);
   const jobPostQuery = useQueryLike(() => fetchCompanyJobPosts(myCid), [myCid]);
   const interviewQuery = useQueryLike(fetchCompanyInterviews, []);
@@ -301,7 +277,6 @@ export default function CompanyMyPage() {
     return () => window.cancelAnimationFrame(raf);
   }, []);
 
-  // ✅ 수정됨: 기업 정보를 companyQuery에서 1순위로 가져옴
   const displayCompanyName =
     companyQuery.data?.corpName ??
     jobPostQuery.data?.[0]?.companyName ??
@@ -315,7 +290,6 @@ export default function CompanyMyPage() {
 
   const jobPostItems = useMemo(() => {
     const list = jobPostQuery.data ?? [];
-
     const sorted = [...list].sort((a, b) => {
       if (jobPostSort === 'latest') return a.createdAt > b.createdAt ? -1 : 1;
       const aHas = !!a.deadlineAt && a.deadlineAt !== '상시채용';
@@ -360,7 +334,6 @@ export default function CompanyMyPage() {
   const interviewPreviewItems = useMemo(() => {
     const now = new Date();
     const today = toYmd(now);
-
     const base = (interviewQuery.data ?? [])
       .filter((e) => toInterviewListStatus(e.status) === 'UPCOMING')
       .sort((a, b) => (a.scheduledAt < b.scheduledAt ? -1 : 1));
@@ -440,7 +413,6 @@ export default function CompanyMyPage() {
                   {managerName} · {email}
                 </p>
               </div>
-
               <div className="flex items-center gap-3">
                 <Button
                   variant="blue"
@@ -457,11 +429,8 @@ export default function CompanyMyPage() {
 
         <section className="space-y-5">
           <div className="flex items-end justify-between border-b border-zinc-100 pb-4">
-            <div>
-              <h2 className="text-2xl font-black tracking-tighter">관리 바로가기</h2>
-            </div>
+            <h2 className="text-2xl font-black tracking-tighter">관리 바로가기</h2>
           </div>
-
           <div className="grid grid-cols-2 gap-5">
             <HubCard title="공고" onClick={() => navigate(ROUTES.jobPostManage)}>
               <div className="flex min-h-70 flex-1 flex-col px-6 py-6">
@@ -487,7 +456,6 @@ export default function CompanyMyPage() {
                     </Button>
                   </div>
                 </div>
-
                 <div className="flex-1">
                   {jobPostQuery.isLoading ? (
                     <div className="flex h-full items-center justify-center">
@@ -546,7 +514,6 @@ export default function CompanyMyPage() {
                     </Button>
                   </div>
                 </div>
-
                 <div className="flex-1">
                   {interviewQuery.isLoading ? (
                     <div className="flex h-full items-center justify-center">
@@ -591,7 +558,6 @@ export default function CompanyMyPage() {
               <p className="mt-1 text-sm font-semibold text-zinc-500">면접 일정만 모아봤어요.</p>
             </div>
           </div>
-
           <div className="rounded-4xl border border-zinc-100 bg-zinc-50 p-8 shadow-sm">
             {interviewQuery.isLoading ? (
               <CalendarSkeleton />
@@ -610,7 +576,6 @@ export default function CompanyMyPage() {
                   onChangeViewMonth={setViewMonth}
                   getEventCount={(ymd) => interviewEventMap.get(ymd)?.length ?? 0}
                 />
-
                 <CalendarScheduleList<InterviewEvent>
                   title="선택한 날짜 일정"
                   subtitle={formatYmdToKorean(selectedDate)}
@@ -628,7 +593,9 @@ export default function CompanyMyPage() {
                           <span
                             className={[
                               'ml-2 rounded-full px-2 py-0.5 text-[10px] font-black',
-                              isDone ? 'bg-zinc-100 text-zinc-500' : 'bg-emerald-50 text-emerald-600',
+                              isDone
+                                ? 'bg-zinc-100 text-zinc-500'
+                                : 'bg-emerald-50 text-emerald-600',
                             ].join(' ')}
                           >
                             {isDone ? '종료' : '예정'}
@@ -643,14 +610,17 @@ export default function CompanyMyPage() {
                           <p className="mt-1 text-xs font-semibold text-zinc-500">{e.position}</p>
                         ) : null}
                         <div className="mt-3 flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="light"
-                            size="sm"
-                            onClick={() => navigate(ROUTES.interviewLobby(e.id))}
-                          >
-                            로비
-                          </Button>
+                          {/* ✅ 수정: 상태가 DONE이 아닐 때만 로비 버튼 표시 */}
+                          {!isDone && (
+                            <Button
+                              type="button"
+                              variant="light"
+                              size="sm"
+                              onClick={() => navigate(ROUTES.interviewLobby(e.id))}
+                            >
+                              로비
+                            </Button>
+                          )}
                           <Button
                             type="button"
                             variant="outline"
@@ -673,6 +643,8 @@ export default function CompanyMyPage() {
   );
 }
 
+// --- 하위 컴포넌트들 ---
+
 function HubCard({
   title,
   onClick,
@@ -684,15 +656,12 @@ function HubCard({
 }) {
   const shouldIgnoreCardClick = (target: EventTarget | null, currentTarget: HTMLElement) => {
     if (!(target instanceof HTMLElement)) return false;
-
     const interactive = target.closest(
       'button, a, input, select, textarea, [data-stop-card-click="true"]',
     );
     if (interactive) return true;
-
     const roleButton = target.closest('[role="button"]');
     if (roleButton && roleButton !== currentTarget) return true;
-
     return false;
   };
 
@@ -723,7 +692,6 @@ function HubCard({
         </div>
         <ChevronRight className="text-zinc-300" size={18} aria-hidden />
       </div>
-
       {children}
     </div>
   );
@@ -752,7 +720,6 @@ function ListRowNoThumb({
     >
       <div className="min-w-0 flex-1">
         <p className="text-midnight-ink line-clamp-2 text-sm font-black">{title}</p>
-
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <p className="truncate text-xs font-semibold text-zinc-500">{subtitle}</p>
           {meta ? (
@@ -763,7 +730,6 @@ function ListRowNoThumb({
           ) : null}
         </div>
       </div>
-
       <div className="flex shrink-0 items-center gap-2">
         {badge}
         <span className="text-zinc-200 transition-colors group-hover:text-zinc-400">›</span>
@@ -809,7 +775,6 @@ function ListRowInterviewWithResume({
             </span>
             <span className="ml-2">{candidateName}</span>
           </p>
-
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <p className="truncate text-xs font-semibold text-zinc-500">{subtitle}</p>
             {meta ? (
@@ -820,7 +785,6 @@ function ListRowInterviewWithResume({
             ) : null}
           </div>
         </div>
-
         <div className="shrink-0">
           <Button
             type="button"
@@ -883,7 +847,6 @@ function CalendarSkeleton() {
           <div key={d}>{d}</div>
         ))}
       </div>
-
       <div className="mt-3 grid grid-cols-7 gap-3">
         {Array.from({ length: 42 }).map((_, i) => (
           <div
@@ -895,14 +858,6 @@ function CalendarSkeleton() {
             <div className="mt-2 h-3 w-16 rounded bg-zinc-200/40" />
           </div>
         ))}
-      </div>
-
-      <div className="mt-8 rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm">
-        <div className="h-5 w-40 animate-pulse rounded bg-zinc-200/60" />
-        <div className="mt-4 space-y-2">
-          <div className="h-16 animate-pulse rounded-xl bg-zinc-200/30" />
-          <div className="h-16 animate-pulse rounded-xl bg-zinc-200/30" />
-        </div>
       </div>
     </div>
   );
