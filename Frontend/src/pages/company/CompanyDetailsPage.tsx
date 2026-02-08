@@ -20,11 +20,12 @@ interface ApiResponse<T> {
   data: T;
 }
 
-interface Project {
-  id: number;
-  title: string;
-  period: string;
-  description: string;
+interface CompanyProject {
+  name: string;
+  domain?: string;
+  problem?: string;
+  solution?: string;
+  techs?: string[];
 }
 
 interface JobPosting {
@@ -46,7 +47,6 @@ interface CompanyDetails {
   employeeCount: string;
   website: string;
   isScrapped: boolean;
-  projects: Project[];
 }
 
 interface CompanyBackendData {
@@ -60,7 +60,6 @@ interface CompanyBackendData {
   busiCont: string;
   logo: string;
   isScrapped?: boolean;
-  projects?: Project[];
 }
 
 const DEFAULT_LOGO =
@@ -121,6 +120,7 @@ function CompanyDetailsPage() {
   const navigate = useNavigate();
   const [company, setCompany] = useState<CompanyDetails | null>(null);
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
+  const [companyProjects, setCompanyProjects] = useState<CompanyProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isScraping, setIsScraping] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
@@ -180,7 +180,7 @@ function CompanyDetailsPage() {
       }
 
       try {
-        const [fetchedUser, companyRes, jobsRes] = await Promise.all([
+        const [fetchedUser, companyRes, jobsRes, projectsRes] = await Promise.all([
           userPromise,
           axios.get<ApiResponse<CompanyBackendData>>(`/api/companies/${targetId}`, axiosConfig),
           axios
@@ -192,6 +192,19 @@ function CompanyDetailsPage() {
                 data: [],
                 status: false,
               } as ApiResponse<JobPosting[]>,
+            })),
+          axios
+            .get<ApiResponse<{ projects: CompanyProject[] }>>(
+              `/api/companies/${targetId}/projects`,
+              axiosConfig,
+            )
+            .catch(() => ({
+              data: {
+                code: 0,
+                message: '',
+                data: { projects: [] },
+                status: false,
+              } as ApiResponse<{ projects: CompanyProject[] }>,
             })),
         ]);
 
@@ -231,8 +244,12 @@ function CompanyDetailsPage() {
             employeeCount: b.totPsncnt || '비공개',
             website: b.homePg,
             isScrapped: initialIsScrapped,
-            projects: b.projects || [],
           });
+        }
+        if (projectsRes.data.code === 1000 || projectsRes.data.code === 0) {
+          setCompanyProjects(projectsRes.data.data?.projects ?? []);
+        } else {
+          setCompanyProjects([]);
         }
         setJobPostings(jobsRes.data.data || []);
       } catch (error) {
@@ -529,26 +546,44 @@ function CompanyDetailsPage() {
                 <h2 className="border-point-blue text-midnight-ink mb-10 border-l-8 pl-6 text-3xl font-black tracking-tighter">
                   기업 프로젝트 내역
                 </h2>
-                <div className="space-y-6">
-                  {company.projects && company.projects.length > 0 ? (
-                    company.projects.map((p) => (
-                      <div
-                        key={p.id}
-                        className="border-silver-mist bg-cloud-dancer/30 rounded-3xl border p-8"
-                      >
-                        <div className="mb-3 flex flex-row items-center justify-between gap-4">
-                          <h3 className="min-w-0 flex-1 truncate text-xl font-black">{p.title}</h3>
-                          <span className="bg-pure-white text-slate-gray rounded-lg border px-3 py-1 text-xs font-black">
-                            {p.period}
-                          </span>
+                <div className="grid grid-cols-1 gap-4">
+                  {companyProjects.length > 0 ? (
+                    companyProjects.map((p, idx) => {
+                      const domainLabel =
+                        p.domain && p.domain.trim() ? p.domain : '도메인 미입력';
+                      const problemText = p.problem ? `문제: ${p.problem}` : '';
+                      const solutionText = p.solution ? `해결: ${p.solution}` : '';
+                      const techText =
+                        p.techs && p.techs.length > 0 ? `기술: ${p.techs.join(', ')}` : '';
+                      const body = [problemText, solutionText, techText].filter(Boolean).join(' · ');
+
+                      return (
+                        <div
+                          key={`${p.name}-${idx}`}
+                          className="border-silver-mist group flex flex-col rounded-3xl border bg-zinc-50/30 p-8 transition-shadow duration-300 hover:bg-white hover:shadow-2xl"
+                        >
+                          <div className="mb-4 flex items-start justify-between gap-4">
+                            <h3 className="text-midnight-ink group-hover:text-point-blue line-clamp-1 text-2xl font-black transition-colors duration-300">
+                              {p.name}
+                            </h3>
+                            <span className="bg-pure-white text-slate-gray rounded-lg border px-3 py-1 text-xs font-black">
+                              {domainLabel}
+                            </span>
+                          </div>
+                          {body ? (
+                            <p className="text-slate-gray line-clamp-2 text-sm font-medium opacity-70">
+                              {body}
+                            </p>
+                          ) : (
+                            <p className="text-slate-gray text-sm font-medium opacity-70">
+                              프로젝트 상세 정보가 없습니다.
+                            </p>
+                          )}
                         </div>
-                        <p className="text-slate-gray line-clamp-2 text-base font-medium">
-                          {p.description}
-                        </p>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
-                    <div className="text-slate-gray py-16 text-center text-xl font-bold">
+                    <div className="text-slate-gray py-20 text-center text-xl font-bold">
                       프로젝트 내역이 없습니다.
                     </div>
                   )}
