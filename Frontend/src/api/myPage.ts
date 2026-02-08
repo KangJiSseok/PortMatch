@@ -378,12 +378,7 @@ async function buildInterviewViewsFromApi(): Promise<InterviewSessionView[]> {
     .map((row) => toInterviewSessionViewFromApi(row))
     .filter((it): it is InterviewSessionView => Boolean(it));
 
-  const extra = getExtraInterviewViews();
-  const map = new Map<number, InterviewSessionView>();
-  for (const item of mapped) map.set(item.interview_id, item);
-  for (const item of extra) map.set(item.interview_id, item);
-
-  return Array.from(map.values()).sort(sortByScheduledAt);
+  return mapped.sort(sortByScheduledAt);
 }
 
 export type ScrapView = {
