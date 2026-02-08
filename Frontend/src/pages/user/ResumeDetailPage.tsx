@@ -529,11 +529,36 @@ function ResumeDetailPage() {
 
         setIsDetailLoading(false);
       } else {
+        if (lastDetailIdRef.current === resumeId) {
+          return;
+        }
+        lastDetailIdRef.current = resumeId;
         setIsDetailLoading(true);
         fetchResumeDetail(resumeId, user).finally(() => {
           setIsDetailLoading(false);
         });
       }
+    } else if (resumeId === 'me') {
+      if (isResumesLoading) return;
+      const list = Object.values(allResumes);
+      const mainResume = list.find((r) => r.isMain) ?? list[0];
+      if (!mainResume) {
+        lastDetailIdRef.current = null;
+        setIsDetailLoading(false);
+        return;
+      }
+      if (mainResume.isDetail) {
+        setIsDetailLoading(false);
+        return;
+      }
+      if (lastDetailIdRef.current === mainResume.id) {
+        return;
+      }
+      lastDetailIdRef.current = mainResume.id;
+      setIsDetailLoading(true);
+      fetchResumeDetail(mainResume.id, user).finally(() => {
+        setIsDetailLoading(false);
+      });
     } else {
       setIsDetailLoading(false);
     }
@@ -543,6 +568,8 @@ function ResumeDetailPage() {
     applicationId,
     user,
     isUserLoading,
+    isResumesLoading,
+    allResumes,
     fetchResumeDetail,
     fetchApplicationResume,
     companyResumeFromState,
@@ -614,6 +641,8 @@ function ResumeDetailPage() {
   } | null>(null);
   const [errorFields, setErrorFields] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  const lastDetailIdRef = useRef<string | null>(null);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: 'experience' | 'education' | 'portfolio' | 'selfIntro' | 'resume';
