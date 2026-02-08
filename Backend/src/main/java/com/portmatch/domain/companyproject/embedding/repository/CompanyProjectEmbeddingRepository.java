@@ -15,6 +15,14 @@ public interface CompanyProjectEmbeddingRepository extends JpaRepository<Company
 
     @Modifying
     @Transactional
+    @Query("""
+    DELETE FROM CompanyProjectEmbedding e
+    WHERE e.companyId = :companyId
+    """)
+    void deleteByCompanyId(@Param("companyId") Long companyId);
+
+    @Modifying
+    @Transactional
     @Query(value = """
         INSERT INTO company_project_embeddings
             (

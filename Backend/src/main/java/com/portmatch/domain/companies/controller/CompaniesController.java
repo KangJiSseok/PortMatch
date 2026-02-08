@@ -3,17 +3,24 @@ package com.portmatch.domain.companies.controller;
 import com.portmatch.domain.companies.dto.CompaniesDto;
 import com.portmatch.domain.companies.dto.CompanyNameResponse;
 import com.portmatch.domain.companies.service.CompaniesService;
-import com.portmatch.domain.jobposting.dto.JobPostingDto;
+import com.portmatch.domain.companyproject.dto.CompanyProjectReplaceRequest;
+import com.portmatch.domain.companyproject.service.CompanyProjectAnalysisService;
+import com.portmatch.domain.companies.entity.Company;
+import com.portmatch.domain.companies.repository.CompanyRepository;
+import com.portmatch.domain.auth.enums.Role;
+import com.portmatch.domain.auth.security.UserPrincipal;
 import com.portmatch.global.api.BaseApiResponse;
+import com.portmatch.global.exception.BusinessException;
 import com.portmatch.global.response.ResponseCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +33,8 @@ import java.util.List;
 public class CompaniesController {
 
     private final CompaniesService jobCompaniesService;
+    private final CompanyRepository companyRepository;
+    private final CompanyProjectAnalysisService companyProjectAnalysisService;
 
     @Operation(summary = "새로운 기업 등록", description = "기업 정보를 입력받아 데이터베이스에 저장합니다.")
     @ApiResponses(value = {
@@ -107,5 +116,35 @@ public class CompaniesController {
     public BaseApiResponse<List<CompanyNameResponse>> getJobsByTitle(@RequestParam("keyword") String keyword) {
         List<CompanyNameResponse> jobs = jobCompaniesService.getCompanyByName(keyword);
         return BaseApiResponse.ok(jobs);
+    }
+
+    @Operation(summary = "기업 프로젝트 전체 교체", description = "기업 프로젝트를 모두 삭제하고 요청 값으로 교체합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "교체 성공"),
+            @ApiResponse(responseCode = "2101", description = "역할 불일치", content = @Content),
+            @ApiResponse(responseCode = "2004", description = "권한 없음", content = @Content)
+    })
+    @PutMapping("/{cid}/projects")
+    public BaseApiResponse<Integer> replaceCompanyProjects(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "기업 cid", example = "12345") @PathVariable String cid,
+            @Valid @RequestBody CompanyProjectReplaceRequest request
+    ) {
+        if (principal == null) {
+            throw new BusinessException(ResponseCode.UNAUTHORIZED);
+        }
+        if (principal.getUser().getRole() != Role.COMPANY) {
+            throw new BusinessException(ResponseCode.ROLE_MISMATCH);
+        }
+
+        Company company = companyRepository.findByUserId(principal.getUser().getId())
+                .orElseThrow(() -> new BusinessException(ResponseCode.UNAUTHORIZED));
+
+        if (company.getCid() == null || !company.getCid().equals(cid)) {
+            throw new BusinessException(ResponseCode.UNAUTHORIZED);
+        }
+
+        int embeddedCount = companyProjectAnalysisService.replaceCompanyProjects(company, request);
+        return BaseApiResponse.ok(embeddedCount);
     }
 }
