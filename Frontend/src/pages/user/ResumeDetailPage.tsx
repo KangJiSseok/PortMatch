@@ -224,6 +224,20 @@ const MAX_LENGTHS = {
   CONTACT: 13,
 };
 
+const formatDateToDot = (dateStr?: string) => {
+  if (!dateStr) return '';
+  return dateStr.substring(0, 7).replace(/-/g, '.');
+};
+
+const convertToDateStr = (dotDate?: string) => {
+  if (!dotDate) return '2026-01-01';
+  const parts = dotDate.split('.');
+  if (parts.length < 2) return `${dotDate.trim()}-01-01`.substring(0, 10);
+  const year = parts[0].trim();
+  const month = parts[1].trim();
+  return `${year}-${month}-01`;
+};
+
 const SectionCard = ({
   title,
   children,
@@ -270,15 +284,7 @@ function ResumeDetailPage() {
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
-  const [selfIntros, setSelfIntros] = useState<SelfIntro[]>(() => {
-    const saved = localStorage.getItem('selfIntros');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const formatDateToDot = (dateStr?: string) => {
-    if (!dateStr) return '';
-    return dateStr.substring(0, 7).replace(/-/g, '.');
-  };
+  const [selfIntros, setSelfIntros] = useState<SelfIntro[]>([]);
 
   const handleResumeManagement = async () => {
     try {
@@ -436,6 +442,8 @@ function ResumeDetailPage() {
             content: intro.answerText,
           }));
           setSelfIntros(mappedIntros);
+        } else {
+          setSelfIntros([]);
         }
 
         setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
@@ -466,6 +474,8 @@ function ResumeDetailPage() {
               content: intro.answerText,
             }));
             setSelfIntros(mappedIntros);
+          } else {
+            setSelfIntros([]);
           }
 
           setAllResumes({ [mappedResume.id]: mappedResume });
@@ -504,6 +514,19 @@ function ResumeDetailPage() {
       if (isCompanyUser && companyResumeFromState && String(stateResumeId) === String(resumeId)) {
         const mappedResume = mapApiToResume(companyResumeFromState, user, true);
         setAllResumes({ [mappedResume.id]: mappedResume });
+
+        if (companyResumeFromState.selfIntroductions) {
+          const mappedIntros = companyResumeFromState.selfIntroductions.map((intro) => ({
+            id: String(intro.id),
+            realId: intro.id,
+            title: intro.title,
+            content: intro.answerText,
+          }));
+          setSelfIntros(mappedIntros);
+        } else {
+          setSelfIntros([]);
+        }
+
         setIsDetailLoading(false);
       } else {
         setIsDetailLoading(true);
@@ -560,6 +583,7 @@ function ResumeDetailPage() {
   const selfIntroRef = useRef<HTMLDivElement>(null);
 
   const [resumeSnapshot, setResumeSnapshot] = useState<Record<string, ResumeData> | null>(null);
+  const [selfIntroSnapshot, setSelfIntroSnapshot] = useState<SelfIntro[] | null>(null);
 
   const isRedirecting =
     !isUserLoading &&
@@ -670,7 +694,9 @@ function ResumeDetailPage() {
       const newResume = mapApiToResume(data, user, true);
 
       setResumeSnapshot({ ...allResumes });
+      setSelfIntroSnapshot([...selfIntros]);
       setAllResumes((prev) => ({ ...prev, [String(newResume.id)]: newResume }));
+      setSelfIntros([]);
 
       navigate(`/resumes/${newResume.id}`, { replace: true });
 
@@ -753,6 +779,7 @@ function ResumeDetailPage() {
       await resumeApi.updateResume(newId, payload);
 
       setResumeSnapshot({ ...allResumes });
+      setSelfIntroSnapshot([...selfIntros]);
 
       const updatedNewResumeData = (await resumeApi.getResumeDetail(
         String(newId),
@@ -781,6 +808,9 @@ function ResumeDetailPage() {
         await fetchResumeDetail(targetId, user);
       } else {
         setAllResumes(resumeSnapshot);
+        if (selfIntroSnapshot) {
+          setSelfIntros(selfIntroSnapshot);
+        }
 
         if (!resumeSnapshot[targetId]) {
           const firstId = Object.keys(resumeSnapshot)[0];
@@ -790,22 +820,11 @@ function ResumeDetailPage() {
       }
     }
 
-    const savedS = localStorage.getItem('selfIntros');
-    if (savedS) setSelfIntros(JSON.parse(savedS));
-
     setResumeSnapshot(null);
+    setSelfIntroSnapshot(null);
     setIsEditing(false);
     setInnerEditingIntro(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const convertToDateStr = (dotDate?: string) => {
-    if (!dotDate) return '2026-01-01';
-    const parts = dotDate.split('.');
-    if (parts.length < 2) return `${dotDate.trim()}-01-01`.substring(0, 10);
-    const year = parts[0].trim();
-    const month = parts[1].trim();
-    return `${year}-${month}-01`;
   };
 
   const validateAndSave = async () => {
@@ -900,6 +919,7 @@ function ResumeDetailPage() {
       await resumeApi.updateResume(displayResume.id, payload);
 
       setResumeSnapshot(null);
+      setSelfIntroSnapshot(null);
       setIsEditing(false);
       showToast('모든 정보가 안전하게 저장되었습니다!', 'success');
       fetchResumeDetail(displayResume.id, user);
@@ -941,31 +961,40 @@ function ResumeDetailPage() {
     const items = displayResume[type] || [];
     const item = items[index];
     if (!item) return;
+
     const parts = item.period?.split(' - ') || ['', ''];
     const start = parts[0]?.split('.') || ['', ''];
     const end = parts[1]?.split('.') || ['', ''];
+
     const current = {
-      startYear: start[0],
-      startMonth: start[1],
-      endYear: end[0],
-      endMonth: end[1],
+      startYear: start[0] || '2026',
+      startMonth: start[1] || '01',
+      endYear: end[0] || '2026',
+      endMonth: end[1] || '01',
     };
+
     const updated = { ...current, [field]: value };
     const startDate = parseInt(`${updated.startYear}${updated.startMonth}`);
     const endDate = parseInt(`${updated.endYear}${updated.endMonth}`);
+
     if (startDate > endDate) {
       showToast('시작일은 종료일보다 빨라야 합니다.', 'warn');
       return;
     }
     const updatedPeriod = `${updated.startYear}.${updated.startMonth} - ${updated.endYear}.${updated.endMonth}`;
+
     if (type === 'experience') {
       const newData = [...(displayResume.experience || [])];
-      newData[index] = { ...newData[index], period: updatedPeriod };
-      updateCurrentResume({ experience: newData });
+      if (newData[index]) {
+        newData[index] = { ...newData[index], period: updatedPeriod };
+        updateCurrentResume({ experience: newData });
+      }
     } else {
       const newData = [...(displayResume.education || [])];
-      newData[index] = { ...newData[index], period: updatedPeriod };
-      updateCurrentResume({ education: newData });
+      if (newData[index]) {
+        newData[index] = { ...newData[index], period: updatedPeriod };
+        updateCurrentResume({ education: newData });
+      }
     }
   };
 
@@ -1116,7 +1145,7 @@ function ResumeDetailPage() {
       } else if (type === 'selfIntro' && id !== undefined) {
         const filtered = selfIntros.filter((s) => s.id !== id);
         setSelfIntros(filtered);
-        localStorage.setItem('selfIntros', JSON.stringify(filtered));
+
         if (displayResume.selectedSelfIntroId === id) {
           updateCurrentResume({ selectedSelfIntroId: filtered[0]?.id || null });
           setInnerEditingIntro(false);
@@ -1134,10 +1163,9 @@ function ResumeDetailPage() {
   );
 
   const inputClass = (fieldId?: string) =>
-    `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${
-      errorFields.includes(fieldId || '')
-        ? 'border-red-500 bg-red-50/30 ring-4 ring-red-500/5'
-        : 'focus:bg-pure-white border-slate-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5'
+    `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${errorFields.includes(fieldId || '')
+      ? 'border-red-500 bg-red-50/30 ring-4 ring-red-500/5'
+      : 'focus:bg-pure-white border-slate-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5'
     } ${!isEditing ? 'cursor-not-allowed bg-slate-50 text-slate-500' : ''}`;
   const labelClass =
     'mb-2.5 block text-sm font-black tracking-wider whitespace-nowrap text-slate-500 uppercase';
@@ -1235,13 +1263,12 @@ function ResumeDetailPage() {
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className={`${
-              toast.type === 'success' || toast.type === 'spark'
+            className={`${toast.type === 'success' || toast.type === 'spark'
                 ? 'bg-blue-600'
                 : toast.type === 'warn'
                   ? 'bg-amber-500'
                   : 'bg-red-500'
-            } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
+              } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
           >
             {toast.type === 'success' && <CheckCircle2 size={24} />}
             {toast.type === 'spark' && <Sparkles size={24} />}
@@ -1379,11 +1406,10 @@ function ResumeDetailPage() {
             <main className="space-y-8">
               <section
                 ref={infoRef}
-                className={`bg-pure-white rounded-4xl border p-10 shadow-xl transition-all ${
-                  isEditing
+                className={`bg-pure-white rounded-4xl border p-10 shadow-xl transition-all ${isEditing
                     ? 'border-blue-600/30 ring-4 ring-blue-600/5'
                     : 'border-slate-100 shadow-slate-200/50'
-                }`}
+                  }`}
               >
                 <div className="mb-8 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1396,11 +1422,10 @@ function ResumeDetailPage() {
                   {isEditing && (
                     <button
                       onClick={() => updateCurrentResume({ isMain: !displayResume?.isMain })}
-                      className={`flex items-center gap-2 rounded-xl border px-4 py-2 transition-all ${
-                        displayResume?.isMain
+                      className={`flex items-center gap-2 rounded-xl border px-4 py-2 transition-all ${displayResume?.isMain
                           ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
                           : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       <Star
                         size={18}
@@ -1690,9 +1715,8 @@ function ResumeDetailPage() {
                                 <div className="flex min-w-0 flex-col">
                                   <span
                                     onClick={() => toggleExpandItem(`${type}-${i}-role`)}
-                                    className={`cursor-pointer text-lg font-bold break-all text-slate-600 ${
-                                      expandedItems[`${type}-${i}-role`] ? '' : 'truncate'
-                                    }`}
+                                    className={`cursor-pointer text-lg font-bold break-all text-slate-600 ${expandedItems[`${type}-${i}-role`] ? '' : 'truncate'
+                                      }`}
                                   >
                                     {type === 'experience'
                                       ? `${(item as Experience).role}`
@@ -1856,7 +1880,7 @@ function ResumeDetailPage() {
                                 <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                                   <select
                                     className={`${selectClass} w-full flex-1`}
-                                    value={item.period?.split(' - ')[0]?.split('.')[0]}
+                                    value={item.period?.split(' - ')[0]?.split('.')[0] || '2026'}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'startYear', e.target.value)
                                     }
@@ -1869,7 +1893,7 @@ function ResumeDetailPage() {
                                   </select>
                                   <select
                                     className={`${selectClass} w-full flex-1`}
-                                    value={item.period?.split(' - ')[0]?.split('.')[1]}
+                                    value={item.period?.split(' - ')[0]?.split('.')[1] || '01'}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'startMonth', e.target.value)
                                     }
@@ -1883,7 +1907,7 @@ function ResumeDetailPage() {
                                   <span className="shrink-0 font-black text-slate-300">-</span>
                                   <select
                                     className={`${selectClass} w-full flex-1`}
-                                    value={item.period?.split(' - ')[1]?.split('.')[0]}
+                                    value={item.period?.split(' - ')[1]?.split('.')[0] || '2026'}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'endYear', e.target.value)
                                     }
@@ -1896,7 +1920,7 @@ function ResumeDetailPage() {
                                   </select>
                                   <select
                                     className={`${selectClass} w-full flex-1`}
-                                    value={item.period?.split(' - ')[1]?.split('.')[1]}
+                                    value={item.period?.split(' - ')[1]?.split('.')[1] || '01'}
                                     onChange={(e) =>
                                       handlePeriodChange(i, type, 'endMonth', e.target.value)
                                     }
@@ -2075,8 +2099,6 @@ function ResumeDetailPage() {
                             className="min-w-17.5 rounded-xl bg-white font-black"
                             onClick={() => {
                               setInnerEditingIntro(false);
-                              const saved = localStorage.getItem('selfIntros');
-                              if (saved) setSelfIntros(JSON.parse(saved));
                             }}
                           >
                             취소
@@ -2103,7 +2125,6 @@ function ResumeDetailPage() {
                                 showToast('이미 존재하는 자기소개 제목입니다.', 'warn');
                                 return;
                               }
-                              localStorage.setItem('selfIntros', JSON.stringify(selfIntros));
                               setInnerEditingIntro(false);
                               showToast('자기소개 내용이 저장되었습니다.', 'success');
                             }}
