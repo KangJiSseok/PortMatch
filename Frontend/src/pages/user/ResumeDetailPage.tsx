@@ -18,6 +18,7 @@ import {
   Star,
   Lock,
   Copy,
+  Download,
 } from 'lucide-react';
 import Button from '../../components/Button/Button';
 import { portfolioApi } from '../../api/portfolioApi';
@@ -286,6 +287,10 @@ function ResumeDetailPage() {
 
   const [selfIntros, setSelfIntros] = useState<SelfIntro[]>([]);
 
+  // Navigation State에서 기업이 보낸 이력서 데이터 확인
+  const companyResumeFromState = (location.state as { companyResume?: ApiResumeResponse } | null)
+    ?.companyResume;
+
   const handleResumeManagement = async () => {
     try {
       const resumes = await resumeApi.getResumes();
@@ -449,7 +454,10 @@ function ResumeDetailPage() {
         setAllResumes((prev) => ({ ...prev, [id]: mappedResume }));
       } catch (error) {
         console.error('Failed to fetch resume detail:', error);
-        setHasFetchError(true);
+        // 기업 회원이면 상세 조회 권한이 없을 수 있으므로 에러 처리만 하고 화면 차단은 하지 않음 (state 데이터 활용)
+        if (currentUser?.role !== 'COMPANY') {
+          setHasFetchError(true);
+        }
       }
     },
     [mapApiToResume],
@@ -490,9 +498,6 @@ function ResumeDetailPage() {
     [mapApiToResume],
   );
 
-  const companyResumeFromState = (location.state as { companyResume?: ApiResumeResponse } | null)
-    ?.companyResume;
-
   useEffect(() => {
     if (!isUserLoading) {
       fetchResumes(user);
@@ -511,6 +516,7 @@ function ResumeDetailPage() {
       const isCompanyUser = user?.role === 'COMPANY';
       const stateResumeId = companyResumeFromState?.id;
 
+      // 기업 회원이고, 목록에서 state로 데이터를 넘겨받았으며, ID가 일치하면 state 데이터 우선 사용
       if (isCompanyUser && companyResumeFromState && String(stateResumeId) === String(resumeId)) {
         const mappedResume = mapApiToResume(companyResumeFromState, user, true);
         setAllResumes({ [mappedResume.id]: mappedResume });
@@ -574,6 +580,40 @@ function ResumeDetailPage() {
     if (!resume) return undefined;
     return resume;
   }, [resume]);
+
+  const currentPortfolio = useMemo(() => {
+    if (!displayResume?.selectedPortfolioId) return null;
+
+    const found = portfolios.find(
+      (p) => String(p.id) === String(displayResume.selectedPortfolioId),
+    );
+    if (found) return found;
+
+    return {
+      id: displayResume.selectedPortfolioId,
+      name: '첨부된 포트폴리오.pdf',
+      fileUrl: '',
+    };
+  }, [portfolios, displayResume?.selectedPortfolioId]);
+
+  const currentSelfIntro = selfIntros.find(
+    (s) => String(s.id) === String(displayResume?.selectedSelfIntroId),
+  );
+
+  const handleDownloadPortfolio = async () => {
+    if (!currentPortfolio) return;
+    try {
+      const { url } = await portfolioApi.getPresignedUrl(currentPortfolio.id);
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        showToast('다운로드 링크를 찾을 수 없습니다.', 'error');
+      }
+    } catch (error) {
+      console.error('Download failed:', error);
+      showToast('파일을 다운로드할 수 없습니다.', 'error');
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileImgRef = useRef<HTMLInputElement>(null);
@@ -1155,13 +1195,6 @@ function ResumeDetailPage() {
     setDeleteConfirm(null);
   };
 
-  const currentPortfolio = portfolios.find(
-    (p) => String(p.id) === String(displayResume?.selectedPortfolioId),
-  );
-  const currentSelfIntro = selfIntros.find(
-    (s) => String(s.id) === String(displayResume?.selectedSelfIntroId),
-  );
-
   const inputClass = (fieldId?: string) =>
     `w-full rounded-2xl border bg-slate-50 px-5 py-4 font-bold transition-all outline-none ${errorFields.includes(fieldId || '')
       ? 'border-red-500 bg-red-50/30 ring-4 ring-red-500/5'
@@ -1264,10 +1297,10 @@ function ResumeDetailPage() {
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
             className={`${toast.type === 'success' || toast.type === 'spark'
-                ? 'bg-blue-600'
-                : toast.type === 'warn'
-                  ? 'bg-amber-500'
-                  : 'bg-red-500'
+              ? 'bg-blue-600'
+              : toast.type === 'warn'
+                ? 'bg-amber-500'
+                : 'bg-red-500'
               } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
           >
             {toast.type === 'success' && <CheckCircle2 size={24} />}
@@ -1407,8 +1440,8 @@ function ResumeDetailPage() {
               <section
                 ref={infoRef}
                 className={`bg-pure-white rounded-4xl border p-10 shadow-xl transition-all ${isEditing
-                    ? 'border-blue-600/30 ring-4 ring-blue-600/5'
-                    : 'border-slate-100 shadow-slate-200/50'
+                  ? 'border-blue-600/30 ring-4 ring-blue-600/5'
+                  : 'border-slate-100 shadow-slate-200/50'
                   }`}
               >
                 <div className="mb-8 flex items-center justify-between">
@@ -1423,8 +1456,8 @@ function ResumeDetailPage() {
                     <button
                       onClick={() => updateCurrentResume({ isMain: !displayResume?.isMain })}
                       className={`flex items-center gap-2 rounded-xl border px-4 py-2 transition-all ${displayResume?.isMain
-                          ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
-                          : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
+                        ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
+                        : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
                         }`}
                     >
                       <Star
@@ -1955,14 +1988,30 @@ function ResumeDetailPage() {
                   >
                     <div className="relative w-full min-w-0 flex-1">
                       <div
-                        onClick={() => isEditing && setShowPortfolioList(!showPortfolioList)}
-                        className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5' : 'border-slate-100 bg-slate-50'}`}
+                        onClick={() => {
+                          if (isEditing) {
+                            setShowPortfolioList(!showPortfolioList);
+                          } else if (currentPortfolio) {
+                            handleDownloadPortfolio();
+                          }
+                        }}
+                        className={`flex items-center justify-between overflow-hidden rounded-2xl border px-6 py-4 transition-all ${isEditing
+                          ? 'cursor-pointer border-blue-600 bg-white shadow-sm ring-4 ring-blue-600/5'
+                          : currentPortfolio
+                            ? 'cursor-pointer border-blue-100 bg-blue-50 hover:bg-blue-100'
+                            : 'border-slate-100 bg-slate-50'
+                          }`}
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <FileText
-                            size={20}
-                            className={currentPortfolio ? 'text-blue-600' : 'text-slate-300'}
-                          />
+                          {currentPortfolio ? (
+                            isEditing ? (
+                              <FileText size={20} className="text-blue-600" />
+                            ) : (
+                              <Download size={20} className="text-blue-600" />
+                            )
+                          ) : (
+                            <FileText size={20} className="text-slate-300" />
+                          )}
                           <span
                             className={`truncate text-lg font-bold ${currentPortfolio ? 'text-blue-600' : 'text-slate-400'}`}
                           >
