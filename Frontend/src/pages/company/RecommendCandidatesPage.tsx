@@ -52,11 +52,17 @@ type RawStackItem = {
   name?: string;
   stack_name?: string;
 };
+//   기술: '#64748B',
+//   주제: '#94A3B8',
+//   아키텍처: '#475569',
+//   맥락: POINT_BLUE,
+// };
 
 /** ---------------- Small Utils ---------------- */
 
 /**
  * unifiedText에서 [기술]/[역량]/[아키텍처 경험]/[프로젝트] 같은 섹션을 뽑아오는 간단 파서
+ * (기업추천 페이지의 parseStructuredContent 느낌으로)
  */
 function parseStructured(content: string): Record<string, string> {
   if (!content) return {};
@@ -86,6 +92,15 @@ function parseStructured(content: string): Record<string, string> {
 
   return result;
 }
+
+// function firstSentence(text: string): string {
+//   if (!text) return '';
+//   const parts = text
+//     .split(/[\n.!?]/)
+//     .map((t) => t.trim())
+//     .filter(Boolean);
+//   return parts[0] ?? text.slice(0, 120);
+// }
 
 /** ---------------- Criteria (모달 밖 1번) ---------------- */
 
@@ -434,16 +449,16 @@ function CandidateDetailModal({
             >
               <style>
                 {`
-                  .soft-scrollbar::-webkit-scrollbar { width: 8px; }
-                  .soft-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                  .soft-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(15,23,42,0.18);
-                    border-radius: 999px;
-                  }
-                  .soft-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: rgba(15,23,42,0.28);
-                  }
-                `}
+                  .soft-scrollbar::-webkit-scrollbar { width: 8px; }
+                  .soft-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                  .soft-scrollbar::-webkit-scrollbar-thumb {
+                    background: rgba(15,23,42,0.18);
+                    border-radius: 999px;
+                  }
+                  .soft-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: rgba(15,23,42,0.28);
+                  }
+                `}
               </style>
 
               <div className="space-y-8">
@@ -602,8 +617,7 @@ function CandidateCard({
             <div
               className="pointer-events-none absolute inset-0 rounded-2xl"
               style={{
-                boxShadow:
-                  'inset 0 1px 0 rgba(255,255,255,0.85), inset 0 0 0 1px rgba(0,0,0,0.04)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85), inset 0 0 0 1px rgba(0,0,0,0.04)',
               }}
             />
           </div>
@@ -760,16 +774,13 @@ export default function RecommendCandidatesPage() {
   const displayResponse = hasRequestQuery ? response : undefined;
 
   // URL 파라미터 업데이트 함수
-  const updateUrlParams = useCallback(
-    (query: string, limit: string, stacks: StackItem[]) => {
-      const params = new URLSearchParams();
-      if (query) params.set('q', query);
-      if (limit && limit !== '10') params.set('limit', limit);
-      if (stacks.length > 0) params.set('stacks', encodeURIComponent(JSON.stringify(stacks)));
-      navigate({ search: params.toString() ? `?${params.toString()}` : '' }, { replace: false });
-    },
-    [navigate],
-  );
+  const updateUrlParams = useCallback((query: string, limit: string, stacks: StackItem[]) => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (limit && limit !== '10') params.set('limit', limit);
+    if (stacks.length > 0) params.set('stacks', encodeURIComponent(JSON.stringify(stacks)));
+    navigate({ search: params.toString() ? `?${params.toString()}` : '' }, { replace: false });
+  }, [navigate]);
 
   // URL 파라미터 변경 시 상태 동기화 (뒤로가기 대응)
   useEffect(() => {
@@ -828,9 +839,8 @@ export default function RecommendCandidatesPage() {
       if (!resume?.id) {
         throw new Error('empty resume');
       }
-      // [수정] companyResume를 state에서 제거하여 상세 페이지에서 데이터를 새로 fetch하도록 유도
       navigate(`/resumes/${resume.id}`, {
-        state: { companyUserId: userId },
+        state: { companyResume: resume, companyUserId: userId },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : '이력서 조회에 실패했습니다.';
@@ -938,11 +948,11 @@ export default function RecommendCandidatesPage() {
 
             <div className="mt-5 space-y-3">
               {/* <div className="border-t border-gray-100 pt-4">
-                <div className="text-[13px] font-black text-[#1a1a1a]">선택 옵션</div>
-                <div className="mt-1 text-[12px] font-semibold text-gray-500">
-                  해당 기술을 보유한 지원자가 점수가 높아집니다.
-                </div>
-              </div> */}
+                <div className="text-[13px] font-black text-[#1a1a1a]">선택 옵션</div>
+                <div className="mt-1 text-[12px] font-semibold text-gray-500">
+                  해당 기술을 보유한 지원자가 점수가 높아집니다.
+                </div>
+              </div> */}
 
               <div className="grid grid-cols-[7fr_3fr] gap-3">
                 <div className="relative">
@@ -959,8 +969,8 @@ export default function RecommendCandidatesPage() {
                     onChange={(e) => setStackInput(e.target.value)}
                     placeholder="기술 스택 검색 (예: React)"
                     className={`w-full rounded-2xl border px-5 py-4 text-[14px] font-bold transition-all outline-none ${duplicateStackError
-                        ? 'border-red-500 bg-red-50/30'
-                        : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
+                      ? 'border-red-500 bg-red-50/30'
+                      : 'border-slate-100 bg-slate-50 focus:border-blue-600 focus:bg-white'
                       }`}
                   />
 
