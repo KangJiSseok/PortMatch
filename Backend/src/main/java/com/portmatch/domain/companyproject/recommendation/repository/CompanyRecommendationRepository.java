@@ -45,9 +45,9 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
                 spb.*,
                 (
                     0.25 * spb.project_distance
-                    + 0.15 * spb.domain_distance
+                    + 0.05 * spb.domain_distance
                     + 0.25 * spb.problem_distance
-                    + 0.15 * spb.solution_distance
+                    + 0.25 * spb.solution_distance
                     + 0.1 * spb.tech_distance
                     + 0.1 * spb.missing_field_count
                 ) AS distance
