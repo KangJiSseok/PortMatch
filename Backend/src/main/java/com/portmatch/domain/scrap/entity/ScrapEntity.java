@@ -8,7 +8,7 @@ import lombok.*;
 
 @Entity
 @Table(name = "scraps",
-        uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "job_posting_id"})})
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "pid"})})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -26,6 +26,6 @@ public class ScrapEntity extends BaseTimeEntity {
 
     // Long pid 대신 객체로!
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_posting_id", nullable = false)
+    @JoinColumn(name = "pid", nullable = false)
     private JobPostingEntity jobPosting;
 }

@@ -173,18 +173,7 @@ public class JobPostingServiceImpl implements JobPostingService {
         JobPostingEntity entity = jobPostingRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
 
-        JobPostingEntity updated = JobPostingEntity.builder()
-                .id(entity.getId())
-                .title(entity.getTitle())
-                .active(entity.getActive())
-                .startDate(entity.getStartDate())
-                .endDate(entity.getEndDate())
-                .company(entity.getCompany())
-                .detail(entity.getDetail())
-                .jobType(entity.getJobType())
-                .vcnt(entity.getVcnt() + 1)
-                .build();
-        jobPostingRepository.save(updated);
+        entity.incrementVcnt();
     }
 
     @Override
