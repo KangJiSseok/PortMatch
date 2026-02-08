@@ -13,6 +13,7 @@ import {
   toYmdFromIso,
 } from '../../components/Calendar/calendarUtils';
 import { fetchCompanyInterviewEvents } from '../../api/interview';
+import { resumeApi } from '../../api/resumeApi';
 
 const ROUTES = {
   jobPostManage: '/company/jobs',
@@ -288,6 +289,18 @@ export default function CompanyMyPage() {
   const [jobPostSort, setJobPostSort] = useState<'latest' | 'deadline'>('latest');
   const [interviewFilter, setInterviewFilter] = useState<'upcoming' | 'today'>('upcoming');
 
+  const handleResumeView = async (applicantId: number) => {
+    try {
+      const resume = await resumeApi.getMainResumeByUserId(applicantId);
+      if (!resume?.id) throw new Error('empty resume');
+      navigate(`/resumes/${resume.id}`, {
+        state: { companyResume: resume, companyUserId: applicantId },
+      });
+    } catch (error) {
+      console.error('Failed to load resume:', error);
+    }
+  };
+
   const jobPostItems = useMemo(() => {
     const list = jobPostQuery.data ?? [];
     const sorted = [...list].sort((a, b) => {
@@ -365,7 +378,9 @@ export default function CompanyMyPage() {
   const [selectedDate, setSelectedDate] = useState<string>(() => todayYmd);
 
   const interviewEventMap = useMemo(() => {
-    const events = interviewQuery.data ?? [];
+    const events = (interviewQuery.data ?? []).filter(
+      (e) => !((e.status ?? '').toString().toUpperCase().includes('CANCELED')),
+    );
     const m = new Map<string, InterviewEvent[]>();
     for (const ev of events) {
       const ymd = toYmdFromIso(ev.scheduledAt);
@@ -540,7 +555,7 @@ export default function CompanyMyPage() {
                           subtitle={it.subtitle}
                           meta={it.meta}
                           onRowClick={it.onClick}
-                          onResumeClick={() => navigate(ROUTES.resumeView(it.applicantId))}
+                          onResumeClick={() => void handleResumeView(it.applicantId)}
                         />
                       ))}
                     </div>
@@ -625,7 +640,7 @@ export default function CompanyMyPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate(ROUTES.resumeView(e.applicantId))}
+                            onClick={() => void handleResumeView(e.applicantId)}
                           >
                             이력서 보기
                           </Button>

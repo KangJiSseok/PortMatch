@@ -506,12 +506,22 @@ function ResumeDetailPage() {
     if (isUserLoading) return;
 
     if (jobId && applicationId) {
+      const key = `${jobId}:${applicationId}`;
+      if (lastAppFetchRef.current === key) return;
+      lastAppFetchRef.current = key;
       fetchApplicationResume(jobId, applicationId);
-    } else if (resumeId && resumeId !== 'me') {
+      return;
+    }
+
+    if (resumeId && resumeId !== 'me') {
       const isCompanyUser = user?.role === 'COMPANY';
       const stateResumeId = companyResumeFromState?.id;
 
       if (isCompanyUser && companyResumeFromState && String(stateResumeId) === String(resumeId)) {
+        const resumeKey = String(stateResumeId);
+        if (lastCompanyResumeIdRef.current === resumeKey) return;
+        lastCompanyResumeIdRef.current = resumeKey;
+
         const mappedResume = mapApiToResume(companyResumeFromState, user, true);
         setAllResumes({ [mappedResume.id]: mappedResume });
 
@@ -528,53 +538,54 @@ function ResumeDetailPage() {
         }
 
         setIsDetailLoading(false);
-      } else {
-        if (lastDetailIdRef.current === resumeId) {
-          return;
-        }
-        lastDetailIdRef.current = resumeId;
-        setIsDetailLoading(true);
-        fetchResumeDetail(resumeId, user).finally(() => {
-          setIsDetailLoading(false);
-        });
-      }
-    } else if (resumeId === 'me') {
-      if (isResumesLoading) return;
-      const list = Object.values(allResumes);
-      const mainResume = list.find((r) => r.isMain) ?? list[0];
-      if (!mainResume) {
-        lastDetailIdRef.current = null;
-        setIsDetailLoading(false);
         return;
       }
-      if (mainResume.isDetail) {
-        setIsDetailLoading(false);
-        return;
-      }
-      if (lastDetailIdRef.current === mainResume.id) {
-        return;
-      }
-      lastDetailIdRef.current = mainResume.id;
+
+      if (lastDetailIdRef.current === resumeId) return;
+      lastDetailIdRef.current = resumeId;
       setIsDetailLoading(true);
-      fetchResumeDetail(mainResume.id, user).finally(() => {
+      fetchResumeDetail(resumeId, user).finally(() => {
         setIsDetailLoading(false);
       });
-    } else {
-      setIsDetailLoading(false);
+      return;
     }
+
+    setIsDetailLoading(false);
   }, [
     resumeId,
     jobId,
     applicationId,
     user,
     isUserLoading,
-    isResumesLoading,
-    allResumes,
     fetchResumeDetail,
     fetchApplicationResume,
     companyResumeFromState,
     mapApiToResume,
   ]);
+
+  useEffect(() => {
+    if (isUserLoading) return;
+    if (resumeId !== 'me') return;
+    if (isResumesLoading) return;
+
+    const list = Object.values(allResumes);
+    const mainResume = list.find((r) => r.isMain) ?? list[0];
+    if (!mainResume) {
+      lastDetailIdRef.current = null;
+      setIsDetailLoading(false);
+      return;
+    }
+    if (mainResume.isDetail) {
+      setIsDetailLoading(false);
+      return;
+    }
+    if (lastDetailIdRef.current === mainResume.id) return;
+    lastDetailIdRef.current = mainResume.id;
+    setIsDetailLoading(true);
+    fetchResumeDetail(mainResume.id, user).finally(() => {
+      setIsDetailLoading(false);
+    });
+  }, [resumeId, isUserLoading, isResumesLoading, allResumes, fetchResumeDetail, user]);
 
   const targetId =
     jobId && applicationId
@@ -643,6 +654,9 @@ function ResumeDetailPage() {
   const [isDragging, setIsDragging] = useState(false);
 
   const lastDetailIdRef = useRef<string | null>(null);
+
+  const lastAppFetchRef = useRef<string | null>(null);
+  const lastCompanyResumeIdRef = useRef<string | null>(null);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: 'experience' | 'education' | 'portfolio' | 'selfIntro' | 'resume';
