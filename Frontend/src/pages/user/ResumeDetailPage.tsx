@@ -397,29 +397,48 @@ function ResumeDetailPage() {
     }
     try {
       const data = await resumeApi.getResumes();
-      const resumeMap: Record<string, ResumeData> = {};
-      data.forEach((r) => {
-        if (r.id !== undefined && r.id !== null) {
-          resumeMap[String(r.id)] = {
-            id: String(r.id),
-            title: r.title || '제목 없음',
-            isMain: r.isMain || false,
-            userId: r.userId || currentUser?.userId || 0,
-            name: r.profile?.name || '',
-            contact: r.profile?.contact || '',
-            email: r.profile?.email || '',
-            address: r.profile?.address || '',
-            profileImage: r.profile?.profileImageUrl || null,
-            profileImageId: null,
-            education: [],
-            experience: [],
-            selectedPortfolioId: null,
-            selectedSelfIntroId: null,
-            isDetail: false,
-          };
-        }
+
+      setAllResumes((prev) => {
+        const nextResumes: Record<string, ResumeData> = { ...prev };
+
+        data.forEach((r) => {
+          if (r.id !== undefined && r.id !== null) {
+            const strId = String(r.id);
+            const existing = nextResumes[strId];
+            if (existing?.isDetail) {
+              nextResumes[strId] = {
+                ...existing,
+                title: r.title || '제목 없음',
+                isMain: r.isMain || false,
+                name: r.profile?.name || existing.name,
+                contact: r.profile?.contact || existing.contact,
+                email: r.profile?.email || existing.email,
+                address: r.profile?.address || existing.address,
+                profileImage: r.profile?.profileImageUrl || existing.profileImage,
+              };
+            } else {
+              nextResumes[strId] = {
+                id: strId,
+                title: r.title || '제목 없음',
+                isMain: r.isMain || false,
+                userId: r.userId || currentUser?.userId || 0,
+                name: r.profile?.name || '',
+                contact: r.profile?.contact || '',
+                email: r.profile?.email || '',
+                address: r.profile?.address || '',
+                profileImage: r.profile?.profileImageUrl || null,
+                profileImageId: null,
+                education: [],
+                experience: [],
+                selectedPortfolioId: null,
+                selectedSelfIntroId: null,
+                isDetail: false,
+              };
+            }
+          }
+        });
+        return nextResumes;
       });
-      setAllResumes(resumeMap);
     } catch (error) {
       console.error('Failed to fetch resumes:', error);
     } finally {
@@ -748,6 +767,7 @@ function ResumeDetailPage() {
         careers: (displayResume.experience || []).map((exp, index) => {
           const periodParts = exp.period ? exp.period.split(' - ') : ['2026.01', '2026.01'];
           return {
+            id: undefined,
             company: exp.company,
             role: exp.role,
             periodStart: convertToDateStr(periodParts[0]),
@@ -760,6 +780,7 @@ function ResumeDetailPage() {
         educations: (displayResume.education || []).map((edu, index) => {
           const periodParts = edu.period ? edu.period.split(' - ') : ['2026.01', '2026.01'];
           return {
+            id: undefined,
             school: edu.school,
             major: edu.major,
             degree: edu.degree || 'BACHELOR',
@@ -770,6 +791,7 @@ function ResumeDetailPage() {
           };
         }),
         selfIntroductions: selfIntros.map((intro, index) => ({
+          id: undefined,
           title: intro.title,
           answerText: intro.content,
           orderIndex: index,
@@ -1264,10 +1286,10 @@ function ResumeDetailPage() {
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 50, x: '-50%' }}
             className={`${toast.type === 'success' || toast.type === 'spark'
-                ? 'bg-blue-600'
-                : toast.type === 'warn'
-                  ? 'bg-amber-500'
-                  : 'bg-red-500'
+              ? 'bg-blue-600'
+              : toast.type === 'warn'
+                ? 'bg-amber-500'
+                : 'bg-red-500'
               } fixed bottom-24 left-1/2 z-2000 flex items-center gap-3 rounded-2xl px-8 py-4 text-lg font-black whitespace-nowrap text-white shadow-2xl`}
           >
             {toast.type === 'success' && <CheckCircle2 size={24} />}
@@ -1407,8 +1429,8 @@ function ResumeDetailPage() {
               <section
                 ref={infoRef}
                 className={`bg-pure-white rounded-4xl border p-10 shadow-xl transition-all ${isEditing
-                    ? 'border-blue-600/30 ring-4 ring-blue-600/5'
-                    : 'border-slate-100 shadow-slate-200/50'
+                  ? 'border-blue-600/30 ring-4 ring-blue-600/5'
+                  : 'border-slate-100 shadow-slate-200/50'
                   }`}
               >
                 <div className="mb-8 flex items-center justify-between">
@@ -1423,8 +1445,8 @@ function ResumeDetailPage() {
                     <button
                       onClick={() => updateCurrentResume({ isMain: !displayResume?.isMain })}
                       className={`flex items-center gap-2 rounded-xl border px-4 py-2 transition-all ${displayResume?.isMain
-                          ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
-                          : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
+                        ? 'border-yellow-400 bg-yellow-50 text-yellow-600 ring-2 ring-yellow-400/20'
+                        : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100'
                         }`}
                     >
                       <Star
@@ -1966,7 +1988,7 @@ function ResumeDetailPage() {
                           <span
                             className={`truncate text-lg font-bold ${currentPortfolio ? 'text-blue-600' : 'text-slate-400'}`}
                           >
-                            {currentPortfolio?.name || '등록된 포트폴리오가 없습니다.'}
+                            {currentPortfolio?.name || (displayResume?.selectedPortfolioId ? '포트폴리오 로딩 중...' : '등록된 포트폴리오가 없습니다.')}
                           </span>
                         </div>
                         {isEditing && (
