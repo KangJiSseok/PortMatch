@@ -8,6 +8,7 @@ import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisRequest;
 import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisResponse;
 import com.portmatch.domain.companyproject.dto.CompanyProjectAnalysisResult;
 import com.portmatch.domain.companyproject.dto.CompanyProjectReplaceRequest;
+import com.portmatch.domain.companyproject.dto.CompanyProjectResponse;
 import com.portmatch.domain.companyproject.dto.ExplanationMatchPayload;
 import com.portmatch.domain.companyproject.dto.ExplanationMatchRequestItem;
 import com.portmatch.domain.companyproject.dto.ExplanationMatchResponse;
@@ -164,6 +165,37 @@ public class CompanyProjectAnalysisService {
         }
 
         return companyProjectEmbeddingService.embedAndSaveByAnalysisId(saved.getId());
+    }
+
+    public CompanyProjectResponse getProjectsByCompanyCid(String cid) {
+        Company company = companyRepository.findByCid(cid)
+                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+
+        CompanyProjectAnalysis analysis = companyProjectAnalysisRepository.findByCompanyIdWithProjects(company.getId())
+                .orElse(null);
+
+        if (analysis == null || analysis.getProjects() == null) {
+            return new CompanyProjectResponse(List.of());
+        }
+
+        analysis.getProjects().forEach(project -> project.getTechs().size());
+
+        List<CompanyProjectResponse.Project> projects = analysis.getProjects().stream()
+                .map(project -> new CompanyProjectResponse.Project(
+                        project.getName(),
+                        project.getDomain(),
+                        project.getProblem(),
+                        project.getSolution(),
+                        project.getTechs() == null
+                                ? List.of()
+                                : project.getTechs().stream()
+                                .map(CompanyProjectAnalysisProjectTech::getTech)
+                                .filter(tech -> tech != null && !tech.isBlank())
+                                .toList()
+                ))
+                .toList();
+
+        return new CompanyProjectResponse(projects);
     }
 
     private void persistResult(Company company, Object body) {

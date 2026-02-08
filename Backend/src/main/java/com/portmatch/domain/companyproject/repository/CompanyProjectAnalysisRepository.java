@@ -18,4 +18,12 @@ public interface CompanyProjectAnalysisRepository extends JpaRepository<CompanyP
     where a.id = :analysisId
 """)
     Optional<CompanyProjectAnalysis> findByIdWithProjects(@Param("analysisId") Long analysisId);
+
+    @Query("""
+    select distinct a
+    from CompanyProjectAnalysis a
+    left join fetch a.projects p
+    where a.company.id = :companyId
+""")
+    Optional<CompanyProjectAnalysis> findByCompanyIdWithProjects(@Param("companyId") Long companyId);
 }

@@ -4,6 +4,7 @@ import com.portmatch.domain.companies.dto.CompaniesDto;
 import com.portmatch.domain.companies.dto.CompanyNameResponse;
 import com.portmatch.domain.companies.service.CompaniesService;
 import com.portmatch.domain.companyproject.dto.CompanyProjectReplaceRequest;
+import com.portmatch.domain.companyproject.dto.CompanyProjectResponse;
 import com.portmatch.domain.companyproject.service.CompanyProjectAnalysisService;
 import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
@@ -116,6 +117,18 @@ public class CompaniesController {
     public BaseApiResponse<List<CompanyNameResponse>> getJobsByTitle(@RequestParam("keyword") String keyword) {
         List<CompanyNameResponse> jobs = jobCompaniesService.getCompanyByName(keyword);
         return BaseApiResponse.ok(jobs);
+    }
+
+    @Operation(summary = "기업 프로젝트 조회", description = "기업 프로젝트 목록을 조회합니다.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "2001", description = "존재하지 않는 URL 또는 리소스", content = @Content)
+    })
+    @GetMapping("/{cid}/projects")
+    public BaseApiResponse<CompanyProjectResponse> getCompanyProjects(
+            @Parameter(description = "기업 cid", example = "12345") @PathVariable String cid
+    ) {
+        return BaseApiResponse.ok(companyProjectAnalysisService.getProjectsByCompanyCid(cid));
     }
 
     @Operation(summary = "기업 프로젝트 전체 교체", description = "기업 프로젝트를 모두 삭제하고 요청 값으로 교체합니다.")
