@@ -28,7 +28,7 @@ public class JobPostingMatchingController {
     public BaseApiResponse<JobPostingMatchResponse> matchByPortfolio(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long portfolioId,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam(defaultValue = "30") int limit
     ) {
         JobPostingMatchResponse response = matchingService.matchByPortfolioId(
                 userPrincipal.getUser().getId(),

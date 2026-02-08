@@ -16,7 +16,7 @@ public class CompanyRecommendationService {
     private final CompanyRecommendationRepository repository;
 
     public List<CompanyRecommendationResponse> recommendTop10(Long portfolioId) {
-        return repository.findTopCompaniesByPortfolio(portfolioId, 20).stream()
+        return repository.findTopCompaniesByPortfolio(portfolioId, 30).stream()
                 .map(r -> CompanyRecommendationResponse.of(
                         r.getCompanyId(),
                         r.getCompanyName(),
