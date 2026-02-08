@@ -551,11 +551,10 @@ function CompanyDetailsPage() {
                     companyProjects.map((p, idx) => {
                       const domainLabel =
                         p.domain && p.domain.trim() ? p.domain : '도메인 미입력';
-                      const problemText = p.problem ? `문제: ${p.problem}` : '';
-                      const solutionText = p.solution ? `해결: ${p.solution}` : '';
+                      const problemText = p.problem?.trim() ?? '';
+                      const solutionText = p.solution?.trim() ?? '';
                       const techText =
-                        p.techs && p.techs.length > 0 ? `기술: ${p.techs.join(', ')}` : '';
-                      const body = [problemText, solutionText, techText].filter(Boolean).join(' · ');
+                        p.techs && p.techs.length > 0 ? p.techs.join(', ') : '';
 
                       return (
                         <div
@@ -566,19 +565,34 @@ function CompanyDetailsPage() {
                             <h3 className="text-midnight-ink group-hover:text-point-blue line-clamp-1 text-2xl font-black transition-colors duration-300">
                               {p.name}
                             </h3>
-                            <span className="bg-pure-white text-slate-gray rounded-lg border px-3 py-1 text-xs font-black">
-                              {domainLabel}
-                            </span>
                           </div>
-                          {body ? (
-                            <p className="text-slate-gray line-clamp-2 text-sm font-medium opacity-70">
-                              {body}
-                            </p>
-                          ) : (
-                            <p className="text-slate-gray text-sm font-medium opacity-70">
-                              프로젝트 상세 정보가 없습니다.
-                            </p>
-                          )}
+
+                          <div className="space-y-2 text-sm font-medium text-slate-600">
+                            <div className="flex gap-2">
+                              <span className="text-slate-400 w-16 shrink-0 font-bold whitespace-nowrap">
+                                도메인
+                              </span>
+                              <span className="line-clamp-2">{domainLabel}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <span className="text-slate-400 w-16 shrink-0 font-bold whitespace-nowrap">
+                                문제
+                              </span>
+                              <span className="line-clamp-2">{problemText || '-'}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <span className="text-slate-400 w-16 shrink-0 font-bold whitespace-nowrap">
+                                해결
+                              </span>
+                              <span className="line-clamp-2">{solutionText || '-'}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <span className="text-slate-400 w-16 shrink-0 font-bold whitespace-nowrap">
+                                기술스택
+                              </span>
+                              <span className="line-clamp-2">{techText || '-'}</span>
+                            </div>
+                          </div>
                         </div>
                       );
                     })
