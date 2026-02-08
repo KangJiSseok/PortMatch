@@ -397,48 +397,29 @@ function ResumeDetailPage() {
     }
     try {
       const data = await resumeApi.getResumes();
-
-      setAllResumes((prev) => {
-        const nextResumes: Record<string, ResumeData> = { ...prev };
-
-        data.forEach((r) => {
-          if (r.id !== undefined && r.id !== null) {
-            const strId = String(r.id);
-            const existing = nextResumes[strId];
-            if (existing?.isDetail) {
-              nextResumes[strId] = {
-                ...existing,
-                title: r.title || '제목 없음',
-                isMain: r.isMain || false,
-                name: r.profile?.name || existing.name,
-                contact: r.profile?.contact || existing.contact,
-                email: r.profile?.email || existing.email,
-                address: r.profile?.address || existing.address,
-                profileImage: r.profile?.profileImageUrl || existing.profileImage,
-              };
-            } else {
-              nextResumes[strId] = {
-                id: strId,
-                title: r.title || '제목 없음',
-                isMain: r.isMain || false,
-                userId: r.userId || currentUser?.userId || 0,
-                name: r.profile?.name || '',
-                contact: r.profile?.contact || '',
-                email: r.profile?.email || '',
-                address: r.profile?.address || '',
-                profileImage: r.profile?.profileImageUrl || null,
-                profileImageId: null,
-                education: [],
-                experience: [],
-                selectedPortfolioId: null,
-                selectedSelfIntroId: null,
-                isDetail: false,
-              };
-            }
-          }
-        });
-        return nextResumes;
+      const resumeMap: Record<string, ResumeData> = {};
+      data.forEach((r) => {
+        if (r.id !== undefined && r.id !== null) {
+          resumeMap[String(r.id)] = {
+            id: String(r.id),
+            title: r.title || '제목 없음',
+            isMain: r.isMain || false,
+            userId: r.userId || currentUser?.userId || 0,
+            name: r.profile?.name || '',
+            contact: r.profile?.contact || '',
+            email: r.profile?.email || '',
+            address: r.profile?.address || '',
+            profileImage: r.profile?.profileImageUrl || null,
+            profileImageId: null,
+            education: [],
+            experience: [],
+            selectedPortfolioId: null,
+            selectedSelfIntroId: null,
+            isDetail: false,
+          };
+        }
       });
+      setAllResumes(resumeMap);
     } catch (error) {
       console.error('Failed to fetch resumes:', error);
     } finally {
@@ -767,7 +748,6 @@ function ResumeDetailPage() {
         careers: (displayResume.experience || []).map((exp, index) => {
           const periodParts = exp.period ? exp.period.split(' - ') : ['2026.01', '2026.01'];
           return {
-            id: undefined,
             company: exp.company,
             role: exp.role,
             periodStart: convertToDateStr(periodParts[0]),
@@ -780,7 +760,6 @@ function ResumeDetailPage() {
         educations: (displayResume.education || []).map((edu, index) => {
           const periodParts = edu.period ? edu.period.split(' - ') : ['2026.01', '2026.01'];
           return {
-            id: undefined,
             school: edu.school,
             major: edu.major,
             degree: edu.degree || 'BACHELOR',
@@ -791,7 +770,6 @@ function ResumeDetailPage() {
           };
         }),
         selfIntroductions: selfIntros.map((intro, index) => ({
-          id: undefined,
           title: intro.title,
           answerText: intro.content,
           orderIndex: index,
@@ -1988,7 +1966,7 @@ function ResumeDetailPage() {
                           <span
                             className={`truncate text-lg font-bold ${currentPortfolio ? 'text-blue-600' : 'text-slate-400'}`}
                           >
-                            {currentPortfolio?.name || (displayResume?.selectedPortfolioId ? '포트폴리오 로딩 중...' : '등록된 포트폴리오가 없습니다.')}
+                            {currentPortfolio?.name || '등록된 포트폴리오가 없습니다.'}
                           </span>
                         </div>
                         {isEditing && (
