@@ -47,6 +47,12 @@ public class JobPostingController {
     @Operation(summary = "새로운 공고 등록", description = "기업 ID와 기술 스택 ID 리스트를 포함하여 공고를 등록합니다.")
     @PostMapping
     public BaseApiResponse<String> createJob(@RequestBody JobPostingDto dto) {
+        if (dto != null && dto.getEndDate() != null) {
+            String normalized = dto.getEndDate().trim().replace(" ", "");
+            if ("상시채용".equals(normalized)) {
+                dto.setEndDate(null);
+            }
+        }
         jobPostingService.saveJobPostingWithStacks(dto);
         return BaseApiResponse.ok("공고와 기술 스택이 성공적으로 등록되었습니다.");
     }
@@ -64,6 +70,12 @@ public class JobPostingController {
     public BaseApiResponse<String> updateJob(
             @PathVariable Long id, @RequestBody JobPostingDto dto) {
         dto.setId(id);
+        if (dto != null && dto.getEndDate() != null) {
+            String normalized = dto.getEndDate().trim().replace(" ", "");
+            if ("상시채용".equals(normalized)) {
+                dto.setEndDate(null);
+            }
+        }
         jobPostingService.saveJobPostingWithStacks(dto);
         return BaseApiResponse.ok("공고 정보가 수정되었습니다.");
     }
