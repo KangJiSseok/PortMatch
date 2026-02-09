@@ -1,0 +1,88 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.9'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.portmatch'
+version = '0.0.1-SNAPSHOT'
+description = 'Backend'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def querydslDir = "$buildDir/generated/querydsl"
+
+sourceSets {
+    main {
+        java {
+            srcDirs += querydslDir
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.annotationProcessorGeneratedSourcesDirectory = file(querydslDir)
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
+    //Spring Security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // AWS S3
+    implementation 'software.amazon.awssdk:s3:2.25.28'
+
+    // Flyway (DB migration)
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    //validation
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testRuntimeOnly 'com.h2database:h2'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    //Spring Security test
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    // QueryDSL
+    implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
+    compileOnly 'jakarta.persistence:jakarta.persistence-api'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+    annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
+
+    // Jsoup 라이브러리 추가
+    implementation 'org.jsoup:jsoup:1.17.2'
+
+    //Swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+
+    //openVidu
+    implementation 'io.openvidu:openvidu-java-client:2.30.0'
+
+    // actuator
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // prometheus
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+}
+
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

@@ -1,0 +1,188 @@
+version: "3.8"
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: portmatch-db
+    networks:
+      - portmatch-network
+    restart: always
+    ports:
+      - "8100:5432"
+    env_file:
+      - .env.prod
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    image: ${BACKEND_IMAGE:-kangjiseok/portmatch-backend:latest}
+    container_name: portmatch-backend-prod
+    networks:
+      - portmatch-network
+    restart: always
+
+    environment:
+      - EXPLANATION_URL=http://explanation-llm:8003
+      
+    env_file:
+      - .env.prod
+    volumes:
+      - ./logs/backend:/app/logs
+    ports:
+      - "8102:8080"
+    depends_on:
+      - db
+      - portfolio-analysis
+      - inference
+      - explanation-llm
+
+  inference:
+    image: ${INFERENCE_IMAGE:-kangjiseok/portmatch-inference:latest}
+    container_name: portmatch-inference-prod
+    networks:
+      - portmatch-network
+    restart: always
+    env_file:
+      - .env.prod
+    ports:
+      - "8104:8001"
+    depends_on:
+      - db
+
+  portfolio-analysis:
+    image: ${PORTFOLIO_IMAGE:-kangjiseok/portmatch-portfolio-analysis:latest}
+    container_name: portmatch-portfolio-analysis-prod
+    networks:
+      - portmatch-network
+    restart: always
+    env_file:
+      - .env.prod
+    ports:
+      - "8103:8000"
+    depends_on:
+      - db
+
+  embedding:
+    image: ${EMBEDDING_IMAGE:-kangjiseok/portmatch-embedding:latest}
+    container_name: portmatch-embedding-prod
+    networks:
+      - portmatch-network
+    restart: always
+    env_file:
+      - .env.prod
+    ports:
+      - "8105:8002"
+    depends_on:
+      - db
+
+  explanation-llm:
+    image: ${EXPLANATION_IMAGE:-kangjiseok/portmatch-explanation-llm:latest}
+    container_name: portmatch-explanation-llm-prod
+    networks:
+      - portmatch-network
+    restart: always
+    env_file:
+      - .env.prod
+    ports:
+      - "8106:8003"
+    depends_on:
+      - db
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-kangjiseok/portmatch-frontend:latest}
+    container_name: portmatch-frontend-prod
+    networks:
+      - portmatch-network
+    restart: always
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - peerjs-server
+
+  peerjs-server:
+    image: peerjs/peerjs-server
+    container_name: peerjs-server
+    networks:
+      - portmatch-network
+    restart: always
+    ports:
+      - "9000:9000"
+    command: ["npm", "start", "--", "--port", "9000"]
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: portmatch-certbot
+    networks:
+      - portmatch-network
+    restart: unless-stopped
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew --webroot -w /var/www/certbot --quiet; done"
+
+  wanted-crawler:
+    image: ${CRAWLER_IMAGE:-kangjiseok/portmatch-wanted-crawler:latest}
+    container_name: portmatch-wanted-crawler
+    networks:
+      - portmatch-network
+    profiles: ['crawler']
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+    restart: "no"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    networks:
+      - portmatch-network
+    restart: unless-stopped
+    ports:
+      - "8050:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - portmatch-network
+    restart: unless-stopped
+    ports:
+      - "8051:3000"
+    env_file:
+      - .env.prod
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+networks:
+  portmatch-network:
+    name: portmatch-shared-network
+    driver: bridge
+    external: true
+
+volumes:
+  postgres-data:
+  letsencrypt:
+  certbot-www:
+  prometheus-data:
+  grafana-data:

@@ -1,0 +1,219 @@
+version: "3.8"
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: portmatch-db
+    networks:
+      - portmatch-network
+    restart: always
+    ports:
+      - "8100:5432"
+    env_file:
+      - .env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./DB/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  mineru-api:
+    image: mineru:latest
+    container_name: mineru-api
+    networks:
+      - portmatch-network
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      MINERU_MODEL_SOURCE: local
+    entrypoint: mineru-api
+    command:
+      --host 0.0.0.0
+      --port 8000
+      # parameters for vllm-engine
+      # --data-parallel-size 2  # If using multiple GPUs, increase throughput using vllm's multi-GPU parallel mode
+      # --gpu-memory-utilization 0.5  # If running on a single GPU and encountering VRAM shortage, reduce the KV cache size by this parameter, if VRAM issues persist, try lowering it further to `0.4` or below.
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]  # Modify for multiple GPUs: ["0", "1"]
+              capabilities: [gpu]
+
+  backend:
+    build:
+      context: ./Backend
+    container_name: portmatch-backend-exec
+    networks:
+      - portmatch-network
+    restart: always
+
+    environment:
+      - EXPLANATION_URL=http://explanation-llm:8003
+      
+    env_file:
+      - .env
+    volumes:
+      - ./logs/backend:/app/logs
+    ports:
+      - "8102:8080"
+    depends_on:
+      - db
+      - portfolio-analysis
+      - inference
+      - explanation-llm
+
+  inference:
+    build:
+      context: ./Inference
+    container_name: portmatch-inference-exec
+    networks:
+      - portmatch-network
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8104:8001"
+    depends_on:
+      - db
+
+  portfolio-analysis:
+    build:
+      context: ./Portfolio-Analysis
+    container_name: portmatch-portfolio-analysis-exec
+    networks:
+      - portmatch-network
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8103:8000"
+    depends_on:
+      - db
+
+  embedding:
+    build:
+      context: ./Embedding
+    container_name: portmatch-embedding-exec
+    networks:
+      - portmatch-network
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8105:8002"
+    depends_on:
+      - db
+
+  explanation-llm:
+    build:
+      context: ./Explanation-LLM
+    container_name: portmatch-explanation-llm-exec
+    networks:
+      - portmatch-network
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8106:8003"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: DockerfileExec
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_SERVICE_NAME: ${VITE_SERVICE_NAME}
+        VITE_OPENVIDU_PUBLIC_URL: ${VITE_OPENVIDU_PUBLIC_URL}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID}
+        VITE_FIREBASE_MEASUREMENT_ID: ${VITE_FIREBASE_MEASUREMENT_ID}
+    container_name: portmatch-frontend-exec
+    networks:
+      - portmatch-network
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - peerjs-server
+
+  peerjs-server:
+    image: peerjs/peerjs-server
+    container_name: peerjs-server
+    networks:
+      - portmatch-network
+    restart: always
+    ports:
+      - "9000:9000"
+    command: ["npm", "start", "--", "--port", "9000"]
+
+  wanted-crawler:
+    build:
+      context: ./crawler
+      dockerfile: DockerFile
+    container_name: portmatch-wanted-crawler
+    networks:
+      - portmatch-network
+    profiles: ['crawler']
+    env_file:
+      - .env
+    depends_on:
+      - db
+    restart: "no"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    networks:
+      - portmatch-network
+    restart: unless-stopped
+    ports:
+      - "8050:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - portmatch-network
+    restart: unless-stopped
+    ports:
+      - "8051:3000"
+    env_file:
+      - .env
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+networks:
+  portmatch-network:
+    name: portmatch-shared-network
+    driver: bridge
+
+volumes:
+  postgres-data:
+  prometheus-data:
+  grafana-data:

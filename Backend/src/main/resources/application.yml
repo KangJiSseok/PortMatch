@@ -1,0 +1,108 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  threads:
+    virtual:
+      enabled: true
+
+  sql:
+    init:
+      mode: never
+
+  jpa:
+    defer-datasource-initialization: false
+    hibernate:
+      ddl-auto: update
+
+    properties:
+      hibernate:
+        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: ${JPA_SHOW_SQL:true}
+
+  flyway:
+    baseline-on-migrate: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION}
+    access-key: ${AWS_ACCESS_KEY}
+    secret-key: ${AWS_SECRET_KEY}
+
+portfolio-analysis:
+  base-url: ${PORTFOLIO_ANALYSIS_URL:http://localhost:8000}
+
+company-project-analysis:
+  base-url: ${COMPANY_PROJECT_ANALYSIS_URL:http://localhost:8001}
+
+explanation:
+  base-url: ${EXPLANATION_URL:http://localhost:8003}
+
+company-embedding:
+  base-url: ${EMBEDDING_URL:http://localhost:8002}
+  model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+
+portfolio-embedding:
+  base-url: ${EMBEDDING_URL:http://localhost:8002}
+  model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+
+job-posting-embedding:
+  base-url: ${EMBEDDING_URL:http://localhost:8002}
+
+springdoc:
+  override-with-generic-response: false
+
+logging:
+  level:
+    com.portmatch: DEBUG
+
+embedding-v3:
+  base-url: http://localhost:8002
+
+openvidu:
+  url: ${OPENVIDU_URL:http://openvidu-server:4443}
+  secret: ${OPENVIDU_SECRET:MY_SECRET}
+  public-url: ${OPENVIDU_PUBLIC_URL:https://i14d205.p.ssafy.io/openvidu}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized  # 변경
+  metrics:
+    tags:
+      application: portmatch
+      environment: ${SPRING_PROFILES_ACTIVE:prod}  # 추가 권장
+    enable:
+      jvm: true
+      process: true
+      system: true
+      tomcat: true
+      http.server.requests: true
+      http.client.requests: true
+      logback: true
+      hikaricp: true
+
+    distribution:
+      percentiles-histogram:
+        http.client.requests: true
+      # 추가 권장: SLA 기반 버킷
+      sla:
+        http.client.requests: 100ms,200ms,500ms,1s,2s
