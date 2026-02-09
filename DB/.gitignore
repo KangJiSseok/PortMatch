@@ -14,9 +14,6 @@ volume/
 ### OS ###
 .DS_Store
 
-### Backup ###
-*.dump
-*.sql.backup
 
 ### Allow essential files ###
 !Dockerfile
@@ -24,3 +21,4 @@ volume/
 !init.sql
 !README.md
 !.gitignore
+!portmatch_data_only.sql
