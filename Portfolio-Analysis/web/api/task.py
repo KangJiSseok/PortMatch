@@ -94,25 +94,3 @@ def parse_pdf_v2_task(self, s3_url: str):
     
     except Exception as exc:
         self.retry(exc=exc, countdown=60, max_retries=3)
-config.py
-
-import os
-import httpx
-from dotenv import load_dotenv
-
-load_dotenv()
-
-MINERU_ENDPOINT = os.getenv("MINERU_ENDPOINT", "http://localhost:18001/file_parse")
-HTTP_TIMEOUT = httpx.Timeout(300.0, connect=10.0)
-MINERU_FORM_DATA = {
-    "return_content_list": "true",
-    "return_middle_json": "false",
-    "lang_list": "korean",
-    "backend": "pipeline",
-    "return_images": "false",
-    "return_md": "false",
-    "response_format_zip": "false",
-}
-
-OPENAI_MODEL = "gpt-4o-mini"
-OPENAI_TEMPERATURE = 0.2
