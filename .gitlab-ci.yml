@@ -195,7 +195,7 @@ deploy:
       # docker-compose.prod.yml 변경 감지
       if echo "$CHANGED_FILES" | grep -q "docker-compose.prod.yml"; then
         echo "⚙️ 설정 파일 변경 감지"
-        if [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis" ]; then
+        if [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis-distributed" ]; then
            SERVICES="$SERVICES redis portfolio-analysis-test celery-worker-test"
         else
            SERVICES="$SERVICES redis portfolio-analysis portfolio-analysis-test celery-worker-test"
