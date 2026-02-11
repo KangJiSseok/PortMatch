@@ -208,6 +208,12 @@ deploy:
         SERVICES="$SERVICES prometheus grafana"
       fi
 
+      if [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis-distributed" ]; then
+        SERVICES="$SERVICES portfolio-analysis-test celery-worker-test redis"
+      fi
+
+      echo "🔍 최종 배포 대상 서비스: $SERVICES"
+
       echo "🔍 최종 배포 대상 서비스: $SERVICES"
 
     # ---------- 배포 디렉토리 ----------
