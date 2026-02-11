@@ -75,11 +75,11 @@ build:
         docker build -f Portfolio-Analysis/Dockerfile -t "$PORTFOLIO_IMAGE:$IMAGE_TAG" Portfolio-Analysis
         docker push "$PORTFOLIO_IMAGE:$IMAGE_TAG"
         
-        # ⭐ dev 브랜치일 때만 latest 태그 갱신
-        if [ "$CI_COMMIT_BRANCH" == "dev" ]; then
+        # ⭐ dev 브랜치이거나 현재 작업 중인 인프라 브랜치일 때 latest 갱신!
+        if [ "$CI_COMMIT_BRANCH" == "dev" ] || [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis-distributed" ]; then
           docker tag "$PORTFOLIO_IMAGE:$IMAGE_TAG" "$PORTFOLIO_IMAGE:latest"
           docker push "$PORTFOLIO_IMAGE:latest"
-          echo "✅ dev 브랜치: latest 태그 갱신 완료"
+          echo "✅ 해당 브랜치: latest 태그 갱신 완료"
         fi
       else
         echo "⏭️  [3/7] Portfolio-Analysis - 변경 없음"
@@ -182,8 +182,9 @@ deploy:
       
       # Portfolio-Analysis 변경 감지 (브랜치별 분기)
       if echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/"; then
-        if [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis" ]; then
-          echo "🧪 테스트 브랜치: 테스트 서버만 배포 목록에 추가 (운영 서버 제외)"
+        # ⭐ 현재 브랜치 이름을 정확하게 넣어줘야 배포 대상에 포함돼!
+        if [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis-distributed" ]; then
+          echo "🧪 테스트 브랜치: 테스트 서버 배포 목록 추가"
           SERVICES="$SERVICES portfolio-analysis-test celery-worker-test"
         elif [ "$CI_COMMIT_BRANCH" == "dev" ]; then
           echo "🚀 운영 브랜치: 모든 서버 업데이트"
