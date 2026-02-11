@@ -5,6 +5,7 @@ stages:
 variables:
   IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
   DOCKER_DRIVER: overlay2
+  GIT_DEPTH: 0  # Shallow clone 문제 방지 (전체 히스토리)
   BACKEND_IMAGE: "$DOCKERHUB_USERNAME/portmatch-backend"
   INFERENCE_IMAGE: "$DOCKERHUB_USERNAME/portmatch-inference"
   PORTFOLIO_IMAGE: "$DOCKERHUB_USERNAME/portmatch-portfolio-analysis"
@@ -24,42 +25,118 @@ build:
     - if: '$CI_COMMIT_BRANCH == "dev"'
     - if: '$CI_COMMIT_BRANCH == "be-feat/prometheus-monitoring"'
     - if: '$CI_COMMIT_BRANCH == "infra-hotfix/volumn-remove"'
+    - if: '$CI_COMMIT_BRANCH == "infra/portfolio-analysis-distributed"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - docker build -f Backend/Dockerfile -t "$BACKEND_IMAGE:$IMAGE_TAG" -t "$BACKEND_IMAGE:latest" Backend
-    - docker push "$BACKEND_IMAGE:$IMAGE_TAG"
-    - docker push "$BACKEND_IMAGE:latest"
-    - docker build -f Inference/Dockerfile -t "$INFERENCE_IMAGE:$IMAGE_TAG" -t "$INFERENCE_IMAGE:latest" Inference
-    - docker push "$INFERENCE_IMAGE:$IMAGE_TAG"
-    - docker push "$INFERENCE_IMAGE:latest"
-    - docker build -f Portfolio-Analysis/Dockerfile -t "$PORTFOLIO_IMAGE:$IMAGE_TAG" -t "$PORTFOLIO_IMAGE:latest" Portfolio-Analysis
-    - docker push "$PORTFOLIO_IMAGE:$IMAGE_TAG"
-    - docker push "$PORTFOLIO_IMAGE:latest"
-    - >
-      docker build -f Frontend/Dockerfile
-      --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL"
-      --build-arg VITE_SERVICE_NAME="$VITE_SERVICE_NAME"
-      --build-arg VITE_OPENVIDU_PUBLIC_URL="$VITE_OPENVIDU_PUBLIC_URL"
-      --build-arg VITE_FIREBASE_API_KEY="$VITE_FIREBASE_API_KEY"
-      --build-arg VITE_FIREBASE_AUTH_DOMAIN="$VITE_FIREBASE_AUTH_DOMAIN"
-      --build-arg VITE_FIREBASE_PROJECT_ID="$VITE_FIREBASE_PROJECT_ID"
-      --build-arg VITE_FIREBASE_STORAGE_BUCKET="$VITE_FIREBASE_STORAGE_BUCKET"
-      --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID="$VITE_FIREBASE_MESSAGING_SENDER_ID"
-      --build-arg VITE_FIREBASE_APP_ID="$VITE_FIREBASE_APP_ID"
-      --build-arg VITE_FIREBASE_MEASUREMENT_ID="$VITE_FIREBASE_MEASUREMENT_ID"
-      -t "$FRONTEND_IMAGE:$IMAGE_TAG" -t "$FRONTEND_IMAGE:latest" Frontend
-    - docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
-    - docker push "$FRONTEND_IMAGE:latest"
-    - docker build -f Embedding/Dockerfile -t "$EMBEDDING_IMAGE:$IMAGE_TAG" -t "$EMBEDDING_IMAGE:latest" Embedding
-    - docker push "$EMBEDDING_IMAGE:$IMAGE_TAG"
-    - docker push "$EMBEDDING_IMAGE:latest"
-    - docker build -f Explanation-LLM/Dockerfile -t "$EXPLANATION_IMAGE:$IMAGE_TAG" -t "$EXPLANATION_IMAGE:latest" Explanation-LLM
-    - docker push "$EXPLANATION_IMAGE:$IMAGE_TAG"
-    - docker push "$EXPLANATION_IMAGE:latest"
-    - docker build -f crawler/DockerFile -t "$CRAWLER_IMAGE:$IMAGE_TAG" -t "$CRAWLER_IMAGE:latest" crawler
-    - docker push "$CRAWLER_IMAGE:$IMAGE_TAG"
-    - docker push "$CRAWLER_IMAGE:latest"
+    
+    # ---------- 변경 감지 & 조건부 빌드 ----------
+    - |
+      # Git diff 범위 개선 (푸시된 전체 범위 체크)
+      if [ -n "$CI_COMMIT_BEFORE_SHA" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+        # Shallow clone 에러 방지
+        if CHANGED_FILES=$(git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA 2>/dev/null); then
+          echo "✅ 전체 범위 변경 감지 성공"
+        else
+          echo "⚠️  Shallow clone으로 인해 전체 범위 확인 불가. 마지막 커밋만 체크합니다."
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA)
+        fi
+      else
+        CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA)
+      fi
+      
+      echo "📄 변경된 파일 (빌드):"
+      echo "$CHANGED_FILES"
+      echo "---"
+      
+      # Backend
+      if echo "$CHANGED_FILES" | grep -q "^Backend/"; then
+        echo "🔨 [1/7] Backend 빌드 중..."
+        docker build -f Backend/Dockerfile -t "$BACKEND_IMAGE:$IMAGE_TAG" -t "$BACKEND_IMAGE:latest" Backend
+        docker push "$BACKEND_IMAGE:$IMAGE_TAG"
+        docker push "$BACKEND_IMAGE:latest"
+      else
+        echo "⏭️  [1/7] Backend - 변경 없음"
+      fi
+      
+      # Inference
+      if echo "$CHANGED_FILES" | grep -q "^Inference/"; then
+        echo "🔨 [2/7] Inference 빌드 중..."
+        docker build -f Inference/Dockerfile -t "$INFERENCE_IMAGE:$IMAGE_TAG" -t "$INFERENCE_IMAGE:latest" Inference
+        docker push "$INFERENCE_IMAGE:$IMAGE_TAG"
+        docker push "$INFERENCE_IMAGE:latest"
+      else
+        echo "⏭️  [2/7] Inference - 변경 없음"
+      fi
+      
+      # Portfolio-Analysis
+      if echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/"; then
+        echo "🔨 [3/7] Portfolio-Analysis 빌드 중..."
+        docker build -f Portfolio-Analysis/Dockerfile -t "$PORTFOLIO_IMAGE:$IMAGE_TAG" Portfolio-Analysis
+        docker push "$PORTFOLIO_IMAGE:$IMAGE_TAG"
+        
+        # ⭐ dev 브랜치일 때만 latest 태그 갱신
+        if [ "$CI_COMMIT_BRANCH" == "dev" ]; then
+          docker tag "$PORTFOLIO_IMAGE:$IMAGE_TAG" "$PORTFOLIO_IMAGE:latest"
+          docker push "$PORTFOLIO_IMAGE:latest"
+          echo "✅ dev 브랜치: latest 태그 갱신 완료"
+        fi
+      else
+        echo "⏭️  [3/7] Portfolio-Analysis - 변경 없음"
+      fi
+      
+      # Frontend
+      if echo "$CHANGED_FILES" | grep -q "^Frontend/"; then
+        echo "🔨 [4/7] Frontend 빌드 중..."
+        docker build -f Frontend/Dockerfile \
+          --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL" \
+          --build-arg VITE_SERVICE_NAME="$VITE_SERVICE_NAME" \
+          --build-arg VITE_OPENVIDU_PUBLIC_URL="$VITE_OPENVIDU_PUBLIC_URL" \
+          --build-arg VITE_FIREBASE_API_KEY="$VITE_FIREBASE_API_KEY" \
+          --build-arg VITE_FIREBASE_AUTH_DOMAIN="$VITE_FIREBASE_AUTH_DOMAIN" \
+          --build-arg VITE_FIREBASE_PROJECT_ID="$VITE_FIREBASE_PROJECT_ID" \
+          --build-arg VITE_FIREBASE_STORAGE_BUCKET="$VITE_FIREBASE_STORAGE_BUCKET" \
+          --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID="$VITE_FIREBASE_MESSAGING_SENDER_ID" \
+          --build-arg VITE_FIREBASE_APP_ID="$VITE_FIREBASE_APP_ID" \
+          --build-arg VITE_FIREBASE_MEASUREMENT_ID="$VITE_FIREBASE_MEASUREMENT_ID" \
+          -t "$FRONTEND_IMAGE:$IMAGE_TAG" -t "$FRONTEND_IMAGE:latest" Frontend
+        docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
+        docker push "$FRONTEND_IMAGE:latest"
+      else
+        echo "⏭️  [4/7] Frontend - 변경 없음"
+      fi
+      
+      # Embedding
+      if echo "$CHANGED_FILES" | grep -q "^Embedding/"; then
+        echo "🔨 [5/7] Embedding 빌드 중..."
+        docker build -f Embedding/Dockerfile -t "$EMBEDDING_IMAGE:$IMAGE_TAG" -t "$EMBEDDING_IMAGE:latest" Embedding
+        docker push "$EMBEDDING_IMAGE:$IMAGE_TAG"
+        docker push "$EMBEDDING_IMAGE:latest"
+      else
+        echo "⏭️  [5/7] Embedding - 변경 없음"
+      fi
+      
+      # Explanation-LLM
+      if echo "$CHANGED_FILES" | grep -q "^Explanation-LLM/"; then
+        echo "🔨 [6/7] Explanation-LLM 빌드 중..."
+        docker build -f Explanation-LLM/Dockerfile -t "$EXPLANATION_IMAGE:$IMAGE_TAG" -t "$EXPLANATION_IMAGE:latest" Explanation-LLM
+        docker push "$EXPLANATION_IMAGE:$IMAGE_TAG"
+        docker push "$EXPLANATION_IMAGE:latest"
+      else
+        echo "⏭️  [6/7] Explanation-LLM - 변경 없음"
+      fi
+      
+      # Crawler
+      if echo "$CHANGED_FILES" | grep -q "^crawler/"; then
+        echo "🔨 [7/7] Crawler 빌드 중..."
+        docker build -f crawler/DockerFile -t "$CRAWLER_IMAGE:$IMAGE_TAG" -t "$CRAWLER_IMAGE:latest" crawler
+        docker push "$CRAWLER_IMAGE:$IMAGE_TAG"
+        docker push "$CRAWLER_IMAGE:latest"
+      else
+        echo "⏭️  [7/7] Crawler - 변경 없음"
+      fi
+      
+      echo "✅ 빌드 완료!"
 
 deploy:
   stage: deploy
@@ -69,9 +146,68 @@ deploy:
     - if: '$CI_COMMIT_BRANCH == "dev"'
     - if: '$CI_COMMIT_BRANCH == "be-feat/prometheus-monitoring"'
     - if: '$CI_COMMIT_BRANCH == "infra-hotfix/volumn-remove"'
+    - if: '$CI_COMMIT_BRANCH == "infra/portfolio-analysis-distributed"'
 
   script:
     - set -e
+
+    # ---------- 변경된 서비스 감지 (디렉토리 이동 전!) ----------
+    - |
+      SERVICES=""
+      
+      # Git diff 범위 개선 (푸시된 전체 범위 체크)
+      if [ -n "$CI_COMMIT_BEFORE_SHA" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+        # Shallow clone 에러 방지
+        if CHANGED_FILES=$(git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA 2>/dev/null); then
+          echo "✅ 전체 범위 변경 감지 성공"
+        else
+          echo "⚠️  Shallow clone으로 인해 전체 범위 확인 불가. 마지막 커밋만 체크합니다."
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA)
+        fi
+      else
+        CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA)
+      fi
+      
+      echo "📄 변경된 파일 (배포):"
+      echo "$CHANGED_FILES"
+      echo "---"
+      
+      # 각 서비스별 변경 감지
+      echo "$CHANGED_FILES" | grep -q "^Backend/" && SERVICES="$SERVICES backend"
+      echo "$CHANGED_FILES" | grep -q "^Inference/" && SERVICES="$SERVICES inference"
+      echo "$CHANGED_FILES" | grep -q "^Frontend/" && SERVICES="$SERVICES frontend"
+      echo "$CHANGED_FILES" | grep -q "^Embedding/" && SERVICES="$SERVICES embedding"
+      echo "$CHANGED_FILES" | grep -q "^Explanation-LLM/" && SERVICES="$SERVICES explanation-llm"
+      echo "$CHANGED_FILES" | grep -q "^crawler/" && SERVICES="$SERVICES wanted-crawler"
+      
+      # Portfolio-Analysis 변경 감지 (브랜치별 분기)
+      if echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/"; then
+        if [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis" ]; then
+          echo "🧪 테스트 브랜치: 테스트 서버만 배포 목록에 추가 (운영 서버 제외)"
+          SERVICES="$SERVICES portfolio-analysis-test celery-worker-test"
+        elif [ "$CI_COMMIT_BRANCH" == "dev" ]; then
+          echo "🚀 운영 브랜치: 모든 서버 업데이트"
+          SERVICES="$SERVICES portfolio-analysis portfolio-analysis-test celery-worker-test"
+        fi
+      fi
+
+      # docker-compose.prod.yml 변경 감지
+      if echo "$CHANGED_FILES" | grep -q "docker-compose.prod.yml"; then
+        echo "⚙️ 설정 파일 변경 감지"
+        if [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis" ]; then
+           SERVICES="$SERVICES redis portfolio-analysis-test celery-worker-test"
+        else
+           SERVICES="$SERVICES redis portfolio-analysis portfolio-analysis-test celery-worker-test"
+        fi
+      fi
+
+      # monitoring 파일 변경 감지
+      if echo "$CHANGED_FILES" | grep -q "^monitoring/"; then
+        echo "📊 모니터링 설정 파일 변경 감지"
+        SERVICES="$SERVICES prometheus grafana"
+      fi
+
+      echo "🔍 최종 배포 대상 서비스: $SERVICES"
 
     # ---------- 배포 디렉토리 ----------
     - mkdir -p /home/gitlab-runner/deploy
@@ -79,6 +215,8 @@ deploy:
 
     # ---------- docker-compose 파일 복사 ----------
     - cp $CI_PROJECT_DIR/docker-compose.prod.yml ./docker-compose.prod.yml
+    
+    # ---------- monitoring 설정 파일 복사 (be-feat/prometheus-monitoring 브랜치에서 추가된 부분) ----------
     - mkdir -p ./monitoring
     - cp $CI_PROJECT_DIR/monitoring/prometheus.yml ./monitoring/prometheus.yml
 
@@ -88,6 +226,7 @@ deploy:
       # ---------- ENV ----------
       APP_ENV=prod
       SPRING_PROFILES_ACTIVE=prod
+      REDIS_PASSWORD=${REDIS_PASSWORD}
 
       # ---------- DB ----------
       POSTGRES_DB=${POSTGRES_DB}
@@ -130,7 +269,8 @@ deploy:
       COMPANY_PROJECT_ANALYSIS_URL=${COMPANY_PROJECT_ANALYSIS_URL}
       EMBEDDING_URL=${EMBEDDING_URL}
       EXPLANATION_URL=${EXPLANATION_URL}
-      MINERU_ENDPOINT=${MINERU_ENDPOINT}
+      MINERU_ENDPOINT=http://172.26.11.179:18001/file_parse
+      MINERU_ENDPOINTS=http://172.26.11.179:18001/file_parse
 
       # ---------- Frontend ----------
       VITE_API_BASE_URL=${VITE_API_BASE_URL}
@@ -143,6 +283,7 @@ deploy:
       VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
       VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
       VITE_FIREBASE_MEASUREMENT_ID=${VITE_FIREBASE_MEASUREMENT_ID}
+      
       # ---------- Grafana ----------
       GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
@@ -152,11 +293,22 @@ deploy:
       DB_HOST=${DB_HOST}
       DB_PORT=${DB_PORT}
 
+      # ---------- Redis ----------
+      REDIS_PASSWORD=${REDIS_PASSWORD}
 
       ENV
 
     # ---------- Docker 배포 ----------
     - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
-    - docker compose -f docker-compose.prod.yml pull
-    - docker compose -f docker-compose.prod.yml down
-    - docker compose -f docker-compose.prod.yml up -d --remove-orphans
+    
+    - |
+      if [ -n "$SERVICES" ]; then
+        echo "📦 배포할 서비스:$SERVICES"
+        docker compose -f docker-compose.prod.yml pull $SERVICES
+        docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate $SERVICES
+        echo "✅ 배포 완료!"
+      else
+        echo "⚠️ 변경된 서비스가 없습니다."
+      fi
+    
+    - docker image prune -f
