@@ -226,6 +226,10 @@ deploy:
       DB_HOST=${DB_HOST}
       DB_PORT=${DB_PORT}
 
+      # ---------- Redis ----------
+      REDIS_HOST=${REDIS_HOST}
+      REDIS_PORT=${REDIS_PORT}
+
       # ---------- MinerU ----------
       MINERU_ENDPOINTSS=${MINERU_ENDPOINTSS}
 
