@@ -22,8 +22,7 @@ build:
     - docker:25.0-dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-feat/prometheus-monitoring"'
-    - if: '$CI_COMMIT_BRANCH == "infra-hotfix/volumn-remove"'
+    - if: '$CI_COMMIT_BRANCH == "infra-feat/mineru-scale-out"'
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -67,8 +66,7 @@ deploy:
     - deploy
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "be-feat/prometheus-monitoring"'
-    - if: '$CI_COMMIT_BRANCH == "infra-hotfix/volumn-remove"'
+    - if: '$CI_COMMIT_BRANCH == "infra-feat/mineru-scale-out"'
 
   script:
     - set -e
@@ -152,7 +150,8 @@ deploy:
       DB_HOST=${DB_HOST}
       DB_PORT=${DB_PORT}
 
-
+      # ---------- MinerU ----------
+      MINERU_ENDPOINTSS=${MINERU_ENDPOINTSS}
       ENV
 
     # ---------- Docker 배포 ----------
