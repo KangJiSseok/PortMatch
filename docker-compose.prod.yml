@@ -90,7 +90,7 @@ services:
     network_mode: "host"
     restart: always
     # 워커가 동시에 처리할 작업 수(concurrency)를 명시적으로 지정하면 자원 관리가 쉬워져!
-    command: python -m celery -A web.api.celery_app worker --loglevel=info --concurrency=2
+    command: python -m celery -A web.api.celery_app worker --loglevel=info --concurrency=2 -Ofair
     environment:
       - REDIS_HOST=127.0.0.1
       - REDIS_PORT=8379       # 아까 Redis 설정에서 8379로 뚫어놨지? 그 포트야.
@@ -98,7 +98,7 @@ services:
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@127.0.0.1:8379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@127.0.0.1:8379/0
       - MINERU_ENDPOINT=http://127.0.0.1:18001/file_parse
-      - MINERU_ENDPOINTS=http://127.0.0.1:18001/file_parse
+      - MINERU_ENDPOINTS=http://127.0.0.1:18001/file_parse,http://127.0.0.1:18002/file_parse,http://127.0.0.1:18000/file_parse
     env_file:
       - .env.prod
     extra_hosts:
@@ -193,7 +193,7 @@ services:
       - "8379:6379"
     env_file:
       - .env.prod
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: redis-server --requirepass redis123
     volumes:
       - redis-data:/data
 
