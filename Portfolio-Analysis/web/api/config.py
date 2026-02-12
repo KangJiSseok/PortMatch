@@ -22,5 +22,12 @@ MINERU_FORM_DATA = {
     "response_format_zip": "false",
 }
 
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
+MINERU_SEMAPHORE_KEY = os.getenv("MINERU_SEMAPHORE_KEY", "mineru:semaphore")
+MINERU_SEMAPHORE_LIMIT = int(os.getenv("MINERU_SEMAPHORE_LIMIT", "2"))
+MINERU_SEMAPHORE_WAIT_SECONDS = int(os.getenv("MINERU_SEMAPHORE_WAIT_SECONDS", "120"))
+
 OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_TEMPERATURE = 0.2
