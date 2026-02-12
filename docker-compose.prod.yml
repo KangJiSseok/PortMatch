@@ -23,7 +23,7 @@ services:
 
     environment:
       - EXPLANATION_URL=http://explanation-llm:8003
-      
+
     env_file:
       - .env.prod
     volumes:
@@ -64,19 +64,22 @@ services:
 
   portfolio-analysis-test:
     image: ${PORTFOLIO_IMAGE:-kangjiseok/portmatch-portfolio-analysis:latest}
-    container_name: portmatch-portfolio-analysis-test  
+    container_name: portmatch-portfolio-analysis-test
     networks:
       - portmatch-network
     restart: always
+    command: uvicorn web.api.app:app --host 0.0.0.0 --port 8000
     environment:
-      - REDIS_HOST=redis
+      - REDIS_HOST=redis  # 컨테이너 이름과 일치
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - USE_CELERY=true  
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - USE_CELERY=true
     env_file:
       - .env.prod
     ports:
-      - "8107:8000" 
+      - "8107:8000"
     depends_on:
       - db
       - redis
@@ -84,18 +87,22 @@ services:
   celery-worker-test:
     image: ${PORTFOLIO_IMAGE:-kangjiseok/portmatch-portfolio-analysis:latest}
     container_name: portmatch-celery-worker-test
-    networks:                
-      - portmatch-network
+    network_mode: "host"
     restart: always
     # 워커가 동시에 처리할 작업 수(concurrency)를 명시적으로 지정하면 자원 관리가 쉬워져!
     command: python -m celery -A web.api.celery_app worker --loglevel=info --concurrency=2
     environment:
-      - REDIS_HOST=${REDIS_HOST:-redis}  # 기본값은 내부망 이름, 외부 워커는 IP 주입 가능
-      - REDIS_PORT=6379
+      - REDIS_HOST=127.0.0.1
+      - REDIS_PORT=8379       # 아까 Redis 설정에서 8379로 뚫어놨지? 그 포트야.
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - MINERU_ENDPOINTS=${MINERU_ENDPOINTS}  # 여러 MinerU 서버 주소 (콤마 구분)
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@127.0.0.1:8379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@127.0.0.1:8379/0
+      - MINERU_ENDPOINT=http://127.0.0.1:18001/file_parse
+      - MINERU_ENDPOINTS=http://127.0.0.1:18001/file_parse
     env_file:
       - .env.prod
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # 호스트 접근 가능
     depends_on:
       - redis
       - db
