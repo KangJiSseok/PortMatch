@@ -26,12 +26,9 @@ async def parse_pdf(request: Request):
 
     # ✅ Celery Task로 전송
     task = parse_pdf_task.delay(s3_url)
+    result = task.get(timeout=600)
     
-    return {
-        "task_id": task.id,
-        "status": "processing",
-        "message": f"Check status at /api/tasks/{task.id}"
-    }
+    return result
 
 
 @router.post("/api/parse-v2")
