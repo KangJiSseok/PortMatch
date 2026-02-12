@@ -114,6 +114,16 @@ services:
       - "9000:9000"
     command: ["npm", "start", "--", "--port", "9000"]
 
+  redis:
+    image: redis:7-alpine
+    container_name: portmatch-redis
+    networks:
+      - portmatch-network
+    restart: always
+    ports:
+      - "8500:8500"
+    command: ["redis-server", "--port", "8500"]
+
   certbot:
     image: certbot/certbot:latest
     container_name: portmatch-certbot
