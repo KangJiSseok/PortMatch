@@ -34,6 +34,7 @@ async def fetch_mineru_content(s3_url: str) -> tuple[str, bytes]:
         except httpx.HTTPError as exc:
             raise HTTPException(status_code=502, detail=f"failed to download s3 file: {exc}") from exc
 
+        
         try:
             with open(tmp_path, "rb") as pdf_file:
                 files = {"files": ("document.pdf", pdf_file, "application/pdf")}
