@@ -27,7 +27,7 @@ _SEMAPHORE_INUSE_SUFFIX = ":inuse"
 _SEMAPHORE_INIT_LUA = """
 redis.call('DEL', KEYS[1])
 for i = 2, #ARGV do
-  redis.call('RPUSH', KEYS[1], ARGV[i])
+  redis.call('LPUSH', KEYS[1], ARGV[i])
 end
 return 1
 """
@@ -97,7 +97,7 @@ async def _release_endpoint(client: redis.Redis, endpoint: str) -> None:
     try:
         inuse_key = f"{MINERU_SEMAPHORE_KEY}{_SEMAPHORE_INUSE_SUFFIX}"
         await client.srem(inuse_key, endpoint)
-        await client.rpush(MINERU_SEMAPHORE_KEY, endpoint)
+        await client.lpush(MINERU_SEMAPHORE_KEY, endpoint)
         inuse = await client.smembers(inuse_key)
         available = await client.llen(MINERU_SEMAPHORE_KEY)
         logger.info(
