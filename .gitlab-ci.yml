@@ -73,7 +73,7 @@ build:
         docker push "$PORTFOLIO_IMAGE:$IMAGE_TAG"
         
         # ⭐ dev 브랜치이거나 현재 작업 중인 인프라 브랜치일 때 latest 갱신!
-        if [ "$CI_COMMIT_BRANCH" == "dev" ] || [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis-distributed" ]; then
+        if [ "$CI_COMMIT_BRANCH" == "dev" ] || [ "$CI_COMMIT_BRANCH" == "infra-feat/mineru-scale-out" ]; then
           docker tag "$PORTFOLIO_IMAGE:$IMAGE_TAG" "$PORTFOLIO_IMAGE:latest"
           docker push "$PORTFOLIO_IMAGE:latest"
           echo "✅ 해당 브랜치: latest 태그 갱신 완료"
