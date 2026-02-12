@@ -26,39 +26,115 @@ build:
 
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - docker build -f Backend/Dockerfile -t "$BACKEND_IMAGE:$IMAGE_TAG" -t "$BACKEND_IMAGE:latest" Backend
-    - docker push "$BACKEND_IMAGE:$IMAGE_TAG"
-    - docker push "$BACKEND_IMAGE:latest"
-    - docker build -f Inference/Dockerfile -t "$INFERENCE_IMAGE:$IMAGE_TAG" -t "$INFERENCE_IMAGE:latest" Inference
-    - docker push "$INFERENCE_IMAGE:$IMAGE_TAG"
-    - docker push "$INFERENCE_IMAGE:latest"
-    - docker build -f Portfolio-Analysis/Dockerfile -t "$PORTFOLIO_IMAGE:$IMAGE_TAG" -t "$PORTFOLIO_IMAGE:latest" Portfolio-Analysis
-    - docker push "$PORTFOLIO_IMAGE:$IMAGE_TAG"
-    - docker push "$PORTFOLIO_IMAGE:latest"
-    - >
-      docker build -f Frontend/Dockerfile
-      --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL"
-      --build-arg VITE_SERVICE_NAME="$VITE_SERVICE_NAME"
-      --build-arg VITE_OPENVIDU_PUBLIC_URL="$VITE_OPENVIDU_PUBLIC_URL"
-      --build-arg VITE_FIREBASE_API_KEY="$VITE_FIREBASE_API_KEY"
-      --build-arg VITE_FIREBASE_AUTH_DOMAIN="$VITE_FIREBASE_AUTH_DOMAIN"
-      --build-arg VITE_FIREBASE_PROJECT_ID="$VITE_FIREBASE_PROJECT_ID"
-      --build-arg VITE_FIREBASE_STORAGE_BUCKET="$VITE_FIREBASE_STORAGE_BUCKET"
-      --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID="$VITE_FIREBASE_MESSAGING_SENDER_ID"
-      --build-arg VITE_FIREBASE_APP_ID="$VITE_FIREBASE_APP_ID"
-      --build-arg VITE_FIREBASE_MEASUREMENT_ID="$VITE_FIREBASE_MEASUREMENT_ID"
-      -t "$FRONTEND_IMAGE:$IMAGE_TAG" -t "$FRONTEND_IMAGE:latest" Frontend
-    - docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
-    - docker push "$FRONTEND_IMAGE:latest"
-    - docker build -f Embedding/Dockerfile -t "$EMBEDDING_IMAGE:$IMAGE_TAG" -t "$EMBEDDING_IMAGE:latest" Embedding
-    - docker push "$EMBEDDING_IMAGE:$IMAGE_TAG"
-    - docker push "$EMBEDDING_IMAGE:latest"
-    - docker build -f Explanation-LLM/Dockerfile -t "$EXPLANATION_IMAGE:$IMAGE_TAG" -t "$EXPLANATION_IMAGE:latest" Explanation-LLM
-    - docker push "$EXPLANATION_IMAGE:$IMAGE_TAG"
-    - docker push "$EXPLANATION_IMAGE:latest"
-    - docker build -f crawler/DockerFile -t "$CRAWLER_IMAGE:$IMAGE_TAG" -t "$CRAWLER_IMAGE:latest" crawler
-    - docker push "$CRAWLER_IMAGE:$IMAGE_TAG"
-    - docker push "$CRAWLER_IMAGE:latest"
+    
+    # ---------- 변경 감지 & 조건부 빌드 ----------
+    - |
+      # Git diff 범위 개선 (푸시된 전체 범위 체크)
+      if [ -n "$CI_COMMIT_BEFORE_SHA" ] && [ "$CI_COMMIT_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+        # Shallow clone 에러 방지
+        if CHANGED_FILES=$(git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA 2>/dev/null); then
+          echo "✅ 전체 범위 변경 감지 성공"
+        else
+          echo "⚠️  Shallow clone으로 인해 전체 범위 확인 불가. 마지막 커밋만 체크합니다."
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA)
+        fi
+      else
+        CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA)
+      fi
+      
+      echo "📄 변경된 파일 (빌드):"
+      echo "$CHANGED_FILES"
+      echo "---"
+      
+      # Backend
+      if echo "$CHANGED_FILES" | grep -q "^Backend/"; then
+        echo "🔨 [1/7] Backend 빌드 중..."
+        docker build -f Backend/Dockerfile -t "$BACKEND_IMAGE:$IMAGE_TAG" -t "$BACKEND_IMAGE:latest" Backend
+        docker push "$BACKEND_IMAGE:$IMAGE_TAG"
+        docker push "$BACKEND_IMAGE:latest"
+      else
+        echo "⏭️  [1/7] Backend - 변경 없음"
+      fi
+      
+      # Inference
+      if echo "$CHANGED_FILES" | grep -q "^Inference/"; then
+        echo "🔨 [2/7] Inference 빌드 중..."
+        docker build -f Inference/Dockerfile -t "$INFERENCE_IMAGE:$IMAGE_TAG" -t "$INFERENCE_IMAGE:latest" Inference
+        docker push "$INFERENCE_IMAGE:$IMAGE_TAG"
+        docker push "$INFERENCE_IMAGE:latest"
+      else
+        echo "⏭️  [2/7] Inference - 변경 없음"
+      fi
+      
+      # Portfolio-Analysis
+      if echo "$CHANGED_FILES" | grep -q "^Portfolio-Analysis/"; then
+        echo "🔨 [3/7] Portfolio-Analysis 빌드 중..."
+        docker build -f Portfolio-Analysis/Dockerfile -t "$PORTFOLIO_IMAGE:$IMAGE_TAG" Portfolio-Analysis
+        docker push "$PORTFOLIO_IMAGE:$IMAGE_TAG"
+        
+        # ⭐ dev 브랜치이거나 현재 작업 중인 인프라 브랜치일 때 latest 갱신!
+        if [ "$CI_COMMIT_BRANCH" == "dev" ] || [ "$CI_COMMIT_BRANCH" == "infra/portfolio-analysis-distributed" ]; then
+          docker tag "$PORTFOLIO_IMAGE:$IMAGE_TAG" "$PORTFOLIO_IMAGE:latest"
+          docker push "$PORTFOLIO_IMAGE:latest"
+          echo "✅ 해당 브랜치: latest 태그 갱신 완료"
+        fi
+      else
+        echo "⏭️  [3/7] Portfolio-Analysis - 변경 없음"
+      fi
+      
+      # Frontend
+      if echo "$CHANGED_FILES" | grep -q "^Frontend/"; then
+        echo "🔨 [4/7] Frontend 빌드 중..."
+        docker build -f Frontend/Dockerfile \
+          --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL" \
+          --build-arg VITE_SERVICE_NAME="$VITE_SERVICE_NAME" \
+          --build-arg VITE_OPENVIDU_PUBLIC_URL="$VITE_OPENVIDU_PUBLIC_URL" \
+          --build-arg VITE_FIREBASE_API_KEY="$VITE_FIREBASE_API_KEY" \
+          --build-arg VITE_FIREBASE_AUTH_DOMAIN="$VITE_FIREBASE_AUTH_DOMAIN" \
+          --build-arg VITE_FIREBASE_PROJECT_ID="$VITE_FIREBASE_PROJECT_ID" \
+          --build-arg VITE_FIREBASE_STORAGE_BUCKET="$VITE_FIREBASE_STORAGE_BUCKET" \
+          --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID="$VITE_FIREBASE_MESSAGING_SENDER_ID" \
+          --build-arg VITE_FIREBASE_APP_ID="$VITE_FIREBASE_APP_ID" \
+          --build-arg VITE_FIREBASE_MEASUREMENT_ID="$VITE_FIREBASE_MEASUREMENT_ID" \
+          -t "$FRONTEND_IMAGE:$IMAGE_TAG" -t "$FRONTEND_IMAGE:latest" Frontend
+        docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
+        docker push "$FRONTEND_IMAGE:latest"
+      else
+        echo "⏭️  [4/7] Frontend - 변경 없음"
+      fi
+      
+      # Embedding
+      if echo "$CHANGED_FILES" | grep -q "^Embedding/"; then
+        echo "🔨 [5/7] Embedding 빌드 중..."
+        docker build -f Embedding/Dockerfile -t "$EMBEDDING_IMAGE:$IMAGE_TAG" -t "$EMBEDDING_IMAGE:latest" Embedding
+        docker push "$EMBEDDING_IMAGE:$IMAGE_TAG"
+        docker push "$EMBEDDING_IMAGE:latest"
+      else
+        echo "⏭️  [5/7] Embedding - 변경 없음"
+      fi
+      
+      # Explanation-LLM
+      if echo "$CHANGED_FILES" | grep -q "^Explanation-LLM/"; then
+        echo "🔨 [6/7] Explanation-LLM 빌드 중..."
+        docker build -f Explanation-LLM/Dockerfile -t "$EXPLANATION_IMAGE:$IMAGE_TAG" -t "$EXPLANATION_IMAGE:latest" Explanation-LLM
+        docker push "$EXPLANATION_IMAGE:$IMAGE_TAG"
+        docker push "$EXPLANATION_IMAGE:latest"
+      else
+        echo "⏭️  [6/7] Explanation-LLM - 변경 없음"
+      fi
+      
+      # Crawler
+      if echo "$CHANGED_FILES" | grep -q "^crawler/"; then
+        echo "🔨 [7/7] Crawler 빌드 중..."
+        docker build -f crawler/DockerFile -t "$CRAWLER_IMAGE:$IMAGE_TAG" -t "$CRAWLER_IMAGE:latest" crawler
+        docker push "$CRAWLER_IMAGE:$IMAGE_TAG"
+        docker push "$CRAWLER_IMAGE:latest"
+      else
+        echo "⏭️  [7/7] Crawler - 변경 없음"
+      fi
+      
+      echo "✅ 빌드 완료!"
+
 
 deploy:
   stage: deploy
@@ -152,6 +228,7 @@ deploy:
 
       # ---------- MinerU ----------
       MINERU_ENDPOINTSS=${MINERU_ENDPOINTSS}
+
       ENV
 
     # ---------- Docker 배포 ----------
