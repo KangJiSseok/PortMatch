@@ -36,13 +36,6 @@ services:
       memlock: -1
       stack: 67108864
     ipc: host
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["0"]  # Modify for multiple GPUs: ["0", "1"]
-              capabilities: [gpu]
 
   backend:
     build:
@@ -94,6 +87,7 @@ services:
       - "8103:8000"
     depends_on:
       - db
+      - redis
 
   embedding:
     build:
@@ -157,6 +151,16 @@ services:
     ports:
       - "9000:9000"
     command: ["npm", "start", "--", "--port", "9000"]
+
+  redis:
+    image: redis:7-alpine
+    container_name: portmatch-redis
+    networks:
+      - portmatch-network
+    restart: always
+    ports:
+      - "8500:8500"
+    command: ["redis-server", "--port", "8500"]
 
   wanted-crawler:
     build:

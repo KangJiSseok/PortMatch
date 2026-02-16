@@ -10,35 +10,119 @@ import java.util.List;
 public interface CompanyRecommendationRepository extends Repository<PortfolioProjectEmbedding, Long> {
 
     @Query(value = """
-        WITH scored_pairs_base AS (
+        WITH portfolio_projects AS (
+            SELECT
+                ppe.project_id,
+                ppe.content,
+                ppe.project_embedding,
+                ppe.domain_embedding,
+                ppe.problem_embedding,
+                ppe.solution_embedding,
+                ppe.tech_embedding,
+                ppe.problem_missing,
+                ppe.solution_missing,
+                ppe.tech_missing
+            FROM portfolio_project_embeddings ppe
+            WHERE ppe.portfolio_id = :portfolioId
+        ),
+        project_candidates AS (
+            SELECT
+                cpe.company_id,
+                pp.project_id AS portfolio_project_id,
+                cpe.project_id AS company_project_id,
+                (cpe.project_embedding <=> pp.project_embedding) AS seed_distance
+            FROM portfolio_projects pp
+            JOIN LATERAL (
+                SELECT
+                    cpe_inner.company_id,
+                    cpe_inner.project_id,
+                    cpe_inner.project_embedding
+                FROM company_project_embeddings cpe_inner
+                ORDER BY cpe_inner.project_embedding <=> pp.project_embedding ASC
+                LIMIT 50
+            ) cpe ON TRUE
+        ),
+        problem_candidates AS (
+            SELECT
+                cpe.company_id,
+                pp.project_id AS portfolio_project_id,
+                cpe.project_id AS company_project_id,
+                (cpe.problem_embedding <=> pp.problem_embedding) AS seed_distance
+            FROM portfolio_projects pp
+            JOIN LATERAL (
+                SELECT
+                    cpe_inner.company_id,
+                    cpe_inner.project_id,
+                    cpe_inner.problem_embedding
+                FROM company_project_embeddings cpe_inner
+                ORDER BY cpe_inner.problem_embedding <=> pp.problem_embedding ASC
+                LIMIT 50
+            ) cpe ON TRUE
+        ),
+        solution_candidates AS (
+            SELECT
+                cpe.company_id,
+                pp.project_id AS portfolio_project_id,
+                cpe.project_id AS company_project_id,
+                (cpe.solution_embedding <=> pp.solution_embedding) AS seed_distance
+            FROM portfolio_projects pp
+            JOIN LATERAL (
+                SELECT
+                    cpe_inner.company_id,
+                    cpe_inner.project_id,
+                    cpe_inner.solution_embedding
+                FROM company_project_embeddings cpe_inner
+                ORDER BY cpe_inner.solution_embedding <=> pp.solution_embedding ASC
+                LIMIT 50
+            ) cpe ON TRUE
+        ),
+        candidate_pairs AS (
+            SELECT * FROM project_candidates
+            UNION
+            SELECT * FROM problem_candidates
+            UNION
+            SELECT * FROM solution_candidates
+        ),
+        top_candidates AS (
+            SELECT
+                cp.company_id,
+                cp.portfolio_project_id,
+                cp.company_project_id
+            FROM candidate_pairs cp
+            ORDER BY cp.seed_distance ASC
+            LIMIT 150
+        ),
+        scored_pairs_base AS (
             SELECT
                 cpe.company_id AS company_id,
-                ppe.project_id AS portfolio_project_id,
+                pp.project_id AS portfolio_project_id,
                 cpe.project_id AS company_project_id,
-                ppe.content AS portfolio_content,
+                pp.content AS portfolio_content,
                 cpe.content AS company_content,
-                (ppe.project_embedding <=> cpe.project_embedding) AS project_distance,
-                (ppe.domain_embedding <=> cpe.domain_embedding) AS domain_distance,
-                (ppe.problem_embedding <=> cpe.problem_embedding) AS problem_distance,
-                (ppe.solution_embedding <=> cpe.solution_embedding) AS solution_distance,
-                (ppe.tech_embedding <=> cpe.tech_embedding) AS tech_distance,
+                (pp.project_embedding <=> cpe.project_embedding) AS project_distance,
+                (pp.domain_embedding <=> cpe.domain_embedding) AS domain_distance,
+                (pp.problem_embedding <=> cpe.problem_embedding) AS problem_distance,
+                (pp.solution_embedding <=> cpe.solution_embedding) AS solution_distance,
+                (pp.tech_embedding <=> cpe.tech_embedding) AS tech_distance,
                 (
                     CASE
-                        WHEN ppe.problem_missing OR cpe.problem_missing THEN 1
+                        WHEN pp.problem_missing OR cpe.problem_missing THEN 1
                         ELSE 0
                     END
                     + CASE
-                        WHEN ppe.solution_missing OR cpe.solution_missing THEN 1
+                        WHEN pp.solution_missing OR cpe.solution_missing THEN 1
                         ELSE 0
                     END
                     + CASE
-                        WHEN ppe.tech_missing OR cpe.tech_missing THEN 1
+                        WHEN pp.tech_missing OR cpe.tech_missing THEN 1
                         ELSE 0
                     END
                 ) AS missing_field_count
-            FROM portfolio_project_embeddings ppe
-            JOIN company_project_embeddings cpe ON TRUE
-            WHERE ppe.portfolio_id = :portfolioId
+            FROM top_candidates tc
+            JOIN portfolio_projects pp ON pp.project_id = tc.portfolio_project_id
+            JOIN company_project_embeddings cpe
+              ON cpe.project_id = tc.company_project_id
+             AND cpe.company_id = tc.company_id
         ),
         scored_pairs AS (
             SELECT
