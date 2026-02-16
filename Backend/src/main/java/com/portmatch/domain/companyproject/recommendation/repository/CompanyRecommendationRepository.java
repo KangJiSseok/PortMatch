@@ -10,7 +10,7 @@ import java.util.List;
 public interface CompanyRecommendationRepository extends Repository<PortfolioProjectEmbedding, Long> {
 
     @Query(value = """
-        WITH portfolio_projects AS (
+        WITH portfolio_projects AS MATERIALIZED (
             SELECT
                 ppe.project_id,
                 ppe.content,
@@ -78,9 +78,9 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
         ),
         candidate_pairs AS (
             SELECT * FROM project_candidates
-            UNION
+            UNION ALL
             SELECT * FROM problem_candidates
-            UNION
+            UNION ALL
             SELECT * FROM solution_candidates
         ),
         top_candidates AS (
@@ -137,22 +137,33 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
                 ) AS distance
             FROM scored_pairs_base spb
         ),
+        job_posting_counts AS MATERIALIZED (
+            SELECT
+                jp.cid,
+                COUNT(*) AS job_posting_size
+            FROM job_postings jp
+            WHERE jp.active = 1
+            GROUP BY jp.cid
+        ),
         ranked AS (
             SELECT
                 sp.*,
                 ROW_NUMBER() OVER (PARTITION BY sp.company_id ORDER BY sp.distance ASC) AS rn
             FROM scored_pairs sp
+        ),
+        top_ranked AS (
+            SELECT
+                r.*
+            FROM ranked r
+            WHERE r.rn = 1
+            ORDER BY r.distance ASC
+            LIMIT :limit
         )
         SELECT
             company_id AS companyId,
             companies.companies_name As companyName,
             companies.cid AS cid,
-            (
-                SELECT COUNT(*)
-                FROM job_postings jp
-                WHERE jp.cid = companies.cid
-                  AND jp.active = 1
-            ) AS jobPostingSize,
+            COALESCE(jpc.job_posting_size, 0) AS jobPostingSize,
             distance,
             portfolio_project_id AS portfolioProjectId,
             company_project_id AS companyProjectId,
@@ -163,10 +174,10 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
             (1 - problem_distance) AS problemSimilarity,
             (1 - solution_distance) AS solutionSimilarity,
             (1 - tech_distance) AS techSimilarity
-        FROM ranked JOIN companies ON ranked.company_id=companies.id
-        WHERE rn = 1
-        ORDER BY distance ASC
-        LIMIT :limit
+        FROM top_ranked
+        JOIN companies ON top_ranked.company_id=companies.id
+        LEFT JOIN job_posting_counts jpc ON jpc.cid = companies.cid
+        ORDER BY top_ranked.distance ASC
         """, nativeQuery = true)
     List<CompanyRecommendationRow> findTopCompaniesByPortfolio(
             @Param("portfolioId") Long portfolioId,
