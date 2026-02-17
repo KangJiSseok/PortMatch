@@ -22,3 +22,4 @@ volume/
 !README.md
 !.gitignore
 !portmatch_data_only.sql
+!portmatch_data.sql
