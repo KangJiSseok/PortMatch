@@ -78,9 +78,9 @@ public interface CompanyRecommendationRepository extends Repository<PortfolioPro
         ),
         candidate_pairs AS (
             SELECT * FROM project_candidates
-            UNION ALL
+            UNION
             SELECT * FROM problem_candidates
-            UNION ALL
+            UNION
             SELECT * FROM solution_candidates
         ),
         top_candidates AS (
