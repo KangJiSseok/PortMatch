@@ -1,0 +1,7 @@
+{
+  "java": "openjdk version \"21.0.9\" 2025-10-21 LTS\nOpenJDK Runtime Environment Temurin-21.0.9+10 (build 21.0.9+10-LTS)\nOpenJDK 64-Bit Server VM Temurin-21.0.9+10 (build 21.0.9+10-LTS, mixed mode, sharing)\n",
+  "docker_server": "28.5.1",
+  "postgres_image": "pgvector/pgvector:pg17",
+  "image_id": "sha256:1a5ea285a159bed991c74a9c4751b6eadc536b3c3263f3f95ec3865885a62b69",
+  "note": "Local isolated Testcontainer; not production DB."
+}
