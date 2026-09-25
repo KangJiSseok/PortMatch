@@ -9,12 +9,14 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.*;
 
 @Getter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
 @Entity
 @Table(name = "users")
-public class User {
+public class User implements Serializable {
+    @Serial private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,4 +60,15 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CompanyScrapEntity> companyScraps = new ArrayList<>();
+
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        out.writeObject(id); out.writeObject(username); out.writeObject(password); out.writeObject(name);
+        out.writeObject(phone); out.writeObject(email); out.writeObject(role); out.writeObject(createdAt);
+    }
+
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        id = (Long) in.readObject(); username = (String) in.readObject(); password = (String) in.readObject();
+        name = (String) in.readObject(); phone = (String) in.readObject(); email = (String) in.readObject();
+        role = (Role) in.readObject(); createdAt = (LocalDateTime) in.readObject(); companyScraps = new ArrayList<>();
+    }
 }

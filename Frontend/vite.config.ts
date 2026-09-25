@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           cookieDomainRewrite: 'localhost',
         },
+        '/ws': { target: apiTarget, ws: true, changeOrigin: true, secure: false },
       },
     },
   };

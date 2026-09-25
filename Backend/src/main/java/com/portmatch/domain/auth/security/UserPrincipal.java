@@ -8,9 +8,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
+import java.io.Serial;
+import java.io.Serializable;
 
 @Getter
-public class UserPrincipal implements UserDetails {
+public class UserPrincipal implements UserDetails, Serializable {
+    @Serial private static final long serialVersionUID = 1L;
 
     private final User user;
 

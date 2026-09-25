@@ -1,0 +1,90 @@
+name: portmatch-chat-experiment
+x-backend: &backend
+  build: ../Backend
+  image: portmatch-chat-experiment:local
+  restart: unless-stopped
+  environment: &backend-env
+    SPRING_PROFILES_ACTIVE: chaos
+    SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/portmatch
+    SPRING_DATASOURCE_USERNAME: portmatch
+    SPRING_DATASOURCE_PASSWORD: portmatch
+    RABBITMQ_HOST: toxiproxy
+    RABBITMQ_PORT: 5673
+    RABBITMQ_STOMP_HOST: toxiproxy
+    RABBITMQ_STOMP_PORT: 61614
+    RABBITMQ_USERNAME: portmatch
+    RABBITMQ_PASSWORD: portmatch
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    CHAT_PUBLISH_MODE: ${CHAT_PUBLISH_MODE:-direct}
+    CHAT_CHAOS_POINT: ${CHAT_CHAOS_POINT:-none}
+    CHAT_CHAOS_TRIGGER_SEQUENCE: ${CHAT_CHAOS_TRIGGER_SEQUENCE:--1}
+    AWS_S3_BUCKET: experiment
+    AWS_REGION: ap-northeast-2
+    AWS_ACCESS_KEY: experiment
+    AWS_SECRET_KEY: experiment
+    PORTFOLIO_ANALYSIS_URL: http://127.0.0.1:9
+    COMPANY_PROJECT_ANALYSIS_URL: http://127.0.0.1:9
+    EXPLANATION_URL: http://127.0.0.1:9
+    EMBEDDING_URL: http://127.0.0.1:9
+    JAVA_OPTS: -Xms256m -Xmx512m
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+    toxiproxy-init: { condition: service_completed_successfully }
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: portmatch
+      POSTGRES_USER: portmatch
+      POSTGRES_PASSWORD: portmatch
+    ports: ["15432:5432"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U portmatch"], interval: 2s, timeout: 2s, retries: 30 }
+    volumes: [chat-experiment-postgres:/var/lib/postgresql/data]
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    environment:
+      RABBITMQ_DEFAULT_USER: portmatch
+      RABBITMQ_DEFAULT_PASS: portmatch
+    ports: ["15672:15672"]
+    volumes:
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    healthcheck: { test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"], interval: 2s, timeout: 5s, retries: 30 }
+  redis:
+    image: redis:7-alpine
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 2s, timeout: 2s, retries: 30 }
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    ports: ["18474:8474"]
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+  toxiproxy-init:
+    image: curlimages/curl:8.15.0
+    depends_on: [toxiproxy]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until curl -sf http://toxiproxy:8474/version; do sleep 1; done
+        curl -sf -X POST http://toxiproxy:8474/proxies -H 'Content-Type: application/json' -d '{"name":"rabbit-amqp","listen":"0.0.0.0:5673","upstream":"rabbitmq:5672"}' || true
+        curl -sf -X POST http://toxiproxy:8474/proxies -H 'Content-Type: application/json' -d '{"name":"rabbit-stomp","listen":"0.0.0.0:61614","upstream":"rabbitmq:61613"}' || true
+  backend1:
+    <<: *backend
+    ports: ["18081:8080"]
+  backend2:
+    <<: *backend
+    ports: ["18082:8080"]
+  nginx:
+    image: nginx:1.27-alpine
+    ports: ["18080:80"]
+    volumes: [./nginx/nginx.conf:/etc/nginx/nginx.conf:ro]
+    depends_on: [backend1, backend2]
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    ports: ["19090:9090"]
+    volumes: [./prometheus.yml:/etc/prometheus/prometheus.yml:ro]
+    depends_on: [backend1, backend2]
+
+volumes:
+  chat-experiment-postgres:

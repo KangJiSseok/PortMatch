@@ -1,37 +1,23 @@
-import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-
-export const initiateChatByCompany = async (
-  companyId: number,
-  companyName: string,
-  applicantId: string,
-  applicantName: string,
-  logoUrl?: string,
-) => {
-  const roomsRef = collection(db, 'rooms');
-
-  const q = query(roomsRef, where('participants', 'array-contains', String(companyId)));
-
-  const snapshot = await getDocs(q);
-  const existingRoom = snapshot.docs.find((doc) =>
-    (doc.data().participants as string[]).includes(applicantId),
-  );
-
-  if (existingRoom) {
-    return existingRoom.id;
-  }
-
-  const newRoom = await addDoc(roomsRef, {
-    name: applicantName,
-    companyName: companyName,
-    participants: [String(companyId), applicantId],
-    lastMessage: '기업으로부터 새로운 쪽지가 도착했습니다.',
-    lastUpdatedAt: Timestamp.now(),
-    unreadCount: 1,
-    senderType: 'company',
-    companyId: String(companyId),
-    logoUrl: logoUrl || '',
-  });
-
-  return newRoom.id;
-};
+import axiosInstance from './axiosInstance';
+export interface ApiRoom {
+  id: string; roomType: 'DIRECT' | 'SYSTEM'; companyId?: number; companyName?: string;
+  applicantId?: number; applicantName?: string; lastMessage?: string; lastSenderId?: number;
+  lastUpdatedAt?: string; unreadCount: number; lastReadSequence: number;
+}
+export interface ApiMessage {
+  id: string; roomId: string; roomSequence: number; senderId?: number; senderName: string;
+  content: string; messageType: 'TEXT' | 'INTERVIEW' | 'SYSTEM'; createdAt: string;
+  interviewId?: number; jobPostingId?: number; jobPostingTitle?: string;
+}
+interface Envelope<T> { data: T }
+export const fetchChatRooms = async () => (await axiosInstance.get<Envelope<ApiRoom[]>>('/chat/rooms')).data.data;
+export const createChatRoom = async (targetUserId: number) =>
+  (await axiosInstance.post<Envelope<ApiRoom>>('/chat/rooms', { targetUserId })).data.data;
+export const fetchChatMessages = async (roomId: string, afterSequence = 0) =>
+  (await axiosInstance.get<Envelope<ApiMessage[]>>(`/chat/rooms/${roomId}/messages`, { params: { afterSequence, limit: 200 } })).data.data;
+export const postChatMessage = async (roomId: string, body: Record<string, unknown>) =>
+  (await axiosInstance.post<Envelope<ApiMessage>>(`/chat/rooms/${roomId}/messages`, body)).data.data;
+export const markChatRead = (roomId: string, roomSequence: number) =>
+  axiosInstance.patch(`/chat/rooms/${roomId}/read`, { roomSequence });
+export const initiateChatByCompany = async (_companyId: number, _companyName: string, applicantId: string) =>
+  (await createChatRoom(Number(applicantId))).id;

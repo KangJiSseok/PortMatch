@@ -1,6 +1,6 @@
-import { Timestamp } from 'firebase/firestore';
+import type { TimeValue } from '../types/messenger';
 
-export const getRelativeTime = (timestamp: Timestamp | null): string => {
+export const getRelativeTime = (timestamp: TimeValue | null): string => {
   if (!timestamp) return '';
 
   const date = timestamp.toDate();
