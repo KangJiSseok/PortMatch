@@ -1,0 +1,58 @@
+diff --git a/Backend/src/main/java/com/portmatch/domain/jobposting/entity/JobPostingEntity.java b/Backend/src/main/java/com/portmatch/domain/jobposting/entity/JobPostingEntity.java
+index 5853927..9b413de 100644
+--- a/Backend/src/main/java/com/portmatch/domain/jobposting/entity/JobPostingEntity.java
++++ b/Backend/src/main/java/com/portmatch/domain/jobposting/entity/JobPostingEntity.java
+@@ -67,10 +67,6 @@ public class JobPostingEntity {
+         this.company = company;
+     }
+ 
+-    public void incrementVcnt() {
+-        this.vcnt += 1;
+-    }
+-
+     @OneToMany(mappedBy = "jobPosting", cascade = CascadeType.ALL, orphanRemoval = true)
+     private List<ScrapEntity> scraps = new ArrayList<>();
+-}
+\ No newline at end of file
++}
+diff --git a/Backend/src/main/java/com/portmatch/domain/jobposting/repository/JobPostingRepository.java b/Backend/src/main/java/com/portmatch/domain/jobposting/repository/JobPostingRepository.java
+index 8e59fcf..bb5f7a5 100644
+--- a/Backend/src/main/java/com/portmatch/domain/jobposting/repository/JobPostingRepository.java
++++ b/Backend/src/main/java/com/portmatch/domain/jobposting/repository/JobPostingRepository.java
+@@ -14,6 +14,10 @@ import java.util.List;
+ 
+ @Repository
+ public interface JobPostingRepository extends JpaRepository<JobPostingEntity, Long> {
++    @Modifying(clearAutomatically = true, flushAutomatically = true)
++    @Query("UPDATE JobPostingEntity j SET j.vcnt = j.vcnt + 1 WHERE j.id = :id")
++    int incrementViewCount(@Param("id") Long id);
++
+     List<JobPostingEntity> findByCompanyCid(String cid);
+     // 2. 제목 키워드 검색 (기존과 동일)
+     List<JobPostingEntity> findByTitleContaining(String keyword);
+@@ -32,4 +36,4 @@ public interface JobPostingRepository extends JpaRepository<JobPostingEntity, Lo
+             "AND j.endDate IS NOT NULL " + // null인 데이터는 건드리지 않음
+             "AND j.endDate < :today")
+     void updateExpiredJobs(String today);
+-}
+\ No newline at end of file
++}
+diff --git a/Backend/src/main/java/com/portmatch/domain/jobposting/service/JobPostingServiceImpl.java b/Backend/src/main/java/com/portmatch/domain/jobposting/service/JobPostingServiceImpl.java
+index d18b7af..90377a6 100644
+--- a/Backend/src/main/java/com/portmatch/domain/jobposting/service/JobPostingServiceImpl.java
++++ b/Backend/src/main/java/com/portmatch/domain/jobposting/service/JobPostingServiceImpl.java
+@@ -169,11 +169,9 @@ public class JobPostingServiceImpl implements JobPostingService {
+     @Override
+     @Transactional
+     public void updateViewCount(Long id) {
+-        // 수정할 대상이 없으면 조용히 넘어가거나 에러를 던질 수 있어
+-        JobPostingEntity entity = jobPostingRepository.findById(id)
+-                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
+-
+-        entity.incrementVcnt();
++        if (jobPostingRepository.incrementViewCount(id) == 0) {
++            throw new BusinessException(ResponseCode.NOT_FOUND);
++        }
+     }
+ 
+     @Override

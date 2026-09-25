@@ -1,0 +1,36 @@
+{
+  "command": "JAVA_HOME=$(/usr/libexec/java_home -v 21) Backend/gradlew -p Backend test --rerun-tasks",
+  "exit_code": 0,
+  "suites": [
+    {
+      "name": "com.portmatch.domain.chat.ChatPublicationTest",
+      "tests": "4",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-09-25T17:51:46.905Z",
+      "hostname": "gangjiseog-ui-MacBookPro.local",
+      "time": "0.256"
+    },
+    {
+      "name": "com.portmatch.BackendApplicationTests",
+      "tests": "1",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-09-25T17:51:46.623Z",
+      "hostname": "gangjiseog-ui-MacBookPro.local",
+      "time": "0.28"
+    },
+    {
+      "name": "com.portmatch.domain.jobposting.JobPostingViewCountConcurrencyTest",
+      "tests": "31",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-09-25T17:51:49.985Z",
+      "hostname": "gangjiseog-ui-MacBookPro.local",
+      "time": "6.748"
+    }
+  ]
+}
