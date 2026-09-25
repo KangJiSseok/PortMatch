@@ -1,0 +1,30 @@
+
+> Task :compileJava
+/Users/kangjiseok/Desktop/PortMatch/Backend/src/main/java/com/portmatch/domain/jobposting/entity/JobPostingEntity.java:75: warning: @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+    private List<ScrapEntity> scraps = new ArrayList<>();
+                              ^
+1 warning
+
+> Task :processResources
+> Task :classes
+> Task :compileTestJava
+> Task :processTestResources
+> Task :testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+2026-09-26T02:50:51.515+09:00  INFO 98073 --- [ionShutdownHook] o.s.m.s.s.StompBrokerRelayMessageHandler : Stopping...
+2026-09-26T02:50:53.609+09:00  INFO 98073 --- [ionShutdownHook] o.s.m.s.s.StompBrokerRelayMessageHandler : Stopped.
+2026-09-26T02:50:53.635+09:00  INFO 98073 --- [ionShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-09-26T02:50:53.637+09:00  INFO 98073 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-09-26T02:50:53.639+09:00  INFO 98073 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+> Task :test
+
+[Incubating] Problems report is available at: file:///Users/kangjiseok/Desktop/PortMatch/Backend/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 11s
+5 actionable tasks: 5 executed

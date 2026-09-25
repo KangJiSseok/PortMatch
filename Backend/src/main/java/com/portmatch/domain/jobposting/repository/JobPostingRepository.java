@@ -14,6 +14,10 @@ import java.util.List;
 
 @Repository
 public interface JobPostingRepository extends JpaRepository<JobPostingEntity, Long> {
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE JobPostingEntity j SET j.vcnt = j.vcnt + 1 WHERE j.id = :id")
+    int incrementViewCount(@Param("id") Long id);
+
     List<JobPostingEntity> findByCompanyCid(String cid);
     // 2. 제목 키워드 검색 (기존과 동일)
     List<JobPostingEntity> findByTitleContaining(String keyword);

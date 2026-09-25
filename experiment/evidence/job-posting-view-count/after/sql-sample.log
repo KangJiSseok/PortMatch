@@ -1,0 +1,102 @@
+2026-09-26T02:51:21.842+09:00  INFO 98363 --- [    Test worker] o.s.mock.web.MockServletContext          : Initializing Spring TestDispatcherServlet ''
+2026-09-26T02:51:21.842+09:00  INFO 98363 --- [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-09-26T02:51:21.843+09:00  INFO 98363 --- [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2026-09-26T02:51:21.844+09:00 DEBUG 98363 --- [ool-12-thread-2] d.j.JobPostingViewCountConcurrencyTest$1 : Opening JPA EntityManager in OpenEntityManagerInViewFilter
+2026-09-26T02:51:21.844+09:00 DEBUG 98363 --- [ool-12-thread-1] d.j.JobPostingViewCountConcurrencyTest$1 : Opening JPA EntityManager in OpenEntityManagerInViewFilter
+2026-09-26T02:51:21.845+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Found thread-bound EntityManager [SessionImpl(874764995<open>)] for JPA transaction
+2026-09-26T02:51:21.845+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Found thread-bound EntityManager [SessionImpl(1718195321<open>)] for JPA transaction
+2026-09-26T02:51:21.845+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Creating new transaction with name [com.portmatch.domain.jobposting.service.JobPostingServiceImpl.updateViewCount]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-26T02:51:21.845+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Creating new transaction with name [com.portmatch.domain.jobposting.service.JobPostingServiceImpl.updateViewCount]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-26T02:51:21.845+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@3ae42237]
+2026-09-26T02:51:21.845+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@68ae66c4]
+2026-09-26T02:51:21.848+09:00 DEBUG 98363 --- [ool-12-thread-1] org.hibernate.SQL                        : 
+    update
+        job_postings jpe1_0 
+    set
+        vcnt=(jpe1_0.vcnt+1) 
+    where
+        jpe1_0.id=?
+2026-09-26T02:51:21.848+09:00 DEBUG 98363 --- [ool-12-thread-2] org.hibernate.SQL                        : 
+    update
+        job_postings jpe1_0 
+    set
+        vcnt=(jpe1_0.vcnt+1) 
+    where
+        jpe1_0.id=?
+2026-09-26T02:51:21.848+09:00 TRACE 98363 --- [ool-12-thread-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [12]
+2026-09-26T02:51:21.848+09:00 TRACE 98363 --- [ool-12-thread-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [12]
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Initiating transaction commit
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Committing JPA transaction on EntityManager [SessionImpl(1718195321<open>)]
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Not closing pre-bound JPA EntityManager after transaction
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Initiating transaction commit
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Found thread-bound EntityManager [SessionImpl(1718195321<open>)] for JPA transaction
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Committing JPA transaction on EntityManager [SessionImpl(874764995<open>)]
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Creating new transaction with name [org.springframework.data.jpa.repository.support.SimpleJpaRepository.findById]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT,readOnly
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@4c4d4a70]
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Not closing pre-bound JPA EntityManager after transaction
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Found thread-bound EntityManager [SessionImpl(874764995<open>)] for JPA transaction
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Creating new transaction with name [org.springframework.data.jpa.repository.support.SimpleJpaRepository.findById]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT,readOnly
+2026-09-26T02:51:21.849+09:00 DEBUG 98363 --- [ool-12-thread-1] org.hibernate.SQL                        : 
+    select
+        jpe1_0.id,
+        jpe1_0.active,
+        jpe1_0.cid,
+        jpe1_0.detail,
+        jpe1_0.end_date,
+        jpe1_0.job_type,
+        jpe1_0.start_date,
+        jpe1_0.title,
+        jpe1_0.vcnt 
+    from
+        job_postings jpe1_0 
+    where
+        jpe1_0.id=?
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@44ca7bf0]
+2026-09-26T02:51:21.850+09:00 TRACE 98363 --- [ool-12-thread-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [12]
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-2] org.hibernate.SQL                        : 
+    select
+        jpe1_0.id,
+        jpe1_0.active,
+        jpe1_0.cid,
+        jpe1_0.detail,
+        jpe1_0.end_date,
+        jpe1_0.job_type,
+        jpe1_0.start_date,
+        jpe1_0.title,
+        jpe1_0.vcnt 
+    from
+        job_postings jpe1_0 
+    where
+        jpe1_0.id=?
+2026-09-26T02:51:21.850+09:00 TRACE 98363 --- [ool-12-thread-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [12]
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Initiating transaction commit
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Committing JPA transaction on EntityManager [SessionImpl(1718195321<open>)]
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Initiating transaction commit
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Committing JPA transaction on EntityManager [SessionImpl(874764995<open>)]
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-1] o.s.orm.jpa.JpaTransactionManager        : Not closing pre-bound JPA EntityManager after transaction
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-2] o.s.orm.jpa.JpaTransactionManager        : Not closing pre-bound JPA EntityManager after transaction
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-1] org.hibernate.SQL                        : 
+    select
+        ts1_0.job_posting_id,
+        ts1_0.id,
+        ts1_0.stack_id 
+    from
+        posting_stacks ts1_0 
+    where
+        ts1_0.job_posting_id=?
+2026-09-26T02:51:21.850+09:00 DEBUG 98363 --- [ool-12-thread-2] org.hibernate.SQL                        : 
+    select
+        ts1_0.job_posting_id,
+        ts1_0.id,
+        ts1_0.stack_id 
+    from
+        posting_stacks ts1_0 
+    where
+        ts1_0.job_posting_id=?
+2026-09-26T02:51:21.850+09:00 TRACE 98363 --- [ool-12-thread-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [12]
+2026-09-26T02:51:21.850+09:00 TRACE 98363 --- [ool-12-thread-2] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [12]
+2026-09-26T02:51:21.852+09:00 DEBUG 98363 --- [ool-12-thread-1] d.j.JobPostingViewCountConcurrencyTest$1 : Closing JPA EntityManager in OpenEntityManagerInViewFilter
+2026-09-26T02:51:21.852+09:00 DEBUG 98363 --- [ool-12-thread-2] d.j.JobPostingViewCountConcurrencyTest$1 : Closing JPA EntityManager in OpenEntityManagerInViewFilter
+VIEW_COUNT_RESULT pair,1,100,2,2,2,0,102,102,0,true
+INDEPENDENT_TX session=b606badc-1ebb-42d9-ad43-c72017b6f64b pid=69 txid=10767 previous=100
+INDEPENDENT_TX session=a614da82-4de6-4226-a9e0-bec5bc8e2ed3 pid=70 txid=10768 previous=100

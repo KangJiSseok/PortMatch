@@ -169,11 +169,9 @@ public class JobPostingServiceImpl implements JobPostingService {
     @Override
     @Transactional
     public void updateViewCount(Long id) {
-        // 수정할 대상이 없으면 조용히 넘어가거나 에러를 던질 수 있어
-        JobPostingEntity entity = jobPostingRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ResponseCode.NOT_FOUND));
-
-        entity.incrementVcnt();
+        if (jobPostingRepository.incrementViewCount(id) == 0) {
+            throw new BusinessException(ResponseCode.NOT_FOUND);
+        }
     }
 
     @Override

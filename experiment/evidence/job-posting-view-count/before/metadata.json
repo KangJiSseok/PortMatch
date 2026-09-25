@@ -1,0 +1,24 @@
+{
+  "recorded_at": "2026-09-26T02:50:41.763210+09:00",
+  "commit": "98e23cbb065b3e07c6c0d8212ca82619c2efd849",
+  "command": "JAVA_HOME=$(/usr/libexec/java_home -v 21) Backend/gradlew -p Backend test --tests '*JobPostingViewCountConcurrencyTest' --rerun-tasks",
+  "exit_code": 1,
+  "test_results": {
+    "name": "com.portmatch.domain.jobposting.JobPostingViewCountConcurrencyTest",
+    "tests": "31",
+    "skipped": "0",
+    "failures": "30",
+    "errors": "0",
+    "timestamp": "2026-09-25T17:50:21.994Z",
+    "hostname": "gangjiseog-ui-MacBookPro.local",
+    "time": "7.21"
+  },
+  "sha256": {
+    "Backend/src/test/java/com/portmatch/domain/jobposting/JobPostingViewCountConcurrencyTest.java": "6e633d6371b06e7bc7bcb44a4d4fbd72f558736ccf962190c52083dfc83144d9",
+    "Backend/src/test/resources/db/view-count-init.sql": "c8c1ea4fd32d1899425d54eb464bc2c78a90442a7c444ab0f687b570d3b85da9"
+  },
+  "environment_lines": [
+    "DB_VERSION PostgreSQL 17.7 (Debian 17.7-3.pgdg12+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit",
+    "DB_ISOLATION read committed"
+  ]
+}
