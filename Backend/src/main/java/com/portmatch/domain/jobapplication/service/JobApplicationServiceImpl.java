@@ -1,6 +1,7 @@
 package com.portmatch.domain.jobapplication.service;
 
 import com.portmatch.domain.auth.entity.User;
+import com.portmatch.domain.chat.ChatService;
 import com.portmatch.domain.auth.repository.UserRepository;
 import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
@@ -37,6 +38,7 @@ public class JobApplicationServiceImpl implements JobApplicationService {
     private final ResumeRepository resumeRepository;
     private final CompanyRepository companyRepository;
     private final JobApplicationResumeSnapshotService resumeSnapshotService;
+    private final ChatService chatService;
 
     @Override
     @Transactional
@@ -64,6 +66,12 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         log.info(application.toString());
         JobApplication saved = jobApplicationRepository.save(application);
         resumeSnapshotService.createSnapshotIfAbsent(saved);
+        Company company = jobPosting.getCompany();
+        if (company != null && company.getUser() != null) {
+            chatService.sendSystem(company.getUser().getId(),
+                    "[지원 알림] 새로운 지원자가 [" + jobPosting.getTitle() + "] 공고에 지원했습니다.",
+                    jobPosting.getId());
+        }
         log.info("반환");
         log.info(saved.toString());
         return toResponse(saved);

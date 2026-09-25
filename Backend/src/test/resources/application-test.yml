@@ -1,4 +1,12 @@
 spring:
+  flyway:
+    enabled: false
+  session:
+    store-type: none
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
   datasource:
     url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
@@ -8,3 +16,10 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: false
+
+aws:
+  s3:
+    bucket: test-bucket
+    region: ap-northeast-2
+    access-key: test
+    secret-key: test

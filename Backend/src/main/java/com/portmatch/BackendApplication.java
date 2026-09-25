@@ -9,8 +9,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import java.util.TimeZone;
 
 @EnableJpaAuditing
-@EnableScheduling
 @SpringBootApplication
+@EnableScheduling
 public class BackendApplication {
 
     @PostConstruct

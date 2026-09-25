@@ -3,6 +3,7 @@ package com.portmatch.domain.interviewschedule.service;
 import com.portmatch.domain.auth.dto.response.MeResponse;
 import com.portmatch.domain.auth.entity.User;
 import com.portmatch.domain.auth.repository.UserRepository;
+import com.portmatch.domain.chat.ChatService;
 import com.portmatch.domain.companies.dto.CompaniesDto;
 import com.portmatch.domain.interviewschedule.dto.InterviewScheduleDto;
 import com.portmatch.domain.interviewschedule.entity.InterviewScheduleEntity;
@@ -25,6 +26,7 @@ public class InterviewScheduleServiceImpl implements InterviewScheduleService {
     private final InterviewServiceRepository interviewServiceRepository;
     private final UserRepository userRepository;
     private final JobPostingRepository jobPostingRepository;
+    private final ChatService chatService;
 
     @Override
     public List<InterviewScheduleDto> getSchedulesByUser(Long userId) {
@@ -99,7 +101,20 @@ public class InterviewScheduleServiceImpl implements InterviewScheduleService {
                 .orElseThrow(() -> new IllegalArgumentException("수정할 일정이 없어! ID: " + scheduleId));
 
         // 2. 엔티티 내부 메서드 호출 (Setter 에러 해결!)
+        var previous = entity.getStatus();
         entity.updateSchedule(dto.getTime(), dto.getStatus());
+        if (dto.getStatus() != null && dto.getStatus() != previous) {
+            String text = dto.getStatus() == com.portmatch.domain.interviewschedule.enums.InterviewStatus.CONFIRMED
+                    ? "[면접 수락 안내] 면접 일정이 확정되었습니다."
+                    : dto.getStatus() == com.portmatch.domain.interviewschedule.enums.InterviewStatus.CANCELED
+                    ? "[면접 거절 안내] 면접 일정이 취소되었습니다." : null;
+            if (text != null) {
+                chatService.sendSystem(entity.getUser().getId(), text, entity.getJobPosting().getId());
+                var company = entity.getJobPosting().getCompany();
+                if (company != null && company.getUser() != null)
+                    chatService.sendSystem(company.getUser().getId(), text, entity.getJobPosting().getId());
+            }
+        }
 
         // JPA 더티 체킹 덕분에 save() 안 불러도 커밋 시점에 반영돼!
     }

@@ -102,6 +102,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseApiResponse<?>> handleException(Exception e) {
+        log.error("Unhandled API exception", e);
         ResponseCode code = ResponseCode.INTERNAL_SERVER_ERROR;
         HttpStatus status = mapToHttpStatus(code.getCode());
 

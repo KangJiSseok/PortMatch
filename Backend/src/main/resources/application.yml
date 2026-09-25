@@ -33,6 +33,42 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: ${CHAT_CONSUMER_PREFETCH:20}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  session:
+    store-type: ${SESSION_STORE_TYPE:redis}
+
+chat:
+  publish-mode: ${CHAT_PUBLISH_MODE:direct}
+  immediate-retries: ${CHAT_IMMEDIATE_RETRIES:3}
+  retry-delay-ms: ${CHAT_RETRY_DELAY_MS:1000}
+  max-attempts: ${CHAT_MAX_ATTEMPTS:5}
+  outbox:
+    batch-size: ${CHAT_OUTBOX_BATCH_SIZE:100}
+    poll-delay-ms: ${CHAT_OUTBOX_POLL_DELAY_MS:250}
+    lease-seconds: ${CHAT_OUTBOX_LEASE_SECONDS:30}
+    retention-days: ${CHAT_OUTBOX_RETENTION_DAYS:7}
+  broker-relay:
+    host: ${RABBITMQ_STOMP_HOST:${RABBITMQ_HOST:localhost}}
+    port: ${RABBITMQ_STOMP_PORT:61613}
+    login: ${RABBITMQ_STOMP_USERNAME:${RABBITMQ_USERNAME:guest}}
+    passcode: ${RABBITMQ_STOMP_PASSWORD:${RABBITMQ_PASSWORD:guest}}
+  chaos:
+    point: ${CHAT_CHAOS_POINT:none}
+    trigger-sequence: ${CHAT_CHAOS_TRIGGER_SEQUENCE:-1}
 
 aws:
   s3:
