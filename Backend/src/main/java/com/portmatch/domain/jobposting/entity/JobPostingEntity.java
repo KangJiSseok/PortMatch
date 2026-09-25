@@ -67,10 +67,6 @@ public class JobPostingEntity {
         this.company = company;
     }
 
-    public void incrementVcnt() {
-        this.vcnt += 1;
-    }
-
     @OneToMany(mappedBy = "jobPosting", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ScrapEntity> scraps = new ArrayList<>();
 }
