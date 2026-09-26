@@ -14,7 +14,7 @@ import java.util.List;
 
 @Repository
 public interface JobPostingRepository extends JpaRepository<JobPostingEntity, Long> {
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying
     @Query("UPDATE JobPostingEntity j SET j.vcnt = j.vcnt + 1 WHERE j.id = :id")
     int incrementViewCount(@Param("id") Long id);
 

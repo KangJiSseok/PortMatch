@@ -98,7 +98,7 @@ Backend 전체 회귀 실행은 **36/36 통과, 실패·스킵 0**이었다. 이
 
 ## 최소 변경과 선택 이유
 
-Repository에 다음 JPQL 하나를 추가했다.
+최초 수정 및 위 전후 측정 시점에는 Repository에 다음 JPQL을 추가했다.
 
 ```java
 @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -190,3 +190,11 @@ c8c1ea4fd32d1899425d54eb464bc2c78a90442a7c444ab0f687b570d3b85da9
 - 다른 공고 수정의 Hibernate 전체 컬럼 UPDATE가 조회수를 덮어쓰는 경쟁, 동시 삭제, 정수 범위 초과, 중복 조회 정책은 이번 검증 범위 밖이다.
 - 반복 측정의 100%는 실행한 사례에 대한 통과율이다. 모든 환경의 무조건적인 보장이나 운영 실측 성과로 표현하지 않는다.
 - 기존 전체 DDL 오류는 수정하지 않았다. 기존 Lombok builder 경고 및 Gradle deprecation 경고도 남아 있지만 테스트 실패는 없다.
+
+## 후속 정리: 불필요한 자동 flush·clear 제거
+
+현재 호출 경로는 공고 엔티티를 조회·수정하기 전에 조회수 UPDATE를 실행한다. 따라서 선행 변경을 강제로 flush하거나 이미 조회한 공고를 clear할 필요가 없어 `@Modifying`만 남겼다. 원자적 `vcnt = vcnt + 1`, 서비스 트랜잭션, NOT_FOUND 처리는 유지한다. 위 비교표와 원본 증거는 두 옵션이 있던 최초 측정 결과로 보존한다.
+
+향후 공고를 먼저 조회·수정한 영속성 컨텍스트에서 이 메서드를 재사용한다면 flush 및 오래된 엔티티 처리 필요성을 다시 검토해야 한다.
+
+옵션 제거 후 동일 테스트 소스와 초기화 SQL을 유지한 채 `Backend/gradlew -p Backend test --rerun-tasks`를 Java 21로 실행해 전체 36개 테스트가 실패·스킵 없이 통과했다. 결정적 동시성 실험 20회와 1,000건 부하 실험 10회도 모두 통과했다.
