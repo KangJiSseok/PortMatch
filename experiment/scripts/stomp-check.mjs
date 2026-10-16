@@ -1,8 +1,8 @@
 import net from 'node:net';
 import { randomBytes, randomUUID } from 'node:crypto';
 
-const companyBase = 'http://localhost:18081';
-const applicantBase = 'http://localhost:18082';
+const companyBase = process.env.EXPERIMENT_COMPANY_BASE_URL || 'http://localhost:18081';
+const applicantBase = process.env.EXPERIMENT_APPLICANT_BASE_URL || 'http://localhost:18082';
 
 async function request(base, path, options = {}) {
   const response = await fetch(base + path, options);
@@ -80,7 +80,7 @@ const company = await session(companyBase, '/api/accounts/signup/company',
 const room = await request(companyBase, '/api/chat/rooms', { method: 'POST', headers: { cookie: company.cookie, 'content-type': 'application/json' },
   body: JSON.stringify({ targetUserId: applicant.id }) });
 const roomId = room.data.data.id;
-const client = await websocket(18082, applicant.cookie);
+const client = await websocket(Number(new URL(applicantBase).port) || 80, applicant.cookie);
 client.send('CONNECT\naccept-version:1.2\nheart-beat:0,0\n\n\0');
 await client.waitFor((frame) => frame.startsWith('CONNECTED'));
 client.send(`SUBSCRIBE\nid:room-0\nack:auto\ndestination:/topic/chat.rooms.${roomId}\n\n\0`);
@@ -90,4 +90,4 @@ await request(companyBase, `/api/chat/rooms/${roomId}/messages`, { method: 'POST
   body: JSON.stringify({ clientMessageId: randomUUID(), content: marker, messageType: 'TEXT', testRunId: 'stomp-cross-was' }) });
 const frame = await client.waitFor((value) => value.startsWith('MESSAGE') && value.includes(marker), 15000);
 client.close();
-console.log(JSON.stringify({ passed: true, senderWas: 'backend1:18081', subscriberWas: 'backend2:18082', roomId, marker, destination: `/topic/chat.rooms.${roomId}`, frameBytes: Buffer.byteLength(frame) }, null, 2));
+console.log(JSON.stringify({ passed: true, senderWas: companyBase, subscriberWas: applicantBase, roomId, marker, destination: `/topic/chat.rooms.${roomId}`, frameBytes: Buffer.byteLength(frame) }, null, 2));

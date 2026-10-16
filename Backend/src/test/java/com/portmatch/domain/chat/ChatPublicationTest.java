@@ -13,6 +13,15 @@ import static org.mockito.Mockito.*;
 
 class ChatPublicationTest {
     @Test
+    void selectsDirectByDefault() {
+        try (var context = context(null)) {
+            assertThat(context.getBeansOfType(ChatEventPublicationStrategy.class).values())
+                    .singleElement().isInstanceOf(DirectChatEventPublicationStrategy.class);
+            assertThat(context.getBeansOfType(java.util.concurrent.ThreadPoolExecutor.class)).isEmpty();
+        }
+    }
+
+    @Test
     void selectsDirectStrategy() {
         try (var context = context("direct")) {
             assertThat(context.getBeansOfType(ChatEventPublicationStrategy.class).values())
@@ -58,12 +67,15 @@ class ChatPublicationTest {
 
     private AnnotationConfigApplicationContext context(String mode) {
         var context = new AnnotationConfigApplicationContext();
-        context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("test", Map.of("chat.publish-mode", mode)));
+        context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("test", mode == null ? Map.of() : Map.of("chat.publish-mode", mode)));
         context.registerBean(ChatRabbitPublisher.class, () -> mock(ChatRabbitPublisher.class));
         context.registerBean(ChatChaosGate.class, () -> (point, sequence, testRunId) -> {});
         context.registerBean(ChatOutboxRepository.class, () -> mock(ChatOutboxRepository.class));
+        context.registerBean(ChatOutboxWorker.class, () -> mock(ChatOutboxWorker.class));
+        context.registerBean(io.micrometer.core.instrument.MeterRegistry.class,
+                io.micrometer.core.instrument.simple.SimpleMeterRegistry::new);
         context.registerBean(ObjectMapper.class, () -> new ObjectMapper());
-        context.register(DirectChatEventPublicationStrategy.class, OutboxChatEventPublicationStrategy.class);
+        context.register(DirectChatEventPublicationStrategy.class, OutboxChatEventPublicationStrategy.class, ChatOutboxExecutorConfig.class);
         context.refresh();
         return context;
     }

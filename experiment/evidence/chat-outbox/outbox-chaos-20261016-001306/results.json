@@ -1,0 +1,463 @@
+[
+  {
+    "runId": "outbox-chaos-20261016-001306-normal",
+    "mode": "outbox",
+    "scenario": "normal",
+    "seed": 20260923,
+    "configuredMessageCount": 200,
+    "configuredRate": 50,
+    "maxInFlight": 100,
+    "scaleNote": null,
+    "startedAt": "2026-10-16T00:13:24.158Z",
+    "finishedAt": "2026-10-16T00:13:47.097Z",
+    "attemptedRequestCount": 200,
+    "httpSuccessCount": 200,
+    "httpFailureCount": 0,
+    "httpStatusCounts": {
+      "200": 200
+    },
+    "dbCommittedMessageCount": 200,
+    "brokerDeliveredEventCount": 200,
+    "brokerDeliveredUniqueEventCount": 200,
+    "consumerAttemptCount": 200,
+    "consumerProcessedUniqueCount": 200,
+    "duplicatePublishCount": 0,
+    "duplicateConsumeCount": 0,
+    "lostMessageCount": 0,
+    "deliverySuccessRate": 100,
+    "lostRate": 0,
+    "retryCount": 0,
+    "dlqCount": 0,
+    "pendingOutboxCount": 0,
+    "publishedOutboxCount": 200,
+    "failedOutboxCount": 0,
+    "processingOutboxCount": 0,
+    "outboxRetryCount": 0,
+    "recoveryLatencyMs": null,
+    "endToEndLatencyMs": {
+      "p50": 7.29,
+      "p95": 22.634249999999994,
+      "p99": 44.514639999999986
+    },
+    "apiLatencyMs": {
+      "p50": 15.094333000000006,
+      "p95": 52.62445800000023,
+      "p99": 76.06691599999999
+    },
+    "sendDurationSeconds": 3.994,
+    "throughput": 50.0751126690035,
+    "containerStats": [
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend1-1",
+        "cpu": "2.26%",
+        "memory": "759.7MiB / 7.654GiB"
+      },
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend2-1",
+        "cpu": "4.98%",
+        "memory": "771.2MiB / 7.654GiB"
+      }
+    ],
+    "label": "normal",
+    "settings": {},
+    "restartCounts": {
+      "backend1": 0,
+      "backend2": 0
+    },
+    "dispatchRejected": 0,
+    "halt137Count": 0,
+    "checks": {
+      "committedMessagesProcessed": true,
+      "allOutboxPublished": true,
+      "noUnfinishedOutbox": true,
+      "allHttpSucceeded": true
+    },
+    "passed": true
+  },
+  {
+    "runId": "outbox-chaos-20261016-001306-long-poll",
+    "mode": "outbox",
+    "scenario": "normal",
+    "seed": 20260923,
+    "configuredMessageCount": 100,
+    "configuredRate": 25,
+    "maxInFlight": 100,
+    "scaleNote": null,
+    "startedAt": "2026-10-16T00:14:06.319Z",
+    "finishedAt": "2026-10-16T00:14:23.500Z",
+    "attemptedRequestCount": 100,
+    "httpSuccessCount": 100,
+    "httpFailureCount": 0,
+    "httpStatusCounts": {
+      "200": 100
+    },
+    "dbCommittedMessageCount": 100,
+    "brokerDeliveredEventCount": 100,
+    "brokerDeliveredUniqueEventCount": 100,
+    "consumerAttemptCount": 100,
+    "consumerProcessedUniqueCount": 100,
+    "duplicatePublishCount": 0,
+    "duplicateConsumeCount": 0,
+    "lostMessageCount": 0,
+    "deliverySuccessRate": 100,
+    "lostRate": 0,
+    "retryCount": 0,
+    "dlqCount": 0,
+    "pendingOutboxCount": 0,
+    "publishedOutboxCount": 100,
+    "failedOutboxCount": 0,
+    "processingOutboxCount": 0,
+    "outboxRetryCount": 0,
+    "recoveryLatencyMs": null,
+    "endToEndLatencyMs": {
+      "p50": 9.1425,
+      "p95": 18.64069999999999,
+      "p99": 51.72221999999998
+    },
+    "apiLatencyMs": {
+      "p50": 18.723250000000007,
+      "p95": 32.012874999999894,
+      "p99": 92.89879199999996
+    },
+    "sendDurationSeconds": 3.981,
+    "throughput": 25.119316754584275,
+    "containerStats": [
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend1-1",
+        "cpu": "1.04%",
+        "memory": "743.1MiB / 7.654GiB"
+      },
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend2-1",
+        "cpu": "1.11%",
+        "memory": "789.3MiB / 7.654GiB"
+      }
+    ],
+    "label": "long-poll",
+    "settings": {
+      "CHAT_OUTBOX_POLL_DELAY_MS": "3600000"
+    },
+    "restartCounts": {
+      "backend1": 0,
+      "backend2": 0
+    },
+    "dispatchRejected": 0,
+    "halt137Count": 0,
+    "checks": {
+      "committedMessagesProcessed": true,
+      "allOutboxPublished": true,
+      "noUnfinishedOutbox": true,
+      "allHttpSucceeded": true
+    },
+    "passed": true
+  },
+  {
+    "runId": "outbox-chaos-20261016-001306-after-commit",
+    "mode": "outbox",
+    "scenario": "db_commit",
+    "seed": 20260923,
+    "configuredMessageCount": 100,
+    "configuredRate": 20,
+    "maxInFlight": 100,
+    "scaleNote": null,
+    "startedAt": "2026-10-16T00:14:41.627Z",
+    "finishedAt": "2026-10-16T00:15:19.261Z",
+    "attemptedRequestCount": 100,
+    "httpSuccessCount": 95,
+    "httpFailureCount": 5,
+    "httpStatusCounts": {
+      "200": 95,
+      "502": 5
+    },
+    "dbCommittedMessageCount": 96,
+    "brokerDeliveredEventCount": 96,
+    "brokerDeliveredUniqueEventCount": 96,
+    "consumerAttemptCount": 96,
+    "consumerProcessedUniqueCount": 96,
+    "duplicatePublishCount": 0,
+    "duplicateConsumeCount": 0,
+    "lostMessageCount": 0,
+    "deliverySuccessRate": 100,
+    "lostRate": 0,
+    "retryCount": 0,
+    "dlqCount": 0,
+    "pendingOutboxCount": 0,
+    "publishedOutboxCount": 96,
+    "failedOutboxCount": 0,
+    "processingOutboxCount": 0,
+    "outboxRetryCount": 0,
+    "recoveryLatencyMs": null,
+    "endToEndLatencyMs": {
+      "p50": 13.024000000000001,
+      "p95": 62.671249999999944,
+      "p99": 275.5119999999999
+    },
+    "apiLatencyMs": {
+      "p50": 24.027750000000196,
+      "p95": 109.39645899999982,
+      "p99": 317.53020800000013
+    },
+    "sendDurationSeconds": 4.974,
+    "throughput": 20.10454362685967,
+    "containerStats": [
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend1-1",
+        "cpu": "3.08%",
+        "memory": "714.7MiB / 7.654GiB"
+      },
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend2-1",
+        "cpu": "4.12%",
+        "memory": "750.2MiB / 7.654GiB"
+      }
+    ],
+    "label": "after-commit",
+    "settings": {},
+    "restartCounts": {
+      "backend1": 1,
+      "backend2": 0
+    },
+    "dispatchRejected": 0,
+    "halt137Count": 1,
+    "checks": {
+      "committedMessagesProcessed": true,
+      "allOutboxPublished": true,
+      "noUnfinishedOutbox": true,
+      "actualProcessHalt": true
+    },
+    "passed": true
+  },
+  {
+    "runId": "outbox-chaos-20261016-001306-after-confirm",
+    "mode": "outbox",
+    "scenario": "outbox_after_confirm",
+    "seed": 20260923,
+    "configuredMessageCount": 100,
+    "configuredRate": 20,
+    "maxInFlight": 100,
+    "scaleNote": null,
+    "startedAt": "2026-10-16T00:15:38.320Z",
+    "finishedAt": "2026-10-16T00:16:55.974Z",
+    "attemptedRequestCount": 100,
+    "httpSuccessCount": 97,
+    "httpFailureCount": 3,
+    "httpStatusCounts": {
+      "200": 97,
+      "502": 3
+    },
+    "dbCommittedMessageCount": 97,
+    "brokerDeliveredEventCount": 98,
+    "brokerDeliveredUniqueEventCount": 97,
+    "consumerAttemptCount": 98,
+    "consumerProcessedUniqueCount": 97,
+    "duplicatePublishCount": 1,
+    "duplicateConsumeCount": 1,
+    "lostMessageCount": 0,
+    "deliverySuccessRate": 100,
+    "lostRate": 0,
+    "retryCount": 1,
+    "dlqCount": 0,
+    "pendingOutboxCount": 0,
+    "publishedOutboxCount": 97,
+    "failedOutboxCount": 0,
+    "processingOutboxCount": 0,
+    "outboxRetryCount": 1,
+    "recoveryLatencyMs": null,
+    "endToEndLatencyMs": {
+      "p50": 13.212,
+      "p95": 49.93499999999992,
+      "p99": 81.49883999999986
+    },
+    "apiLatencyMs": {
+      "p50": 27.823083000000224,
+      "p95": 88.90845799999988,
+      "p99": 199.02208399999972
+    },
+    "sendDurationSeconds": 4.998,
+    "throughput": 20.008003201280513,
+    "containerStats": [
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend1-1",
+        "cpu": "3.00%",
+        "memory": "688MiB / 7.654GiB"
+      },
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend2-1",
+        "cpu": "2.37%",
+        "memory": "771.3MiB / 7.654GiB"
+      }
+    ],
+    "label": "after-confirm",
+    "settings": {},
+    "restartCounts": {
+      "backend1": 1,
+      "backend2": 0
+    },
+    "dispatchRejected": 0,
+    "halt137Count": 1,
+    "checks": {
+      "committedMessagesProcessed": true,
+      "allOutboxPublished": true,
+      "noUnfinishedOutbox": true,
+      "actualProcessHalt": true,
+      "duplicatePublicationObserved": true,
+      "leaseRecoveryObserved": true
+    },
+    "passed": true
+  },
+  {
+    "runId": "outbox-chaos-20261016-001306-mq-outage-saturation",
+    "mode": "outbox",
+    "scenario": "rabbit_outage",
+    "seed": 20260923,
+    "configuredMessageCount": 100,
+    "configuredRate": 20,
+    "maxInFlight": 100,
+    "scaleNote": null,
+    "startedAt": "2026-10-16T00:17:18.300Z",
+    "finishedAt": "2026-10-16T00:18:25.531Z",
+    "attemptedRequestCount": 100,
+    "httpSuccessCount": 100,
+    "httpFailureCount": 0,
+    "httpStatusCounts": {
+      "200": 100
+    },
+    "dbCommittedMessageCount": 100,
+    "brokerDeliveredEventCount": 102,
+    "brokerDeliveredUniqueEventCount": 100,
+    "consumerAttemptCount": 102,
+    "consumerProcessedUniqueCount": 100,
+    "duplicatePublishCount": 2,
+    "duplicateConsumeCount": 2,
+    "lostMessageCount": 0,
+    "deliverySuccessRate": 100,
+    "lostRate": 0,
+    "retryCount": 2,
+    "dlqCount": 0,
+    "pendingOutboxCount": 0,
+    "publishedOutboxCount": 100,
+    "failedOutboxCount": 0,
+    "processingOutboxCount": 0,
+    "outboxRetryCount": 0,
+    "recoveryLatencyMs": 1620,
+    "endToEndLatencyMs": {
+      "p50": 14099.812,
+      "p95": 15971.17145,
+      "p99": 16046.71984
+    },
+    "apiLatencyMs": {
+      "p50": 20.78274999999985,
+      "p95": 54.54991700000028,
+      "p99": 158.2958329999999
+    },
+    "sendDurationSeconds": 4.966,
+    "throughput": 20.13693113169553,
+    "containerStats": [
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend1-1",
+        "cpu": "3.39%",
+        "memory": "772MiB / 7.654GiB"
+      },
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend2-1",
+        "cpu": "5.97%",
+        "memory": "770MiB / 7.654GiB"
+      }
+    ],
+    "label": "mq-outage-saturation",
+    "settings": {
+      "CHAT_OUTBOX_EXECUTOR_THREADS": "1",
+      "CHAT_OUTBOX_EXECUTOR_QUEUE_CAPACITY": "2"
+    },
+    "restartCounts": {
+      "backend1": 0,
+      "backend2": 0
+    },
+    "dispatchRejected": 75.0,
+    "halt137Count": 0,
+    "checks": {
+      "committedMessagesProcessed": true,
+      "allOutboxPublished": true,
+      "noUnfinishedOutbox": true,
+      "allHttpSucceeded": true,
+      "executorRejectionObserved": true
+    },
+    "passed": true
+  },
+  {
+    "runId": "outbox-chaos-20261016-001306-consumer-after-process",
+    "mode": "outbox",
+    "scenario": "consumer_after_process",
+    "seed": 20260923,
+    "configuredMessageCount": 100,
+    "configuredRate": 20,
+    "maxInFlight": 100,
+    "scaleNote": null,
+    "startedAt": "2026-10-16T00:18:43.988Z",
+    "finishedAt": "2026-10-16T00:19:21.448Z",
+    "attemptedRequestCount": 100,
+    "httpSuccessCount": 96,
+    "httpFailureCount": 4,
+    "httpStatusCounts": {
+      "200": 96,
+      "502": 4
+    },
+    "dbCommittedMessageCount": 96,
+    "brokerDeliveredEventCount": 96,
+    "brokerDeliveredUniqueEventCount": 96,
+    "consumerAttemptCount": 97,
+    "consumerProcessedUniqueCount": 96,
+    "duplicatePublishCount": 0,
+    "duplicateConsumeCount": 1,
+    "lostMessageCount": 0,
+    "deliverySuccessRate": 100,
+    "lostRate": 0,
+    "retryCount": 1,
+    "dlqCount": 0,
+    "pendingOutboxCount": 0,
+    "publishedOutboxCount": 96,
+    "failedOutboxCount": 0,
+    "processingOutboxCount": 0,
+    "outboxRetryCount": 0,
+    "recoveryLatencyMs": null,
+    "endToEndLatencyMs": {
+      "p50": 11.981000000000002,
+      "p95": 54.631999999999856,
+      "p99": 134.58759999999984
+    },
+    "apiLatencyMs": {
+      "p50": 22.93862500000023,
+      "p95": 112.79183400000011,
+      "p99": 243.05479100000002
+    },
+    "sendDurationSeconds": 5.046,
+    "throughput": 19.817677368212443,
+    "containerStats": [
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend1-1",
+        "cpu": "2.79%",
+        "memory": "700.9MiB / 7.654GiB"
+      },
+      {
+        "name": "portmatch-outbox-chaos-20261016-001306-backend2-1",
+        "cpu": "2.21%",
+        "memory": "760.8MiB / 7.654GiB"
+      }
+    ],
+    "label": "consumer-after-process",
+    "settings": {},
+    "restartCounts": {
+      "backend1": 1,
+      "backend2": 0
+    },
+    "dispatchRejected": 0,
+    "halt137Count": 1,
+    "checks": {
+      "committedMessagesProcessed": true,
+      "allOutboxPublished": true,
+      "noUnfinishedOutbox": true,
+      "actualProcessHalt": true
+    },
+    "passed": true
+  }
+]

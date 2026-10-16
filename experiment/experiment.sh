@@ -42,9 +42,12 @@ case "$action" in
       done
     done
     ;;
+  verify-outbox)
+    (cd "$ROOT/../Backend" && RUN_CHAT_OUTBOX_BENCHMARK=true ./gradlew test --tests '*Chat*Test' --rerun-tasks)
+    ;;
   stomp-check) wait_ready; node "$ROOT/scripts/stomp-check.mjs" ;;
   report) node "$ROOT/scripts/report.mjs" ;;
   down) "${COMPOSE[@]}" down ;;
   reset) "${COMPOSE[@]}" down -v ;;
-  *) echo "usage: $0 {up|seed|run MODE SCENARIO|matrix|resume|stomp-check|report|down|reset}" ;;
+  *) echo "usage: $0 {up|seed|run MODE SCENARIO|matrix|resume|stomp-check|verify-outbox|report|down|reset}" ;;
 esac

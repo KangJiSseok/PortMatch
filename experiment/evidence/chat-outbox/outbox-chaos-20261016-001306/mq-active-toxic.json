@@ -1,0 +1,14 @@
+{
+  "observedAt": 1792109840.813063,
+  "toxics": [
+    {
+      "attributes": {
+        "timeout": 15000
+      },
+      "name": "outage",
+      "type": "timeout",
+      "stream": "downstream",
+      "toxicity": 1
+    }
+  ]
+}

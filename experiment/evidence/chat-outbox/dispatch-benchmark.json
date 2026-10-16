@@ -1,0 +1,40 @@
+{
+  "pollingOnly" : {
+    "unpublished" : 0,
+    "afterCommitToConfirmMs" : {
+      "p99" : 295.246541,
+      "p50" : 151.235375,
+      "p95" : 271.001625
+    },
+    "events" : 60,
+    "afterCommitToPublishStartMs" : {
+      "p99" : 291.564083,
+      "p50" : 147.654583,
+      "p95" : 268.934209
+    },
+    "transactionCallMs" : {
+      "p99" : 18.496459,
+      "p50" : 7.400625,
+      "p95" : 12.549291
+    }
+  },
+  "immediate" : {
+    "unpublished" : 0,
+    "afterCommitToConfirmMs" : {
+      "p99" : 12.37575,
+      "p50" : 6.883333,
+      "p95" : 11.586125
+    },
+    "events" : 60,
+    "afterCommitToPublishStartMs" : {
+      "p99" : 6.994542,
+      "p50" : 3.646334,
+      "p95" : 6.280167
+    },
+    "transactionCallMs" : {
+      "p99" : 82.187458,
+      "p50" : 9.816291,
+      "p95" : 18.125542
+    }
+  }
+}
