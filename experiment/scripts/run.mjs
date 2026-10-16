@@ -3,9 +3,9 @@ import { mkdir, writeFile, appendFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
-const compose = resolve(root, 'docker-compose.yml');
+const compose = process.env.EXPERIMENT_COMPOSE_FILE || resolve(root, 'docker-compose.yml');
 const base = process.env.EXPERIMENT_BASE_URL || 'http://localhost:18080';
-const rabbit = 'http://localhost:15672';
+const rabbit = process.env.EXPERIMENT_RABBIT_URL || 'http://localhost:15672';
 const mode = process.env.CHAT_PUBLISH_MODE || 'direct';
 const scenario = process.env.CHAT_SCENARIO || 'normal';
 const count = Number(process.env.CHAT_MESSAGE_COUNT || 10000);
@@ -57,10 +57,14 @@ async function purge() {
 
 async function toxic(enabled) {
   for (const proxy of ['rabbit-amqp', 'rabbit-stomp']) {
-    const url = `http://localhost:18474/proxies/${proxy}/toxics/outage`;
-    if (enabled) await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ type: 'timeout', stream: 'downstream', toxicity: 1, attributes: { timeout: outageSeconds * 1000 } }) });
-    else await fetch(url, { method: 'DELETE' });
+    const url = `${process.env.EXPERIMENT_TOXIPROXY_URL || 'http://localhost:18474'}/proxies/${proxy}/toxics`;
+    const response = enabled
+      ? await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name: 'outage', type: 'timeout', stream: 'downstream', toxicity: 1,
+            attributes: { timeout: outageSeconds * 1000 } }) })
+      : await fetch(`${url}/outage`, { method: 'DELETE' });
+    if (!response.ok && !(!enabled && response.status === 404))
+      throw new Error(`Toxiproxy ${enabled ? 'enable' : 'disable'} failed: ${response.status} ${await response.text()}`);
   }
 }
 
@@ -132,7 +136,7 @@ async function run() {
   const consumerAttemptCount = Number(sql(`select count(*) from chat_consumer_attempt where test_run_id='${runId}'`));
   const duplicateConsumeCount = Number(sql(`select greatest(count(*) - count(distinct a.event_id),0) from chat_consumer_attempt a join chat_consumed_event c on c.event_id=a.event_id where a.test_run_id='${runId}'`));
   const e2e = sql(`select coalesce(percentile_cont(0.5) within group(order by extract(epoch from (c.processed_at-m.created_at))*1000),0),coalesce(percentile_cont(0.95) within group(order by extract(epoch from (c.processed_at-m.created_at))*1000),0),coalesce(percentile_cont(0.99) within group(order by extract(epoch from (c.processed_at-m.created_at))*1000),0) from chat_consumed_event c join chat_message m on m.id=c.message_id where c.test_run_id='${runId}'`).split('|').map(Number);
-  const outbox = sql(`select count(*) filter(where status='PENDING'),count(*) filter(where status='PUBLISHED'),count(*) filter(where status='FAILED') from chat_outbox where payload->>'testRunId'='${runId}'`).split('|').map(Number);
+  const outbox = sql(`select count(*) filter(where status='PENDING'),count(*) filter(where status='PUBLISHED'),count(*) filter(where status='FAILED'),count(*) filter(where status='PROCESSING'),coalesce(sum(greatest(attempts-1,0)),0) from chat_outbox where payload->>'testRunId'='${runId}'`).split('|').map(Number);
   const events = await observerEvents();
   const uniqueEvents = new Set(events.filter((e) => e.testRunId === runId).map((e) => e.eventId));
   const brokerEvents = events.filter((e) => e.testRunId === runId).length;
@@ -150,7 +154,7 @@ async function run() {
     deliverySuccessRate: dbCommittedMessageCount ? consumerProcessedUniqueCount / dbCommittedMessageCount * 100 : 0,
     lostRate: dbCommittedMessageCount ? (dbCommittedMessageCount - consumerProcessedUniqueCount) / dbCommittedMessageCount * 100 : 0,
     retryCount: Math.max(0, consumerAttemptCount - uniqueEvents.size), dlqCount: dlq.messages,
-    pendingOutboxCount: outbox[0], publishedOutboxCount: outbox[1], failedOutboxCount: outbox[2],
+    pendingOutboxCount: outbox[0], publishedOutboxCount: outbox[1], failedOutboxCount: outbox[2], processingOutboxCount: outbox[3], outboxRetryCount: outbox[4],
     recoveryLatencyMs: outageRecoveredAt ? Math.max(0, new Date(sql(`select coalesce(max(processed_at),now()) from chat_consumed_event where test_run_id='${runId}'`)) - outageRecoveredAt) : null,
     endToEndLatencyMs: { p50: e2e[0], p95: e2e[1], p99: e2e[2] },
     apiLatencyMs: { p50: percentile(latencies, 50), p95: percentile(latencies, 95), p99: percentile(latencies, 99) },

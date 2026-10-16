@@ -1,0 +1,60 @@
+{
+  "command": "RUN_CHAT_OUTBOX_BENCHMARK=true JAVA_HOME=$(/usr/libexec/java_home -v 21) Backend/gradlew -p Backend test bootJar --rerun-tasks --console=plain",
+  "totals": {
+    "tests": 56,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "suites": [
+    {
+      "name": "com.portmatch.BackendApplicationTests",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.279"
+    },
+    {
+      "name": "com.portmatch.domain.chat.ChatOutboxExecutorTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.029"
+    },
+    {
+      "name": "com.portmatch.domain.chat.ChatOutboxIntegrationTest",
+      "tests": "14",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "8.874"
+    },
+    {
+      "name": "com.portmatch.domain.chat.ChatPublicationTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.221"
+    },
+    {
+      "name": "com.portmatch.domain.chat.ChatRabbitPublisherTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "0.287"
+    },
+    {
+      "name": "com.portmatch.domain.jobposting.JobPostingViewCountConcurrencyTest",
+      "tests": "31",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "6.381"
+    }
+  ],
+  "jarSha256": "c47ef9124a6eecc8571ada2f177372798964ef12606256b84cac02c08b8b4e3b"
+}

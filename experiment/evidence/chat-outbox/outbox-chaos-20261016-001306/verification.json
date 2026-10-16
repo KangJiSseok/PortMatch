@@ -1,0 +1,12 @@
+{
+  "scenarioCount": 6,
+  "allScenarioChecksPassed": true,
+  "attemptedRequests": 700,
+  "httpSuccessCount": 688,
+  "dbCommittedMessageCount": 689,
+  "consumerProcessedUniqueCount": 689,
+  "allEventsObservedAtBroker": true,
+  "allThreeChaosGatesObserved": true,
+  "crossBackendStompPassed": true,
+  "isolatedContainersAndVolumesRemoved": true
+}

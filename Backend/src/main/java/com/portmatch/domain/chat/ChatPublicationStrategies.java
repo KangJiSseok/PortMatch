@@ -2,12 +2,17 @@ package com.portmatch.domain.chat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 @Component
 @RequiredArgsConstructor
@@ -34,12 +39,26 @@ class DirectChatEventPublicationStrategy implements ChatEventPublicationStrategy
 }
 
 @Component
-@RequiredArgsConstructor
+@Slf4j
 @ConditionalOnProperty(name = "chat.publish-mode", havingValue = "outbox")
 class OutboxChatEventPublicationStrategy implements ChatEventPublicationStrategy {
     private final ChatOutboxRepository repository;
     private final ObjectMapper objectMapper;
     private final ChatChaosGate chaosGate;
+    private final ChatOutboxWorker worker;
+    private final Executor executor;
+    private final MeterRegistry metrics;
+
+    OutboxChatEventPublicationStrategy(ChatOutboxRepository repository, ObjectMapper objectMapper,
+            ChatChaosGate chaosGate, ChatOutboxWorker worker,
+            @Qualifier("chatOutboxExecutor") Executor executor, MeterRegistry metrics) {
+        this.repository = repository;
+        this.objectMapper = objectMapper;
+        this.chaosGate = chaosGate;
+        this.worker = worker;
+        this.executor = executor;
+        this.metrics = metrics;
+    }
 
     @Override
     public void publish(ChatMessageCreatedEvent event) {
@@ -48,6 +67,13 @@ class OutboxChatEventPublicationStrategy implements ChatEventPublicationStrategy
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override public void afterCommit() {
                     chaosGate.haltAt("outbox-after-commit", event.roomSequence(), event.testRunId());
+                    var eventId = event.eventId();
+                    try {
+                        executor.execute(() -> worker.publishOne(eventId));
+                    } catch (RejectedExecutionException rejected) {
+                        metrics.counter("chat.outbox.dispatch.rejected").increment();
+                        log.warn("chat outbox dispatch rejected; scheduler will recover: eventId={}", eventId);
+                    }
                 }
             });
         } catch (JsonProcessingException e) {

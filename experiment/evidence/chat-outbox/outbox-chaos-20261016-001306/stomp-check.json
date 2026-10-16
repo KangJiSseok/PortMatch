@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "senderWas": "http://localhost:28081",
+  "subscriberWas": "http://localhost:28082",
+  "roomId": "4f84d8b7-7d90-44af-a4cc-e1efaebf770c",
+  "marker": "stomp-cross-was-981cce93-1bb0-4744-8f84-af01ddcaea53",
+  "destination": "/topic/chat.rooms.4f84d8b7-7d90-44af-a4cc-e1efaebf770c",
+  "frameBytes": 691
+}

@@ -59,8 +59,12 @@ chat:
   outbox:
     batch-size: ${CHAT_OUTBOX_BATCH_SIZE:100}
     poll-delay-ms: ${CHAT_OUTBOX_POLL_DELAY_MS:250}
-    lease-seconds: ${CHAT_OUTBOX_LEASE_SECONDS:30}
+    lease-seconds: ${CHAT_OUTBOX_LEASE_SECONDS:60}
     retention-days: ${CHAT_OUTBOX_RETENTION_DAYS:7}
+    executor:
+      threads: ${CHAT_OUTBOX_EXECUTOR_THREADS:2}
+      queue-capacity: ${CHAT_OUTBOX_EXECUTOR_QUEUE_CAPACITY:100}
+      shutdown-wait-seconds: ${CHAT_OUTBOX_EXECUTOR_SHUTDOWN_WAIT_SECONDS:10}
   broker-relay:
     host: ${RABBITMQ_STOMP_HOST:${RABBITMQ_HOST:localhost}}
     port: ${RABBITMQ_STOMP_PORT:61613}
