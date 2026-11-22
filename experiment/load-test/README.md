@@ -55,3 +55,9 @@ done
 ```
 
 각 단계의 k6 실패 원인을 확인한다. 특히 연결 지연, 요청 타임아웃, 누락 iteration을 성공 RPS 및 p95와 함께 기록한다. EC2 측정값과 로컬 자원 조건은 다르므로 이전 측정은 [결과 기록](RESULTS.md)을 참조한다. 실험을 마치면 같은 프로젝트 환경에서 `docker compose stop`으로 중지할 수 있다.
+
+## 관련 문서
+
+- [화면 흐름과 요청 순서](SCREEN-FLOW.md)
+- [측정 요약](RESULTS.md)
+- [상세 측정 기록](DETAILED-RESULTS.md)
