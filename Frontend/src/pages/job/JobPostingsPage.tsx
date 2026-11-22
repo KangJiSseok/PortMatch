@@ -1,6 +1,3 @@
-// JobPostingsPage.tsx (수정본)
-// ✅ 변경점: stackId -> stackName 표시 + 스택 필터 AND -> OR + 절대 URL 기반 스택 조회 훅 사용
-
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,17 +12,20 @@ import ErrorState from '@/components/states/ErrorState';
 import { useJobPostings } from '@/hooks/useJobPostings';
 import { fetchJobPostingStacks } from '@/api/jobPostings';
 import { useStackNames } from '@/hooks/useStackNames';
-import type { JobPostingDto } from '@/types/backendJobPosting';
-import { fetchCompanySearch, type CompanySearchResult } from '@/api/company/search';
+import type {
+  JobPostingDeadlineFilter as DeadlineFilter,
+  JobPostingExperienceFilter as ExperienceFilter,
+  JobPostingListItem,
+  JobPostingSort as Sort,
+} from '@/types/backendJobPosting';
+import { fetchCompanySearch } from '@/api/company/search';
 
-type Sort = 'latest' | 'deadline';
-type DeadlineFilter = 'all' | 'urgent' | 'week' | 'relaxed' | 'always';
-type ExperienceFilter = 'all' | 'junior' | '1+' | '3+' | '5+';
+// The server uses a signed 32-bit SQL offset for pages of 20.
+const MAX_PAGE_NUMBER = Math.floor(2_147_483_647 / 20) + 1;
 
 type JobPosting = {
   id: number;
   title: string;
-  companyId: string; // cid
   company: string; // corpName
   stackIds: number[]; // ✅ 서버 기준
   location: string;
@@ -65,11 +65,6 @@ const ChevronUp = () => (
 );
 
 // -------------------- utils --------------------
-function clampPage(n: number) {
-  if (!Number.isFinite(n) || n <= 0) return 1;
-  return Math.floor(n);
-}
-
 function parseDday(deadline: string) {
   if (deadline === '오늘마감') return 0;
   if (deadline.startsWith('D-')) {
@@ -85,57 +80,50 @@ function getUrgent(deadline: string) {
   return n !== null && n <= 3;
 }
 
-function deadlineSortKey(deadline: string) {
-  if (deadline === '오늘마감') return 0;
-  if (deadline.startsWith('D-')) {
-    const n = Number(deadline.slice(2));
-    if (Number.isFinite(n)) return n;
-  }
-  if (deadline === '상시') return 9999;
-  if (deadline === '마감') return 10_000;
-  return 9998;
-}
-
 function Divider() {
   return <div className="border-silver-mist/20 mt-5 w-full border-t" />;
 }
 
-function formatDeadlineLabel(endDate: string) {
-  const end = new Date(`${endDate}T23:59:59`);
-  const now = new Date();
-  const diffMs = end.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+function formatDeadlineLabel(endDate: string | null, asOfDate: string) {
+  if (!endDate || endDate === '9999-12-31' || endDate.startsWith('0000-')) return '상시 채용';
 
-  if (!Number.isFinite(diffDays)) return '상시 채용';
+  const end = new Date(`${endDate}T00:00:00Z`);
+  if (!Number.isFinite(end.getTime()) || end.toISOString().slice(0, 10) !== endDate) {
+    return '상시 채용';
+  }
+  const today = Date.parse(`${asOfDate}T00:00:00Z`);
+  const diffDays = (end.getTime() - today) / 86_400_000;
   if (diffDays < 0) return '마감';
   if (diffDays === 0) return '오늘마감';
   return `D-${diffDays}`;
 }
 
-function jobTypeLabel(jobType: number) {
+function jobTypeLabel({ detail, jobType }: JobPostingListItem) {
+  if (detail) {
+    try {
+      const career = JSON.parse(detail)?.career;
+      if (career === '신입' || career === '경력' || career === '무관') return career;
+    } catch {
+      // Imported postings can have plain-text descriptions.
+    }
+  }
   if (jobType === 0) return '신입';
   if (jobType === 1) return '신입/경력';
   if (jobType === 2) return '경력';
   return '채용';
 }
 
-function mapDtoToUiJob(dto: JobPostingDto): JobPosting {
+function mapDtoToUiJob(dto: JobPostingListItem, asOfDate: string): JobPosting {
   return {
     id: dto.id,
     title: dto.title,
-    companyId: dto.company?.cid ?? dto.cid,
     company: dto.company?.corpName ?? dto.cid,
     stackIds: dto.stackIds ?? [],
     location: dto.company?.corpAddr ?? '',
-    deadline: formatDeadlineLabel(dto.endDate),
-    type: jobTypeLabel(dto.jobType),
+    deadline: formatDeadlineLabel(dto.endDate, asOfDate),
+    type: jobTypeLabel(dto),
     logo: dto.company?.logo ?? '',
   };
-}
-
-// ✅ 정렬용: startDate 내림차순
-function sortLatest(a: JobPosting, b: JobPosting) {
-  return b.id - a.id;
 }
 
 // -------------------- CollapsibleSection --------------------
@@ -404,7 +392,7 @@ function FilterPanel({
 
       <CollapsibleSection
         title="경력"
-        subtitle="경력 범위를 선택하세요."
+        subtitle="경력 조건을 선택하세요."
         isOpen={openExperience}
         onToggle={() => setOpenExperience((v) => !v)}
         hasDivider={false}
@@ -413,9 +401,7 @@ function FilterPanel({
           {[
             { value: 'all' as const, label: '전체' },
             { value: 'junior' as const, label: '신입' },
-            { value: '1+' as const, label: '1년 이상' },
-            { value: '3+' as const, label: '3년 이상' },
-            { value: '5+' as const, label: '5년 이상' },
+            { value: 'career' as const, label: '경력' },
           ].map((option) => {
             const active = experienceFilter === option.value;
             return (
@@ -543,51 +529,48 @@ function JobPostingsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // ✅ companyId -> cid 로 변경
   const cid = searchParams.get('cid') ?? '';
   const companyName = searchParams.get('companyName') ?? '';
+  const keyword = searchParams.get('keyword') ?? '';
+  const sort = searchParams.get('sort') === 'deadline' ? 'deadline' : 'latest';
+  const requestedDeadline = searchParams.get('deadline');
+  const deadlineFilter = requestedDeadline === 'urgent' || requestedDeadline === 'week'
+    || requestedDeadline === 'relaxed' || requestedDeadline === 'always' ? requestedDeadline : 'all';
+  const requestedExperience = searchParams.get('experience');
+  const experienceFilter = requestedExperience === 'junior' ? 'junior'
+    : requestedExperience === 'career' || requestedExperience === '1+' ? 'career' : 'all';
+  const requestedPage = Number(searchParams.get('page') ?? '1');
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 && requestedPage <= MAX_PAGE_NUMBER
+    ? requestedPage : 1;
+  const selectedStackIds = useMemo(() => {
+    const ids = searchParams.get('stackIds')?.split(',').map(Number) ?? [];
+    return [...new Set(ids.filter((id) => Number.isSafeInteger(id) && id > 0))];
+  }, [searchParams]);
 
-  const { data, isLoading, isError, refetch } = useJobPostings(cid || undefined);
+  const { data, isLoading, isError, refetch } = useJobPostings({
+    cid, keyword, sort, stackIds: selectedStackIds,
+    deadline: deadlineFilter, experience: experienceFilter, page: page - 1,
+  });
+  const pagedJobs = useMemo(
+    () => data?.content.map((job) => mapDtoToUiJob(job, data.asOfDate)) ?? [],
+    [data],
+  );
+  const stackIdsOnPage = useMemo(
+    () => [...pagedJobs.flatMap((job) => job.stackIds), ...selectedStackIds],
+    [pagedJobs, selectedStackIds],
+  );
+  const stackNameMap = useStackNames(stackIdsOnPage);
+  const totalCount = data?.totalElements ?? 0;
+  const totalPages = data?.totalPages ?? 0;
 
-  const SERVER_JOBS: JobPosting[] = useMemo(() => (data?.data ?? []).map(mapDtoToUiJob), [data]);
-
-  // ✅ 화면에 등장하는 stackIds를 전부 모아서 스택 이름을 비동기로 캐싱
-  const allStackIdsOnPage = useMemo(() => {
-    const ids: number[] = [];
-    SERVER_JOBS.forEach((j) => (j.stackIds ?? []).forEach((id) => ids.push(id)));
-    return ids;
-  }, [SERVER_JOBS]);
-
-
+  const { data: companySearchResult, isLoading: companySearchLoading } = useQuery({
+    queryKey: ['job-postings-company-search', keyword],
+    queryFn: () => fetchCompanySearch(keyword),
+    enabled: Boolean(keyword),
+    retry: false,
+  });
   const [postingStackMap, setPostingStackMap] = useState<Record<number, string[]>>({});
   const postingStackInFlight = useRef<Set<number>>(new Set());
-  const [companySearchResult, setCompanySearchResult] = useState<CompanySearchResult | null>(null);
-  const [companySearchLoading, setCompanySearchLoading] = useState(false);
-
-  const rawKeyword = searchParams.get('keyword') ?? '';
-  const keyword = useMemo(() => {
-    try {
-      return decodeURIComponent(rawKeyword);
-    } catch {
-      return rawKeyword;
-    }
-  }, [rawKeyword]);
-
-  const sort = (searchParams.get('sort') as Sort) ?? 'latest';
-
-  const selectedStackIds =
-    searchParams
-      .get('stackIds')
-      ?.split(',')
-      .map((v) => Number(v))
-      .filter((n) => Number.isFinite(n)) ?? [];
-
-  const stackNameMap = useStackNames([...allStackIdsOnPage, ...selectedStackIds]);
-  const deadlineFilter = (searchParams.get('deadline') as DeadlineFilter) ?? 'all';
-  const experienceFilter = (searchParams.get('experience') as ExperienceFilter) ?? 'all';
-
-  const page = clampPage(Number(searchParams.get('page') ?? '1'));
-  const PAGE_SIZE = 10;
 
   const listTopRef = useRef<HTMLDivElement | null>(null);
 
@@ -595,34 +578,6 @@ function JobPostingsPage() {
     const navbarInput = document.getElementById('navbar-search-input') as HTMLInputElement | null;
     if (!navbarInput) return;
     navbarInput.value = keyword ?? '';
-  }, [keyword]);
-
-  useEffect(() => {
-    if (!keyword) {
-      setCompanySearchResult(null);
-      setCompanySearchLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setCompanySearchLoading(true);
-    fetchCompanySearch(keyword)
-      .then((result) => {
-        if (cancelled) return;
-        setCompanySearchResult(result);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setCompanySearchResult(null);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setCompanySearchLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
   }, [keyword]);
 
   const setParams = (next: Record<string, string>) => setSearchParams(next);
@@ -643,7 +598,8 @@ function JobPostingsPage() {
     const params: Record<string, string> = {};
 
     if (cid) params.cid = cid;
-    if (rawKeyword) params.keyword = rawKeyword;
+    if (companyName) params.companyName = companyName;
+    if (keyword) params.keyword = keyword;
 
     params.sort = nextSort ?? sort;
 
@@ -678,77 +634,8 @@ function JobPostingsPage() {
   const changeExperienceFilter = (filter: ExperienceFilter) =>
     setParams(buildParams({ nextExperience: filter, nextPage: 1 }));
 
-  const clearAllFilters = () => {
-    const params: Record<string, string> = {};
-    if (cid) params.cid = cid;
-    if (rawKeyword) params.keyword = rawKeyword;
-
-    params.sort = sort;
-    params.page = '1';
-
-    setParams(params);
-  };
-
-  const filteredSortedJobs = useMemo(() => {
-    let filtered = SERVER_JOBS;
-
-    // ✅ 회사 필터: cid 기반 (string 비교)
-    if (cid) {
-      filtered = filtered.filter((job) => job.companyId === cid);
-    } else if (keyword) {
-      const k = keyword.toLowerCase();
-      filtered = filtered.filter((job) => job.title.toLowerCase().includes(k));
-    }
-
-    // ✅ 스택 필터: OR (선택한 것 중 하나라도 포함)
-    if (selectedStackIds.length > 0) {
-      filtered = filtered.filter((job) =>
-        selectedStackIds.some((id) => (job.stackIds ?? []).includes(id)),
-      );
-    }
-
-    if (deadlineFilter !== 'all') {
-      filtered = filtered.filter((job) => {
-        const d = job.deadline;
-        const n = parseDday(d);
-
-        if (deadlineFilter === 'always') return d === '상시';
-        if (deadlineFilter === 'urgent')
-          return d === '오늘마감' || (n !== null && n >= 1 && n <= 3);
-        if (deadlineFilter === 'week') return n !== null && n >= 4 && n <= 7;
-        if (deadlineFilter === 'relaxed') return n !== null && n >= 8;
-        return true;
-      });
-    }
-
-    if (experienceFilter !== 'all') {
-      filtered = filtered.filter((job) => {
-        const type = job.type;
-        if (experienceFilter === 'junior') return type.includes('신입');
-        if (experienceFilter === '1+')
-          return type.includes('경력') || /[1-9]년/.test(type) || type.includes('5년↑');
-        if (experienceFilter === '3+') return /[3-9]년/.test(type) || type.includes('5년↑');
-        if (experienceFilter === '5+') return /[5-9]년/.test(type) || type.includes('5년↑');
-        return true;
-      });
-    }
-
-    const sortedList = [...filtered].sort((a, b) => {
-      if (sort === 'latest') return sortLatest(a, b);
-      return deadlineSortKey(a.deadline) - deadlineSortKey(b.deadline);
-    });
-
-    return sortedList;
-  }, [SERVER_JOBS, cid, keyword, selectedStackIds, deadlineFilter, experienceFilter, sort]);
-
-  const totalCount = filteredSortedJobs.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-
-  const pagedJobs = useMemo(() => {
-    const safePage = Math.min(page, totalPages);
-    const start = (safePage - 1) * PAGE_SIZE;
-    return filteredSortedJobs.slice(start, start + PAGE_SIZE);
-  }, [filteredSortedJobs, page, totalPages]);
+  const clearAllFilters = () =>
+    setParams(buildParams({ nextStackIds: [], nextDeadline: 'all', nextExperience: 'all', nextPage: 1 }));
 
   useEffect(() => {
     const targets = pagedJobs.filter(
@@ -766,9 +653,7 @@ function JobPostingsPage() {
             res.data
               ?.map((stack) => stack.stack_name || (stack as { stackName?: string }).stackName)
               .filter((name): name is string => typeof name === 'string' && name.length > 0) ?? [];
-          if (names.length > 0) {
-            setPostingStackMap((prev) => ({ ...prev, [job.id]: names }));
-          }
+          setPostingStackMap((prev) => ({ ...prev, [job.id]: names }));
         })
         .catch(() => {
           // ignore; fallback rendering handles empty
@@ -787,10 +672,13 @@ function JobPostingsPage() {
     return count;
   }, [selectedStackIds, deadlineFilter, experienceFilter]);
 
+  const pageOutOfRange = data !== undefined && page > Math.max(1, totalPages);
   useEffect(() => {
-    if (page > totalPages) setParams(buildParams({ nextPage: 1 }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalPages]);
+    if (!pageOutOfRange) return;
+    const params = new URLSearchParams(searchParams);
+    params.set('page', '1');
+    setSearchParams(params, { replace: true });
+  }, [pageOutOfRange, searchParams, setSearchParams]);
 
   const scrollToListTop = () => listTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -1046,7 +934,7 @@ function JobPostingsPage() {
                 </div>
               )}
 
-              {isLoading && (
+              {(isLoading || pageOutOfRange) && (
                 <div className="py-20">
                   <LoadingState />
                 </div>
@@ -1063,7 +951,7 @@ function JobPostingsPage() {
                 </div>
               )}
 
-              {!isLoading && !isError && (
+              {!isLoading && !isError && !pageOutOfRange && (
                 <>
                   <section className="grid gap-5">
                     <AnimatePresence mode="wait">
@@ -1206,7 +1094,7 @@ function JobPostingsPage() {
                   </section>
 
                   {totalCount > 0 && (
-                    <Pagination page={Math.min(page, totalPages)} totalPages={totalPages} onChangePage={setPage} />
+                    <Pagination page={page} totalPages={totalPages} onChangePage={setPage} />
                   )}
                 </>
               )}

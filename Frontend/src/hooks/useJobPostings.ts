@@ -1,11 +1,12 @@
 // src/hooks/useJobPostings.ts
 import { useQuery } from '@tanstack/react-query';
-import { fetchJobPostings, fetchJobPostingsByCompany } from '@/api/jobPostings';
+import { fetchJobPostings } from '@/api/jobPostings';
+import type { JobPostingListQuery } from '@/types/backendJobPosting';
 
-export function useJobPostings(cid?: string) {
+export function useJobPostings(query: JobPostingListQuery) {
   return useQuery({
-    queryKey: ['job-postings', cid ?? 'all'],
-    queryFn: () => (cid ? fetchJobPostingsByCompany(cid) : fetchJobPostings()),
+    queryKey: ['job-postings', query],
+    queryFn: ({ signal }) => fetchJobPostings(query, signal),
     staleTime: 30_000,
   });
 }

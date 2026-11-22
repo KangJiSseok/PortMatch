@@ -1,6 +1,8 @@
 package com.portmatch.domain.jobposting.controller;
 
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
+import com.portmatch.domain.jobposting.dto.JobPostingListQuery;
+import com.portmatch.domain.jobposting.dto.JobPostingPage;
 import com.portmatch.domain.jobposting.service.JobPostingService;
 import com.portmatch.global.api.BaseApiResponse;
 import com.portmatch.global.response.ResponseCode;
@@ -9,7 +11,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,11 +27,10 @@ public class JobPostingController {
 
     private final JobPostingService jobPostingService;
 
-    @Operation(summary = "전체 공고 목록 조회", description = "등록된 모든 채용 공고 리스트를 반환합니다.")
+    @Operation(summary = "채용 공고 목록 조회", description = "검색 및 필터 조건에 맞는 공고를 20건씩 조회합니다. 첫 페이지 번호는 0입니다.")
     @GetMapping
-    public BaseApiResponse<List<JobPostingDto>> getAllJobs() {
-        List<JobPostingDto> jobs = jobPostingService.getAllJobPostings();
-        return BaseApiResponse.ok(jobs);
+    public BaseApiResponse<JobPostingPage> getAllJobs(@Valid @ParameterObject @ModelAttribute JobPostingListQuery query) {
+        return BaseApiResponse.ok(jobPostingService.getJobPostings(query));
     }
 
     @Operation(summary = "공고 상세 조회", description = "공고 ID를 통해 상세 내용을 조회하고 조회수를 1 증가시킵니다.")
