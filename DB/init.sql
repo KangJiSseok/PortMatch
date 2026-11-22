@@ -910,6 +910,9 @@ create table public.posting_stacks
 alter table public.posting_stacks
     owner to portmatch;
 
+create index idx_posting_stacks_job_posting_id
+    on public.posting_stacks (job_posting_id);
+
 create table public.job_posting_parsed
 (
     id                      bigserial
