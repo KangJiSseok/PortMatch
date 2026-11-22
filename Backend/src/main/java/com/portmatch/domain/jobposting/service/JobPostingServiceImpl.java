@@ -4,6 +4,8 @@ import com.portmatch.domain.companies.entity.Company;
 import com.portmatch.domain.companies.repository.CompanyRepository;
 import com.portmatch.domain.companies.service.CompaniesService;
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
+import com.portmatch.domain.jobposting.dto.JobPostingListQuery;
+import com.portmatch.domain.jobposting.dto.JobPostingPage;
 import com.portmatch.domain.jobposting.embedding.service.JobPostingEmbeddingService;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 import com.portmatch.domain.jobposting.entity.PostingStackEntity;
@@ -14,17 +16,22 @@ import com.portmatch.domain.jobposting.repository.TechStackRepository;
 import com.portmatch.domain.scrap.repository.ScrapRepository;
 import com.portmatch.global.exception.BusinessException; // 공통 예외 추가
 import com.portmatch.global.response.ResponseCode; // 공통 응답 코드 추가
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class JobPostingServiceImpl implements JobPostingService {
+
+    private static final ZoneId JOB_POSTINGS_ZONE = ZoneId.of("Asia/Seoul");
 
     private final JobPostingRepository jobPostingRepository;
     private final CompanyRepository jobCompaniesRepository;
@@ -142,10 +149,18 @@ public class JobPostingServiceImpl implements JobPostingService {
     }
 
     @Override
-    public List<JobPostingDto> getAllJobPostings() {
-        return jobPostingRepository.findAll().stream()
-                .map(this::convertToDto)
-                .toList();
+    @Transactional(readOnly = true)
+    public JobPostingPage getJobPostings(JobPostingListQuery query) {
+        LocalDate today = LocalDate.now(JOB_POSTINGS_ZONE);
+        String stackIds = query.getStackIds().stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+        var page = jobPostingRepository.findFilteredPostings(
+                query.getCid(), query.getKeyword(), stackIds, query.getDeadline(),
+                query.getExperience(), query.getSort(), today,
+                PageRequest.of(query.getPage(), JobPostingListQuery.PAGE_SIZE)
+        ).map(this::convertToDto);
+        return new JobPostingPage(page.getContent(), page.getTotalElements(), page.getTotalPages(), today);
     }
 
     @Override

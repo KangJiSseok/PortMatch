@@ -1,6 +1,8 @@
 package com.portmatch.domain.jobposting.service;
 
 import com.portmatch.domain.jobposting.dto.JobPostingDto;
+import com.portmatch.domain.jobposting.dto.JobPostingListQuery;
+import com.portmatch.domain.jobposting.dto.JobPostingPage;
 import com.portmatch.domain.jobposting.entity.JobPostingEntity;
 
 import java.util.List;
@@ -12,8 +14,7 @@ public interface JobPostingService {
     // [추가] 1-1. 공고 정보와 기술 스택 리스트를 함께 저장
     void saveJobPostingWithStacks(JobPostingDto dto);
 
-    // 2. [Read] 전체 공고 목록 조회 (기존 getJobPostings 대체)
-    List<JobPostingDto> getAllJobPostings();
+    JobPostingPage getJobPostings(JobPostingListQuery query);
 
     // 3. [Read] 특정 공고 상세 조회 (기존 getJobDetail 활용)
     JobPostingDto getJobDetail(Long id);

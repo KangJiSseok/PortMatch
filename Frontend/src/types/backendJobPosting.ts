@@ -32,3 +32,29 @@ export type JobPostingDto = {
   company: CompanyDto;
   stackIds: number[];   // ✅ 여기랑 스택 id 매칭할 예정
 };
+
+export type JobPostingSort = 'latest' | 'deadline';
+export type JobPostingDeadlineFilter = 'all' | 'urgent' | 'week' | 'relaxed' | 'always';
+export type JobPostingExperienceFilter = 'all' | 'junior' | 'career';
+
+export type JobPostingListQuery = {
+  page: number;
+  cid: string;
+  keyword: string;
+  stackIds: number[];
+  deadline: JobPostingDeadlineFilter;
+  experience: JobPostingExperienceFilter;
+  sort: JobPostingSort;
+};
+
+export type JobPostingListItem = Omit<JobPostingDto, 'endDate' | 'detail'> & {
+  endDate: string | null;
+  detail: string | null;
+};
+
+export type JobPostingPage = {
+  content: JobPostingListItem[];
+  totalElements: number;
+  totalPages: number;
+  asOfDate: string;
+};
