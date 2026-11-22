@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "posting_stacks")
+@Table(
+        name = "posting_stacks",
+        indexes = @Index(name = "idx_posting_stacks_job_posting_id", columnList = "job_posting_id")
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
