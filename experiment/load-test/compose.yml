@@ -1,0 +1,70 @@
+name: portmatch-load-test
+services:
+  db:
+    image: pgvector/pgvector@sha256:b513c48566e4777cd3370451400000c78eda6a08131d68f4c31d4a76f27bd8fd
+    command: ["postgres", "-c", "shared_buffers=32MB", "-c", "max_connections=32"]
+    environment:
+      POSTGRES_USER: portmatch
+      POSTGRES_DB: portmatch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      BENCH_ROWS: ${BENCH_ROWS:-100000}
+    volumes:
+      - bench-db:/var/lib/postgresql/data
+      - ../../DB/init.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+      - ../../Backend/src/main/resources/db/migration/V2026092301__chat.sql:/docker-entrypoint-initdb.d/20-chat.sql:ro
+      - ./sql/init-fixture.sql:/docker-entrypoint-initdb.d/30-fixture.sql:ro
+      - ./sql:/opt/portmatch:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "portmatch", "-d", "portmatch"]
+      interval: 3s
+      timeout: 2s
+      retries: 60
+  redis:
+    image: redis:7-alpine
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: baseline
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 2:2"
+    volumes:
+      - ./rabbitmq-plugins:/etc/rabbitmq/enabled_plugins:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  backend:
+    build:
+      context: ../../Backend
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8102}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      JAVA_OPTS: "-Xms96m -Xmx256m -XX:ActiveProcessorCount=2"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/portmatch
+      SPRING_DATASOURCE_USERNAME: portmatch
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 8
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: 2
+      SPRING_FLYWAY_ENABLED: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      JPA_SHOW_SQL: "false"
+      LOGGING_LEVEL_COM_PORTMATCH: INFO
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: baseline
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      AWS_S3_BUCKET: portmatch-benchmark-unused
+      AWS_REGION: ap-northeast-2
+      AWS_ACCESS_KEY: unused
+      AWS_SECRET_KEY: unused
+volumes:
+  bench-db:
